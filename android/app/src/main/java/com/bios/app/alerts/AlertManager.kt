@@ -24,12 +24,13 @@ class AlertManager(
     private val anomalyDao = db.anomalyDao()
 
     companion object {
-        const val CHANNEL_ID = "bios_alerts"
-        const val CHANNEL_NAME = "Health Alerts"
+        const val CHANNEL_NOTICE = "bios_notice"
+        const val CHANNEL_ADVISORY = "bios_advisory"
+        const val CHANNEL_URGENT = "bios_urgent"
     }
 
     init {
-        createNotificationChannel()
+        createNotificationChannels()
     }
 
     suspend fun fetchUnacknowledged(): List<Anomaly> = anomalyDao.fetchUnacknowledged()
@@ -49,13 +50,13 @@ class AlertManager(
             ) return
         }
 
-        val priority = when (tier) {
-            AlertTier.URGENT -> NotificationCompat.PRIORITY_HIGH
-            AlertTier.ADVISORY -> NotificationCompat.PRIORITY_DEFAULT
-            else -> NotificationCompat.PRIORITY_LOW
+        val (channelId, priority) = when (tier) {
+            AlertTier.URGENT -> CHANNEL_URGENT to NotificationCompat.PRIORITY_HIGH
+            AlertTier.ADVISORY -> CHANNEL_ADVISORY to NotificationCompat.PRIORITY_DEFAULT
+            else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
         }
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(anomaly.title)
             .setContentText(anomaly.explanation.take(150))
@@ -68,16 +69,25 @@ class AlertManager(
             .notify(anomaly.id.hashCode(), notification)
     }
 
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "Alerts about changes in your health patterns"
-        }
-
+    private fun createNotificationChannels() {
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_NOTICE, "Health Notices", NotificationManager.IMPORTANCE_LOW
+            ).apply { description = "Sustained deviations worth monitoring" }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ADVISORY, "Health Advisories", NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "Multi-signal patterns matching known conditions" }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_URGENT, "Urgent Health Alerts", NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Acute anomalies requiring immediate attention" }
+        )
     }
 }

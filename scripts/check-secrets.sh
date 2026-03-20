@@ -32,7 +32,7 @@ fi
 [ -z "$FILES" ] && { echo "OK: No staged files to check."; exit 0; }
 
 for pattern in "${PATTERNS[@]}"; do
-    MATCHES=$(echo "$FILES" | xargs grep -lnE "$pattern" 2>/dev/null || true)
+    MATCHES=$(echo "$FILES" | grep -v 'check-secrets.sh' | xargs grep -lnE "$pattern" 2>/dev/null || true)
     if [ -n "$MATCHES" ]; then
         echo "WARN: Potential secret found matching pattern '$pattern' in:"
         echo "$MATCHES" | sed 's/^/  /'
