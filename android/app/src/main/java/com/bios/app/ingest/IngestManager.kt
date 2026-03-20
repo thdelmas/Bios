@@ -39,8 +39,14 @@ class IngestManager(
     suspend fun setup() {
         val sourceId = getOrCreateHealthConnectSource()
         healthConnectSourceId = sourceId
-        syncHistoricalData()
         updateDataAge()
+
+        // Only fetch full history on first launch; otherwise just sync recent data
+        if (_dataAgeDays.value == 0) {
+            syncHistoricalData()
+        } else {
+            syncRecentData()
+        }
     }
 
     // MARK: - Sync

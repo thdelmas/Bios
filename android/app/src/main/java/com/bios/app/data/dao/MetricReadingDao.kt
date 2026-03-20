@@ -49,6 +49,22 @@ interface MetricReadingDao {
     @Query("SELECT COUNT(*) FROM metric_readings")
     suspend fun countAll(): Int
 
+    @Query("""
+        SELECT AVG(value) FROM metric_readings
+        WHERE metricType = :metricType
+          AND timestamp >= :startMillis
+          AND timestamp <= :endMillis
+          AND isPrimary = 1
+        GROUP BY (timestamp / :bucketMillis)
+        ORDER BY (timestamp / :bucketMillis) ASC
+    """)
+    suspend fun fetchBucketedMeans(
+        metricType: String,
+        startMillis: Long,
+        endMillis: Long,
+        bucketMillis: Long
+    ): List<Double>
+
     @Query("SELECT MIN(timestamp) FROM metric_readings")
     suspend fun oldestTimestamp(): Long?
 

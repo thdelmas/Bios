@@ -2,10 +2,8 @@ package com.bios.app.engine
 
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.*
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 
 /**
  * Computes personal baselines from historical metric readings using rolling statistics.
@@ -122,26 +120,10 @@ class BaselineEngine(private val db: BiosDatabase) {
         startMillis: Long,
         endMillis: Long
     ): List<Double> {
-        val dailyMeans = mutableListOf<Double>()
-        val zone = ZoneId.systemDefault()
-        var current = Instant.ofEpochMilli(startMillis)
-            .atZone(zone).toLocalDate()
-        val endDate = Instant.ofEpochMilli(endMillis)
-            .atZone(zone).toLocalDate()
-
-        while (!current.isAfter(endDate)) {
-            val dayStart = current.atStartOfDay(zone).toInstant().toEpochMilli()
-            val dayEnd = current.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-            val values = readingDao.fetchValues(metricType.key, dayStart, dayEnd)
-
-            if (values.isNotEmpty()) {
-                dailyMeans.add(values.average())
-            }
-
-            current = current.plusDays(1)
-        }
-
-        return dailyMeans
+        val dayMillis = 24L * 3600 * 1000
+        return readingDao.fetchBucketedMeans(
+            metricType.key, startMillis, endMillis, dayMillis
+        )
     }
 
     private fun computeTrend(dailyMeans: List<Double>): Pair<TrendDirection, Double> {

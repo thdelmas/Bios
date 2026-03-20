@@ -23,6 +23,10 @@ class SyncWorker(
             // Sync recent data
             ingestManager.syncRecentData()
 
+            // Prune readings older than retention window
+            val retentionMillis = RETENTION_DAYS.toLong() * 24 * 3600 * 1000
+            db.metricReadingDao().deleteBefore(System.currentTimeMillis() - retentionMillis)
+
             // Run baseline + detection if enough data
             if (ingestManager.dataAgeDays.value >= MINIMUM_DATA_DAYS) {
                 val engine = com.bios.app.engine.BaselineEngine(db)
@@ -48,6 +52,7 @@ class SyncWorker(
     companion object {
         const val WORK_NAME = "bios_sync"
         const val MINIMUM_DATA_DAYS = 7
+        const val RETENTION_DAYS = 90
 
         fun enqueuePeriodicSync(context: Context) {
             val constraints = Constraints.Builder()
