@@ -7,7 +7,25 @@
       "Bash(chmod +x /home/mia/Bios/scripts/check-file-length.sh /home/mia/Bios/scripts/check-secrets.sh /home/mia/Bios/scripts/code-quality-check.sh)",
       "Bash(chmod +x /home/mia/Bios/scripts/install-hooks.sh)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(./scripts/install-hooks.sh)",
+      "Bash(git commit:*)",
+      "Bash(./scripts/code-quality-check.sh)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(gradle --version)",
+      "Bash(curl -sL -o gradle/wrapper/gradle-wrapper.jar \"https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar\")",
+      "Bash(git push:*)",
+      "Bash(chmod +x /home/mia/Bios/android/gradlew)",
+      "Bash(./gradlew --version)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(adb -s 59101JEBF02652 logcat -d)",
+      "Bash(./gradlew dependencyInsight --dependency sqlcipher --configuration debugRuntimeClasspath)",
+      "Bash(curl -s \"https://repo1.maven.org/maven2/net/zetetic/android-database-sqlcipher/maven-metadata.xml\")",
+      "Bash(curl -s \"https://repo1.maven.org/maven2/net/zetetic/sqlcipher-android/maven-metadata.xml\")",
+      "Bash(curl -s \"https://repo1.maven.org/maven2/net/zetetic/sqlcipher-android/4.14.0/sqlcipher-android-4.14.0.pom\")",
+      "Bash(unzip -o /home/mia/Bios/android/app/build/outputs/apk/debug/app-debug.apk \"lib/arm64-v8a/libsqlcipher.so\" -d /tmp/apk-check)",
+      "Bash(readelf -l /tmp/apk-check/lib/arm64-v8a/libsqlcipher.so)"
     ]
   }
 }

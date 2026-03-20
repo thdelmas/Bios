@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.model.AlertTier
 import com.bios.app.model.MetricType
@@ -26,15 +25,11 @@ import com.bios.app.ui.components.MetricCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: AppViewModel = viewModel()) {
+fun HomeScreen(viewModel: AppViewModel) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
     val isSyncing by viewModel.ingestManager.isSyncing.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.initialize()
-    }
 
     Column(
         modifier = Modifier

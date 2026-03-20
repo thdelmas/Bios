@@ -111,41 +111,45 @@ private fun SeverityBadge(tier: AlertTier, color: Color) {
 
 @Composable
 private fun DeviationScoresList(scoresJson: String) {
-    try {
-        val scores = JSONObject(scoresJson)
-        val entries = scores.keys().asSequence().map { key ->
-            key to scores.getDouble(key)
-        }.sortedByDescending { abs(it.second) }.toList()
+    val entries = remember(scoresJson) {
+        try {
+            val scores = JSONObject(scoresJson)
+            scores.keys().asSequence().map { key ->
+                key to scores.getDouble(key)
+            }.sortedByDescending { abs(it.second) }.toList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
-        if (entries.isEmpty()) return
+    if (entries.isEmpty()) return
 
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-        ) {
-            Column(modifier = Modifier.padding(8.dp)) {
-                entries.forEach { (key, zScore) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            key.replace("_", " ")
-                                .replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        Text(
-                            String.format("%+.1fσ", zScore),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (abs(zScore) > 2) Color(0xFFFF9800) else Color(0xFFFFC107)
-                        )
-                    }
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            entries.forEach { (key, zScore) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        key.replace("_", " ")
+                            .replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Text(
+                        String.format("%+.1fσ", zScore),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (abs(zScore) > 2) Color(0xFFFF9800) else Color(0xFFFFC107)
+                    )
                 }
             }
         }
-    } catch (_: Exception) { }
+    }
 }
 
 private fun tierColor(tier: AlertTier): Color {

@@ -11,13 +11,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
 
 @Composable
-fun AlertsScreen(viewModel: AppViewModel = viewModel()) {
+fun AlertsScreen(viewModel: AppViewModel) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val recent by viewModel.recentAlerts.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()

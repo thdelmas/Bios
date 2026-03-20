@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.bios.app.data.dao.*
 import com.bios.app.model.*
-import net.sqlcipher.database.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [
@@ -38,8 +38,9 @@ abstract class BiosDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context): BiosDatabase {
+            System.loadLibrary("sqlcipher")
             val passphrase = getOrCreatePassphrase(context)
-            val factory = SupportFactory(passphrase)
+            val factory = SupportOpenHelperFactory(passphrase)
 
             return Room.databaseBuilder(
                 context.applicationContext,

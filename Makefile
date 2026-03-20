@@ -2,6 +2,7 @@
 # Run with BUILD=prod for release build, or BUILD=debug (default) for debug.
 
 APP_ID := com.bios.app/.ui.MainActivity
+GRADLEW := cd android && ./gradlew
 
 # Build variant: debug (default) or prod (release)
 # Device IDs
@@ -24,32 +25,32 @@ all: help
 
 .PHONY: assemble
 assemble:
-	./gradlew assemble$(GRADLE_VARIANT)
+	$(GRADLEW) assemble$(GRADLE_VARIANT)
 
 .PHONY: install
 install:
 	@if adb devices | grep -q 'device$$'; then \
-		./gradlew install$(GRADLE_VARIANT); \
+		$(GRADLEW) install$(GRADLE_VARIANT); \
 	else \
 		echo "No device connected. Building APK only."; \
-		./gradlew assemble$(GRADLE_VARIANT); \
+		$(GRADLEW) assemble$(GRADLE_VARIANT); \
 	fi
 
 .PHONY: check
 check:
-	./gradlew check
+	$(GRADLEW) check
 
 .PHONY: lint
 lint:
-	./gradlew lint$(GRADLE_VARIANT)
+	$(GRADLEW) lint$(GRADLE_VARIANT)
 
 .PHONY: test
 test:
-	./gradlew test$(GRADLE_VARIANT)UnitTest
+	$(GRADLEW) test$(GRADLE_VARIANT)UnitTest
 
 .PHONY: clean
 clean:
-	./gradlew clean
+	$(GRADLEW) clean
 
 # === Device ===
 
@@ -75,7 +76,7 @@ run-samsung: install
 
 .PHONY: logs
 logs:
-	@trap './gradlew --stop' EXIT INT TERM; adb logcat --pid=$$(adb shell pidof com.bios.app)
+	@trap 'cd android && ./gradlew --stop' EXIT INT TERM; adb logcat --pid=$$(adb shell pidof com.bios.app)
 
 .PHONY: clear-data
 clear-data:
@@ -85,7 +86,7 @@ clear-data:
 
 .PHONY: clean-daemons
 clean-daemons:
-	./gradlew --stop
+	$(GRADLEW) --stop
 
 # === Help ===
 

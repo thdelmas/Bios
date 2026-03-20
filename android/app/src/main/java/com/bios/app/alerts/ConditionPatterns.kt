@@ -26,7 +26,7 @@ enum class DeviationDirection { ABOVE, BELOW, IRREGULAR }
 
 object ConditionPatterns {
 
-    val all = listOf(infectionOnset, sleepDisruption, cardiovascularStress)
+    val all by lazy { listOf(infectionOnset, sleepDisruption, cardiovascularStress) }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
     val infectionOnset = ConditionPattern(

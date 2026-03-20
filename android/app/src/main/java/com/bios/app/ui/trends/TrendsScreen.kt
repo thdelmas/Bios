@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.model.MetricType
 import com.bios.app.model.PersonalBaseline
@@ -19,7 +18,7 @@ import com.bios.app.ui.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TrendsScreen(viewModel: AppViewModel = viewModel()) {
+fun TrendsScreen(viewModel: AppViewModel) {
     val baselines by viewModel.baselines.collectAsState()
     var selectedMetric by remember { mutableStateOf(MetricType.HEART_RATE) }
 

@@ -44,6 +44,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    /** Check permissions without initializing. Returns true if all granted. */
+    suspend fun checkPermissions(): Boolean {
+        if (!healthConnect.isAvailable) {
+            _error.value = "Health Connect is not available on this device."
+            return false
+        }
+        val granted = healthConnect.hasAllPermissions()
+        _hasPermissions.value = granted
+        return granted
+    }
+
+    /** Called after the permission launcher reports success. */
+    fun onPermissionsGranted() {
+        _hasPermissions.value = true
+        initialize()
+    }
+
     fun initialize() {
         viewModelScope.launch {
             try {
@@ -53,21 +70,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
 
-                _hasPermissions.value = healthConnect.hasAllPermissions()
+                ingestManager.setup()
 
-                if (_hasPermissions.value) {
-                    ingestManager.setup()
-
-                    if (ingestManager.dataAgeDays.value >= BaselineEngine.MINIMUM_DATA_DAYS) {
-                        baselineEngine.computeAllBaselines()
-                        baselineEngine.computeDailyAggregates()
-                        anomalyDetector.runDetection()
-                    }
-
-                    refreshAlerts()
-                    refreshBaselines()
+                if (ingestManager.dataAgeDays.value >= BaselineEngine.MINIMUM_DATA_DAYS) {
+                    baselineEngine.computeAllBaselines()
+                    baselineEngine.computeDailyAggregates()
+                    anomalyDetector.runDetection()
                 }
 
+                refreshAlerts()
+                refreshBaselines()
                 _isInitialized.value = true
             } catch (e: Exception) {
                 _error.value = e.message
