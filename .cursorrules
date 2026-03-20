@@ -1,0 +1,24 @@
+You are working on Bios, a privacy-first health monitoring Android app (Kotlin + Jetpack Compose).
+
+Key constraints:
+- All health data processing happens on-device. Never send raw health data to a server.
+- AES-256 encryption at rest via SQLCipher.
+- Max 500 lines per file. Split before adding to files near the limit.
+- One logical change per prompt. Don't refactor unrelated code.
+
+Architecture:
+- model/ — Room entities and enums
+- data/dao/ — Room DAOs
+- engine/ — Baseline calculation, anomaly detection, statistics
+- ingest/ — HealthConnect adapter, sync workers
+- alerts/ — Alert generation and condition patterns
+- ui/ — Compose screens, components, theme
+- privacy/ — Community aggregation, contribution workers
+
+Patterns to follow:
+- Use suspend functions and Flow for async
+- Room DAOs return Flow<List<T>> for observable queries
+- Business logic in engine/, not in UI or data layers
+- Follow existing naming: PascalCase classes, camelCase functions
+
+Before committing, run: ./scripts/code-quality-check.sh
