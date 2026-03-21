@@ -60,4 +60,20 @@ class SyncWorkerTest {
     fun `work name is stable`() {
         assertEquals("bios_sync", SyncWorker.WORK_NAME)
     }
+
+    @Test
+    fun `MAX_RETRIES is 3`() {
+        assertEquals(3, SyncWorker.MAX_RETRIES)
+    }
+
+    @Test
+    fun `STALE_THRESHOLD_HOURS is 2`() {
+        assertEquals(2, SyncWorker.STALE_THRESHOLD_HOURS)
+    }
+
+    @Test
+    fun `stale threshold in millis is correct`() {
+        val staleMillis = SyncWorker.STALE_THRESHOLD_HOURS * 3600 * 1000L
+        assertEquals(7_200_000L, staleMillis)
+    }
 }

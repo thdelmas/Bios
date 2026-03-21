@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
+import com.bios.app.ingest.SyncWorker
 import com.bios.app.model.AlertTier
 import com.bios.app.model.MetricType
 import com.bios.app.ui.AppViewModel
@@ -44,6 +45,14 @@ fun HomeScreen(viewModel: AppViewModel) {
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold
         )
+
+        // Stale data warning
+        val staleThresholdMillis = SyncWorker.STALE_THRESHOLD_HOURS * 3600 * 1000L
+        val isStale = lastSync != null &&
+            (System.currentTimeMillis() - lastSync!!) > staleThresholdMillis
+        if (isStale) {
+            StaleDataBanner()
+        }
 
         // Status card
         StatusCard(
@@ -202,6 +211,34 @@ fun BaselineCountdown(currentDays: Int, requiredDays: Int) {
                 progress = { currentDays.toFloat() / requiredDays.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+fun StaleDataBanner() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFFF3E0)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = Color(0xFFFF9800),
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                "Health data may be outdated. Open Health Connect to check your wearable connection.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF6D4C00)
             )
         }
     }

@@ -121,6 +121,32 @@ class HomeScreenTest {
         assertEquals(1.0f, progress, 0.001f)
     }
 
+    // -- Stale data detection --
+
+    @Test
+    fun `stale data detected when sync exceeds threshold`() {
+        val staleThresholdMillis = 2 * 3600 * 1000L
+        val lastSync = System.currentTimeMillis() - (3 * 3600 * 1000L) // 3 hours ago
+        val isStale = (System.currentTimeMillis() - lastSync) > staleThresholdMillis
+        assertTrue(isStale)
+    }
+
+    @Test
+    fun `data not stale when sync is recent`() {
+        val staleThresholdMillis = 2 * 3600 * 1000L
+        val lastSync = System.currentTimeMillis() - (30 * 60 * 1000L) // 30 min ago
+        val isStale = (System.currentTimeMillis() - lastSync) > staleThresholdMillis
+        assertFalse(isStale)
+    }
+
+    @Test
+    fun `stale check handles null lastSync`() {
+        val lastSync: Long? = null
+        val isStale = lastSync != null &&
+            (System.currentTimeMillis() - lastSync) > (2 * 3600 * 1000L)
+        assertFalse(isStale)
+    }
+
     // -- AlertTier comparison --
 
     @Test
