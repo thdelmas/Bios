@@ -27,6 +27,7 @@ class AlertManager(
         const val CHANNEL_NOTICE = "bios_notice"
         const val CHANNEL_ADVISORY = "bios_advisory"
         const val CHANNEL_URGENT = "bios_urgent"
+        const val CHANNEL_FOLLOWUP = "bios_followup"
     }
 
     init {
@@ -67,6 +68,9 @@ class AlertManager(
 
         NotificationManagerCompat.from(context)
             .notify(anomaly.id.hashCode(), notification)
+
+        // Schedule a follow-up reminder in 24h to prompt journal entry
+        FollowUpWorker.schedule(context, anomaly.id, anomaly.title)
     }
 
     private fun createNotificationChannels() {
@@ -88,6 +92,12 @@ class AlertManager(
             NotificationChannel(
                 CHANNEL_URGENT, "Urgent Health Alerts", NotificationManager.IMPORTANCE_HIGH
             ).apply { description = "Acute anomalies requiring immediate attention" }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_FOLLOWUP, "Journal Reminders", NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "Reminders to record how you're feeling after an alert" }
         )
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.bios.app.alerts.AlertManager
+import com.bios.app.alerts.FollowUpWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.AnomalyDetector
 import com.bios.app.engine.BaselineEngine
@@ -40,6 +41,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _baselines = MutableStateFlow<List<PersonalBaseline>>(emptyList())
     val baselines: StateFlow<List<PersonalBaseline>> = _baselines
+
+    private val _timelineEntries = MutableStateFlow<List<Anomaly>>(emptyList())
+    val timelineEntries: StateFlow<List<Anomaly>> = _timelineEntries
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
@@ -133,6 +137,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 notes = notes,
                 outcomeAccurate = outcomeAccurate
             )
+            FollowUpWorker.cancel(getApplication(), anomalyId)
             refreshAlerts()
         }
     }
@@ -145,9 +150,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return db.personalBaselineDao().fetch(metricType.key)
     }
 
+    fun refreshTimeline() {
+        viewModelScope.launch {
+            _timelineEntries.value = db.anomalyDao().fetchAll()
+        }
+    }
+
     private suspend fun refreshAlerts() {
         _unacknowledgedAlerts.value = alertManager.fetchUnacknowledged()
         _recentAlerts.value = alertManager.fetchRecent()
+        _timelineEntries.value = db.anomalyDao().fetchAll()
     }
 
     private suspend fun refreshBaselines() {

@@ -22,6 +22,7 @@ import com.bios.app.ui.home.HomeScreen
 import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.ui.theme.BiosTheme
+import com.bios.app.ui.timeline.TimelineScreen
 import com.bios.app.ui.trends.TrendsScreen
 
 class MainActivity : ComponentActivity() {
@@ -92,6 +93,7 @@ fun BiosApp(viewModel: AppViewModel) {
         Triple("home", "Home", Icons.Default.FavoriteBorder),
         Triple("trends", "Trends", Icons.Default.ShowChart),
         Triple("alerts", "Alerts", Icons.Default.Notifications),
+        Triple("timeline", "Journal", Icons.Default.MenuBook),
         Triple("settings", "Settings", Icons.Default.Settings)
     )
 
@@ -126,6 +128,7 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("home") { HomeScreen(viewModel) }
             composable("trends") { TrendsScreen(viewModel) }
             composable("alerts") { AlertsScreen(viewModel) }
+            composable("timeline") { TimelineScreen(viewModel) }
             composable("settings") { SettingsScreen(viewModel) }
         }
     }
