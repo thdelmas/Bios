@@ -114,6 +114,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun saveAlertFeedback(
+        anomalyId: String,
+        feltSick: Boolean?,
+        visitedDoctor: Boolean?,
+        diagnosis: String?,
+        symptoms: String?,
+        notes: String?,
+        outcomeAccurate: Boolean?
+    ) {
+        viewModelScope.launch {
+            db.anomalyDao().saveFeedback(
+                id = anomalyId,
+                feltSick = feltSick,
+                visitedDoctor = visitedDoctor,
+                diagnosis = diagnosis,
+                symptoms = symptoms,
+                notes = notes,
+                outcomeAccurate = outcomeAccurate
+            )
+            refreshAlerts()
+        }
+    }
+
     suspend fun getLatestReading(metricType: MetricType): MetricReading? {
         return db.metricReadingDao().fetchLatest(metricType.key).firstOrNull()
     }

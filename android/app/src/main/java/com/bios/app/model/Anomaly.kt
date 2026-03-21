@@ -24,5 +24,14 @@ data class Anomaly(
     val explanation: String,
     val suggestedAction: String? = null,
     val acknowledged: Boolean = false,
-    val acknowledgedAt: Long? = null
+    val acknowledgedAt: Long? = null,
+
+    // User feedback / health journal
+    val feedbackAt: Long? = null,
+    val feltSick: Boolean? = null,
+    val visitedDoctor: Boolean? = null,
+    val diagnosis: String? = null,
+    val symptoms: String? = null,       // free-text symptom self-report
+    val notes: String? = null,          // general journal notes
+    val outcomeAccurate: Boolean? = null // was the alert correct?
 )

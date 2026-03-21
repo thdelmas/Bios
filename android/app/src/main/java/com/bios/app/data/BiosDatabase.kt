@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.bios.app.data.dao.*
 import com.bios.app.model.*
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
@@ -16,7 +18,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ComputedAggregate::class,
         Anomaly::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -48,6 +50,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
+                .addMigrations(MIGRATION_1_2)
                 .build()
         }
 
@@ -68,6 +71,18 @@ abstract class BiosDatabase : RoomDatabase() {
             val passphrase = java.util.UUID.randomUUID().toString()
             prefs.edit().putString("db_passphrase", passphrase).apply()
             return passphrase.toByteArray(Charsets.UTF_8)
+        }
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN feedbackAt INTEGER")
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN feltSick INTEGER")
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN visitedDoctor INTEGER")
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN diagnosis TEXT")
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN symptoms TEXT")
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN notes TEXT")
+                db.execSQL("ALTER TABLE anomalies ADD COLUMN outcomeAccurate INTEGER")
+            }
         }
 
         /** In-memory instance for testing. */

@@ -59,7 +59,18 @@ fun HomeScreen(viewModel: AppViewModel) {
             unacknowledged.forEach { anomaly ->
                 AlertCard(
                     anomaly = anomaly,
-                    onAcknowledge = { viewModel.acknowledgeAlert(anomaly.id) }
+                    onAcknowledge = { viewModel.acknowledgeAlert(anomaly.id) },
+                    onSaveFeedback = { input ->
+                        viewModel.saveAlertFeedback(
+                            anomalyId = anomaly.id,
+                            feltSick = input.feltSick,
+                            visitedDoctor = input.visitedDoctor,
+                            diagnosis = input.diagnosis,
+                            symptoms = input.symptoms,
+                            notes = input.notes,
+                            outcomeAccurate = input.outcomeAccurate
+                        )
+                    }
                 )
             }
         }
