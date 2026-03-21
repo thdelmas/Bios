@@ -26,7 +26,7 @@ enum class DeviationDirection { ABOVE, BELOW, IRREGULAR }
 
 object ConditionPatterns {
 
-    val all by lazy { listOf(infectionOnset, sleepDisruption, cardiovascularStress) }
+    val all by lazy { listOf(infectionOnset, sleepDisruption, cardiovascularStress, overtraining) }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
     val infectionOnset = ConditionPattern(
@@ -76,5 +76,25 @@ object ConditionPatterns {
         minActiveSignals = 2,
         explanation = "Your cardiovascular markers are showing sustained elevation above your personal baseline. This may indicate physical or emotional stress, overtraining, or other factors affecting your heart.",
         suggestedAction = "Consider reducing intense exercise, managing stress, and ensuring adequate rest. If you experience chest pain, dizziness, or shortness of breath, seek medical attention promptly."
+    )
+
+    val overtraining = ConditionPattern(
+        id = "overtraining",
+        title = "Possible overtraining detected",
+        category = ConditionCategory.RECOVERY,
+        signalRules = listOf(
+            SignalRule(MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.0, 48, 1.0),
+            SignalRule(MetricType.HEART_RATE_VARIABILITY, DeviationDirection.BELOW, 1.5, 48, 1.2),
+            SignalRule(MetricType.SLEEP_STAGE, DeviationDirection.BELOW, 1.0, 48, 0.8),
+            SignalRule(MetricType.ACTIVE_CALORIES, DeviationDirection.ABOVE, 1.5, 72, 0.6),
+            SignalRule(MetricType.STEPS, DeviationDirection.BELOW, 1.0, 48, 0.4)
+        ),
+        minActiveSignals = 3,
+        explanation = "Your body is showing signs of insufficient recovery from recent physical activity. Elevated resting heart rate combined with reduced HRV and poor sleep quality can indicate overtraining syndrome.",
+        suggestedAction = "Consider taking 1-2 rest days, prioritizing sleep, and reducing training intensity. If fatigue persists beyond a few days of rest, consult a sports medicine professional.",
+        references = listOf(
+            "Meeusen et al. (2013) - Prevention, diagnosis, and treatment of the overtraining syndrome",
+            "Plews et al. (2013) - Training adaptation and HRV in elite endurance athletes"
+        )
     )
 }

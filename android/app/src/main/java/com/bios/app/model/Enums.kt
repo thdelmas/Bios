@@ -128,7 +128,7 @@ enum class AlertTier(val level: Int, val label: String) {
 
 enum class ConditionCategory {
     CARDIOVASCULAR, RESPIRATORY, METABOLIC, SLEEP,
-    MENTAL_HEALTH, INFECTIOUS, WOMENS_HEALTH
+    MENTAL_HEALTH, INFECTIOUS, WOMENS_HEALTH, RECOVERY
 }
 
 // MARK: - Privacy
