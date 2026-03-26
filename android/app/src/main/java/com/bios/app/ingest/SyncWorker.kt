@@ -29,7 +29,10 @@ class SyncWorker(
         return try {
             val db = BiosDatabase.getInstance(applicationContext)
             val healthConnect = HealthConnectAdapter(applicationContext)
-            val ingestManager = IngestManager(healthConnect, db)
+            val tokenStore = OuraTokenStore(applicationContext)
+            val ouraAdapter = if (tokenStore.hasToken()) OuraApiAdapter(tokenStore) else null
+            val phoneSensor = PhoneSensorAdapter(applicationContext)
+            val ingestManager = IngestManager(healthConnect, db, ouraAdapter, phoneSensor)
 
             // Stage 1: Sync recent data
             ingestManager.syncRecentData()
@@ -53,7 +56,8 @@ class SyncWorker(
                 }
 
                 try {
-                    val detector = com.bios.app.engine.AnomalyDetector(db)
+                    val mlModel = com.bios.app.engine.TFLiteAnomalyModel.load(applicationContext)
+                    val detector = com.bios.app.engine.AnomalyDetector(db, mlModel)
                     val newAnomalies = detector.runDetection()
 
                     val alertManager = com.bios.app.alerts.AlertManager(applicationContext, db)

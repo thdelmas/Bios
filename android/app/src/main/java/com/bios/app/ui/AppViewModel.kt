@@ -8,9 +8,17 @@ import com.bios.app.alerts.FollowUpWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.AnomalyDetector
 import com.bios.app.engine.BaselineEngine
+import com.bios.app.engine.TFLiteAnomalyModel
 import com.bios.app.ingest.HealthConnectAdapter
 import com.bios.app.ingest.IngestManager
+import com.bios.app.ingest.OuraApiAdapter
+import com.bios.app.ingest.OuraTokenStore
+import com.bios.app.ingest.PhoneSensorAdapter
+import com.bios.app.model.ActionItem
 import com.bios.app.model.Anomaly
+import com.bios.app.model.HealthEvent
+import com.bios.app.model.HealthEventStatus
+import com.bios.app.model.HealthEventType
 import com.bios.app.model.MetricReading
 import com.bios.app.model.MetricType
 import com.bios.app.model.PersonalBaseline
@@ -22,9 +30,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val db = BiosDatabase.getInstance(application)
     val healthConnect = HealthConnectAdapter(application)
-    val ingestManager = IngestManager(healthConnect, db)
+    val ouraTokenStore = OuraTokenStore(application)
+    val ouraAdapter = OuraApiAdapter(ouraTokenStore)
+    val phoneSensorAdapter = PhoneSensorAdapter(application)
+    val ingestManager = IngestManager(healthConnect, db, ouraAdapter, phoneSensorAdapter)
     val baselineEngine = BaselineEngine(db)
-    val anomalyDetector = AnomalyDetector(db)
+    val mlModel = TFLiteAnomalyModel.load(application)
+    val anomalyDetector = AnomalyDetector(db, mlModel)
     val alertManager = AlertManager(application, db)
 
     private val _isInitialized = MutableStateFlow(false)
@@ -45,8 +57,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _timelineEntries = MutableStateFlow<List<Anomaly>>(emptyList())
     val timelineEntries: StateFlow<List<Anomaly>> = _timelineEntries
 
+    private val _healthEvents = MutableStateFlow<List<HealthEvent>>(emptyList())
+    val healthEvents: StateFlow<List<HealthEvent>> = _healthEvents
+
+    private val _pendingActionItems = MutableStateFlow<List<ActionItem>>(emptyList())
+    val pendingActionItems: StateFlow<List<ActionItem>> = _pendingActionItems
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    fun clearError() {
+        _error.value = null
+    }
 
     /** Check permissions without initializing. Returns true if all granted. */
     suspend fun checkPermissions(): Boolean {
@@ -84,6 +106,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
                 refreshAlerts()
                 refreshBaselines()
+                refreshHealthEvents()
+                refreshActionItems()
                 _isInitialized.value = true
             } catch (e: Exception) {
                 _error.value = e.message
@@ -150,10 +174,89 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return db.personalBaselineDao().fetch(metricType.key)
     }
 
+    // MARK: - Health Events
+
+    fun createHealthEvent(
+        type: HealthEventType,
+        title: String,
+        description: String?,
+        anomalyId: String? = null,
+        parentEventId: String? = null,
+        initialActionItems: List<String> = emptyList()
+    ) {
+        viewModelScope.launch {
+            val event = HealthEvent(
+                type = type.name,
+                title = title,
+                description = description,
+                anomalyId = anomalyId,
+                parentEventId = parentEventId
+            )
+            db.healthEventDao().insert(event)
+            for (desc in initialActionItems) {
+                db.actionItemDao().insert(
+                    ActionItem(healthEventId = event.id, description = desc)
+                )
+            }
+            refreshHealthEvents()
+            if (initialActionItems.isNotEmpty()) refreshActionItems()
+        }
+    }
+
+    fun updateHealthEventStatus(eventId: String, status: HealthEventStatus) {
+        viewModelScope.launch {
+            db.healthEventDao().updateStatus(eventId, status.name)
+            refreshHealthEvents()
+        }
+    }
+
+    fun createActionItem(eventId: String, description: String, dueAt: Long? = null) {
+        viewModelScope.launch {
+            db.actionItemDao().insert(
+                ActionItem(healthEventId = eventId, description = description, dueAt = dueAt)
+            )
+            refreshActionItems()
+        }
+    }
+
+    fun toggleActionItem(itemId: String, completed: Boolean) {
+        viewModelScope.launch {
+            db.actionItemDao().setCompleted(
+                itemId, completed,
+                if (completed) System.currentTimeMillis() else null
+            )
+            refreshActionItems()
+        }
+    }
+
+    fun deleteActionItem(itemId: String) {
+        viewModelScope.launch {
+            db.actionItemDao().delete(itemId)
+            refreshActionItems()
+        }
+    }
+
+    suspend fun getActionItemsForEvent(eventId: String): List<ActionItem> {
+        return db.actionItemDao().fetchByEventId(eventId)
+    }
+
+    suspend fun getChildEvents(parentId: String): List<HealthEvent> {
+        return db.healthEventDao().fetchByParentId(parentId)
+    }
+
     fun refreshTimeline() {
         viewModelScope.launch {
             _timelineEntries.value = db.anomalyDao().fetchAll()
+            refreshHealthEvents()
         }
+    }
+
+    private suspend fun refreshHealthEvents() {
+        _healthEvents.value = db.healthEventDao().fetchAll()
+    }
+
+    private suspend fun refreshActionItems() {
+        _pendingActionItems.value = db.actionItemDao().fetchPending()
     }
 
     private suspend fun refreshAlerts() {

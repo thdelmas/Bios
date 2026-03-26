@@ -5,13 +5,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -21,6 +27,8 @@ import com.bios.app.ui.alerts.AlertsScreen
 import com.bios.app.ui.home.HomeScreen
 import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
+import com.bios.app.model.HealthEventType
+import com.bios.app.ui.journal.HealthEventSheet
 import com.bios.app.ui.theme.BiosTheme
 import com.bios.app.ui.timeline.TimelineScreen
 import com.bios.app.ui.trends.TrendsScreen
@@ -65,8 +73,21 @@ fun BiosRoot(viewModel: AppViewModel = viewModel()) {
         checkedInitialPermissions = true
     }
 
-    if (!checkedInitialPermissions) {
-        // Still checking — show nothing to avoid flash
+    if (!checkedInitialPermissions || (hasPermissions && !isInitialized)) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Loading your health data...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         return
     }
 
@@ -88,6 +109,23 @@ fun BiosRoot(viewModel: AppViewModel = viewModel()) {
 fun BiosApp(viewModel: AppViewModel) {
     val navController = rememberNavController()
     var selectedTab by remember { mutableIntStateOf(0) }
+    val unacknowledgedAlerts by viewModel.unacknowledgedAlerts.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showEventSheet by remember { mutableStateOf(false) }
+    var eventSheetParentId by remember { mutableStateOf<String?>(null) }
+    var eventSheetDefaultType by remember { mutableStateOf<HealthEventType?>(null) }
+
+    // Show errors as snackbar
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearError()
+        }
+    }
 
     val tabs = listOf(
         Triple("home", "Home", Icons.Default.FavoriteBorder),
@@ -98,11 +136,32 @@ fun BiosApp(viewModel: AppViewModel) {
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (selectedTab == 3) { // Journal tab
+                FloatingActionButton(onClick = {
+                    eventSheetParentId = null
+                    eventSheetDefaultType = null
+                    showEventSheet = true
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Log health event")
+                }
+            }
+        },
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { index, (route, label, icon) ->
+                    val alertCount = if (route == "alerts") unacknowledgedAlerts.size else 0
                     NavigationBarItem(
-                        icon = { Icon(icon, contentDescription = label) },
+                        icon = {
+                            if (alertCount > 0) {
+                                BadgedBox(badge = { Badge { Text("$alertCount") } }) {
+                                    Icon(icon, contentDescription = label)
+                                }
+                            } else {
+                                Icon(icon, contentDescription = label)
+                            }
+                        },
                         label = { Text(label) },
                         selected = selectedTab == index,
                         onClick = {
@@ -128,8 +187,35 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("home") { HomeScreen(viewModel) }
             composable("trends") { TrendsScreen(viewModel) }
             composable("alerts") { AlertsScreen(viewModel) }
-            composable("timeline") { TimelineScreen(viewModel) }
+            composable("timeline") {
+                TimelineScreen(
+                    viewModel = viewModel,
+                    onRequestEventSheet = { parentId ->
+                        eventSheetParentId = parentId
+                        eventSheetDefaultType = null
+                        showEventSheet = true
+                    }
+                )
+            }
             composable("settings") { SettingsScreen(viewModel) }
         }
+    }
+
+    if (showEventSheet) {
+        HealthEventSheet(
+            onDismiss = { showEventSheet = false },
+            onSave = { input ->
+                viewModel.createHealthEvent(
+                    type = input.type,
+                    title = input.title,
+                    description = input.description,
+                    parentEventId = input.parentEventId,
+                    initialActionItems = input.initialActionItems
+                )
+                showEventSheet = false
+            },
+            parentEventId = eventSheetParentId,
+            defaultType = eventSheetDefaultType
+        )
     }
 }

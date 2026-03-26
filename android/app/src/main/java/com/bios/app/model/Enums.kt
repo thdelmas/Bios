@@ -137,3 +137,18 @@ enum class PrivacyTier {
     PRIVATE,
     COMMUNITY
 }
+
+// MARK: - Health Events
+
+enum class HealthEventType(val label: String) {
+    SYMPTOM("Symptom"),
+    HYPOTHESIS("Hypothesis"),
+    DOCTOR_VISIT("Doctor Visit"),
+    DIAGNOSIS("Diagnosis"),
+    TREATMENT("Treatment"),
+    NOTE("Note")
+}
+
+enum class HealthEventStatus {
+    OPEN, RESOLVED, DISMISSED
+}

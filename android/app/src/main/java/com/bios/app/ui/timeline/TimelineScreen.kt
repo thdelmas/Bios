@@ -13,34 +13,67 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.model.ActionItem
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
+import com.bios.app.model.HealthEvent
+import com.bios.app.model.HealthEventStatus
+import com.bios.app.model.HealthEventType
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
+import com.bios.app.ui.components.HealthEventCard
+import com.bios.app.ui.components.eventTypeColor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+sealed interface TimelineItem {
+    val timestamp: Long
+    val id: String
+
+    data class AlertItem(val anomaly: Anomaly) : TimelineItem {
+        override val timestamp = anomaly.detectedAt
+        override val id = anomaly.id
+    }
+    data class EventItem(val event: HealthEvent) : TimelineItem {
+        override val timestamp = event.createdAt
+        override val id = event.id
+    }
+}
+
 @Composable
-fun TimelineScreen(viewModel: AppViewModel) {
-    val entries by viewModel.timelineEntries.collectAsState()
+fun TimelineScreen(
+    viewModel: AppViewModel,
+    onRequestEventSheet: (parentEventId: String?) -> Unit
+) {
+    val anomalies by viewModel.timelineEntries.collectAsState()
+    val healthEvents by viewModel.healthEvents.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.refreshTimeline()
     }
 
-    if (entries.isEmpty()) {
-        EmptyTimeline()
+    // Merge into unified timeline (only show root events, not child follow-ups)
+    val rootEvents = remember(healthEvents) {
+        healthEvents.filter { it.parentEventId == null }
+    }
+    val items = remember(anomalies, rootEvents) {
+        val alertItems = anomalies.map { TimelineItem.AlertItem(it) }
+        val eventItems = rootEvents.map { TimelineItem.EventItem(it) }
+        (alertItems + eventItems).sortedByDescending { it.timestamp }
+    }
+
+    if (items.isEmpty()) {
+        EmptyTimeline(onLogSymptom = { onRequestEventSheet(null) })
         return
     }
 
-    // Group by date
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     val displayFormat = remember { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
 
-    val grouped = remember(entries) {
-        entries.groupBy { dateFormat.format(Date(it.detectedAt)) }
+    val grouped = remember(items) {
+        items.groupBy { dateFormat.format(Date(it.timestamp)) }
     }
 
     LazyColumn(
@@ -58,18 +91,16 @@ fun TimelineScreen(viewModel: AppViewModel) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "${entries.size} entries",
+                "${items.size} entries",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(8.dp))
-
-            // Stats summary
-            StatsSummary(entries)
+            StatsSummary(anomalies, healthEvents)
             Spacer(Modifier.height(8.dp))
         }
 
-        grouped.forEach { (dateKey, dayEntries) ->
+        grouped.forEach { (dateKey, dayItems) ->
             item {
                 val date = dateFormat.parse(dateKey)
                 Text(
@@ -81,30 +112,38 @@ fun TimelineScreen(viewModel: AppViewModel) {
                 )
             }
 
-            items(dayEntries, key = { it.id }) { anomaly ->
-                TimelineEntry(
-                    anomaly = anomaly,
-                    timeFormat = timeFormat,
-                    onAcknowledge = { viewModel.acknowledgeAlert(anomaly.id) },
-                    onSaveFeedback = { input ->
-                        viewModel.saveAlertFeedback(
-                            anomalyId = anomaly.id,
-                            feltSick = input.feltSick,
-                            visitedDoctor = input.visitedDoctor,
-                            diagnosis = input.diagnosis,
-                            symptoms = input.symptoms,
-                            notes = input.notes,
-                            outcomeAccurate = input.outcomeAccurate
-                        )
-                    }
-                )
+            items(dayItems, key = { it.id }) { item ->
+                when (item) {
+                    is TimelineItem.AlertItem -> TimelineAlertEntry(
+                        anomaly = item.anomaly,
+                        timeFormat = timeFormat,
+                        onAcknowledge = { viewModel.acknowledgeAlert(item.anomaly.id) },
+                        onSaveFeedback = { input ->
+                            viewModel.saveAlertFeedback(
+                                anomalyId = item.anomaly.id,
+                                feltSick = input.feltSick,
+                                visitedDoctor = input.visitedDoctor,
+                                diagnosis = input.diagnosis,
+                                symptoms = input.symptoms,
+                                notes = input.notes,
+                                outcomeAccurate = input.outcomeAccurate
+                            )
+                        }
+                    )
+                    is TimelineItem.EventItem -> TimelineEventEntry(
+                        event = item.event,
+                        timeFormat = timeFormat,
+                        viewModel = viewModel,
+                        onAddFollowUp = { onRequestEventSheet(item.event.id) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TimelineEntry(
+private fun TimelineAlertEntry(
     anomaly: Anomaly,
     timeFormat: SimpleDateFormat,
     onAcknowledge: () -> Unit,
@@ -113,7 +152,6 @@ private fun TimelineEntry(
     val tier = AlertTier.fromLevel(anomaly.severity)
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // Timeline rail
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.width(32.dp)
@@ -125,14 +163,11 @@ private fun TimelineEntry(
                 modifier = Modifier.size(10.dp)
             )
             HorizontalDivider(
-                modifier = Modifier
-                    .width(1.dp)
-                    .weight(1f),
+                modifier = Modifier.width(1.dp).weight(1f),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
         }
 
-        // Content
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 timeFormat.format(Date(anomaly.detectedAt)),
@@ -140,24 +175,82 @@ private fun TimelineEntry(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(4.dp))
-
             AlertCard(
                 anomaly = anomaly,
                 onAcknowledge = onAcknowledge,
                 onSaveFeedback = onSaveFeedback
             )
-
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun StatsSummary(entries: List<Anomaly>) {
-    val withFeedback = entries.count { it.feedbackAt != null }
-    val accurate = entries.count { it.outcomeAccurate == true }
-    val inaccurate = entries.count { it.outcomeAccurate == false }
-    val doctorVisits = entries.count { it.visitedDoctor == true }
+private fun TimelineEventEntry(
+    event: HealthEvent,
+    timeFormat: SimpleDateFormat,
+    viewModel: AppViewModel,
+    onAddFollowUp: () -> Unit
+) {
+    val eventType = try { HealthEventType.valueOf(event.type) } catch (_: Exception) { HealthEventType.NOTE }
+    var actionItems by remember { mutableStateOf(emptyList<ActionItem>()) }
+    var childEvents by remember { mutableStateOf(emptyList<HealthEvent>()) }
+
+    LaunchedEffect(event.id) {
+        actionItems = viewModel.getActionItemsForEvent(event.id)
+        childEvents = viewModel.getChildEvents(event.id)
+    }
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(32.dp)
+        ) {
+            Icon(
+                Icons.Default.Circle,
+                contentDescription = null,
+                tint = eventTypeColor(eventType),
+                modifier = Modifier.size(10.dp)
+            )
+            HorizontalDivider(
+                modifier = Modifier.width(1.dp).weight(1f),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                timeFormat.format(Date(event.createdAt)),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(4.dp))
+            HealthEventCard(
+                event = event,
+                actionItems = actionItems,
+                childEvents = childEvents,
+                onStatusChange = { viewModel.updateHealthEventStatus(event.id, it) },
+                onAddFollowUp = onAddFollowUp,
+                onToggleAction = { id, completed -> viewModel.toggleActionItem(id, completed) },
+                onDeleteAction = { id -> viewModel.deleteActionItem(id) },
+                onAddAction = { desc -> viewModel.createActionItem(event.id, desc) }
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun StatsSummary(anomalies: List<Anomaly>, healthEvents: List<HealthEvent>) {
+    val withFeedback = anomalies.count { it.feedbackAt != null }
+    val accurate = anomalies.count { it.outcomeAccurate == true }
+    val inaccurate = anomalies.count { it.outcomeAccurate == false }
+    val doctorVisits = anomalies.count { it.visitedDoctor == true } +
+        healthEvents.count { it.type == HealthEventType.DOCTOR_VISIT.name }
+    val openSymptoms = healthEvents.count {
+        it.status == HealthEventStatus.OPEN.name &&
+            it.type == HealthEventType.SYMPTOM.name
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -170,14 +263,19 @@ private fun StatsSummary(entries: List<Anomaly>) {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItem("Alerts", entries.size.toString())
-            StatItem("Journaled", "$withFeedback/${entries.size}")
+            StatItem("Alerts", anomalies.size.toString())
+            if (anomalies.isNotEmpty()) {
+                StatItem("Journaled", "$withFeedback/${anomalies.size}")
+            }
             if (accurate + inaccurate > 0) {
                 val pct = (accurate * 100) / (accurate + inaccurate)
                 StatItem("Accuracy", "$pct%")
             }
             if (doctorVisits > 0) {
                 StatItem("Dr. Visits", doctorVisits.toString())
+            }
+            if (openSymptoms > 0) {
+                StatItem("Open", openSymptoms.toString())
             }
         }
     }
@@ -200,7 +298,7 @@ private fun StatItem(label: String, value: String) {
 }
 
 @Composable
-private fun EmptyTimeline() {
+private fun EmptyTimeline(onLogSymptom: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -222,10 +320,14 @@ private fun EmptyTimeline() {
             Spacer(Modifier.height(4.dp))
             Text(
                 "When Bios detects something unusual, it will appear here. " +
-                    "You can record how you're feeling and track your health over time.",
+                    "You can also log symptoms, doctor visits, and treatments yourself.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(onClick = onLogSymptom) {
+                Text("Log a symptom")
+            }
         }
     }
 }

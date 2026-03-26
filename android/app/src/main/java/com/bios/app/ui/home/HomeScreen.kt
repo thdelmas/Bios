@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +20,14 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.ingest.SyncWorker
 import com.bios.app.model.AlertTier
+import com.bios.app.model.HealthEventType
 import com.bios.app.model.MetricType
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
 import com.bios.app.ui.components.MetricCard
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +37,10 @@ fun HomeScreen(viewModel: AppViewModel) {
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
     val isSyncing by viewModel.ingestManager.isSyncing.collectAsState()
 
+    PullToRefreshBox(
+        isRefreshing = isSyncing,
+        onRefresh = { viewModel.refresh() }
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -40,11 +49,25 @@ fun HomeScreen(viewModel: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Title
-        Text(
-            "Bios",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(
+                "Bios",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold
+            )
+            lastSync?.let { ts ->
+                val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+                Text(
+                    "Synced ${timeFormat.format(Date(ts))}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         // Stale data warning
         val staleThresholdMillis = SyncWorker.STALE_THRESHOLD_HOURS * 3600 * 1000L
@@ -61,6 +84,15 @@ fun HomeScreen(viewModel: AppViewModel) {
             lastSync = lastSync,
             isSyncing = isSyncing
         )
+
+        // Quick symptom log
+        QuickSymptomCard(onLogSymptom = { title ->
+            viewModel.createHealthEvent(
+                type = HealthEventType.SYMPTOM,
+                title = title,
+                description = null
+            )
+        })
 
         // Active alerts
         if (unacknowledged.isNotEmpty()) {
@@ -121,6 +153,7 @@ fun HomeScreen(viewModel: AppViewModel) {
             )
         }
     }
+    } // PullToRefreshBox
 }
 
 @Composable
@@ -212,6 +245,64 @@ fun BaselineCountdown(currentDays: Int, requiredDays: Int) {
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.primary,
             )
+        }
+    }
+}
+
+@Composable
+fun QuickSymptomCard(onLogSymptom: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    var submitted by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "How are you feeling?",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(Modifier.height(8.dp))
+            if (submitted) {
+                Text(
+                    "Logged! Check your Journal for details.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF4CAF50)
+                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = { Text("e.g., metallic taste, headache...") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+                    Button(
+                        onClick = {
+                            if (text.isNotBlank()) {
+                                onLogSymptom(text.trim())
+                                text = ""
+                                submitted = true
+                            }
+                        },
+                        enabled = text.isNotBlank()
+                    ) {
+                        Icon(
+                            Icons.Default.Send,
+                            contentDescription = "Log symptom",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

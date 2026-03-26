@@ -28,6 +28,7 @@ class AlertManager(
         const val CHANNEL_ADVISORY = "bios_advisory"
         const val CHANNEL_URGENT = "bios_urgent"
         const val CHANNEL_FOLLOWUP = "bios_followup"
+        const val CHANNEL_DIGEST = "bios_digest"
     }
 
     init {
@@ -98,6 +99,12 @@ class AlertManager(
             NotificationChannel(
                 CHANNEL_FOLLOWUP, "Journal Reminders", NotificationManager.IMPORTANCE_DEFAULT
             ).apply { description = "Reminders to record how you're feeling after an alert" }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_DIGEST, "Daily Digest", NotificationManager.IMPORTANCE_LOW
+            ).apply { description = "Morning summary of your vitals and health status" }
         )
     }
 }

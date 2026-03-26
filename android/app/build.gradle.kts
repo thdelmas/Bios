@@ -47,6 +47,10 @@ android {
             useLegacyPackaging = false
         }
     }
+
+    androidResources {
+        noCompress += "tflite"
+    }
 }
 
 dependencies {
@@ -74,6 +78,16 @@ dependencies {
 
     // WorkManager (background sync)
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+
+    // HTTP client (Oura, WHOOP, Garmin API adapters)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Encrypted preferences (API token storage)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // LiteRT (on-device ML) – rebranded TF Lite with 16KB page alignment
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
+    implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
 
     // Kotlinx
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

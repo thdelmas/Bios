@@ -16,9 +16,11 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         DataSource::class,
         PersonalBaseline::class,
         ComputedAggregate::class,
-        Anomaly::class
+        Anomaly::class,
+        HealthEvent::class,
+        ActionItem::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -28,6 +30,8 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun personalBaselineDao(): PersonalBaselineDao
     abstract fun computedAggregateDao(): ComputedAggregateDao
     abstract fun anomalyDao(): AnomalyDao
+    abstract fun healthEventDao(): HealthEventDao
+    abstract fun actionItemDao(): ActionItemDao
 
     companion object {
         @Volatile
@@ -50,7 +54,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         }
 
@@ -82,6 +86,44 @@ abstract class BiosDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE anomalies ADD COLUMN symptoms TEXT")
                 db.execSQL("ALTER TABLE anomalies ADD COLUMN notes TEXT")
                 db.execSQL("ALTER TABLE anomalies ADD COLUMN outcomeAccurate INTEGER")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS health_events (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        type TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        anomalyId TEXT,
+                        parentEventId TEXT
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_health_events_createdAt ON health_events(createdAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_health_events_type ON health_events(type)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_health_events_status ON health_events(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_health_events_anomalyId ON health_events(anomalyId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_health_events_parentEventId ON health_events(parentEventId)")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS action_items (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        healthEventId TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        dueAt INTEGER,
+                        completed INTEGER NOT NULL,
+                        completedAt INTEGER,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_action_items_healthEventId ON action_items(healthEventId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_action_items_completed ON action_items(completed)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_action_items_dueAt ON action_items(dueAt)")
             }
         }
 

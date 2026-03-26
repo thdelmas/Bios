@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.model.PrivacyTier
+import com.bios.app.alerts.DailyDigestWorker
 import com.bios.app.privacy.ContributionWorker
 import com.bios.app.ui.AppViewModel
 import kotlinx.coroutines.launch
@@ -31,6 +32,8 @@ fun SettingsScreen(viewModel: AppViewModel) {
     var totalReadings by remember { mutableIntStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
+    var showOuraDialog by remember { mutableStateOf(false) }
+    var isOuraConnected by remember { mutableStateOf(viewModel.ouraTokenStore.hasToken()) }
     var privacyTier by remember {
         val prefs = context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
         val tier = prefs.getString("privacy_tier", PrivacyTier.PRIVATE.name)
@@ -62,6 +65,30 @@ fun SettingsScreen(viewModel: AppViewModel) {
                         color = if (hasPermissions) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error
                     )
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Oura Ring")
+                    if (isOuraConnected) {
+                        Text("Connected", color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        TextButton(onClick = { showOuraDialog = true }) {
+                            Text("Connect")
+                        }
+                    }
+                }
+                if (isOuraConnected) {
+                    TextButton(
+                        onClick = {
+                            viewModel.ouraTokenStore.clearToken()
+                            isOuraConnected = false
+                        }
+                    ) {
+                        Text("Disconnect Oura", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -115,7 +142,70 @@ fun SettingsScreen(viewModel: AppViewModel) {
                         )
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(if (isExporting) "Exporting..." else "Export All Data")
+                    Text(if (isExporting) "Exporting..." else "Export as JSON")
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        isExporting = true
+                        scope.launch {
+                            try {
+                                val exporter = DataExporter(context, viewModel.db)
+                                val file = exporter.exportToCsvZip()
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    file
+                                )
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/zip"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(shareIntent, "Export Bios Data (CSV)")
+                                )
+                            } finally {
+                                isExporting = false
+                            }
+                        }
+                    },
+                    enabled = !isExporting && totalReadings > 0,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Export as CSV")
+                }
+            }
+        }
+
+        // Notifications
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Notifications", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+
+                var digestEnabled by remember {
+                    mutableStateOf(DailyDigestWorker.isEnabled(context))
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Daily Digest", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Morning summary of your vitals at 8 AM",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = digestEnabled,
+                        onCheckedChange = {
+                            digestEnabled = it
+                            DailyDigestWorker.setEnabled(context, it)
+                        }
+                    )
                 }
             }
         }
@@ -220,6 +310,44 @@ fun SettingsScreen(viewModel: AppViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showOuraDialog) {
+        var tokenInput by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showOuraDialog = false },
+            title = { Text("Connect Oura Ring") },
+            text = {
+                Column {
+                    Text(
+                        "Enter your Oura personal access token. You can create one at cloud.ouraring.com/personal-access-tokens.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = tokenInput,
+                        onValueChange = { tokenInput = it },
+                        label = { Text("Access Token") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (tokenInput.isNotBlank()) {
+                            viewModel.ouraTokenStore.saveToken(tokenInput.trim())
+                            isOuraConnected = true
+                            showOuraDialog = false
+                        }
+                    }
+                ) { Text("Connect") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOuraDialog = false }) { Text("Cancel") }
             }
         )
     }

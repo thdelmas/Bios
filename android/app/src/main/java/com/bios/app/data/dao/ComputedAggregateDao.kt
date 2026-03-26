@@ -35,6 +35,9 @@ interface ComputedAggregateDao {
     """)
     suspend fun fetchLatest(metricType: String, period: String): ComputedAggregate?
 
+    @Query("SELECT * FROM computed_aggregates ORDER BY periodStart ASC")
+    suspend fun fetchAll(): List<ComputedAggregate>
+
     @Query("DELETE FROM computed_aggregates")
     suspend fun deleteAll()
 }

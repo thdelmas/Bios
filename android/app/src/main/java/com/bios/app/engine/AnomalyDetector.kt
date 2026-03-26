@@ -11,7 +11,10 @@ import kotlin.math.abs
  * Detects anomalies by scoring deviations from personal baselines
  * and cross-correlating multiple signals.
  */
-class AnomalyDetector(private val db: BiosDatabase) {
+class AnomalyDetector(
+    private val db: BiosDatabase,
+    private val mlModel: TFLiteAnomalyModel? = null
+) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
@@ -20,6 +23,7 @@ class AnomalyDetector(private val db: BiosDatabase) {
     suspend fun runDetection(): List<Anomaly> {
         val newAnomalies = mutableListOf<Anomaly>()
 
+        // Pattern-based detection (existing statistical approach)
         for (pattern in ConditionPatterns.all) {
             val anomaly = evaluatePattern(pattern)
             if (anomaly != null) {
@@ -28,7 +32,92 @@ class AnomalyDetector(private val db: BiosDatabase) {
             }
         }
 
+        // ML-based holistic anomaly detection
+        val mlAnomaly = runMlDetection()
+        if (mlAnomaly != null) {
+            anomalyDao.insert(mlAnomaly)
+            newAnomalies.add(mlAnomaly)
+        }
+
         return newAnomalies
+    }
+
+    private suspend fun runMlDetection(): Anomaly? {
+        val zScores = computeCurrentZScores()
+        if (zScores.isEmpty()) return null
+
+        val features = TFLiteAnomalyModel.buildFeatureVector(zScores)
+        val score = mlModel?.score(features)
+            ?: TFLiteAnomalyModel.heuristicScore(features)
+
+        if (score < TFLiteAnomalyModel.ANOMALY_THRESHOLD) return null
+
+        // Cool-down: don't re-alert for ML pattern within 24 hours
+        val recentAnomalies = anomalyDao.fetchRecent(10)
+        val cooldownMillis = 24 * 3600 * 1000L
+        val hasCooldown = recentAnomalies.any { anomaly ->
+            anomaly.patternId == ML_PATTERN_ID &&
+            (System.currentTimeMillis() - anomaly.detectedAt) < cooldownMillis
+        }
+        if (hasCooldown) return null
+
+        val deviating = zScores.filter { (_, z) -> abs(z) > 1.5 }
+        val severity = when {
+            score > 0.85 -> AlertTier.ADVISORY
+            score > 0.7 -> AlertTier.NOTICE
+            else -> AlertTier.OBSERVATION
+        }
+
+        val metricTypesJson = "[${deviating.keys.joinToString(",") { "\"$it\"" }}]"
+        val scoresJson = "{${deviating.entries.joinToString(",") { "\"${it.key}\":${it.value}" }}}"
+
+        return Anomaly(
+            metricTypes = metricTypesJson,
+            deviationScores = scoresJson,
+            combinedScore = score.toDouble(),
+            patternId = ML_PATTERN_ID,
+            severity = severity.level,
+            title = "Unusual health pattern detected",
+            explanation = buildMlExplanation(deviating),
+            suggestedAction = "Review your recent health trends and note any symptoms."
+        )
+    }
+
+    private suspend fun computeCurrentZScores(): Map<String, Double> {
+        val metrics = listOf(
+            "heart_rate", "heart_rate_variability", "resting_heart_rate",
+            "blood_oxygen", "respiratory_rate", "skin_temperature_deviation",
+            "sleep_duration", "steps", "active_calories"
+        )
+
+        val zScores = mutableMapOf<String, Double>()
+        val endMillis = System.currentTimeMillis()
+        val startMillis = endMillis - 24L * 3600 * 1000
+
+        for (metric in metrics) {
+            val baseline = baselineDao.fetch(metric) ?: continue
+            val values = readingDao.fetchValues(metric, startMillis, endMillis)
+            if (values.isEmpty()) continue
+            zScores[metric] = baseline.zScore(values.average())
+        }
+
+        return zScores
+    }
+
+    private fun buildMlExplanation(deviations: Map<String, Double>): String {
+        if (deviations.isEmpty()) return "Multiple health metrics deviate from your baselines."
+        return deviations.entries
+            .sortedByDescending { abs(it.value) }
+            .take(3)
+            .joinToString(" ") { (metric, z) ->
+                val dir = if (z > 0) "above" else "below"
+                val name = metric.replace("_", " ")
+                "Your $name is ${String.format("%.1f", abs(z))} std devs $dir baseline."
+            }
+    }
+
+    companion object {
+        const val ML_PATTERN_ID = "ml_holistic_anomaly"
     }
 
     private suspend fun evaluatePattern(pattern: ConditionPattern): Anomaly? {

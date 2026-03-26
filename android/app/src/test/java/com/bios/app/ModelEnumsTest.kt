@@ -131,6 +131,27 @@ class ModelEnumsTest {
         assertNull(anomaly.outcomeAccurate)
     }
 
+    // --- HealthEventType ---
+
+    @Test
+    fun `health event types have 6 entries`() {
+        assertEquals(6, HealthEventType.entries.size)
+    }
+
+    @Test
+    fun `health event type labels are non-empty`() {
+        for (type in HealthEventType.entries) {
+            assertTrue("${type.name} should have a label", type.label.isNotBlank())
+        }
+    }
+
+    // --- HealthEventStatus ---
+
+    @Test
+    fun `health event statuses have 3 entries`() {
+        assertEquals(3, HealthEventStatus.entries.size)
+    }
+
     // --- SleepStage ---
 
     @Test

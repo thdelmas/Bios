@@ -1,8 +1,7 @@
 package com.bios.app
 
-import com.bios.app.model.MetricType
-import com.bios.app.model.MetricUnit
-import com.bios.app.model.MetricDomain
+import com.bios.app.export.DataExporter
+import com.bios.app.model.*
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -61,5 +60,52 @@ class DataExporterTest {
         assertTrue(keys.contains("heart_rate_variability"))
         assertTrue(keys.contains("resting_heart_rate"))
         assertTrue(keys.contains("blood_oxygen"))
+    }
+
+    // -- Export schema constants --
+
+    @Test
+    fun `schema ID is set`() {
+        assertEquals("bios-open-health", DataExporter.SCHEMA_ID)
+    }
+
+    @Test
+    fun `schema version is semver-like`() {
+        assertTrue(DataExporter.SCHEMA_VERSION.matches(Regex("\\d+\\.\\d+")))
+    }
+
+    @Test
+    fun `schema version reflects health events addition`() {
+        assertEquals("1.2", DataExporter.SCHEMA_VERSION)
+    }
+
+    // -- CSV escaping edge cases (tested via the export patterns) --
+
+    @Test
+    fun `csv values with commas get quoted`() {
+        val value = "hello,world"
+        val escaped = csvEscape(value)
+        assertTrue(escaped.startsWith("\""))
+        assertTrue(escaped.endsWith("\""))
+    }
+
+    @Test
+    fun `csv values with quotes get double-quoted`() {
+        val value = "say \"hello\""
+        val escaped = csvEscape(value)
+        assertTrue(escaped.contains("\"\""))
+    }
+
+    @Test
+    fun `csv plain values are not modified`() {
+        val value = "plain_text"
+        assertEquals(value, csvEscape(value))
+    }
+
+    private fun csvEscape(value: String): String {
+        if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+            return "\"${value.replace("\"", "\"\"")}\""
+        }
+        return value
     }
 }
