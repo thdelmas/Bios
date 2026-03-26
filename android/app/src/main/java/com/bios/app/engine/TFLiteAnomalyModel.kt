@@ -84,7 +84,7 @@ class TFLiteAnomalyModel private constructor(
                     setNumThreads(2)
                 }
                 TFLiteAnomalyModel(Interpreter(modelBuffer, options))
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 null
             }
         }

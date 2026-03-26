@@ -92,7 +92,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 if (!healthConnect.isAvailable) {
                     _error.value = "Health Connect is not available on this device."
-                    _isInitialized.value = true
                     return@launch
                 }
 
@@ -108,9 +107,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 refreshBaselines()
                 refreshHealthEvents()
                 refreshActionItems()
-                _isInitialized.value = true
-            } catch (e: Exception) {
-                _error.value = e.message
+            } catch (e: Throwable) {
+                _error.value = e.message ?: "Initialization failed"
+            } finally {
                 _isInitialized.value = true
             }
         }

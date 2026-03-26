@@ -66,11 +66,16 @@ fun BiosRoot(viewModel: AppViewModel = viewModel()) {
 
     // Check permissions on first composition
     LaunchedEffect(Unit) {
-        val alreadyGranted = viewModel.checkPermissions()
-        if (alreadyGranted) {
-            viewModel.initialize()
+        try {
+            val alreadyGranted = viewModel.checkPermissions()
+            if (alreadyGranted) {
+                viewModel.initialize()
+            }
+        } catch (_: Exception) {
+            // Proceed to onboarding if permission check fails
+        } finally {
+            checkedInitialPermissions = true
         }
-        checkedInitialPermissions = true
     }
 
     if (!checkedInitialPermissions || (hasPermissions && !isInitialized)) {
