@@ -22,6 +22,7 @@ import com.bios.app.model.HealthEventType
 import com.bios.app.model.MetricReading
 import com.bios.app.model.MetricType
 import com.bios.app.model.PersonalBaseline
+import com.bios.app.ui.diagnostics.DiagnosticResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -62,6 +63,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _pendingActionItems = MutableStateFlow<List<ActionItem>>(emptyList())
     val pendingActionItems: StateFlow<List<ActionItem>> = _pendingActionItems
+
+    private val _diagnosticResults = MutableStateFlow<List<DiagnosticResult>>(emptyList())
+    val diagnosticResults: StateFlow<List<DiagnosticResult>> = _diagnosticResults
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
@@ -266,5 +270,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun refreshBaselines() {
         _baselines.value = db.personalBaselineDao().fetchAll()
+    }
+
+    fun refreshDiagnostics() {
+        viewModelScope.launch {
+            try {
+                _diagnosticResults.value = anomalyDetector.scoreAllPatterns()
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
     }
 }

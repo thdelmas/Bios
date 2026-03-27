@@ -5,7 +5,10 @@ import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.*
+import com.bios.app.ui.diagnostics.DiagnosticResult
+import com.bios.app.ui.diagnostics.SignalStatus
 import kotlin.math.abs
+import kotlin.math.min
 
 /**
  * Detects anomalies by scoring deviations from personal baselines
@@ -114,6 +117,69 @@ class AnomalyDetector(
                 val name = metric.replace("_", " ")
                 "Your $name is ${String.format("%.1f", abs(z))} std devs $dir baseline."
             }
+    }
+
+    suspend fun scoreAllPatterns(): List<DiagnosticResult> {
+        return ConditionPatterns.all.map { pattern -> scorePattern(pattern) }
+            .sortedByDescending { it.probability }
+    }
+
+    private suspend fun scorePattern(pattern: ConditionPattern): DiagnosticResult {
+        val signals = mutableListOf<SignalStatus>()
+        var totalWeightedScore = 0.0
+        var totalWeight = 0.0
+        var activeCount = 0
+        var baselinesFound = 0
+
+        for (rule in pattern.signalRules) {
+            val baseline = baselineDao.fetch(rule.metricType.key)
+            val hasBaseline = baseline != null
+            if (hasBaseline) baselinesFound++
+
+            var zScore: Double? = null
+            var isActive = false
+
+            if (baseline != null) {
+                val values = fetchRecentValues(rule.metricType, rule.minDurationHours)
+                if (values.isNotEmpty()) {
+                    zScore = baseline.zScore(values.average())
+                    isActive = when (rule.direction) {
+                        DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
+                        DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
+                        DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
+                    }
+                    if (isActive) {
+                        activeCount++
+                        totalWeightedScore += abs(zScore) * rule.weight
+                    }
+                }
+            }
+
+            totalWeight += rule.weight
+            signals.add(SignalStatus(
+                metricType = rule.metricType,
+                direction = rule.direction,
+                thresholdSigma = rule.thresholdSigma,
+                weight = rule.weight,
+                currentZScore = zScore,
+                isActive = isActive,
+                hasBaseline = hasBaseline
+            ))
+        }
+
+        val hasEnoughData = baselinesFound >= pattern.minActiveSignals
+        val rawScore = if (totalWeight > 0) totalWeightedScore / totalWeight else 0.0
+        val activationRatio = activeCount.toDouble() / pattern.minActiveSignals.toDouble()
+        val probability = if (!hasEnoughData || activeCount == 0) 0.0
+            else min(1.0, activationRatio * rawScore / (rawScore + 2.0))
+
+        return DiagnosticResult(
+            pattern = pattern,
+            probability = probability,
+            signals = signals,
+            activeSignalCount = activeCount,
+            hasEnoughData = hasEnoughData
+        )
     }
 
     companion object {

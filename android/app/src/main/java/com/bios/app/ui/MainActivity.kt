@@ -29,6 +29,10 @@ import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
 import com.bios.app.ui.journal.HealthEventSheet
+import com.bios.app.ui.diagnostics.ConditionDetailScreen
+import com.bios.app.ui.diagnostics.DiagnosticsScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.bios.app.ui.theme.BiosTheme
 import com.bios.app.ui.timeline.TimelineScreen
 import com.bios.app.ui.trends.TrendsScreen
@@ -189,7 +193,31 @@ fun BiosApp(viewModel: AppViewModel) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            composable("home") { HomeScreen(viewModel) }
+            composable("home") {
+                HomeScreen(
+                    viewModel = viewModel,
+                    onNavigateToDiagnostics = { navController.navigate("diagnostics") }
+                )
+            }
+            composable("diagnostics") {
+                DiagnosticsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onNavigateToDetail = { patternId ->
+                        navController.navigate("condition/$patternId")
+                    }
+                )
+            }
+            composable(
+                route = "condition/{patternId}",
+                arguments = listOf(navArgument("patternId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                ConditionDetailScreen(
+                    patternId = backStackEntry.arguments?.getString("patternId") ?: "",
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
             composable("trends") { TrendsScreen(viewModel) }
             composable("alerts") { AlertsScreen(viewModel) }
             composable("timeline") {

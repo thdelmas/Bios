@@ -31,7 +31,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: AppViewModel) {
+fun HomeScreen(viewModel: AppViewModel, onNavigateToDiagnostics: () -> Unit = {}) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
@@ -112,6 +112,44 @@ fun HomeScreen(viewModel: AppViewModel) {
                             outcomeAccurate = input.outcomeAccurate
                         )
                     }
+                )
+            }
+        }
+
+        // Diagnostics entry
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onNavigateToDiagnostics,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.MonitorHeart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Health Diagnostics",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        "View condition pattern analysis",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
