@@ -34,6 +34,12 @@ class IngestManager(
     private val _dataAgeDays = MutableStateFlow(0)
     val dataAgeDays: StateFlow<Int> = _dataAgeDays
 
+    private val _syncProgress = MutableStateFlow(0f)
+    val syncProgress: StateFlow<Float> = _syncProgress
+
+    private val _syncStatus = MutableStateFlow("")
+    val syncStatus: StateFlow<String> = _syncStatus
+
     private var healthConnectSourceId: String? = null
     private var ouraSourceId: String? = null
     private var phoneSensorSourceId: String? = null
@@ -95,14 +101,19 @@ class IngestManager(
     suspend fun syncHistoricalData() {
         val hcSourceId = healthConnectSourceId ?: return
         _isSyncing.value = true
+        _syncProgress.value = 0f
+        _syncStatus.value = "Syncing 30 days of history..."
 
         try {
             val end = Instant.now()
             val start = end.minus(30, ChronoUnit.DAYS)
+            val totalDays = 30f
 
             // Fetch in daily chunks to avoid memory pressure
             var current = start
+            var completedDays = 0
             while (current.isBefore(end)) {
+                _syncStatus.value = "Syncing day ${completedDays + 1} of 30..."
                 val chunkEnd = minOf(current.plus(1, ChronoUnit.DAYS), end)
                 val allReadings = mutableListOf<MetricReading>()
                 allReadings += healthConnect.fetchReadings(current, chunkEnd, hcSourceId)
@@ -111,12 +122,15 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 readingDao.insertAll(deduped)
                 current = chunkEnd
+                completedDays++
+                _syncProgress.value = completedDays / totalDays
             }
 
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
             _isSyncing.value = false
+            _syncProgress.value = 1f
         }
     }
 

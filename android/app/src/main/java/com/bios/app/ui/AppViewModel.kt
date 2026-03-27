@@ -110,7 +110,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
                 _initStatus.value = "Syncing health data..."
                 _initProgress.value = 0.1f
+                val syncJob = viewModelScope.launch {
+                    launch {
+                        ingestManager.syncProgress.collect { syncPct ->
+                            _initProgress.value = 0.1f + syncPct * 0.3f
+                        }
+                    }
+                    launch {
+                        ingestManager.syncStatus.collect { status ->
+                            if (status.isNotEmpty()) _initStatus.value = status
+                        }
+                    }
+                }
                 ingestManager.setup()
+                syncJob.cancel()
                 _initProgress.value = 0.4f
 
                 if (ingestManager.dataAgeDays.value >= BaselineEngine.MINIMUM_DATA_DAYS) {
