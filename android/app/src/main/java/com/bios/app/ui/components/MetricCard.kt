@@ -19,12 +19,13 @@ fun MetricCard(
     metricType: MetricType,
     label: String,
     icon: ImageVector,
-    viewModel: AppViewModel
+    viewModel: AppViewModel,
+    refreshKey: Any? = null
 ) {
     var latestValue by remember { mutableStateOf<Double?>(null) }
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
 
-    LaunchedEffect(metricType) {
+    LaunchedEffect(metricType, refreshKey) {
         latestValue = viewModel.getLatestReading(metricType)?.value
         baseline = viewModel.getBaseline(metricType)
     }

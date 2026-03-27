@@ -140,7 +140,8 @@ fun HomeScreen(viewModel: AppViewModel) {
                     metricType = metricType,
                     label = label,
                     icon = icon,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    refreshKey = lastSync
                 )
             }
         }
