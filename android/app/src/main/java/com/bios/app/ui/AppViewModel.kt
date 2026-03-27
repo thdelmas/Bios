@@ -43,6 +43,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized
 
+    private val _initStatus = MutableStateFlow("")
+    val initStatus: StateFlow<String> = _initStatus
+
+    private val _initProgress = MutableStateFlow(0f)
+    val initProgress: StateFlow<Float> = _initProgress
+
     private val _hasPermissions = MutableStateFlow(false)
     val hasPermissions: StateFlow<Boolean> = _hasPermissions
 
@@ -94,23 +100,37 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun initialize() {
         viewModelScope.launch {
             try {
+                _initProgress.value = 0f
+                _initStatus.value = "Checking Health Connect..."
+
                 if (!healthConnect.isAvailable) {
                     _error.value = "Health Connect is not available on this device."
                     return@launch
                 }
 
+                _initStatus.value = "Syncing health data..."
+                _initProgress.value = 0.1f
                 ingestManager.setup()
+                _initProgress.value = 0.4f
 
                 if (ingestManager.dataAgeDays.value >= BaselineEngine.MINIMUM_DATA_DAYS) {
+                    _initStatus.value = "Computing baselines..."
+                    _initProgress.value = 0.5f
                     baselineEngine.computeAllBaselines()
                     baselineEngine.computeDailyAggregates()
+
+                    _initStatus.value = "Detecting patterns..."
+                    _initProgress.value = 0.7f
                     anomalyDetector.runDetection()
                 }
 
+                _initStatus.value = "Preparing dashboard..."
+                _initProgress.value = 0.85f
                 refreshAlerts()
                 refreshBaselines()
                 refreshHealthEvents()
                 refreshActionItems()
+                _initProgress.value = 1f
             } catch (e: Throwable) {
                 _error.value = e.message ?: "Initialization failed"
             } finally {

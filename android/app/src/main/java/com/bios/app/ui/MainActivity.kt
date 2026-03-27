@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -83,15 +84,26 @@ fun BiosRoot(viewModel: AppViewModel = viewModel()) {
     }
 
     if (!checkedInitialPermissions || (hasPermissions && !isInitialized)) {
+        val initStatus by viewModel.initStatus.collectAsState()
+        val initProgress by viewModel.initProgress.collectAsState()
+
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = 48.dp)
+            ) {
                 CircularProgressIndicator()
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
+                LinearProgressIndicator(
+                    progress = { initProgress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    "Loading your health data...",
+                    initStatus.ifEmpty { "Loading your health data..." },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
