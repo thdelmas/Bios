@@ -26,18 +26,24 @@ if ! "$SCRIPT_DIR/check-secrets.sh"; then
     FAILED=1
 fi
 
-# 3. Android lint + compile (if Android project exists and gradlew is available)
+# 3. Android lint + compile + tests (if Android project exists and gradlew is available)
 if [ -f "$PROJECT_ROOT/android/gradlew" ]; then
     step "Running Android lint"
-    if ! (cd "$PROJECT_ROOT/android" && ./gradlew lint 2>&1); then
+    if ! (cd "$PROJECT_ROOT/android" && ./gradlew lintStandaloneDebug 2>&1); then
         echo "WARN: Android lint failed (non-blocking until CI is set up)"
     fi
 
-    # Only run tests if Kotlin files are staged
+    # 4. Build verification
+    step "Verifying Android build"
+    if ! (cd "$PROJECT_ROOT/android" && ./gradlew assembleDebug 2>&1); then
+        FAILED=1
+    fi
+
+    # 5. Only run tests if Kotlin files are staged
     KOTLIN_STAGED=$(git diff --cached --name-only --diff-filter=ACM -- '*.kt' '*.kts' 2>/dev/null || echo "")
     if [ -n "$KOTLIN_STAGED" ]; then
         step "Running Android unit tests"
-        if ! (cd "$PROJECT_ROOT/android" && ./gradlew testDebugUnitTest 2>&1); then
+        if ! (cd "$PROJECT_ROOT/android" && ./gradlew testStandaloneDebugUnitTest 2>&1); then
             FAILED=1
         fi
     else

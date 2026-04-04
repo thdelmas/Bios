@@ -70,6 +70,7 @@ class TFLiteAnomalyModel private constructor(
 
     companion object {
         const val FEATURE_COUNT = 9
+        const val MODEL_VERSION = 1
         private const val MODEL_FILENAME = "anomaly_detector.tflite"
         const val ANOMALY_THRESHOLD = 0.65f
 
