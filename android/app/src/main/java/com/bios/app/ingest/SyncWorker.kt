@@ -32,7 +32,13 @@ class SyncWorker(
             val tokenStore = OuraTokenStore(applicationContext)
             val ouraAdapter = if (tokenStore.hasToken()) OuraApiAdapter(tokenStore) else null
             val phoneSensor = PhoneSensorAdapter(applicationContext)
-            val ingestManager = IngestManager(healthConnect, db, ouraAdapter, phoneSensor)
+            val gadgetbridge = GadgetbridgeAdapter(applicationContext)
+            val directSensor = DirectSensorAdapter(applicationContext)
+            val ingestManager = IngestManager(
+                healthConnect, db, ouraAdapter, phoneSensor,
+                gadgetbridgeAdapter = gadgetbridge,
+                directSensorAdapter = directSensor
+            )
 
             // Stage 1: Sync recent data
             ingestManager.syncRecentData()

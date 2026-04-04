@@ -69,6 +69,8 @@ enum class MetricDomain {
 
 enum class SourceType(val key: String) {
     HEALTH_CONNECT("health_connect"),
+    GADGETBRIDGE("gadgetbridge"),
+    DIRECT_SENSOR("direct_sensor"),
     OURA_API("oura_api"),
     WHOOP_API("whoop_api"),
     GARMIN_API("garmin_api"),

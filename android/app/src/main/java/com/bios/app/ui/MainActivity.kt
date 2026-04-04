@@ -34,6 +34,7 @@ import com.bios.app.ui.diagnostics.ConditionDetailScreen
 import com.bios.app.ui.diagnostics.DiagnosticsScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.bios.app.ui.reference.LongevityReferenceScreen
 import com.bios.app.ui.theme.BiosTheme
 import com.bios.app.ui.timeline.TimelineScreen
 import com.bios.app.ui.trends.TrendsScreen
@@ -217,6 +218,9 @@ fun BiosApp(viewModel: AppViewModel) {
                     onBack = { navController.popBackStack() },
                     onNavigateToDetail = { patternId ->
                         navController.navigate("condition/$patternId")
+                    },
+                    onNavigateToReference = {
+                        navController.navigate("longevity_reference")
                     }
                 )
             }
@@ -242,7 +246,22 @@ fun BiosApp(viewModel: AppViewModel) {
                     }
                 )
             }
-            composable("settings") { SettingsScreen(viewModel) }
+            composable("settings") {
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onNavigateToPrivacy = { navController.navigate("privacy") }
+                )
+            }
+            composable("privacy") {
+                com.bios.app.ui.privacy.PrivacyDashboardScreen(viewModel)
+            }
+            composable("longevity_reference") {
+                val trackedMetrics by viewModel.trackedMetricTypes.collectAsState()
+                LongevityReferenceScreen(
+                    trackedMetrics = trackedMetrics,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 

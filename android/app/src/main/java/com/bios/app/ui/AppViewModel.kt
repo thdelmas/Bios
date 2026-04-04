@@ -9,6 +9,8 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.AnomalyDetector
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.engine.TFLiteAnomalyModel
+import com.bios.app.ingest.DirectSensorAdapter
+import com.bios.app.ingest.GadgetbridgeAdapter
 import com.bios.app.ingest.HealthConnectAdapter
 import com.bios.app.ingest.IngestManager
 import com.bios.app.ingest.OuraApiAdapter
@@ -23,9 +25,11 @@ import com.bios.app.model.MetricReading
 import com.bios.app.model.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.ui.diagnostics.DiagnosticResult
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -34,7 +38,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val ouraTokenStore = OuraTokenStore(application)
     val ouraAdapter = OuraApiAdapter(ouraTokenStore)
     val phoneSensorAdapter = PhoneSensorAdapter(application)
-    val ingestManager = IngestManager(healthConnect, db, ouraAdapter, phoneSensorAdapter)
+    val gadgetbridgeAdapter = GadgetbridgeAdapter(application)
+    val directSensorAdapter = DirectSensorAdapter(application)
+    val ingestManager = IngestManager(
+        healthConnect, db, ouraAdapter, phoneSensorAdapter,
+        gadgetbridgeAdapter = gadgetbridgeAdapter,
+        directSensorAdapter = directSensorAdapter
+    )
     val baselineEngine = BaselineEngine(db)
     val mlModel = TFLiteAnomalyModel.load(application)
     val anomalyDetector = AnomalyDetector(db, mlModel)
@@ -73,6 +83,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _diagnosticResults = MutableStateFlow<List<DiagnosticResult>>(emptyList())
     val diagnosticResults: StateFlow<List<DiagnosticResult>> = _diagnosticResults
 
+    private val _trackedMetricTypes = MutableStateFlow<Set<MetricType>>(emptySet())
+    val trackedMetricTypes: StateFlow<Set<MetricType>> = _trackedMetricTypes
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
@@ -80,10 +93,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _error.value = null
     }
 
-    /** Check permissions without initializing. Returns true if all granted. */
+    /** Check permissions without initializing. Returns true if all granted or if alternate sources exist. */
     suspend fun checkPermissions(): Boolean {
         if (!healthConnect.isAvailable) {
-            _error.value = "Health Connect is not available on this device."
+            // Health Connect not available — check if we have alternative data sources
+            val hasAlternatives = gadgetbridgeAdapter.isAvailable ||
+                directSensorAdapter.hasAnySensor ||
+                ouraTokenStore.hasToken()
+            if (hasAlternatives) {
+                _hasPermissions.value = true
+                return true
+            }
+            _error.value = "No health data sources available. Install Health Connect or Gadgetbridge."
             return false
         }
         val granted = healthConnect.hasAllPermissions()
@@ -101,10 +122,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 _initProgress.value = 0f
-                _initStatus.value = "Checking Health Connect..."
+                _initStatus.value = "Checking data sources..."
 
-                if (!healthConnect.isAvailable) {
-                    _error.value = "Health Connect is not available on this device."
+                if (!healthConnect.isAvailable &&
+                    !gadgetbridgeAdapter.isAvailable &&
+                    !directSensorAdapter.hasAnySensor &&
+                    !ouraTokenStore.hasToken()
+                ) {
+                    _error.value = "No health data sources available."
                     return@launch
                 }
 
@@ -122,8 +147,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 }
-                ingestManager.setup()
-                syncJob.cancel()
+                try {
+                    withTimeout(SYNC_TIMEOUT_MS) {
+                        ingestManager.setup()
+                    }
+                } catch (_: TimeoutCancellationException) {
+                    _error.value = "Data sync timed out. The app will work with available data."
+                } finally {
+                    syncJob.cancel()
+                }
                 _initProgress.value = 0.4f
 
                 if (ingestManager.dataAgeDays.value >= BaselineEngine.MINIMUM_DATA_DAYS) {
@@ -302,7 +334,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun refreshBaselines() {
-        _baselines.value = db.personalBaselineDao().fetchAll()
+        val allBaselines = db.personalBaselineDao().fetchAll()
+        _baselines.value = allBaselines
+        _trackedMetricTypes.value = allBaselines
+            .mapNotNull { MetricType.fromKey(it.metricType) }
+            .toSet()
     }
 
     fun refreshDiagnostics() {
@@ -313,5 +349,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 _error.value = e.message
             }
         }
+    }
+
+    companion object {
+        private const val SYNC_TIMEOUT_MS = 120_000L // 2 minutes
     }
 }

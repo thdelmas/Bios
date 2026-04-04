@@ -29,6 +29,19 @@ android {
         }
     }
 
+    flavorDimensions += "platform"
+    productFlavors {
+        create("lethe") {
+            dimension = "platform"
+            applicationIdSuffix = ".lethe"
+            versionNameSuffix = "-lethe"
+        }
+        create("standalone") {
+            dimension = "platform"
+            // Default application ID and version name
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

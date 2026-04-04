@@ -4,23 +4,41 @@
 
 Choices are driven by Bios's core constraints:
 1. **Privacy-first** -- on-device processing, encrypted local storage
-2. **Android-first** -- Health Connect ecosystem, broadest device reach
-3. **Battery-efficient** -- background health processing must be lightweight
-4. **Small team** -- maximize code sharing, minimize maintenance surface
+2. **LETHE-primary, Android-portable** -- embedded on LETHE (OSmosis privacy-hardened ROM), runs on any Android 9+
+3. **No Play Services dependency** -- must work on degoogled ROMs (LETHE, LineageOS, CalyxOS, GrapheneOS)
+4. **Battery-efficient** -- background health processing must be lightweight
+5. **Small team** -- maximize code sharing, minimize maintenance surface
 
 ---
 
 ## Mobile App
 
-### Approach: Android-native
+### Approach: LETHE-primary, Android-portable
 
 **Android: Kotlin + Jetpack Compose**
 
+**Primary target: LETHE** (OSmosis privacy-hardened Android overlay, LineageOS 22.1 base):
+- Embedded as a system app via OSmosis overlay (`apply-overlays.sh`)
+- Deep integration with LETHE agent (local API on `localhost:8080`), Void launcher (health cards), and OTA system
+- Inherits OS-level privacy hardening: firewall, tracker blocking, burner mode, dead man's switch
+- No Play Services, no Google Analytics, no cloud dependency — matches LETHE's degoogled philosophy
+
+**Portable to stock Android (API 28–35):**
+- Runs as a standalone APK with no LETHE dependencies
+- Platform-specific behavior abstracted via `platform/` interfaces (see ARCHITECTURE.md)
+- Health Connect used on Android 14+; direct sensor adapters on older versions
+- No Google Play Services required (but tolerates their presence on stock ROMs)
+
+**Build flavors:**
+- `lethe`: System app, LETHE agent IPC, launcher integration, system-level sensor access
+- `standalone`: Standard APK, Health Connect or direct sensors, no LETHE dependencies
+
 **Why native over cross-platform (React Native / Flutter):**
-- Health Connect has deep, platform-specific APIs that are painful to bridge
+- Health Connect and direct sensor APIs are deeply platform-specific
 - Background processing (WorkManager), sensor access, and notifications work best natively
 - On-device ML via TensorFlow Lite integrates natively
 - Health apps demand the performance and battery efficiency of native code
+- LETHE system app integration requires native Android APIs
 
 **iOS (future):** If/when iOS is needed, build with Swift + SwiftUI using the same architecture. Shared logic can be extracted via Kotlin Multiplatform (KMP).
 
@@ -42,7 +60,7 @@ Choices are driven by Bios's core constraints:
 - Open source, audited
 - Compatible with standard SQLite tooling
 
-**Encryption key:** Stored in Android Keystore, protected by device credentials.
+**Encryption key:** Stored in Android Keystore (stock) or LETHE hardware-backed keystore (embedded). No GMS dependency for key storage.
 
 **Schema migrations:** Room versioned migrations, run at app startup.
 
@@ -50,22 +68,30 @@ Choices are driven by Bios's core constraints:
 
 ## On-Device ML
 
-### Phase 1: Pure statistics (no ML framework needed)
+### Statistical detection (active)
 
-Rolling mean, standard deviation, z-scores, exponential moving averages. Implemented in plain Swift/Kotlin. No dependencies.
+Rolling mean, standard deviation, z-scores, exponential moving averages. 12 condition patterns with 33 signal rules (24 literature-backed). Implemented in Kotlin, no ML framework needed.
 
-### Phase 2: TensorFlow Lite
+### LiteRT (Google's rebranded TensorFlow Lite)
 
-- Anomaly detection models (isolation forest, autoencoder) trained offline
-- Exported as TFLite (.tflite) bundles
-- Shipped with the app, updated via OTA model delivery
+- Anomaly detection model wrapper implemented (`TFLiteAnomalyModel.kt`)
+- Heuristic fallback active when model asset not present
+- Models shipped as .tflite bundles, updated OTA via `ModelUpdateManager`
 - Inference runs on-device, no network required
+
+### Federated learning (implemented)
+
+- `FederatedTrainer` computes on-device gradients from owner's feedback-labeled anomalies
+- Differential privacy noise (Laplace, epsilon=1.0) applied before export
+- Encrypted gradient transmission to server for secure aggregation
+- Owner opts in/out independently; opting out doesn't reduce features
 
 ### Model training (offline, not on-device)
 
 - Python + scikit-learn + PyTorch for model development
 - Training on synthetic and anonymized research datasets
 - Export pipeline: PyTorch -> ONNX -> TFLite
+- Model signing: Ed25519 signatures verified on-device before installation
 
 ---
 
@@ -176,34 +202,34 @@ Each third-party API (Oura, WHOOP, Garmin, Withings, Dexcom, Polar) uses OAuth 2
 bios/
   android/                -- Android Studio project
     app/src/main/java/com/bios/app/
-      model/              -- Data classes and enums
-      data/               -- Room database, DAOs
-      ingest/             -- Health Connect adapter, IngestManager, SyncWorker
-      engine/             -- Baseline calculator, anomaly detector, statistics
-      alerts/             -- Condition patterns, AlertManager
-      privacy/            -- Community aggregator, ContributionWorker
-      export/             -- JSON data export
-      ui/                 -- Jetpack Compose screens
-        home/
-        trends/
-        alerts/
-        settings/
-        components/
-        theme/
-    app/src/test/         -- Unit tests
-  backend/                -- Go backend (Phase 2+)
-    cmd/server/
+      model/              -- Data classes and enums (17 metric types, 9 source types)
+      data/               -- Room databases (main + reproductive), DAOs
+      platform/           -- LETHE integration (PlatformDetector, LetheCompat, DataDestroyer,
+                             SafeMode, HealthApiServer, OtaCoordinator, ForensicRiskMonitor)
+      ingest/             -- 9 adapters (HealthConnect, Gadgetbridge, DirectSensor, Oura,
+                             WHOOP, Garmin, Withings, Dexcom, PhoneSensor), IngestManager, SyncWorker
+      engine/             -- BaselineEngine, AnomalyDetector, TFLiteAnomalyModel, Statistics
+      federated/          -- FederatedTrainer, ModelUpdateManager
+      alerts/             -- 12 ConditionPatterns, AlertManager, AlertContentPolicy,
+                             BiomarkerReference, DailyDigestWorker, FollowUpWorker
+      privacy/            -- CommunityAggregator, ContributionWorker, PopulationHealthSignals,
+                             ResearchPipeline
+      export/             -- DataExporter, EncryptedExporter, FhirExporter
+      sync/               -- SyncProtocol, SyncManager (E2E encrypted multi-device)
+      ui/                 -- 11 Jetpack Compose screens
+        home/ trends/ alerts/ settings/ onboarding/
+        diagnostics/ timeline/ journal/ privacy/ reference/
+        components/ theme/
+    app/src/test/         -- Unit tests (~20 test files)
+  backend/                -- Go backend (sync gateway, community, research, models)
+    cmd/gateway/          -- Application entry point
     internal/
-      sync/
-      models/
-      auth/
-      aggregates/
-  ml/                     -- Model training and export
-    notebooks/
-    training/
-    export/
-  docs/                   -- Architecture, data model, etc. (current files)
-  scripts/                -- Synthetic data generators, tooling
+      api/                -- HTTP handlers + middleware
+      auth/               -- Passkey/JWT authentication
+      model/              -- Data structures
+      store/              -- PostgreSQL (users, sync, contributions, signals, models)
+  docs/                   -- Architecture, roadmap, investigation
+  scripts/                -- Code quality checks, tooling
 ```
 
 ---
@@ -212,9 +238,11 @@ bios/
 
 | Layer | Choice | Key Reason |
 |-------|--------|------------|
-| Android app | Kotlin + Jetpack Compose | Best Health Connect integration, broadest reach |
+| Android app | Kotlin + Jetpack Compose | Best Health Connect integration, LETHE system app support, broadest reach |
+| Primary platform | LETHE (LineageOS 22.1 overlay) | Privacy-hardened OS, degoogled, system-level integration |
+| Portability | Stock Android API 28–35 | Covers 95%+ active devices, no Play Services required |
 | Local DB | Room + SQLCipher | Encrypted, compile-time verified, fast time-series |
-| On-device ML | TensorFlow Lite | Native acceleration, no network needed |
+| On-device ML | LiteRT + federated learning | Native acceleration, on-device gradients, no network needed |
 | Backend | Go + PostgreSQL | Simple, fast, small surface area |
 | Auth | Passkeys + magic link | No passwords, privacy-first |
 | CI/CD | GitHub Actions + Xcode Cloud | Standard, reliable |

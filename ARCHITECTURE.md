@@ -1,10 +1,51 @@
 # Bios Technical Architecture
 
+## Platform Model
+
+Bios is **primarily designed to be embedded on LETHE** (OSmosis privacy-hardened Android overlay, LineageOS 22.1 base) and **portable across stock Android versions** (API 28–35).
+
+### Build Flavors
+
+| Flavor | Context | Install method | Permissions |
+|---|---|---|---|
+| `lethe` | Embedded system app on LETHE ROM | Pre-installed via OSmosis overlay | System-level sensor access, LETHE agent IPC, launcher integration |
+| `standalone` | Portable APK for any Android 9+ device | Sideload or app store | Standard app permissions, Health Connect where available |
+
+### Platform Abstraction
+
+All platform-specific behavior is abstracted behind interfaces in the `platform/` package:
+
+```
+platform/
+  PlatformDetector.kt        -- detect LETHE vs stock Android at runtime
+  LetheCompat.kt             -- interface for LETHE agent, launcher cards, OTA hooks
+  HealthDataSource.kt        -- Health Connect (API 14+) vs direct sensor fallback
+  KeystoreProvider.kt        -- LETHE hardware keystore vs Android Keystore
+  BackgroundScheduler.kt     -- WorkManager (stock) vs LETHE job scheduler
+```
+
+On stock Android, LETHE-specific interfaces return no-ops. No LETHE classes are loaded.
+
+### Android Version Compatibility
+
+| API Level | Android Version | Support Level |
+|---|---|---|
+| 35 | Android 15 | Full (targetSdk) |
+| 34 | Android 14 | Full (Health Connect native) |
+| 33 | Android 13 | Full (Health Connect via APK) |
+| 28–32 | Android 9–12L | Core features, direct sensor adapters instead of Health Connect |
+| < 28 | Android 8.1 and below | Not supported |
+
+**No Google Play Services dependency.** Bios must run on degoogled ROMs (LETHE, LineageOS, CalyxOS, GrapheneOS, etc.).
+
+---
+
 ## System Overview
 
 ```
 +------------------------------------------------------------------+
-|                        MOBILE APP (Android)                       |
+|                     MOBILE APP (Android 9+)                       |
+|              [LETHE embedded  /  Standalone portable]             |
 |                                                                   |
 |  +------------------+  +------------------+  +-----------------+  |
 |  | Sensor Ingest    |  | Baseline Engine  |  | Insight UI      |  |
@@ -44,10 +85,16 @@
 
 Responsible for pulling data from all supported sources and normalizing it into Bios's unified schema.
 
-**Adapters** (one per data source):
-- **Health Connect Adapter** (Android) -- Samsung Galaxy Watch, Pixel Watch, Fitbit, other Android wearables
-- **Direct API Adapters** -- Oura, WHOOP, Garmin, Withings, Dexcom, Polar (REST/OAuth2)
-- **Phone Sensor Adapter** -- raw accelerometer, gyroscope, microphone, camera PPG
+**Adapters** (one per data source, 9 implemented):
+- **Health Connect Adapter** (Android 14+) -- Samsung Galaxy Watch, Pixel Watch, Fitbit, other Android wearables
+- **Gadgetbridge Adapter** -- open-source companion for degoogled devices (Mi Band, PineTime, Amazfit, 40+ devices)
+- **Direct Sensor Adapter** -- HR, HRV (inter-beat interval), steps via Android SensorManager APIs
+- **Oura API Adapter** -- Oura Ring v2 REST API (HR, HRV, sleep stages, temperature, readiness)
+- **WHOOP API Adapter** -- WHOOP v2 REST API (HR, HRV, SpO2, skin temp, sleep, strain, recovery)
+- **Garmin API Adapter** -- Garmin Connect API (HR, resting HR, SpO2, respiration, sleep, steps)
+- **Withings API Adapter** -- Withings Health Mate API (blood pressure, skin temp, sleep, body composition)
+- **Dexcom API Adapter** -- Dexcom CGM API (continuous glucose, 5-min intervals, FDA-cleared)
+- **Phone Sensor Adapter** -- raw accelerometer, step counter (activity intensity proxy)
 
 **Responsibilities:**
 - Poll or subscribe to data source changes
@@ -111,14 +158,20 @@ Confidence scoring + severity classification
 Alert generation (if threshold met)
 ```
 
+**Condition patterns (12 implemented, 33 signal rules):**
+- Infection onset, sleep disruption, cardiovascular stress, overtraining (Phase 1)
+- Metabolic drift, cardiorespiratory deconditioning, chronic inflammation, recovery deficit (Phase 3B — longevity science)
+- Respiratory infection, AFib screening, mental health correlate, menstrual cycle anomaly (Phase 4)
+- 24 of 33 signal rules carry literature-backed thresholds with citations
+
 **Model approach:**
-- **Phase 1:** Statistical methods (rolling z-scores, exponential moving averages, percentile-based thresholds). Simple, interpretable, low compute.
-- **Phase 2:** Lightweight on-device ML (TensorFlow Lite). Anomaly detection models (isolation forest, autoencoder). Shipped as frozen models, updated OTA.
-- **Phase 3:** Federated learning. Models improve across the user base without raw data ever leaving devices.
+- **Statistical methods** (current): Rolling z-scores, exponential moving averages, percentile-based thresholds. Simple, interpretable, low compute.
+- **On-device ML**: LiteRT (Google's rebranded TensorFlow Lite). Anomaly detection model wrapper implemented with heuristic fallback. Shipped as frozen models, updated OTA via ModelUpdateManager.
+- **Federated learning**: FederatedTrainer computes on-device gradients from owner feedback, applies differential privacy, encrypts for server aggregation. Owner opts in; opting out doesn't reduce features.
 
 ### 4. Insight & Alert System
 
-Translates detection engine output into human-readable, actionable information.
+A guardian that watches for what the owner might miss, then speaks clearly when something matters.
 
 **Alert tiers:**
 | Tier | Trigger | User experience |
@@ -128,11 +181,15 @@ Translates detection engine output into human-readable, actionable information.
 | **Advisory** | Strong multi-signal correlation matching a known condition pattern | Prominent alert, explanation, suggested action (e.g., "consider talking to your doctor") |
 | **Urgent** | Acute anomaly (e.g., SpO2 < 90%, HR > 150 at rest, suspected AFib) | Immediate notification, emergency guidance, option to call emergency services |
 
-**Principles:**
-- Every alert includes: what changed, how it compares to your baseline, why it matters, and what you can do
-- No medical diagnoses -- always framed as patterns worth discussing with a healthcare provider
-- User can tune sensitivity per condition category
+**Guardian Principles (aligned with LETHE):**
+- **Report data, never judge the person.** Say "resting HR elevated +2σ for 48h" — never "you're unhealthy" or "you should exercise more"
+- **Silence is a feature.** No daily "streak" notifications, no gamification, no engagement farming. Bios speaks when something matters, not to fill a feed
+- **The owner is final.** Every alert includes what changed, how it compares to baseline, and what the owner can do — but the owner decides whether to act
+- **No behavioral nudges.** No "you haven't walked today", no guilt mechanics, no wellness scores designed to drive app opens
+- **No medical diagnoses.** Always framed as patterns worth discussing with a healthcare provider
+- Owner can tune sensitivity per condition category
 - Cool-down periods to prevent alert fatigue
+- On LETHE: alerts surface through the agent mascot in the Void launcher, matching LETHE's calm, factual communication style
 
 ### 5. Backend Services (Optional, Opt-In)
 
@@ -171,6 +228,34 @@ Internal API between app layers, and external API for future integrations.
 - FHIR-compatible export for healthcare interoperability
 - Webhook support for custom automations
 
+### 7. LETHE Integration Layer (lethe flavor only)
+
+When running as an embedded system app on LETHE, Bios gains deep OS-level integration:
+
+**Agent Integration:**
+- Bios exposes a local API (`localhost:8080/health/`) that LETHE's on-device agent queries
+- The agent can surface health insights in the Void launcher (LETHE's home screen)
+- Example: agent mascot says "Your resting HR has been elevated for 48h — consider resting today"
+
+**Launcher Health Cards:**
+- Bios renders summary cards (daily score, active alerts, trends) in LETHE's WebView launcher
+- Cards update on boot and on-demand via local IPC
+
+**OTA Coordination:**
+- LETHE's OTA update script (`lethe-ota-update.sh`) queries Bios state before rebooting
+- Delays system updates during active workouts, sleep tracking, or critical health monitoring
+- Installs during detected recovery/idle windows
+
+**Privacy Stack Synergy:**
+- LETHE's firewall rules block all outbound traffic by default — Bios's zero-network-required design fits natively
+- LETHE's tracker-blocking hosts file provides defense-in-depth against any analytics leakage
+- Burner mode (wipe-on-boot) clears Bios data too — appropriate for high-threat-model users
+- Dead man's switch can trigger Bios data destruction alongside OS-level wipe
+
+**Sensor Access:**
+- As a system app, Bios can access sensors directly without Health Connect as an intermediary
+- Enables continuous background monitoring with lower battery overhead than a third-party app
+
 ---
 
 ## Data Flow Summary
@@ -204,7 +289,10 @@ Wearable / Phone Sensor
 | Concern | Target |
 |---------|--------|
 | **Latency** | Alert generation within 5 minutes of data availability |
-| **Battery** | Baseline engine uses < 2% daily battery budget |
+| **Battery** | Baseline engine uses < 2% daily battery budget (< 1% on LETHE with system-level scheduling) |
 | **Storage** | < 100 MB for 1 year of data at typical wearable sampling rates |
-| **Offline** | Fully functional with no network connection (core value) |
+| **Offline** | Fully functional with no network connection (core value; LETHE default is network-off) |
 | **Startup** | App usable within 7 days of data collection (minimum baseline period) |
+| **Portability** | Single codebase runs on LETHE (embedded) and stock Android 9+ (standalone) |
+| **No Play Services** | Must not depend on Google Play Services, Firebase, or GMS Core |
+| **Min SDK** | API 28 (Android 9 Pie, 2018) — covers 95%+ of active devices including older degoogled phones |

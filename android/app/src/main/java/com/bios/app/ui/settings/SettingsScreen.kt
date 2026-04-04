@@ -23,7 +23,7 @@ import com.bios.app.ui.AppViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(viewModel: AppViewModel) {
+fun SettingsScreen(viewModel: AppViewModel, onNavigateToPrivacy: () -> Unit = {}) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val hasPermissions by viewModel.hasPermissions.collectAsState()
@@ -254,7 +254,7 @@ fun SettingsScreen(viewModel: AppViewModel) {
             }
         }
 
-        // Privacy Info
+        // Privacy
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Privacy", style = MaterialTheme.typography.titleSmall)
@@ -264,6 +264,15 @@ fun SettingsScreen(viewModel: AppViewModel) {
                 SettingsRow("Encryption", "AES-256 (SQLCipher)")
 
                 Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onNavigateToPrivacy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Shield, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Privacy Dashboard")
+                }
+                Spacer(Modifier.height(4.dp))
                 Button(
                     onClick = { showDeleteDialog = true },
                     colors = ButtonDefaults.buttonColors(
@@ -294,13 +303,8 @@ fun SettingsScreen(viewModel: AppViewModel) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        scope.launch {
-                            viewModel.db.metricReadingDao().deleteAll()
-                            viewModel.db.personalBaselineDao().deleteAll()
-                            viewModel.db.anomalyDao().deleteAll()
-                            viewModel.db.computedAggregateDao().deleteAll()
-                            totalReadings = 0
-                        }
+                        com.bios.app.platform.DataDestroyer.destroyAll(context)
+                        totalReadings = 0
                         showDeleteDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(

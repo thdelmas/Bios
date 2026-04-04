@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.alerts.BiomarkerReference
+import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.ui.AppViewModel
@@ -119,6 +121,28 @@ fun ConditionDetailScreen(
                     color = Color(0xFFFF9800),
                     content = pattern.risks
                 )
+            }
+
+            // Biomarker context — what clinical markers these signals proxy for
+            val relevantBiomarkers = remember(pattern) {
+                val metrics = pattern.signalRules.map { it.metricType }.toSet()
+                metrics.flatMap { BiomarkerReferences.forMetric(it) }.distinct()
+            }
+            if (relevantBiomarkers.isNotEmpty()) {
+                Text(
+                    "Clinical Context",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "What longevity research tracks with similar signals",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                relevantBiomarkers.forEach { biomarker ->
+                    BiomarkerReferenceCard(biomarker)
+                }
             }
 
             // References
@@ -313,6 +337,119 @@ private fun probabilityColor(probability: Double): Color = when {
     probability >= 0.50 -> Color(0xFFFF9800)
     probability >= 0.25 -> Color(0xFFFFC107)
     else -> Color(0xFF4CAF50)
+}
+
+@Composable
+private fun BiomarkerReferenceCard(biomarker: BiomarkerReference) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        onClick = { expanded = !expanded }
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color(0xFF7C4DFF)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    biomarker.clinicalName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+            Text(
+                biomarker.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "How Bios approximates this",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    biomarker.proxyExplanation,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Normal ranges",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    biomarker.normalRange,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Why it matters",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    biomarker.whyItMatters,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Limitations",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    biomarker.limitations,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                if (biomarker.citations.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "References",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    biomarker.citations.forEach { citation ->
+                        Text(
+                            citation,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

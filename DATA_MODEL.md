@@ -7,6 +7,7 @@
 3. **Attributable** -- every reading tracks its source device, sensor type, and confidence
 4. **Extensible** -- new metric types can be added without schema migrations
 5. **Exportable** -- maps cleanly to FHIR Observation resources for healthcare interoperability
+6. **Platform-portable** -- schema is identical on LETHE (embedded) and stock Android (standalone); no platform-specific columns or tables. Works across Android API 28–35.
 
 ---
 
@@ -34,66 +35,68 @@ MetricReading {
 
 ### MetricType (enum)
 
-Organized by physiological domain. Each type has a canonical unit.
+Organized by physiological domain. Each type has a canonical unit. Types marked **[implemented]** exist in `Enums.kt`; those marked **[planned]** are defined in this schema for future adapter expansion.
 
 ```
 // Cardiovascular
-heart_rate                  -- bpm
-heart_rate_variability      -- ms (RMSSD)
-resting_heart_rate          -- bpm
-ecg_waveform                -- mV[] (raw waveform array)
-blood_pressure_systolic     -- mmHg
-blood_pressure_diastolic    -- mmHg
-blood_oxygen                -- % (SpO2)
+heart_rate                  -- bpm                           [implemented]
+heart_rate_variability      -- ms (RMSSD)                    [implemented]
+resting_heart_rate          -- bpm                           [implemented]
+ecg_waveform                -- mV[] (raw waveform array)     [planned — ECG-capable adapters]
+blood_pressure_systolic     -- mmHg                          [implemented]
+blood_pressure_diastolic    -- mmHg                          [implemented]
+blood_oxygen                -- % (SpO2)                      [implemented]
 
 // Respiratory
-respiratory_rate            -- breaths/min
-respiratory_event           -- apnea/hypopnea event flag
-cough_count                 -- count per hour
+respiratory_rate            -- breaths/min                   [implemented]
+respiratory_event           -- apnea/hypopnea event flag     [planned — sleep study adapters]
+cough_count                 -- count per hour                [planned — microphone adapter]
 
 // Temperature
-skin_temperature            -- degrees C
-skin_temperature_deviation  -- delta C from personal baseline
+skin_temperature            -- degrees C                     [implemented]
+skin_temperature_deviation  -- delta C from personal baseline [implemented]
 
 // Sleep
-sleep_stage                 -- enum: awake | light | deep | rem
-sleep_duration              -- seconds
-sleep_latency               -- seconds (time to fall asleep)
-sleep_score                 -- 0-100 (vendor-normalized)
+sleep_stage                 -- enum: awake | light | deep | rem [implemented]
+sleep_duration              -- seconds                       [implemented]
+sleep_latency               -- seconds (time to fall asleep) [planned — derived from sleep stage data]
+sleep_score                 -- 0-100 (vendor-normalized)     [planned — vendor-specific]
 
 // Activity
-steps                       -- count
-active_calories             -- kcal
-active_minutes              -- minutes
-distance                    -- meters
-vo2_max                     -- mL/kg/min
+steps                       -- count                         [implemented]
+active_calories             -- kcal                          [implemented]
+active_minutes              -- minutes                       [implemented]
+distance                    -- meters                        [planned — GPS-capable adapters]
+vo2_max                     -- mL/kg/min                     [planned — exercise-mode adapters]
 
 // Motion & Gait
-accelerometer_raw           -- m/s2 (x, y, z stored in raw_payload)
-gait_symmetry               -- % (0 = perfectly asymmetric, 100 = symmetric)
-tremor_amplitude            -- mm/s2
+accelerometer_raw           -- m/s2 (x, y, z in raw_payload) [planned — motion analysis]
+gait_symmetry               -- % (0 = asymmetric, 100 = sym) [planned — gait analysis]
+tremor_amplitude            -- mm/s2                         [planned — neurological screening]
 
 // Metabolic
-blood_glucose               -- mg/dL
-glucose_variability         -- coefficient of variation %
-body_fat_percentage         -- %
-body_mass                   -- kg
+blood_glucose               -- mg/dL                         [implemented]
+glucose_variability         -- coefficient of variation %    [planned — derived from CGM data]
+body_fat_percentage         -- %                             [planned — Withings scale]
+body_mass                   -- kg                            [planned — Withings scale]
 
 // Stress & Recovery
-eda_level                   -- microsiemens (electrodermal activity)
-stress_score                -- 0-100 (vendor-normalized)
-recovery_score              -- 0-100 (vendor-normalized)
-strain_score                -- 0-21 (WHOOP-style, normalized)
+eda_level                   -- microsiemens                  [planned — EDA-capable wearables]
+stress_score                -- 0-100 (vendor-normalized)     [planned — vendor-specific]
+recovery_score              -- 0-100 (vendor-normalized)     [implemented]
+strain_score                -- 0-21 (WHOOP-style)            [planned — WHOOP adapter extension]
 
 // Women's Health
-basal_body_temperature      -- degrees C
-cycle_day                   -- int (day of menstrual cycle)
-cycle_phase                 -- enum: menstrual | follicular | ovulatory | luteal
+basal_body_temperature      -- degrees C                     [implemented]
+cycle_day                   -- int (day of menstrual cycle)  [planned — cycle tracking UI]
+cycle_phase                 -- enum: menstrual | follicular | ovulatory | luteal [planned]
 
 // Environment
-ambient_light               -- lux
-ambient_noise               -- dB
+ambient_light               -- lux                           [planned — phone sensor]
+ambient_noise               -- dB                            [planned — microphone adapter]
 ```
+
+**Summary:** 17 of 34 metric types are implemented. The remaining 17 are defined for future adapter expansion.
 
 ### DataSource
 
@@ -102,7 +105,7 @@ Tracks where a reading came from.
 ```
 DataSource {
     id:             UUID
-    source_type:    SourceType          -- enum: healthkit | health_connect | oura_api | whoop_api | garmin_api | ...
+    source_type:    SourceType          -- enum: health_connect | gadgetbridge | direct_sensor | oura_api | whoop_api | garmin_api | withings_api | dexcom_api | phone_sensor
     device_name:    String?             -- "Apple Watch Series 11", "Oura Ring Gen 4"
     device_model:   String?             -- vendor model identifier
     sensor_type:    SensorType          -- enum: optical_hr | ecg | accelerometer | thermistor | ppg_camera | cgm | ...

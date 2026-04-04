@@ -6,29 +6,65 @@
 
 ---
 
-## Current State (v0.1.0)
+## Current State (v0.2.0)
 
-**What works today:**
-- Health data ingest: Health Connect (9 record types), Oura API, phone sensors (accelerometer, step counter)
+**Core health pipeline:**
+- Health data ingest: 9 adapters (Health Connect, Gadgetbridge, Direct Sensors, Oura, WHOOP, Garmin, Withings, Dexcom, Phone Sensors)
 - SQLCipher encrypted local database (7 tables, AES-256, key in Android Keystore)
+- Separate encrypted reproductive health database (independent key, independent wipe)
 - 14-day rolling personal baselines per metric
-- Pattern-based anomaly detection (infection onset, sleep disruption, cardiovascular stress, overtraining)
-- TFLite anomaly model wrapper (heuristic fallback active — model asset not shipped)
+- 12 condition patterns: infection onset, sleep disruption, cardiovascular stress, overtraining, metabolic drift, cardiorespiratory deconditioning, chronic inflammation, recovery deficit, respiratory infection, AFib screening, mental health correlate, menstrual cycle anomaly
+- 33 signal rules (24 literature-backed with citations)
+- LiteRT anomaly model wrapper (heuristic fallback active — model asset not shipped)
 - 4-tier alert system with push notifications (Observation / Notice / Advisory / Urgent)
-- Daily digest, 24h follow-up reminders, health journal with threaded entries
-- Differential privacy aggregation engine (Community tier — server transmission not connected)
-- Full data export (JSON + CSV ZIP)
-- 8 Compose UI screens, onboarding, settings with privacy tier selection
-- 20 unit tests
+- Alert content policy enforcing "never evaluate the person" principle
+- Biomarker reference knowledge base linking wearable metrics to clinical research
+
+**Platform & protection:**
+- Build flavors: `lethe` (embedded system app) and `standalone` (portable APK)
+- Platform detection (LETHE vs stock Android) with capability-based feature gates
+- LETHE wipe signal integration (burner mode, dead man's switch, panic, duress)
+- Coercion-resistant safe mode (duress PIN → fresh-install appearance)
+- Local health API for LETHE agent (localhost:8080/health/)
+- OTA coordination (sleep/alert-aware reboot scheduling)
+- Forensic risk monitoring with data footprint visibility
+- Privacy dashboard (data audit, quick-wipe, reproductive data controls)
 - No Google Play Services dependency
 
-**What's missing:** Everything that makes Bios part of LETHE's protection system, and several standalone protection gaps.
+**Data & export:**
+- Full data export (JSON + CSV ZIP) with AES-256-GCM encrypted export option
+- FHIR R4 Bundle export with LOINC coding (12 mapped metric types)
+- E2E encrypted multi-device sync protocol (HKDF-SHA256 key derivation, AES-256-GCM)
+- Differential privacy aggregation (Community tier, Laplace noise, epsilon=1.0)
+
+**Intelligence:**
+- Federated learning framework (on-device gradient computation, DP noise, encrypted export)
+- Model update manager (OTA via IPFS on LETHE, in-app on stock Android)
+- Population health signal receiver (anonymous fetch, no location sent)
+- Research pipeline (separate consent, full de-identification, k-anonymity)
+
+**Backend (Go + PostgreSQL):**
+- Sync gateway (E2E encrypted blob storage, zero-knowledge)
+- Community contribution aggregation
+- Population health signal distribution
+- Research contribution storage
+- Model version management
+- Account deletion (immediate, irreversible)
+
+**UI:** 11 Compose screens, onboarding, privacy dashboard, longevity reference view, diagnostics with condition details
+
+**Remaining work:**
+- Ship trained TFLite anomaly model (requires offline ML training with medical datasets)
+- Polar API adapter (documented but not implemented)
+- Full serialization/deserialization in SyncManager (framework in place, merge logic stubbed)
+- Production Ed25519 signature verification for model updates
+- Backend deployment and infrastructure
 
 ---
 
-## Phase 1: Foundation — Make Bios protectable
+## Phase 1: Foundation — Make Bios protectable [COMPLETE]
 
-> LETHE can't protect what it can't reach. This phase gives LETHE the hooks to include Bios in its emergency protocols, and gives Bios enough data sources to function on degoogled devices.
+> Give LETHE the hooks to include Bios in emergency protocols, and give Bios enough data sources to function on degoogled devices.
 
 ### 1.1 Platform abstraction layer
 
@@ -110,9 +146,9 @@ On LETHE and other degoogled devices, Health Connect may not be available. Bios 
 
 ---
 
-## Phase 2: Guardian — Make Bios a health guardian on LETHE
+## Phase 2: Guardian — Make Bios a health guardian on LETHE [COMPLETE]
 
-> Bios becomes part of the LETHE experience: the agent can speak about the owner's health, the launcher shows health cards, and sensitive data gets extra protection.
+> Agent speaks about the owner's health, launcher shows health cards, sensitive data gets extra protection.
 
 ### 2.1 Local health API for LETHE agent
 
@@ -208,9 +244,9 @@ Train and ship the `anomaly_detector.tflite` model that `TFLiteAnomalyModel.kt` 
 
 ---
 
-## Phase 3: Expand — More data, stronger baselines, better protection
+## Phase 3: Expand — More data, stronger baselines, better protection [COMPLETE]
 
-> More sources = richer baselines = earlier detection = better protection. This phase widens the funnel without compromising the owner.
+> More sources = richer baselines = earlier detection = better protection.
 
 ### 3.1 WHOOP adapter
 
@@ -266,9 +302,9 @@ Enforce the "never evaluate the person" principle at the code level:
 
 ---
 
-## Phase 3B: Longevity Baselines — Learn from open longevity science
+## Phase 3B: Longevity Baselines — Learn from open longevity science [COMPLETE]
 
-> Bryan Johnson's Blueprint project and Don't Die app validate that continuous biomarker monitoring catches health deviations early. They publish protocols, thresholds, and biomarker correlations openly. Bios can absorb this knowledge — not to prescribe Blueprint's regimen, but to make its own detection smarter. Blueprint is cloud-first, prescriptive, and gamified; Bios takes the science and leaves the philosophy behind.
+> Absorb open longevity science (Blueprint, PhenoAge, DunedinPACE) to make detection smarter. Take the science, leave the gamification behind.
 
 ### 3B.1 Biomarker reference knowledge base
 
@@ -381,13 +417,13 @@ A read-only informational view in the UI that helps the owner understand what he
 - Accessible from diagnostics view or settings
 - Updated via app releases, not OTA (content is curated, not dynamic)
 
-**Acceptance:** Owner can browse what longevity science measures, understand which signals Bios can and can't track, and make informed decisions about what devices or tests to pursue. No nudging, no scores, no protocol adherence.
+**Acceptance:** Owner can browse what longevity science measures and make informed decisions. No nudging, no scores.
 
 ---
 
-## Phase 4: Intelligence — Smarter detection, federated learning
+## Phase 4: Intelligence — Smarter detection, federated learning [COMPLETE]
 
-> The owner gets better protection as models improve. Their data never leaves the device to make this happen.
+> Better protection as models improve. Data never leaves the device.
 
 ### 4.1 Federated learning framework
 
@@ -424,30 +460,26 @@ For owners with multiple devices (phone + tablet, or migrating to a new phone):
 
 ---
 
-## Phase 5: Ecosystem — Bios beyond a single device
+## Phase 5: Ecosystem — Bios beyond a single device [COMPLETE]
 
 ### 5.1 OTA coordination with LETHE
-
 - LETHE's `lethe-ota-update.sh` queries Bios before rebooting
 - Bios responds: "safe to reboot" / "delay — active sleep tracking" / "delay — elevated monitoring"
 - Owner can override: "reboot now anyway"
 - Post-OTA: Bios verifies database integrity and re-schedules workers
 
 ### 5.2 Anonymized population health signals
-
 - Aggregate Community tier contributions into regional health signals
 - Surface on-device: "Respiratory illness activity elevated in your area" (no server knows the owner's location — signal is derived from anonymized aggregate patterns)
 - Owner can disable population signals independently of their Community tier choice
 
 ### 5.3 Research pipeline (opt-in)
-
 - Formal opt-in flow with informed consent
 - Full de-identification (k-anonymity, l-diversity) on-device before transmission
 - Owner can review exactly what will be shared, withdraw at any time
 - Research contributions are distinct from Community contributions — separate consent, separate toggle
 
 ### 5.4 Backend services (Go + PostgreSQL)
-
 - Sync gateway for E2E encrypted multi-device sync
 - Model update service for OTA TFLite models and federated gradients
 - Aggregate insights API for population health signals
@@ -456,15 +488,13 @@ For owners with multiple devices (phone + tablet, or migrating to a new phone):
 
 ---
 
-## Principles that apply to every phase
+## Non-negotiable principles
 
-These are non-negotiable across the entire roadmap:
-
-1. **The owner is final.** Every feature is off by default or requires explicit opt-in. Bios advises, never overrides.
-2. **Defense only.** Encryption, erasure, and on-device processing. Never offense, never counter-attack, never data monetization.
-3. **Silence is a feature.** No engagement farming, no streak notifications, no gamification. Speak when something matters.
-4. **Never evaluate the person.** Report deviations from baseline. Never lifestyle judgments, wellness scores, or behavioral nudges.
-5. **Erasure by design.** Every data store must be destroyable in < 1 second via key destruction. No data survives if the owner says delete.
-6. **No Play Services.** Every feature must work on degoogled devices. Health Connect is preferred where available, never required.
+1. **The owner is final.** Bios advises, never overrides. Every feature is off by default or requires explicit opt-in.
+2. **Defense only.** Encryption, erasure, on-device processing. Never offense, never data monetization.
+3. **Silence is a feature.** No engagement farming, no streaks, no gamification.
+4. **Never evaluate the person.** Report deviations from baseline, never lifestyle judgments.
+5. **Erasure by design.** Every data store destroyable in < 1 second via key destruction.
+6. **No Play Services.** Every feature works on degoogled devices.
 7. **Portable.** Single codebase, two flavors. LETHE gets deeper protection; stock Android gets the same intelligence.
-8. **Auditable.** The owner can inspect what data exists, where it lives, and what (if anything) has been transmitted.
+8. **Auditable.** The owner can inspect what data exists, where it lives, and what has been transmitted.

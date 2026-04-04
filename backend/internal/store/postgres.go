@@ -74,6 +74,37 @@ CREATE TABLE IF NOT EXISTS aggregate_contributions (
 
 CREATE INDEX IF NOT EXISTS idx_aggregate_metric
     ON aggregate_contributions(metric_type, period, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS population_signals (
+    id          TEXT PRIMARY KEY,
+    category    TEXT NOT NULL,
+    severity    TEXT NOT NULL DEFAULT 'info',
+    title       TEXT NOT NULL,
+    description TEXT NOT NULL,
+    region      TEXT NOT NULL DEFAULT '',
+    timestamp   BIGINT NOT NULL,
+    source      TEXT NOT NULL DEFAULT 'aggregate',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pop_signals_ts
+    ON population_signals(timestamp DESC);
+
+CREATE TABLE IF NOT EXISTS research_contributions (
+    id         BIGSERIAL PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    payload    BYTEA NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS model_versions (
+    version    INTEGER PRIMARY KEY,
+    filename   TEXT NOT NULL,
+    checksum   TEXT NOT NULL,
+    signature  BYTEA NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `
 
 // SaveSyncPayload stores an encrypted sync blob. Deduplicates by hash.
@@ -171,4 +202,74 @@ func (s *Store) GetUser(ctx context.Context, id string) (*model.User, error) {
 		return nil, err
 	}
 	return &u, nil
+}
+
+// DeleteUser removes a user and all associated data. Irreversible.
+// Called when the owner requests "Delete all data" from the app.
+func (s *Store) DeleteUser(ctx context.Context, userID string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete sync payloads (encrypted blobs — now irrecoverable without client key)
+	if _, err := tx.Exec(ctx, `DELETE FROM sync_payloads WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	// Delete user record
+	if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+// GetPopulationSignals returns active population health signals.
+func (s *Store) GetPopulationSignals(ctx context.Context, limit int) ([]model.PopulationSignal, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, category, severity, title, description, region, timestamp, source
+		FROM population_signals
+		ORDER BY timestamp DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var signals []model.PopulationSignal
+	for rows.Next() {
+		var sig model.PopulationSignal
+		if err := rows.Scan(&sig.ID, &sig.Category, &sig.Severity, &sig.Title, &sig.Description, &sig.Region, &sig.Timestamp, &sig.Source); err != nil {
+			return nil, err
+		}
+		signals = append(signals, sig)
+	}
+	return signals, rows.Err()
+}
+
+// SaveResearchContribution stores a de-identified research contribution.
+func (s *Store) SaveResearchContribution(ctx context.Context, c *model.ResearchContribution) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO research_contributions (session_id, payload)
+		VALUES ($1, $2)
+	`, c.SessionID, c.Payload)
+	return err
+}
+
+// GetLatestModelVersion returns the newest model version metadata.
+func (s *Store) GetLatestModelVersion(ctx context.Context) (*model.ModelVersion, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT version, filename, checksum, signature, size_bytes, created_at
+		FROM model_versions
+		ORDER BY version DESC
+		LIMIT 1
+	`)
+
+	var m model.ModelVersion
+	if err := row.Scan(&m.Version, &m.Filename, &m.Checksum, &m.Signature, &m.SizeBytes, &m.CreatedAt); err != nil {
+		return nil, err
+	}
+	return &m, nil
 }

@@ -13,14 +13,23 @@ import java.time.temporal.ChronoUnit
 import java.util.Calendar
 
 /**
- * Orchestrates data ingestion from Health Connect and direct API adapters
- * (Oura, etc.), handles deduplication, and triggers downstream processing.
+ * Orchestrates data ingestion from all available health data sources,
+ * handles deduplication, and triggers downstream processing.
+ *
+ * Adapter selection priority:
+ * 1. Health Connect (if available — Android 14+, or installed on older versions)
+ * 2. Gadgetbridge (if installed — degoogled devices, LETHE)
+ * 3. Direct sensor APIs (phone/watch hardware sensors)
+ * 4. Third-party API adapters (Oura, etc.)
+ * 5. Phone sensor adapter (accelerometer, step counter — always available)
  */
 class IngestManager(
     private val healthConnect: HealthConnectAdapter,
     private val db: BiosDatabase,
     private val ouraAdapter: OuraApiAdapter? = null,
-    private val phoneSensorAdapter: PhoneSensorAdapter? = null
+    private val phoneSensorAdapter: PhoneSensorAdapter? = null,
+    private val gadgetbridgeAdapter: GadgetbridgeAdapter? = null,
+    private val directSensorAdapter: DirectSensorAdapter? = null
 ) {
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
@@ -43,21 +52,47 @@ class IngestManager(
     private var healthConnectSourceId: String? = null
     private var ouraSourceId: String? = null
     private var phoneSensorSourceId: String? = null
+    private var gadgetbridgeSourceId: String? = null
+    private var directSensorSourceId: String? = null
 
     // MARK: - Setup
 
     suspend fun setup() {
-        val sourceId = getOrCreateHealthConnectSource()
-        healthConnectSourceId = sourceId
-
-        if (ouraAdapter?.isConnected == true) {
-            ouraSourceId = getOrCreateOuraSource()
+        // Health Connect (preferred if available)
+        if (healthConnect.isAvailable) {
+            healthConnectSourceId = getOrCreateSource(
+                SourceType.HEALTH_CONNECT, "Android Wearable", SensorType.OPTICAL_HR
+            )
         }
 
+        // Gadgetbridge (fallback for degoogled devices)
+        if (gadgetbridgeAdapter?.isAvailable == true) {
+            gadgetbridgeSourceId = getOrCreateSource(
+                SourceType.GADGETBRIDGE, "Gadgetbridge Device", SensorType.OPTICAL_HR
+            )
+        }
+
+        // Direct sensor APIs (HR, HRV from hardware sensors)
+        if (directSensorAdapter?.hasAnySensor == true) {
+            directSensorSourceId = getOrCreateSource(
+                SourceType.DIRECT_SENSOR, "Direct Sensors", SensorType.OPTICAL_HR
+            )
+        }
+
+        // Oura API
+        if (ouraAdapter?.isConnected == true) {
+            ouraSourceId = getOrCreateSource(
+                SourceType.OURA_API, "Oura Ring", SensorType.OPTICAL_HR
+            )
+        }
+
+        // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
             phoneSensorAdapter?.hasStepCounter == true
         ) {
-            phoneSensorSourceId = getOrCreatePhoneSensorSource()
+            phoneSensorSourceId = getOrCreateSource(
+                SourceType.PHONE_SENSOR, "Phone Sensors", SensorType.ACCELEROMETER
+            )
         }
 
         updateDataAge()
@@ -74,7 +109,6 @@ class IngestManager(
 
     /** Sync the last 24 hours (regular refresh). */
     suspend fun syncRecentData() {
-        val hcSourceId = healthConnectSourceId ?: return
         if (_isSyncing.value) return
         _isSyncing.value = true
 
@@ -83,8 +117,22 @@ class IngestManager(
             val start = end.minus(24, ChronoUnit.HOURS)
 
             val allReadings = mutableListOf<MetricReading>()
-            allReadings += healthConnect.fetchReadings(start, end, hcSourceId)
+
+            // Health Connect (preferred)
+            healthConnectSourceId?.let { id ->
+                allReadings += healthConnect.fetchReadings(start, end, id)
+            }
+
+            // Gadgetbridge (degoogled fallback)
+            allReadings += fetchGadgetbridgeReadings(start, end)
+
+            // Direct sensors (HR, HRV from hardware)
+            allReadings += fetchDirectSensorReadings()
+
+            // Oura API
             allReadings += fetchOuraReadings(start, end)
+
+            // Phone sensors (last resort)
             allReadings += fetchPhoneSensorReadings()
 
             val deduped = deduplicate(allReadings)
@@ -99,7 +147,6 @@ class IngestManager(
 
     /** Sync the last 30 days (initial setup). */
     suspend fun syncHistoricalData() {
-        val hcSourceId = healthConnectSourceId ?: return
         _isSyncing.value = true
         _syncProgress.value = 0f
         _syncStatus.value = "Syncing 30 days of history..."
@@ -116,7 +163,11 @@ class IngestManager(
                 _syncStatus.value = "Syncing day ${completedDays + 1} of 30..."
                 val chunkEnd = minOf(current.plus(1, ChronoUnit.DAYS), end)
                 val allReadings = mutableListOf<MetricReading>()
-                allReadings += healthConnect.fetchReadings(current, chunkEnd, hcSourceId)
+
+                healthConnectSourceId?.let { id ->
+                    allReadings += healthConnect.fetchReadings(current, chunkEnd, id)
+                }
+                allReadings += fetchGadgetbridgeReadings(current, chunkEnd)
                 allReadings += fetchOuraReadings(current, chunkEnd)
 
                 val deduped = deduplicate(allReadings)
@@ -158,17 +209,49 @@ class IngestManager(
 
     // MARK: - Helpers
 
-    private suspend fun getOrCreateHealthConnectSource(): String {
-        val existing = sourceDao.findByType(SourceType.HEALTH_CONNECT.key)
+    private suspend fun getOrCreateSource(
+        type: SourceType,
+        deviceName: String,
+        sensorType: SensorType
+    ): String {
+        val existing = sourceDao.findByType(type.key)
         if (existing != null) return existing.id
 
         val source = DataSource(
-            sourceType = SourceType.HEALTH_CONNECT.key,
-            deviceName = "Android Wearable",
-            sensorType = SensorType.OPTICAL_HR.name
+            sourceType = type.key,
+            deviceName = deviceName,
+            sensorType = sensorType.name
         )
         sourceDao.insert(source)
         return source.id
+    }
+
+    private suspend fun fetchGadgetbridgeReadings(
+        start: Instant,
+        end: Instant
+    ): List<MetricReading> {
+        val sourceId = gadgetbridgeSourceId ?: return emptyList()
+        val adapter = gadgetbridgeAdapter ?: return emptyList()
+        return try {
+            adapter.fetchReadings(start, end, sourceId)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private suspend fun fetchDirectSensorReadings(): List<MetricReading> {
+        val sourceId = directSensorSourceId ?: return emptyList()
+        val adapter = directSensorAdapter ?: return emptyList()
+        return try {
+            val readings = mutableListOf<MetricReading>()
+            readings += adapter.sampleHeartRate(SENSOR_SAMPLE_DURATION_MS, sourceId)
+            readings += adapter.sampleHrv(SENSOR_SAMPLE_DURATION_MS, sourceId)
+            val steps = adapter.readSteps(sourceId)
+            if (steps != null) readings += steps
+            readings
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     private suspend fun fetchOuraReadings(start: Instant, end: Instant): List<MetricReading> {
@@ -186,39 +269,13 @@ class IngestManager(
         val adapter = phoneSensorAdapter ?: return emptyList()
         return try {
             val readings = mutableListOf<MetricReading>()
-            readings += adapter.sampleAccelerometer(PHONE_SAMPLE_DURATION_MS, sourceId)
+            readings += adapter.sampleAccelerometer(SENSOR_SAMPLE_DURATION_MS, sourceId)
             val stepReading = adapter.readStepCounter(sourceId)
             if (stepReading != null) readings += stepReading
             readings
         } catch (_: Exception) {
             emptyList()
         }
-    }
-
-    private suspend fun getOrCreatePhoneSensorSource(): String {
-        val existing = sourceDao.findByType(SourceType.PHONE_SENSOR.key)
-        if (existing != null) return existing.id
-
-        val source = DataSource(
-            sourceType = SourceType.PHONE_SENSOR.key,
-            deviceName = "Phone Sensors",
-            sensorType = SensorType.ACCELEROMETER.name
-        )
-        sourceDao.insert(source)
-        return source.id
-    }
-
-    private suspend fun getOrCreateOuraSource(): String {
-        val existing = sourceDao.findByType(SourceType.OURA_API.key)
-        if (existing != null) return existing.id
-
-        val source = DataSource(
-            sourceType = SourceType.OURA_API.key,
-            deviceName = "Oura Ring",
-            sensorType = SensorType.OPTICAL_HR.name
-        )
-        sourceDao.insert(source)
-        return source.id
     }
 
     private suspend fun updateDataAge() {
@@ -233,6 +290,6 @@ class IngestManager(
     }
 
     companion object {
-        private const val PHONE_SAMPLE_DURATION_MS = 10_000L // 10 seconds
+        private const val SENSOR_SAMPLE_DURATION_MS = 10_000L // 10 seconds
     }
 }
