@@ -53,9 +53,11 @@
 
 **UI:** 11 Compose screens, onboarding, privacy dashboard, longevity reference view, diagnostics with condition details
 
-**Remaining work:**
-- Ship trained TFLite anomaly model (requires offline ML training with medical datasets)
-- Backend deployment and infrastructure
+**Decentralized architecture (LETHE IPFS stack):**
+- Community contributions via IPFS PubSub (`bios-community`), population signals via IPNS (`bios-signals`), sync via content-addressed blobs, model updates via IPNS (`bios-models`) + Ed25519
+- All traffic Tor-routed on LETHE; HTTP fallback on stock Android. Go backend optional.
+
+**Remaining:** trained TFLite model (requires ML pipeline), Iroh/Willow for P2P delta sync
 
 ---
 
