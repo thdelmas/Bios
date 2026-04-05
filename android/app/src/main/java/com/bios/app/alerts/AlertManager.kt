@@ -10,7 +10,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.bios.app.R
+import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.DetectionLatencyTracker
+import com.bios.app.engine.PipelineStage
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 
@@ -19,7 +22,8 @@ import com.bios.app.model.Anomaly
  */
 class AlertManager(
     private val context: Context,
-    private val db: BiosDatabase
+    private val db: BiosDatabase,
+    private val latencyTracker: DetectionLatencyTracker? = null
 ) {
     private val anomalyDao = db.anomalyDao()
 
@@ -42,6 +46,7 @@ class AlertManager(
     suspend fun acknowledge(id: String) = anomalyDao.acknowledge(id)
 
     fun sendNotification(anomaly: Anomaly) {
+        val notificationStart = System.currentTimeMillis()
         val tier = AlertTier.fromLevel(anomaly.severity)
         if (tier < AlertTier.NOTICE) return  // only notify for Notice and above
 
@@ -58,17 +63,28 @@ class AlertManager(
             else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
         }
 
+        // Append regional disclaimer to explanation
+        val regionConfig = RegionConfigProvider.forCurrentLocale()
+        val fullExplanation = "${anomaly.explanation}\n\n${regionConfig.regulatory.alertDisclaimer}"
+
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(anomaly.title)
             .setContentText(anomaly.explanation.take(150))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(anomaly.explanation))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(fullExplanation))
             .setPriority(priority)
             .setAutoCancel(true)
             .build()
 
         NotificationManagerCompat.from(context)
             .notify(anomaly.id.hashCode(), notification)
+
+        // Track notification delivery latency
+        latencyTracker?.record(
+            PipelineStage.NOTIFICATION_DELIVERY,
+            System.currentTimeMillis() - notificationStart,
+            mapOf("tier" to tier.label, "pattern" to (anomaly.patternId ?: "unknown"))
+        )
 
         // Schedule a follow-up reminder in 24h to prompt journal entry
         FollowUpWorker.schedule(context, anomaly.id, anomaly.title)

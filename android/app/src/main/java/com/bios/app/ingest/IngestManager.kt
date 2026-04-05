@@ -1,6 +1,8 @@
 package com.bios.app.ingest
 
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.DetectionLatencyTracker
+import com.bios.app.engine.PipelineStage
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
@@ -29,7 +31,8 @@ class IngestManager(
     private val ouraAdapter: OuraApiAdapter? = null,
     private val phoneSensorAdapter: PhoneSensorAdapter? = null,
     private val gadgetbridgeAdapter: GadgetbridgeAdapter? = null,
-    private val directSensorAdapter: DirectSensorAdapter? = null
+    private val directSensorAdapter: DirectSensorAdapter? = null,
+    private val latencyTracker: DetectionLatencyTracker? = null
 ) {
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
@@ -113,30 +116,38 @@ class IngestManager(
         _isSyncing.value = true
 
         try {
-            val end = Instant.now()
-            val start = end.minus(24, ChronoUnit.HOURS)
+            val ingestBlock: suspend () -> Unit = {
+                val end = Instant.now()
+                val start = end.minus(24, ChronoUnit.HOURS)
 
-            val allReadings = mutableListOf<MetricReading>()
+                val allReadings = mutableListOf<MetricReading>()
 
-            // Health Connect (preferred)
-            healthConnectSourceId?.let { id ->
-                allReadings += healthConnect.fetchReadings(start, end, id)
+                // Health Connect (preferred)
+                healthConnectSourceId?.let { id ->
+                    allReadings += healthConnect.fetchReadings(start, end, id)
+                }
+
+                // Gadgetbridge (degoogled fallback)
+                allReadings += fetchGadgetbridgeReadings(start, end)
+
+                // Direct sensors (HR, HRV from hardware)
+                allReadings += fetchDirectSensorReadings()
+
+                // Oura API
+                allReadings += fetchOuraReadings(start, end)
+
+                // Phone sensors (last resort)
+                allReadings += fetchPhoneSensorReadings()
+
+                val deduped = deduplicate(allReadings)
+                readingDao.insertAll(deduped)
             }
 
-            // Gadgetbridge (degoogled fallback)
-            allReadings += fetchGadgetbridgeReadings(start, end)
-
-            // Direct sensors (HR, HRV from hardware)
-            allReadings += fetchDirectSensorReadings()
-
-            // Oura API
-            allReadings += fetchOuraReadings(start, end)
-
-            // Phone sensors (last resort)
-            allReadings += fetchPhoneSensorReadings()
-
-            val deduped = deduplicate(allReadings)
-            readingDao.insertAll(deduped)
+            if (latencyTracker != null) {
+                latencyTracker.track(PipelineStage.DATA_INGEST) { ingestBlock() }
+            } else {
+                ingestBlock()
+            }
 
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()

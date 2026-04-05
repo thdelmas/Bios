@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +22,8 @@ fun DiagnosticsScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
-    onNavigateToReference: () -> Unit = {}
+    onNavigateToReference: () -> Unit = {},
+    onNavigateToPipelineHealth: () -> Unit = {}
 ) {
     val results by viewModel.diagnosticResults.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -39,6 +41,9 @@ fun DiagnosticsScreen(
                 }
             },
             actions = {
+                IconButton(onClick = onNavigateToPipelineHealth) {
+                    Icon(Icons.Default.Speed, contentDescription = "Pipeline health")
+                }
                 IconButton(onClick = onNavigateToReference) {
                     Icon(Icons.Default.LibraryBooks, contentDescription = "Longevity reference")
                 }

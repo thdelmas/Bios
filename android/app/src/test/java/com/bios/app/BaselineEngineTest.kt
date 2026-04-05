@@ -19,15 +19,7 @@ class BaselineEngineTest {
             List::class.java
         ).also { it.isAccessible = true }
 
-    @Suppress("UNCHECKED_CAST")
     private fun computeTrend(dailyMeans: List<Double>): Pair<TrendDirection, Double> {
-        // computeTrend is an instance method; create a minimal instance with null db
-        // It doesn't use db, so we can bypass via reflection on the constructor
-        val constructor = BaselineEngine::class.java.getDeclaredConstructor(
-            com.bios.app.data.BiosDatabase::class.java
-        )
-        // We can't easily construct without a real db, so test the logic directly
-        // by extracting the algorithm inline
         return computeTrendAlgorithm(dailyMeans)
     }
 

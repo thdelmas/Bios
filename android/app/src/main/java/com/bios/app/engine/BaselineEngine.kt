@@ -8,7 +8,10 @@ import java.time.ZoneId
 /**
  * Computes personal baselines from historical metric readings using rolling statistics.
  */
-class BaselineEngine(private val db: BiosDatabase) {
+class BaselineEngine(
+    private val db: BiosDatabase,
+    private val latencyTracker: DetectionLatencyTracker? = null
+) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
@@ -22,20 +25,28 @@ class BaselineEngine(private val db: BiosDatabase) {
     // MARK: - Compute all baselines
 
     suspend fun computeAllBaselines() {
-        val metricsToBaseline = listOf(
-            MetricType.HEART_RATE,
-            MetricType.HEART_RATE_VARIABILITY,
-            MetricType.RESTING_HEART_RATE,
-            MetricType.BLOOD_OXYGEN,
-            MetricType.RESPIRATORY_RATE,
-            MetricType.SKIN_TEMPERATURE_DEVIATION,
-            MetricType.STEPS,
-            MetricType.ACTIVE_MINUTES,
-            MetricType.SLEEP_STAGE
-        )
+        val block: suspend () -> Unit = {
+            val metricsToBaseline = listOf(
+                MetricType.HEART_RATE,
+                MetricType.HEART_RATE_VARIABILITY,
+                MetricType.RESTING_HEART_RATE,
+                MetricType.BLOOD_OXYGEN,
+                MetricType.RESPIRATORY_RATE,
+                MetricType.SKIN_TEMPERATURE_DEVIATION,
+                MetricType.STEPS,
+                MetricType.ACTIVE_MINUTES,
+                MetricType.SLEEP_STAGE
+            )
 
-        for (metricType in metricsToBaseline) {
-            computeBaseline(metricType)
+            for (metricType in metricsToBaseline) {
+                computeBaseline(metricType)
+            }
+        }
+
+        if (latencyTracker != null) {
+            latencyTracker.track(PipelineStage.BASELINE_COMPUTATION) { block() }
+        } else {
+            block()
         }
     }
 

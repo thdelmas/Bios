@@ -16,7 +16,8 @@ import kotlin.math.min
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
-    private val mlModel: TFLiteAnomalyModel? = null
+    private val mlModel: TFLiteAnomalyModel? = null,
+    private val latencyTracker: DetectionLatencyTracker? = null
 ) {
 
     private val readingDao = db.metricReadingDao()
@@ -24,22 +25,49 @@ class AnomalyDetector(
     private val anomalyDao = db.anomalyDao()
 
     suspend fun runDetection(): List<Anomaly> {
+        val endToEndStart = System.currentTimeMillis()
         val newAnomalies = mutableListOf<Anomaly>()
 
         // Pattern-based detection (existing statistical approach)
-        for (pattern in ConditionPatterns.all) {
-            val anomaly = evaluatePattern(pattern)
-            if (anomaly != null) {
-                anomalyDao.insert(anomaly)
-                newAnomalies.add(anomaly)
+        val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) {
+            val results = mutableListOf<Anomaly>()
+            for (pattern in ConditionPatterns.all) {
+                val anomaly = evaluatePattern(pattern)
+                if (anomaly != null) {
+                    anomalyDao.insert(anomaly)
+                    results.add(anomaly)
+                }
             }
+            results
+        } ?: run {
+            val results = mutableListOf<Anomaly>()
+            for (pattern in ConditionPatterns.all) {
+                val anomaly = evaluatePattern(pattern)
+                if (anomaly != null) {
+                    anomalyDao.insert(anomaly)
+                    results.add(anomaly)
+                }
+            }
+            results
         }
+        newAnomalies.addAll(patternAnomalies)
 
         // ML-based holistic anomaly detection
-        val mlAnomaly = runMlDetection()
+        val mlAnomaly = latencyTracker?.track(PipelineStage.ML_INFERENCE) {
+            runMlDetection()
+        } ?: runMlDetection()
         if (mlAnomaly != null) {
             anomalyDao.insert(mlAnomaly)
             newAnomalies.add(mlAnomaly)
+        }
+
+        // Track end-to-end detection latency (notification delivery tracked separately)
+        if (newAnomalies.isNotEmpty()) {
+            latencyTracker?.record(
+                PipelineStage.END_TO_END,
+                System.currentTimeMillis() - endToEndStart,
+                mapOf("anomaly_count" to newAnomalies.size.toString())
+            )
         }
 
         return newAnomalies
