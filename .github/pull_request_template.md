@@ -9,6 +9,7 @@
 - [ ] Refactor (no behavior change)
 - [ ] Documentation
 - [ ] CI/build
+- [ ] This PR includes AI-generated code
 
 ## Checklist
 - [ ] Code compiles without errors
