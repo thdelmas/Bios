@@ -105,6 +105,10 @@ dependencies {
     // Ed25519 signature verification (model updates) — needed for API < 33
     implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 
+    // Iroh P2P sync (Willow protocol for delta sync between devices)
+    // TODO: Add iroh-ffi-android when published to Maven Central
+    // Track: https://github.com/n0-computer/iroh-ffi
+
     // Kotlinx
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

@@ -27,6 +27,9 @@ interface HealthEventDao {
     @Query("SELECT * FROM health_events WHERE status = :status ORDER BY createdAt DESC")
     suspend fun fetchByStatus(status: String): List<HealthEvent>
 
+    @Query("SELECT * FROM health_events WHERE createdAt > :sinceMillis ORDER BY createdAt ASC")
+    suspend fun fetchCreatedAfter(sinceMillis: Long): List<HealthEvent>
+
     @Query("SELECT * FROM health_events ORDER BY createdAt DESC")
     suspend fun fetchAll(): List<HealthEvent>
 

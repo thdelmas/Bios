@@ -15,6 +15,9 @@ interface PersonalBaselineDao {
     @Query("SELECT * FROM personal_baselines WHERE metricType = :metricType AND context = :context LIMIT 1")
     suspend fun fetch(metricType: String, context: String = "ALL"): PersonalBaseline?
 
+    @Query("SELECT * FROM personal_baselines WHERE computedAt > :sinceMillis ORDER BY computedAt ASC")
+    suspend fun fetchComputedAfter(sinceMillis: Long): List<PersonalBaseline>
+
     @Query("SELECT * FROM personal_baselines ORDER BY metricType")
     suspend fun fetchAll(): List<PersonalBaseline>
 

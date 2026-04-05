@@ -5,6 +5,9 @@ import android.util.Log
 import androidx.work.WorkManager
 import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.ingest.OuraTokenStore
+import com.bios.app.sync.p2p.IrohNode
+import com.bios.app.sync.p2p.P2PDiscovery
+import java.io.File
 
 /**
  * Irrecoverably destroys all Bios health data.
@@ -44,6 +47,9 @@ object DataDestroyer {
 
         // 0. Reproductive data first (highest priority — most dangerous if exposed)
         ReproductiveDatabase.destroy(context)
+
+        // 0.5. Destroy P2P sync identity, documents, and pairing data
+        destroyP2PData(context)
 
         // 1. Destroy encryption key (makes DB unreadable even if file survives)
         destroyEncryptionKey(context)
@@ -140,6 +146,26 @@ object DataDestroyer {
             Log.d(TAG, "Notifications cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear notifications", e)
+        }
+    }
+
+    private fun destroyP2PData(context: Context) {
+        try {
+            // Destroy Iroh node data directory (identity, documents, blobs)
+            val irohDir = File(context.filesDir, "iroh")
+            irohDir.deleteRecursively()
+
+            // Clear P2P sync timestamps and pairing data
+            context.getSharedPreferences("bios_p2p_sync", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("bios_p2p_devices", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("bios_p2p_settings", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+
+            Log.d(TAG, "P2P sync data destroyed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to destroy P2P data", e)
         }
     }
 

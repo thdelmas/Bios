@@ -8,6 +8,8 @@ import com.bios.app.model.HealthEvent
 import com.bios.app.model.MetricReading
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.platform.IpfsClient
+import com.bios.app.sync.p2p.P2PDiscovery
+import com.bios.app.sync.p2p.WillowSyncAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -46,6 +48,20 @@ class SyncManager(
 
     private var syncKey: ByteArray? = null
 
+    /** Iroh/Willow P2P adapter — set via initializeP2P() when Iroh is available. */
+    private var willowAdapter: WillowSyncAdapter? = null
+    private var p2pDiscovery: P2PDiscovery? = null
+
+    /**
+     * Initialize P2P sync with an active Iroh node.
+     * Called from BiosApplication after the Iroh node starts.
+     */
+    fun initializeP2P(adapter: WillowSyncAdapter, discovery: P2PDiscovery) {
+        willowAdapter = adapter
+        p2pDiscovery = discovery
+        Log.i(TAG, "P2P sync initialized")
+    }
+
     /**
      * Initialize sync with a passkey. Derives the encryption key locally.
      * The passkey and derived key never leave the device.
@@ -71,6 +87,21 @@ class SyncManager(
         val key = syncKey ?: throw IllegalStateException("Sync not initialized")
 
         withContext(Dispatchers.IO) {
+            // Priority 1: Iroh P2P delta sync (direct between devices)
+            val pairedDevices = p2pDiscovery?.getPairedDevices() ?: emptyList()
+            if (willowAdapter != null && pairedDevices.isNotEmpty()) {
+                try {
+                    for (device in pairedDevices) {
+                        willowAdapter!!.syncAll(device.documentId, key)
+                    }
+                    Log.i(TAG, "P2P sync push complete (${pairedDevices.size} peers)")
+                    return@withContext
+                } catch (e: Exception) {
+                    Log.w(TAG, "P2P sync failed, falling back to IPFS/HTTP", e)
+                }
+            }
+
+            // Priority 2: IPFS (LETHE) or Priority 3: HTTP (fallback)
             val blobTypes = listOf(
                 BlobType.READINGS to serializeReadings(),
                 BlobType.BASELINES to serializeBaselines(),
@@ -117,6 +148,21 @@ class SyncManager(
         val key = syncKey ?: throw IllegalStateException("Sync not initialized")
 
         withContext(Dispatchers.IO) {
+            // Priority 1: Iroh P2P delta sync
+            val pairedDevices = p2pDiscovery?.getPairedDevices() ?: emptyList()
+            if (willowAdapter != null && pairedDevices.isNotEmpty()) {
+                try {
+                    for (device in pairedDevices) {
+                        willowAdapter!!.syncAll(device.documentId, key)
+                    }
+                    Log.i(TAG, "P2P sync pull complete (${pairedDevices.size} peers)")
+                    return@withContext
+                } catch (e: Exception) {
+                    Log.w(TAG, "P2P sync failed, falling back to IPFS/HTTP", e)
+                }
+            }
+
+            // Priority 2: IPFS, Priority 3: HTTP
             if (ipfs.isAvailable()) {
                 val msg = ipfs.pubsubNext(SYNC_TOPIC)
                 if (msg != null) {

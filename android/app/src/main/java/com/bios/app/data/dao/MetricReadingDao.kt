@@ -68,6 +68,9 @@ interface MetricReadingDao {
     @Query("SELECT MIN(timestamp) FROM metric_readings")
     suspend fun oldestTimestamp(): Long?
 
+    @Query("SELECT * FROM metric_readings WHERE createdAt > :sinceMillis ORDER BY createdAt ASC")
+    suspend fun fetchCreatedAfter(sinceMillis: Long): List<MetricReading>
+
     @Query("DELETE FROM metric_readings WHERE timestamp < :beforeMillis")
     suspend fun deleteBefore(beforeMillis: Long): Int
 
