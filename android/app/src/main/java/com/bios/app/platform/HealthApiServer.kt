@@ -60,9 +60,28 @@ class HealthApiServer(
                         try {
                             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                             val requestLine = reader.readLine() ?: return@launch
-                            val path = requestLine.split(" ").getOrNull(1) ?: return@launch
+                            val parts = requestLine.split(" ")
+                            val method = parts.getOrNull(0) ?: return@launch
+                            val path = parts.getOrNull(1) ?: return@launch
 
-                            val response = handleRequest(path)
+                            // Read headers to get Content-Length for POST body
+                            var contentLength = 0
+                            var line = reader.readLine()
+                            while (!line.isNullOrBlank()) {
+                                if (line.startsWith("Content-Length:", ignoreCase = true)) {
+                                    contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
+                                }
+                                line = reader.readLine()
+                            }
+
+                            // Read POST body if present
+                            pendingPostBody = if (contentLength > 0 && method == "POST") {
+                                val body = CharArray(contentLength)
+                                reader.read(body, 0, contentLength)
+                                String(body)
+                            } else null
+
+                            val response = handleRequest(path, method)
 
                             val writer = PrintWriter(socket.getOutputStream(), true)
                             writer.print("HTTP/1.1 200 OK\r\n")
@@ -94,12 +113,17 @@ class HealthApiServer(
         Log.i(TAG, "Health API server stopped")
     }
 
-    private suspend fun handleRequest(path: String): String {
+    private var pendingPostBody: String? = null
+
+    private suspend fun handleRequest(path: String, method: String): String {
         return when {
-            path == "/health/status" -> handleStatus()
-            path == "/health/summary" -> handleSummary()
-            path == "/health/alerts" -> handleAlerts()
-            path.startsWith("/health/baseline/") -> {
+            path == "/health/status" && method == "GET" -> handleStatus()
+            path == "/health/summary" && method == "GET" -> handleSummary()
+            path == "/health/alerts" && method == "GET" -> handleAlerts()
+            path == "/health/acknowledge" && method == "POST" -> {
+                handleAcknowledge(pendingPostBody ?: "")
+            }
+            path.startsWith("/health/baseline/") && method == "GET" -> {
                 val type = path.removePrefix("/health/baseline/")
                 handleBaseline(type)
             }
@@ -198,6 +222,23 @@ class HealthApiServer(
             put("trendSlope", baseline.trendSlope)
             put("windowDays", baseline.windowDays)
             put("computedAt", baseline.computedAt)
+        }.toString()
+    }
+
+    private suspend fun handleAcknowledge(body: String): String {
+        val json = try {
+            JSONObject(body)
+        } catch (_: Exception) {
+            return JSONObject().put("error", "invalid JSON body").toString()
+        }
+        val alertId = json.optString("id", "")
+        if (alertId.isBlank()) {
+            return JSONObject().put("error", "id is required").toString()
+        }
+        db.anomalyDao().acknowledge(alertId)
+        return JSONObject().apply {
+            put("status", "acknowledged")
+            put("id", alertId)
         }.toString()
     }
 

@@ -7,6 +7,12 @@ import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
 import com.bios.app.platform.DataDestroyer
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 /**
  * Real LETHE integration for the embedded flavor.
@@ -20,6 +26,10 @@ import com.bios.app.platform.DataDestroyer
 class LetheCompatImpl(private val appContext: Context) : LetheCompat {
 
     private var wipeReceiver: BroadcastReceiver? = null
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.SECONDS)
+        .build()
 
     override fun registerWipeReceivers(context: Context) {
         if (wipeReceiver != null) return
@@ -56,9 +66,23 @@ class LetheCompatImpl(private val appContext: Context) : LetheCompat {
     }
 
     override suspend fun notifyHealthStatusChanged(status: HealthStatus) {
-        // TODO: Send status to LETHE agent via localhost:8080/health/status
-        // Phase 2.1 — Local health API implementation
         Log.d(TAG, "Health status changed: ${status.overallState} (${status.activeAlertCount} alerts)")
+        // Notify the LETHE agent via its IPC endpoint so it can refresh launcher cards
+        try {
+            val body = JSONObject().apply {
+                put("state", status.overallState.name.lowercase())
+                put("active_alerts", status.activeAlertCount)
+                put("summary", status.summaryText)
+            }.toString()
+            val request = Request.Builder()
+                .url("$AGENT_BASE_URL/bios/status")
+                .post(body.toRequestBody("application/json".toMediaType()))
+                .build()
+            httpClient.newCall(request).execute().close()
+        } catch (e: Exception) {
+            // Agent may not be running — this is expected on first boot or during OTA
+            Log.d(TAG, "Could not notify LETHE agent: ${e.message}")
+        }
     }
 
     override fun isRebootSafe(): Boolean {
@@ -93,6 +117,7 @@ class LetheCompatImpl(private val appContext: Context) : LetheCompat {
 
     companion object {
         private const val TAG = "BiosLetheCompat"
+        private const val AGENT_BASE_URL = "http://127.0.0.1:8081"
 
         const val ACTION_BURNER_WIPE = "lethe.intent.action.BURNER_WIPE"
         const val ACTION_DMS_WIPE = "lethe.intent.action.DMS_WIPE"
