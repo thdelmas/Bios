@@ -102,6 +102,9 @@ dependencies {
     implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
 
+    // Ed25519 signature verification (model updates) — needed for API < 33
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
+
     // Kotlinx
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

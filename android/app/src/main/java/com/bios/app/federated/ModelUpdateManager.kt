@@ -1,8 +1,11 @@
 package com.bios.app.federated
 
 import android.content.Context
+import android.util.Base64
 import android.util.Log
 import com.bios.app.platform.PlatformDetector
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+import org.bouncycastle.crypto.signers.Ed25519Signer
 import java.io.File
 
 /**
@@ -74,10 +77,17 @@ class ModelUpdateManager(private val context: Context) {
      * The signing public key is bundled in the app.
      */
     private fun verifySignature(data: ByteArray, signature: ByteArray): Boolean {
-        // TODO: Implement Ed25519 verification with bundled public key
-        // For now, accept all — production must verify
-        Log.w(TAG, "Model signature verification not yet implemented — accepting provisionally")
-        return true
+        return try {
+            val pubKeyBytes = Base64.decode(SIGNING_PUBLIC_KEY_B64, Base64.NO_WRAP)
+            val pubKey = Ed25519PublicKeyParameters(pubKeyBytes, 0)
+            val verifier = Ed25519Signer()
+            verifier.init(false, pubKey)
+            verifier.update(data, 0, data.size)
+            verifier.verifySignature(signature)
+        } catch (e: Exception) {
+            Log.e(TAG, "Signature verification error", e)
+            false
+        }
     }
 
     companion object {
@@ -85,5 +95,10 @@ class ModelUpdateManager(private val context: Context) {
         const val MODEL_FILENAME = "anomaly_detector.tflite"
         const val VERSION_FILENAME = "model_version.txt"
         const val BUNDLED_MODEL_VERSION = 1
+
+        // Ed25519 public key for model signature verification.
+        // Private key stored offline — never committed to source control.
+        // Replace with production key before release.
+        private const val SIGNING_PUBLIC_KEY_B64 = "a19PcWyAr5fWucpCaBLCQGpAlWKOmnAqOhPxcTHzbD4="
     }
 }
