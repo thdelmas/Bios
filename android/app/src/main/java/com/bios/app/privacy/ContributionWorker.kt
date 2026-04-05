@@ -35,9 +35,8 @@ class ContributionWorker(
             )
 
             if (contribution != null) {
-                // TODO: Transmit to server via TLS 1.3
-                // The contribution contains NO identifiers, NO raw data, NO timestamps.
-                // CommunityApiClient.submit(contribution)
+                val apiClient = CommunityApiClient(applicationContext)
+                apiClient.submit(contribution)
             }
 
             // Schedule next contribution at a random delay
