@@ -51,13 +51,24 @@
 - Model version management
 - Account deletion (immediate, irreversible)
 
-**UI:** 11 Compose screens, onboarding, privacy dashboard, longevity reference view, diagnostics with condition details
+**UI:** 13 Compose screens, onboarding, privacy dashboard, longevity reference view, diagnostics with condition details, professional review flow, pipeline health dashboard
 
 **Decentralized architecture (LETHE IPFS stack):**
 - Community contributions via IPFS PubSub (`bios-community`), population signals via IPNS (`bios-signals`), sync via content-addressed blobs, model updates via IPNS (`bios-models`) + Ed25519
 - All traffic Tor-routed on LETHE; HTTP fallback on stock Android. Go backend optional.
 
-**Remaining:** trained TFLite model (requires ML pipeline), Iroh/Willow for P2P delta sync
+**Localization & governance:**
+- Config-driven localization: 6 regions (US, GB, EU, CA, AU, JP) with locale-aware units, clinical thresholds, regulatory disclaimers
+- Async-first governance model (GOVERNANCE.md)
+- Doctor-in-the-loop professional review: owner-controlled sharing via 6 methods (FHIR, encrypted export, QR, verbal, telemedicine, screenshot)
+- Detection latency SLO tracking: 7 pipeline stages instrumented with p50/p90/p99 percentiles and violation logging
+
+**P2P sync (Iroh/Willow):**
+- Embedded Iroh node with Ed25519 identity, Willow protocol delta sync (encrypted per-entity)
+- Ticket-based device pairing, mDNS/DNS-SD discovery + Iroh relay for NAT traversal
+- Transport priority: Iroh P2P > IPFS (LETHE) > HTTP (fallback). Emergency wipe destroys all P2P state
+
+**Remaining:** trained TFLite model (requires ML pipeline)
 
 ---
 
@@ -461,29 +472,19 @@ For owners with multiple devices (phone + tablet, or migrating to a new phone):
 
 ## Phase 5: Ecosystem — Bios beyond a single device [COMPLETE]
 
-### 5.1 OTA coordination with LETHE
-- LETHE's `lethe-ota-update.sh` queries Bios before rebooting
-- Bios responds: "safe to reboot" / "delay — active sleep tracking" / "delay — elevated monitoring"
-- Owner can override: "reboot now anyway"
-- Post-OTA: Bios verifies database integrity and re-schedules workers
+- **5.1 OTA coordination with LETHE** — LETHE queries Bios before rebooting; Bios delays if active sleep tracking or elevated monitoring.
+- **5.2 Anonymized population health signals** — Aggregate Community tier data into regional signals. No server knows the owner's location.
+- **5.3 Research pipeline (opt-in)** — Formal consent, full de-identification (k-anonymity, l-diversity) on-device. Separate from Community contributions.
+- **5.4 Backend services (Go + PostgreSQL)** — Sync gateway, model updates, aggregate insights API, self-hostable Docker. Zero-knowledge: server never holds encryption keys or plaintext data.
 
-### 5.2 Anonymized population health signals
-- Aggregate Community tier contributions into regional health signals
-- Surface on-device: "Respiratory illness activity elevated in your area" (no server knows the owner's location — signal is derived from anonymized aggregate patterns)
-- Owner can disable population signals independently of their Community tier choice
+---
 
-### 5.3 Research pipeline (opt-in)
-- Formal opt-in flow with informed consent
-- Full de-identification (k-anonymity, l-diversity) on-device before transmission
-- Owner can review exactly what will be shared, withdraw at any time
-- Research contributions are distinct from Community contributions — separate consent, separate toggle
+## Phase 6: Scale — Config-driven localization, professional review, latency SLOs [COMPLETE]
 
-### 5.4 Backend services (Go + PostgreSQL)
-- Sync gateway for E2E encrypted multi-device sync
-- Model update service for OTA TFLite models and federated gradients
-- Aggregate insights API for population health signals
-- Deployable as self-hosted Docker container or managed service
-- Zero-knowledge: server never holds encryption keys or plaintext health data
+- **6.1 Config-driven localization** — New locale = new config file, not new code paths. 6 regions (US, GB, EU, CA, AU, JP) with locale-aware units, clinical thresholds, and regulatory disclaimers. Internal storage remains SI/metric; conversion is display-only.
+- **6.2 Async-first governance** — Written decision culture via `GOVERNANCE.md`. All decisions in GitHub issues with rationale and preserved dissent. 48-hour maintainer response SLO.
+- **6.3 Doctor-in-the-loop professional review** — Owner-initiated pathway to share anomaly data with a professional via 6 methods. Unlike Alan's cloud model, Bios never sends anything — the owner is always the intermediary.
+- **6.4 Detection latency SLO** — 7 pipeline stages instrumented with p50/p90/p99 percentiles and SLO violation logging. End-to-end target: anomaly-to-notification within 6 minutes.
 
 ---
 
