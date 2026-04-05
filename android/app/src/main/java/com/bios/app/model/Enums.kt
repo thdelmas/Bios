@@ -76,6 +76,7 @@ enum class SourceType(val key: String) {
     GARMIN_API("garmin_api"),
     WITHINGS_API("withings_api"),
     DEXCOM_API("dexcom_api"),
+    POLAR_API("polar_api"),
     PHONE_SENSOR("phone_sensor")
 }
 
