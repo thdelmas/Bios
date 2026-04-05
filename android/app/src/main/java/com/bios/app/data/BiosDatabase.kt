@@ -18,9 +18,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ComputedAggregate::class,
         Anomaly::class,
         HealthEvent::class,
-        ActionItem::class
+        ActionItem::class,
+        UserFeedback::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -32,6 +33,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun anomalyDao(): AnomalyDao
     abstract fun healthEventDao(): HealthEventDao
     abstract fun actionItemDao(): ActionItemDao
+    abstract fun userFeedbackDao(): UserFeedbackDao
 
     companion object {
         @Volatile
@@ -54,7 +56,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
 
@@ -124,6 +126,23 @@ abstract class BiosDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_action_items_healthEventId ON action_items(healthEventId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_action_items_completed ON action_items(completed)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_action_items_dueAt ON action_items(dueAt)")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS user_feedback (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        surface TEXT NOT NULL,
+                        surfaceItemId TEXT,
+                        rating INTEGER NOT NULL,
+                        comment TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_user_feedback_surface ON user_feedback(surface)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_user_feedback_createdAt ON user_feedback(createdAt)")
             }
         }
 

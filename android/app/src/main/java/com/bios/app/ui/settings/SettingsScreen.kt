@@ -285,12 +285,47 @@ fun SettingsScreen(viewModel: AppViewModel, onNavigateToPrivacy: () -> Unit = {}
             }
         }
 
+        // Feedback & Community
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Feedback", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Help improve Bios by reporting detection accuracy, requesting features, or flagging issues.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://github.com/thdelmas/Bios/discussions"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Open GitHub Discussions")
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://github.com/thdelmas/Bios/issues/new"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Report an Issue")
+                }
+            }
+        }
+
         // About
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("About", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
-                SettingsRow("Version", "0.1.0 (Prototype)")
+                SettingsRow("Version", "0.2.0")
             }
         }
     }

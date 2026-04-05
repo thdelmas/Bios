@@ -351,6 +351,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // MARK: - Feedback
+
+    fun submitFeedback(feedback: com.bios.app.model.UserFeedback) {
+        viewModelScope.launch {
+            db.userFeedbackDao().insert(feedback)
+        }
+    }
+
     companion object {
         private const val SYNC_TIMEOUT_MS = 120_000L // 2 minutes
     }
