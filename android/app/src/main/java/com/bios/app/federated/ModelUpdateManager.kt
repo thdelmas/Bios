@@ -3,9 +3,12 @@ package com.bios.app.federated
 import android.content.Context
 import android.util.Base64
 import android.util.Log
+import com.bios.app.platform.IpfsClient
 import com.bios.app.platform.PlatformDetector
+import kotlinx.coroutines.runBlocking
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import org.bouncycastle.crypto.signers.Ed25519Signer
+import org.json.JSONObject
 import java.io.File
 
 /**
@@ -66,6 +69,42 @@ class ModelUpdateManager(private val context: Context) {
         return true
     }
 
+    /**
+     * Check for model updates via IPFS/IPNS.
+     *
+     * On LETHE: resolves the `bios-models` IPNS name to find the latest
+     * model manifest, downloads the model by CID, verifies Ed25519 signature.
+     * All traffic Tor-routed by the IPFS daemon.
+     *
+     * @return true if a new model was installed
+     */
+    fun checkForUpdate(): Boolean {
+        val ipfs = IpfsClient()
+        return runBlocking {
+            if (!ipfs.isAvailable()) return@runBlocking false
+
+            try {
+                val cid = ipfs.nameResolve(IPNS_CHANNEL) ?: return@runBlocking false
+                val manifestBytes = ipfs.cat(cid) ?: return@runBlocking false
+                val manifest = JSONObject(String(manifestBytes, Charsets.UTF_8))
+
+                val version = manifest.getInt("version")
+                if (version <= currentVersion()) return@runBlocking false
+
+                val modelCid = manifest.getString("model_cid")
+                val sigB64 = manifest.getString("signature")
+
+                val modelBytes = ipfs.cat(modelCid) ?: return@runBlocking false
+                val signature = Base64.decode(sigB64, Base64.NO_WRAP)
+
+                installModel(modelBytes, version, signature)
+            } catch (e: Exception) {
+                Log.w(TAG, "IPNS model check failed: ${e.message}")
+                false
+            }
+        }
+    }
+
     fun currentVersion(): Int {
         val versionFile = File(modelsDir, VERSION_FILENAME)
         if (!versionFile.exists()) return BUNDLED_MODEL_VERSION
@@ -95,6 +134,9 @@ class ModelUpdateManager(private val context: Context) {
         const val MODEL_FILENAME = "anomaly_detector.tflite"
         const val VERSION_FILENAME = "model_version.txt"
         const val BUNDLED_MODEL_VERSION = 1
+
+        // IPNS channel for model updates (resolved via local IPFS daemon)
+        const val IPNS_CHANNEL = "bios-models"
 
         // Ed25519 public key for model signature verification.
         // Private key stored offline — never committed to source control.

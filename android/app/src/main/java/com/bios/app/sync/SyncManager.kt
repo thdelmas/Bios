@@ -7,6 +7,7 @@ import com.bios.app.model.Anomaly
 import com.bios.app.model.HealthEvent
 import com.bios.app.model.MetricReading
 import com.bios.app.model.PersonalBaseline
+import com.bios.app.platform.IpfsClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,7 +37,9 @@ class SyncManager(
     private val context: Context,
     private val db: BiosDatabase
 ) {
-    private val client = OkHttpClient.Builder()
+    private val ipfs = IpfsClient()
+
+    private val httpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
@@ -58,14 +61,16 @@ class SyncManager(
     val isInitialized: Boolean get() = syncKey != null
 
     /**
-     * Push local data to the sync server as encrypted blobs.
-     * The server sees only opaque ciphertext + account ID for routing.
+     * Push local data as encrypted blobs.
+     *
+     * On LETHE (with IPFS): each blob is added to IPFS and its CID stored
+     * in a manifest published to PubSub. No server involved.
+     * On stock Android: falls back to HTTP PUT to a sync server.
      */
     suspend fun push(serverUrl: String, accountId: String) {
         val key = syncKey ?: throw IllegalStateException("Sync not initialized")
 
         withContext(Dispatchers.IO) {
-            // Serialize and encrypt each data type
             val blobTypes = listOf(
                 BlobType.READINGS to serializeReadings(),
                 BlobType.BASELINES to serializeBaselines(),
@@ -73,40 +78,80 @@ class SyncManager(
                 BlobType.HEALTH_EVENTS to serializeHealthEvents()
             )
 
-            for ((type, data) in blobTypes) {
-                if (data.isEmpty()) continue
-
-                val encrypted = SyncProtocol.encryptBlob(data, key, type)
-                uploadBlob(serverUrl, accountId, type, encrypted)
+            if (ipfs.isAvailable()) {
+                val manifest = JSONObject()
+                for ((type, data) in blobTypes) {
+                    if (data.isEmpty()) continue
+                    val encrypted = SyncProtocol.encryptBlob(data, key, type)
+                    val cid = ipfs.add(encrypted)
+                    if (cid != null) manifest.put(type.name.lowercase(), cid)
+                }
+                // Publish manifest so other devices can discover the CIDs
+                val msg = JSONObject().apply {
+                    put("v", 1)
+                    put("account", accountId)
+                    put("blobs", manifest)
+                    put("ts", System.currentTimeMillis())
+                }
+                ipfs.pubsubPublish(SYNC_TOPIC, msg.toString().toByteArray(Charsets.UTF_8))
+                Log.i(TAG, "IPFS sync push: ${manifest.length()} blobs published")
+            } else {
+                for ((type, data) in blobTypes) {
+                    if (data.isEmpty()) continue
+                    val encrypted = SyncProtocol.encryptBlob(data, key, type)
+                    uploadBlob(serverUrl, accountId, type, encrypted)
+                }
+                Log.i(TAG, "HTTP sync push complete")
             }
-
-            Log.i(TAG, "Sync push complete (${blobTypes.size} blob types)")
         }
     }
 
     /**
-     * Pull and decrypt blobs from the sync server.
+     * Pull and decrypt blobs.
+     *
+     * On LETHE (with IPFS): listens for a sync manifest on PubSub,
+     * then fetches each blob by CID. Content-addressed = tamper-proof.
+     * On stock Android: falls back to HTTP GET from server.
      */
     suspend fun pull(serverUrl: String, accountId: String) {
         val key = syncKey ?: throw IllegalStateException("Sync not initialized")
 
         withContext(Dispatchers.IO) {
-            for (type in BlobType.entries) {
-                if (type == BlobType.REPRODUCTIVE) continue // Separately gated
-
-                val encrypted = downloadBlob(serverUrl, accountId, type) ?: continue
-                val decrypted = SyncProtocol.decryptBlob(encrypted, key)
-
-                when (decrypted.type) {
-                    BlobType.READINGS -> importReadings(decrypted.data)
-                    BlobType.BASELINES -> importBaselines(decrypted.data)
-                    BlobType.ANOMALIES -> importAnomalies(decrypted.data)
-                    BlobType.HEALTH_EVENTS -> importHealthEvents(decrypted.data)
-                    else -> Log.d(TAG, "Skipping blob type: ${decrypted.type}")
+            if (ipfs.isAvailable()) {
+                val msg = ipfs.pubsubNext(SYNC_TOPIC)
+                if (msg != null) {
+                    val manifest = JSONObject(String(msg, Charsets.UTF_8))
+                    if (manifest.optString("account") != accountId) return@withContext
+                    val blobs = manifest.optJSONObject("blobs") ?: return@withContext
+                    for (type in BlobType.entries) {
+                        if (type == BlobType.REPRODUCTIVE) continue
+                        val cid = blobs.optString(type.name.lowercase(), "")
+                        if (cid.isBlank()) continue
+                        val encrypted = ipfs.cat(cid) ?: continue
+                        val decrypted = SyncProtocol.decryptBlob(encrypted, key)
+                        importDecrypted(decrypted)
+                    }
                 }
+                Log.i(TAG, "IPFS sync pull complete")
+            } else {
+                for (type in BlobType.entries) {
+                    if (type == BlobType.REPRODUCTIVE) continue
+                    val encrypted = downloadBlob(serverUrl, accountId, type) ?: continue
+                    val decrypted = SyncProtocol.decryptBlob(encrypted, key)
+                    importDecrypted(decrypted)
+                }
+                Log.i(TAG, "HTTP sync pull complete")
             }
+        }
+    }
 
-            Log.i(TAG, "Sync pull complete")
+    private suspend fun importDecrypted(decrypted: DecryptedBlob) {
+        when (decrypted.type) {
+            BlobType.READINGS -> importReadings(decrypted.data)
+            BlobType.BASELINES -> importBaselines(decrypted.data)
+            BlobType.ANOMALIES -> importAnomalies(decrypted.data)
+            BlobType.HEALTH_EVENTS -> importHealthEvents(decrypted.data)
+            else -> Log.d(TAG, "Skipping blob type: ${decrypted.type}")
         }
     }
 
@@ -302,7 +347,7 @@ class SyncManager(
             .put(data.toRequestBody("application/octet-stream".toMediaType()))
             .build()
 
-        val response = client.newCall(request).execute()
+        val response = httpClient.newCall(request).execute()
         if (!response.isSuccessful) {
             Log.w(TAG, "Upload failed for ${type.name}: ${response.code}")
         }
@@ -316,12 +361,13 @@ class SyncManager(
             .get()
             .build()
 
-        val response = client.newCall(request).execute()
+        val response = httpClient.newCall(request).execute()
         if (!response.isSuccessful) return null
         return response.body?.bytes()
     }
 
     companion object {
         private const val TAG = "BiosSyncManager"
+        const val SYNC_TOPIC = "bios-sync"
     }
 }
