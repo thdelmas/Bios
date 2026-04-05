@@ -45,15 +45,16 @@ class BiosApplication : Application() {
 
         // Initialize Iroh P2P node (non-blocking — starts in background)
         irohNode = IrohNode(this)
-        applicationScope.launch(Dispatchers.IO) {
-            irohNode.start()
+        if (irohNode.isAvailable) {
+            applicationScope.launch(Dispatchers.IO) {
+                irohNode.start()
+            }
+            // Schedule periodic P2P sync via Iroh/Willow
+            P2PSyncWorker.enqueuePeriodicSync(this)
         }
 
         // Schedule periodic health data sync (HTTP/IPFS)
         SyncWorker.enqueuePeriodicSync(this)
-
-        // Schedule periodic P2P sync via Iroh/Willow
-        P2PSyncWorker.enqueuePeriodicSync(this)
 
         // Schedule daily digest notification (8 AM, user can disable in settings)
         if (DailyDigestWorker.isEnabled(this)) {

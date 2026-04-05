@@ -44,8 +44,13 @@ class P2PDiscovery(
     /**
      * Create a shared document and generate a pairing ticket.
      * The owner transfers this ticket to their other device.
+     * Returns null if P2P runtime is not available (Iroh FFI not yet shipped).
      */
     suspend fun generatePairingTicket(deviceName: String): PairingResult? {
+        if (!irohNode.isAvailable) {
+            Log.w(TAG, "P2P sync not yet available — Iroh FFI dependency pending")
+            return null
+        }
         val documentId = irohNode.createDocument() ?: return null
         val ticket = irohNode.generateShareTicket(documentId) ?: return null
 
@@ -64,8 +69,13 @@ class P2PDiscovery(
     /**
      * Accept a pairing ticket from another device.
      * Joins the shared Willow namespace.
+     * Returns null if P2P runtime is not available (Iroh FFI not yet shipped).
      */
     suspend fun acceptPairing(ticket: String, deviceName: String): PairedDevice? {
+        if (!irohNode.isAvailable) {
+            Log.w(TAG, "P2P sync not yet available — Iroh FFI dependency pending")
+            return null
+        }
         val documentId = irohNode.joinDocument(ticket) ?: return null
 
         val device = PairedDevice(

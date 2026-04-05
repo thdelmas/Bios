@@ -39,6 +39,11 @@ class P2PSyncWorker(
         val syncKey = SyncProtocol.deriveSyncKey(passkey.toByteArray(Charsets.UTF_8), salt)
 
         val irohNode = IrohNode(context)
+        if (!irohNode.isAvailable) {
+            Log.d(TAG, "P2P sync not yet available — Iroh FFI dependency pending")
+            return Result.success()
+        }
+
         val db = BiosDatabase.getInstance(context)
         val adapter = WillowSyncAdapter(context, db, irohNode)
         val discovery = P2PDiscovery(context, irohNode)

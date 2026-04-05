@@ -31,6 +31,9 @@ class IrohNode(private val context: Context) {
 
     val isRunning: Boolean get() = running
 
+    /** True when backed by a real Iroh FFI runtime; false while stubbed. */
+    val isAvailable: Boolean get() = false
+
     /**
      * Start the embedded Iroh node.
      * Creates the data directory and generates a new identity if none exists.
