@@ -19,9 +19,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         Anomaly::class,
         HealthEvent::class,
         ActionItem::class,
-        UserFeedback::class
+        UserFeedback::class,
+        ProfessionalReview::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -34,6 +35,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun healthEventDao(): HealthEventDao
     abstract fun actionItemDao(): ActionItemDao
     abstract fun userFeedbackDao(): UserFeedbackDao
+    abstract fun professionalReviewDao(): ProfessionalReviewDao
 
     companion object {
         @Volatile
@@ -56,7 +58,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         }
 
@@ -143,6 +145,33 @@ abstract class BiosDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_user_feedback_surface ON user_feedback(surface)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_user_feedback_createdAt ON user_feedback(createdAt)")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS professional_reviews (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        anomalyId TEXT NOT NULL,
+                        requestedAt INTEGER NOT NULL,
+                        status INTEGER NOT NULL,
+                        shareMethod TEXT,
+                        sharedMetrics TEXT,
+                        sharedWindowDays INTEGER,
+                        sharedExplanation INTEGER NOT NULL,
+                        sharedBaselines INTEGER NOT NULL,
+                        respondedAt INTEGER,
+                        professionalNotes TEXT,
+                        clinicallyRelevant INTEGER,
+                        recommendation TEXT,
+                        ownerFoundHelpful INTEGER,
+                        FOREIGN KEY (anomalyId) REFERENCES anomalies(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_anomalyId ON professional_reviews(anomalyId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_status ON professional_reviews(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_requestedAt ON professional_reviews(requestedAt)")
             }
         }
 

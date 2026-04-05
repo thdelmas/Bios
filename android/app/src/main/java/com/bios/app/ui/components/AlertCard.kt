@@ -31,7 +31,8 @@ data class FeedbackInput(
 fun AlertCard(
     anomaly: Anomaly,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit = {}
+    onSaveFeedback: (FeedbackInput) -> Unit = {},
+    onRequestReview: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showFeedback by remember { mutableStateOf(false) }
@@ -112,6 +113,16 @@ fun AlertCard(
                             )
                         ) {
                             Text("Acknowledge")
+                        }
+                    }
+
+                    // Professional review (Advisory and Urgent only)
+                    if (onRequestReview != null && tier >= AlertTier.ADVISORY) {
+                        OutlinedButton(
+                            onClick = onRequestReview,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Get professional eyes on this")
                         }
                     }
 

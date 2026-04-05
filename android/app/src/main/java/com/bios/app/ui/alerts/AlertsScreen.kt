@@ -16,7 +16,10 @@ import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
 
 @Composable
-fun AlertsScreen(viewModel: AppViewModel) {
+fun AlertsScreen(
+    viewModel: AppViewModel,
+    onNavigateToReview: (String) -> Unit = {}
+) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val recent by viewModel.recentAlerts.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -86,7 +89,8 @@ fun AlertsScreen(viewModel: AppViewModel) {
                                 notes = input.notes,
                                 outcomeAccurate = input.outcomeAccurate
                             )
-                        }
+                        },
+                        onRequestReview = { onNavigateToReview(anomaly.id) }
                     )
                 }
             }
@@ -114,7 +118,8 @@ fun AlertsScreen(viewModel: AppViewModel) {
                                 notes = input.notes,
                                 outcomeAccurate = input.outcomeAccurate
                             )
-                        }
+                        },
+                        onRequestReview = { onNavigateToReview(anomaly.id) }
                     )
                 }
             }
