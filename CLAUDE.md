@@ -34,9 +34,9 @@ Bios shares LETHE's protection philosophy:
 - Build flavors: `lethe` (embedded, system app) and `standalone` (portable APK)
 
 ## Architecture
-- See ARCHITECTURE.md for system diagrams
-- See DATA_MODEL.md for unified metric schema
-- See PRIVACY_ARCHITECTURE.md for privacy/encryption details
+- See docs/ARCHITECTURE.md for system diagrams
+- See docs/DATA_MODEL.md for unified metric schema
+- See docs/PRIVACY_ARCHITECTURE.md for privacy/encryption details
 - See docs/ROADMAP.md for the owner-protection roadmap (Phases 1-5 complete)
 
 ## Code Conventions
