@@ -9,7 +9,7 @@
 ## Current State (v0.2.0)
 
 **Core health pipeline:**
-- Health data ingest: 9 adapters (Health Connect, Gadgetbridge, Direct Sensors, Oura, WHOOP, Garmin, Withings, Dexcom, Phone Sensors)
+- Health data ingest: 10 adapters (Health Connect, Gadgetbridge, Direct Sensors, Oura, WHOOP, Garmin, Withings, Dexcom, Polar, Phone Sensors)
 - SQLCipher encrypted local database (7 tables, AES-256, key in Android Keystore)
 - Separate encrypted reproductive health database (independent key, independent wipe)
 - 14-day rolling personal baselines per metric
@@ -55,9 +55,6 @@
 
 **Remaining work:**
 - Ship trained TFLite anomaly model (requires offline ML training with medical datasets)
-- Polar API adapter (documented but not implemented)
-- Full serialization/deserialization in SyncManager (framework in place, merge logic stubbed)
-- Production Ed25519 signature verification for model updates
 - Backend deployment and infrastructure
 
 ---
