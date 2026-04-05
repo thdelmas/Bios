@@ -3,12 +3,17 @@ package com.bios.app.sync
 import android.content.Context
 import android.util.Log
 import com.bios.app.data.BiosDatabase
+import com.bios.app.model.Anomaly
+import com.bios.app.model.HealthEvent
+import com.bios.app.model.MetricReading
+import com.bios.app.model.PersonalBaseline
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -117,66 +122,174 @@ class SyncManager(
         Log.i(TAG, "Sync key destroyed")
     }
 
-    // MARK: - Serialization (JSON for now; could be protobuf for efficiency)
+    // MARK: - Serialization (JSON — each entity type as a JSONArray)
 
     private suspend fun serializeReadings(): ByteArray {
         val readings = db.metricReadingDao().fetchLatest("*", 1000)
         if (readings.isEmpty()) return ByteArray(0)
-        val json = JSONObject().apply {
-            put("type", "readings")
-            put("count", readings.size)
-            // In production: serialize full reading list
+        val arr = JSONArray()
+        for (r in readings) {
+            arr.put(JSONObject().apply {
+                put("id", r.id); put("metricType", r.metricType)
+                put("value", r.value); put("timestamp", r.timestamp)
+                put("durationSec", r.durationSec ?: JSONObject.NULL)
+                put("sourceId", r.sourceId); put("confidence", r.confidence)
+                put("isPrimary", r.isPrimary); put("createdAt", r.createdAt)
+            })
         }
-        return json.toString().toByteArray(Charsets.UTF_8)
+        return arr.toString().toByteArray(Charsets.UTF_8)
     }
 
     private suspend fun serializeBaselines(): ByteArray {
         val baselines = db.personalBaselineDao().fetchAll()
         if (baselines.isEmpty()) return ByteArray(0)
-        val json = JSONObject().apply {
-            put("type", "baselines")
-            put("count", baselines.size)
+        val arr = JSONArray()
+        for (b in baselines) {
+            arr.put(JSONObject().apply {
+                put("id", b.id); put("metricType", b.metricType)
+                put("context", b.context); put("windowDays", b.windowDays)
+                put("computedAt", b.computedAt); put("mean", b.mean)
+                put("stdDev", b.stdDev); put("p5", b.p5); put("p95", b.p95)
+                put("trend", b.trend); put("trendSlope", b.trendSlope)
+            })
         }
-        return json.toString().toByteArray(Charsets.UTF_8)
+        return arr.toString().toByteArray(Charsets.UTF_8)
     }
 
     private suspend fun serializeAnomalies(): ByteArray {
         val anomalies = db.anomalyDao().fetchAll()
         if (anomalies.isEmpty()) return ByteArray(0)
-        val json = JSONObject().apply {
-            put("type", "anomalies")
-            put("count", anomalies.size)
+        val arr = JSONArray()
+        for (a in anomalies) {
+            arr.put(JSONObject().apply {
+                put("id", a.id); put("detectedAt", a.detectedAt)
+                put("metricTypes", a.metricTypes)
+                put("deviationScores", a.deviationScores)
+                put("combinedScore", a.combinedScore)
+                put("patternId", a.patternId ?: JSONObject.NULL)
+                put("severity", a.severity); put("title", a.title)
+                put("explanation", a.explanation)
+                put("suggestedAction", a.suggestedAction ?: JSONObject.NULL)
+                put("acknowledged", a.acknowledged)
+                put("acknowledgedAt", a.acknowledgedAt ?: JSONObject.NULL)
+                put("feedbackAt", a.feedbackAt ?: JSONObject.NULL)
+                put("feltSick", a.feltSick ?: JSONObject.NULL)
+                put("visitedDoctor", a.visitedDoctor ?: JSONObject.NULL)
+                put("diagnosis", a.diagnosis ?: JSONObject.NULL)
+                put("symptoms", a.symptoms ?: JSONObject.NULL)
+                put("notes", a.notes ?: JSONObject.NULL)
+                put("outcomeAccurate", a.outcomeAccurate ?: JSONObject.NULL)
+            })
         }
-        return json.toString().toByteArray(Charsets.UTF_8)
+        return arr.toString().toByteArray(Charsets.UTF_8)
     }
 
     private suspend fun serializeHealthEvents(): ByteArray {
         val events = db.healthEventDao().fetchAll()
         if (events.isEmpty()) return ByteArray(0)
-        val json = JSONObject().apply {
-            put("type", "health_events")
-            put("count", events.size)
+        val arr = JSONArray()
+        for (e in events) {
+            arr.put(JSONObject().apply {
+                put("id", e.id); put("type", e.type); put("status", e.status)
+                put("title", e.title)
+                put("description", e.description ?: JSONObject.NULL)
+                put("createdAt", e.createdAt); put("updatedAt", e.updatedAt)
+                put("anomalyId", e.anomalyId ?: JSONObject.NULL)
+                put("parentEventId", e.parentEventId ?: JSONObject.NULL)
+            })
         }
-        return json.toString().toByteArray(Charsets.UTF_8)
+        return arr.toString().toByteArray(Charsets.UTF_8)
     }
 
-    // MARK: - Import (merge downloaded data into local DB)
+    // MARK: - Import (merge downloaded data — last-writer-wins via REPLACE)
 
     private suspend fun importReadings(data: ByteArray) {
-        // TODO: Deserialize and merge readings (last-writer-wins by ID)
-        Log.d(TAG, "Import readings: ${data.size} bytes")
+        val arr = JSONArray(String(data, Charsets.UTF_8))
+        val readings = (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            MetricReading(
+                id = o.getString("id"),
+                metricType = o.getString("metricType"),
+                value = o.getDouble("value"),
+                timestamp = o.getLong("timestamp"),
+                durationSec = if (o.isNull("durationSec")) null else o.getInt("durationSec"),
+                sourceId = o.getString("sourceId"),
+                confidence = o.getInt("confidence"),
+                isPrimary = o.getBoolean("isPrimary"),
+                createdAt = o.getLong("createdAt")
+            )
+        }
+        db.metricReadingDao().insertAll(readings)
+        Log.d(TAG, "Imported ${readings.size} readings")
     }
 
     private suspend fun importBaselines(data: ByteArray) {
-        Log.d(TAG, "Import baselines: ${data.size} bytes")
+        val arr = JSONArray(String(data, Charsets.UTF_8))
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            db.personalBaselineDao().upsert(PersonalBaseline(
+                id = o.getString("id"),
+                metricType = o.getString("metricType"),
+                context = o.getString("context"),
+                windowDays = o.getInt("windowDays"),
+                computedAt = o.getLong("computedAt"),
+                mean = o.getDouble("mean"),
+                stdDev = o.getDouble("stdDev"),
+                p5 = o.getDouble("p5"),
+                p95 = o.getDouble("p95"),
+                trend = o.getString("trend"),
+                trendSlope = o.getDouble("trendSlope")
+            ))
+        }
+        Log.d(TAG, "Imported ${arr.length()} baselines")
     }
 
     private suspend fun importAnomalies(data: ByteArray) {
-        Log.d(TAG, "Import anomalies: ${data.size} bytes")
+        val arr = JSONArray(String(data, Charsets.UTF_8))
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            db.anomalyDao().insert(Anomaly(
+                id = o.getString("id"),
+                detectedAt = o.getLong("detectedAt"),
+                metricTypes = o.getString("metricTypes"),
+                deviationScores = o.getString("deviationScores"),
+                combinedScore = o.getDouble("combinedScore"),
+                patternId = if (o.isNull("patternId")) null else o.getString("patternId"),
+                severity = o.getInt("severity"),
+                title = o.getString("title"),
+                explanation = o.getString("explanation"),
+                suggestedAction = if (o.isNull("suggestedAction")) null else o.getString("suggestedAction"),
+                acknowledged = o.getBoolean("acknowledged"),
+                acknowledgedAt = if (o.isNull("acknowledgedAt")) null else o.getLong("acknowledgedAt"),
+                feedbackAt = if (o.isNull("feedbackAt")) null else o.getLong("feedbackAt"),
+                feltSick = if (o.isNull("feltSick")) null else o.getBoolean("feltSick"),
+                visitedDoctor = if (o.isNull("visitedDoctor")) null else o.getBoolean("visitedDoctor"),
+                diagnosis = if (o.isNull("diagnosis")) null else o.getString("diagnosis"),
+                symptoms = if (o.isNull("symptoms")) null else o.getString("symptoms"),
+                notes = if (o.isNull("notes")) null else o.getString("notes"),
+                outcomeAccurate = if (o.isNull("outcomeAccurate")) null else o.getBoolean("outcomeAccurate")
+            ))
+        }
+        Log.d(TAG, "Imported ${arr.length()} anomalies")
     }
 
     private suspend fun importHealthEvents(data: ByteArray) {
-        Log.d(TAG, "Import health events: ${data.size} bytes")
+        val arr = JSONArray(String(data, Charsets.UTF_8))
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            db.healthEventDao().insert(HealthEvent(
+                id = o.getString("id"),
+                type = o.getString("type"),
+                status = o.getString("status"),
+                title = o.getString("title"),
+                description = if (o.isNull("description")) null else o.getString("description"),
+                createdAt = o.getLong("createdAt"),
+                updatedAt = o.getLong("updatedAt"),
+                anomalyId = if (o.isNull("anomalyId")) null else o.getString("anomalyId"),
+                parentEventId = if (o.isNull("parentEventId")) null else o.getString("parentEventId")
+            ))
+        }
+        Log.d(TAG, "Imported ${arr.length()} health events")
     }
 
     // MARK: - HTTP
