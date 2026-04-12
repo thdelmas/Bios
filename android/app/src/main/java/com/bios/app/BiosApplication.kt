@@ -9,6 +9,7 @@ import com.bios.app.platform.HealthApiServer
 import com.bios.app.platform.LetheCompat
 import com.bios.app.platform.PlatformDetector
 import com.bios.app.privacy.ContributionWorker
+import com.bios.app.push.PushRegistrationManager
 import com.bios.app.sync.p2p.IrohNode
 import com.bios.app.sync.p2p.LocalNetworkTransport
 import com.bios.app.sync.p2p.P2PTransport
@@ -66,6 +67,13 @@ class BiosApplication : Application() {
         // Schedule daily digest notification (8 AM, user can disable in settings)
         if (DailyDigestWorker.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
+        }
+
+        // Re-register UnifiedPush if previously enabled (idempotent — just
+        // confirms the registration with the distributor). Does NOT auto-enable;
+        // only fires if the owner previously opted in via Settings.
+        if (PushRegistrationManager.isEnabled(this)) {
+            PushRegistrationManager.register(this)
         }
 
         // Schedule community contributions (will no-op if Private tier)

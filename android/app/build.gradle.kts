@@ -98,6 +98,11 @@ dependencies {
     // Encrypted preferences (API token storage)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
+    // UnifiedPush (Google-free push notifications)
+    implementation("org.unifiedpush.android:connector:3.0.10") {
+        exclude(group = "com.google.crypto.tink", module = "tink")
+    }
+
     // LiteRT (on-device ML) – rebranded TF Lite with 16KB page alignment
     implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")

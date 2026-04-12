@@ -6,6 +6,7 @@ import androidx.work.WorkManager
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.ingest.OuraTokenStore
+import com.bios.app.push.PushRegistrationManager
 import com.bios.app.sync.p2p.P2PDiscovery
 import java.io.File
 
@@ -50,6 +51,9 @@ object DataDestroyer {
 
         // 0.5. Destroy P2P sync identity, documents, and pairing data
         destroyP2PData(context)
+
+        // 0.6. Unregister push and destroy push state
+        PushRegistrationManager.destroyAll(context)
 
         // 1. Destroy encryption key (makes DB unreadable even if file survives)
         destroyEncryptionKey(context)

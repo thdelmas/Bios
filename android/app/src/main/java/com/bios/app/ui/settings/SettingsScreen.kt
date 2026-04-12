@@ -19,6 +19,7 @@ import com.bios.app.export.DataExporter
 import com.bios.app.model.PrivacyTier
 import com.bios.app.alerts.DailyDigestWorker
 import com.bios.app.privacy.ContributionWorker
+import com.bios.app.push.PushRegistrationManager
 import com.bios.app.ui.AppViewModel
 import kotlinx.coroutines.launch
 
@@ -204,6 +205,44 @@ fun SettingsScreen(viewModel: AppViewModel, onNavigateToPrivacy: () -> Unit = {}
                         onCheckedChange = {
                             digestEnabled = it
                             DailyDigestWorker.setEnabled(context, it)
+                        }
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                var pushEnabled by remember {
+                    mutableStateOf(PushRegistrationManager.isEnabled(context))
+                }
+                var pushDistributor by remember {
+                    mutableStateOf(PushRegistrationManager.getDistributorName(context))
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Push Notifications", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (pushEnabled && pushDistributor != null)
+                                "Via $pushDistributor — no Google required"
+                            else
+                                "Receive population health signals without polling. Requires a UnifiedPush distributor (e.g. ntfy).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = pushEnabled,
+                        onCheckedChange = { enabled ->
+                            pushEnabled = enabled
+                            if (enabled) {
+                                PushRegistrationManager.setEnabled(context, true)
+                                PushRegistrationManager.register(context)
+                            } else {
+                                PushRegistrationManager.unregister(context)
+                            }
+                            pushDistributor = PushRegistrationManager.getDistributorName(context)
                         }
                     )
                 }
