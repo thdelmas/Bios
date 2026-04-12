@@ -11,6 +11,12 @@ android/.gradle/
 *.iml
 local.properties
 
+# Python
+ml/.venv/
+ml/__pycache__/
+__pycache__/
+*.pyc
+
 # OS
 .DS_Store
 Thumbs.db
