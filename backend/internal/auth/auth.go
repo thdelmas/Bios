@@ -1,8 +1,9 @@
 package auth
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -13,7 +14,8 @@ import (
 )
 
 // Token represents a bearer token with an embedded user ID and expiry.
-// Format: userID.randomBytes.hmac
+// The token is AES-256-GCM encrypted so the user ID is not visible
+// to anyone who intercepts the token.
 type Token struct {
 	UserID    string
 	ExpiresAt time.Time
@@ -26,35 +28,65 @@ var (
 )
 
 // GenerateToken creates a new bearer token for the given user.
-// Tokens expire after the specified duration.
+// The payload (userID + expiry) is encrypted with AES-256-GCM so it
+// appears as an opaque blob to anyone without the server secret.
 func GenerateToken(userID string, ttl time.Duration, secret []byte) (string, error) {
-	randomBytes := make([]byte, 32)
-	if _, err := rand.Read(randomBytes); err != nil {
-		return "", fmt.Errorf("generate random bytes: %w", err)
+	expiryUnix := time.Now().Add(ttl).Unix()
+	plaintext := fmt.Sprintf("%s.%d", userID, expiryUnix)
+
+	aesKey := deriveAESKey(secret)
+	block, err := aes.NewCipher(aesKey)
+	if err != nil {
+		return "", fmt.Errorf("create cipher: %w", err)
 	}
 
-	expiryUnix := time.Now().Add(ttl).Unix()
-	payload := fmt.Sprintf("%s.%d.%s",
-		userID,
-		expiryUnix,
-		base64.RawURLEncoding.EncodeToString(randomBytes),
-	)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("create GCM: %w", err)
+	}
 
-	mac := computeMAC(payload, secret)
-	return payload + "." + mac, nil
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", fmt.Errorf("generate nonce: %w", err)
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return base64.RawURLEncoding.EncodeToString(ciphertext), nil
 }
 
-// ValidateToken checks a bearer token and returns the embedded user ID.
+// ValidateToken decrypts and validates a bearer token.
 func ValidateToken(raw string, secret []byte) (*Token, error) {
-	parts := strings.Split(raw, ".")
-	if len(parts) != 4 {
+	data, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
 		return nil, ErrInvalidToken
 	}
 
-	payload := parts[0] + "." + parts[1] + "." + parts[2]
-	expectedMAC := computeMAC(payload, secret)
+	aesKey := deriveAESKey(secret)
+	block, err := aes.NewCipher(aesKey)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
 
-	if subtle.ConstantTimeCompare([]byte(parts[3]), []byte(expectedMAC)) != 1 {
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	if len(data) < gcm.NonceSize() {
+		return nil, ErrInvalidToken
+	}
+
+	nonce := data[:gcm.NonceSize()]
+	ciphertext := data[gcm.NonceSize():]
+
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	// plaintext format: "userID.expiryUnix"
+	parts := strings.SplitN(string(plaintext), ".", 2)
+	if len(parts) != 2 {
 		return nil, ErrInvalidToken
 	}
 
@@ -87,9 +119,10 @@ func ExtractBearer(header string) (string, error) {
 	return strings.TrimSpace(parts[1]), nil
 }
 
-func computeMAC(payload string, secret []byte) string {
+// deriveAESKey derives a 32-byte AES key from the server secret using SHA3-256.
+func deriveAESKey(secret []byte) []byte {
 	h := sha3.New256()
-	h.Write([]byte(payload))
+	h.Write([]byte("bios-token-key"))
 	h.Write(secret)
-	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+	return h.Sum(nil)
 }

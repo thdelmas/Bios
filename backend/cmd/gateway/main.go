@@ -17,6 +17,7 @@ func main() {
 	dsn := envOrDefault("DATABASE_URL", "postgres://localhost:5432/bios?sslmode=disable")
 	addr := envOrDefault("LISTEN_ADDR", ":8080")
 	secret := []byte(envOrDefault("TOKEN_SECRET", ""))
+	retentionDays := 90 // sync payloads older than this are purged
 
 	if len(secret) == 0 {
 		log.Fatal("TOKEN_SECRET environment variable is required")
@@ -45,6 +46,27 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Background purge: delete sync payloads older than retention period.
+	// Runs once on startup and then every 24 hours.
+	purgeCtx, purgeCancel := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			purged, err := db.PurgeSyncPayloads(purgeCtx, retentionDays)
+			if err != nil {
+				log.Printf("ERROR purge sync payloads: %v", err)
+			} else if purged > 0 {
+				log.Printf("Purged %d sync payloads older than %d days", purged, retentionDays)
+			}
+			select {
+			case <-ticker.C:
+			case <-purgeCtx.Done():
+				return
+			}
+		}
+	}()
+
 	go func() {
 		log.Printf("Bios sync gateway listening on %s", addr)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -58,6 +80,7 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down...")
+	purgeCancel()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 

@@ -36,6 +36,67 @@ func (s *Store) Migrate(ctx context.Context) error {
 	return err
 }
 
+// MigrateV2 applies privacy hardening to existing data:
+// - Brackets sample_count, floors timestamps to week, coarsens region
+// - Adds contributor_hash column for right-to-erasure
+// - Drops device_id from sync_payloads to prevent device fingerprinting
+// - Coarsens last_seen_at to day granularity
+// Safe to run multiple times (idempotent).
+func (s *Store) MigrateV2(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, `
+		DO $$
+		BEGIN
+			-- Bracket sample_count if still INTEGER
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name = 'aggregate_contributions'
+				AND column_name = 'sample_count'
+				AND data_type = 'integer'
+			) THEN
+				ALTER TABLE aggregate_contributions
+					ALTER COLUMN sample_count TYPE TEXT
+					USING CASE
+						WHEN sample_count < 10 THEN '1-9'
+						WHEN sample_count < 30 THEN '10-29'
+						WHEN sample_count < 100 THEN '30-99'
+						WHEN sample_count < 300 THEN '100-299'
+						ELSE '300+'
+					END;
+			END IF;
+
+			-- Add contributor_hash for right-to-erasure
+			IF NOT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name = 'aggregate_contributions'
+				AND column_name = 'contributor_hash'
+			) THEN
+				ALTER TABLE aggregate_contributions
+					ADD COLUMN contributor_hash TEXT NOT NULL DEFAULT '';
+				CREATE INDEX IF NOT EXISTS idx_aggregate_contributor
+					ON aggregate_contributions(contributor_hash);
+			END IF;
+
+			-- Drop device_id from sync_payloads
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name = 'sync_payloads'
+				AND column_name = 'device_id'
+			) THEN
+				ALTER TABLE sync_payloads DROP COLUMN device_id;
+			END IF;
+		END $$;
+
+		-- Coarsen timestamps and regions
+		UPDATE aggregate_contributions SET
+			created_at = date_trunc('week', created_at),
+			region = split_part(COALESCE(region, ''), '-', 1);
+
+		-- Coarsen last_seen_at to day granularity
+		UPDATE users SET last_seen_at = date_trunc('day', last_seen_at);
+	`)
+	return err
+}
+
 const schema = `
 CREATE TABLE IF NOT EXISTS users (
     id           TEXT PRIMARY KEY,
@@ -50,7 +111,6 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sync_payloads (
     id           BIGSERIAL PRIMARY KEY,
     user_id      TEXT NOT NULL REFERENCES users(id),
-    device_id    TEXT NOT NULL,
     enc_payload  BYTEA NOT NULL,
     payload_hash TEXT NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -61,19 +121,23 @@ CREATE INDEX IF NOT EXISTS idx_sync_payloads_user
     ON sync_payloads(user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS aggregate_contributions (
-    id           TEXT PRIMARY KEY,
-    metric_type  TEXT NOT NULL,
-    period       TEXT NOT NULL,
-    mean         DOUBLE PRECISION NOT NULL,
-    std_dev      DOUBLE PRECISION NOT NULL,
-    sample_count INTEGER NOT NULL,
-    age_group    TEXT,
-    region       TEXT,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                TEXT PRIMARY KEY,
+    metric_type       TEXT NOT NULL,
+    period            TEXT NOT NULL,
+    mean              DOUBLE PRECISION NOT NULL,
+    std_dev           DOUBLE PRECISION NOT NULL,
+    sample_count      TEXT NOT NULL,
+    age_group         TEXT,
+    region            TEXT,
+    contributor_hash  TEXT NOT NULL DEFAULT '',
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_aggregate_metric
     ON aggregate_contributions(metric_type, period, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_aggregate_contributor
+    ON aggregate_contributions(contributor_hash);
 
 CREATE TABLE IF NOT EXISTS population_signals (
     id          TEXT PRIMARY KEY,
@@ -110,17 +174,17 @@ CREATE TABLE IF NOT EXISTS model_versions (
 // SaveSyncPayload stores an encrypted sync blob. Deduplicates by hash.
 func (s *Store) SaveSyncPayload(ctx context.Context, p *model.SyncPayload) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO sync_payloads (user_id, device_id, enc_payload, payload_hash)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO sync_payloads (user_id, enc_payload, payload_hash)
+		VALUES ($1, $2, $3)
 		ON CONFLICT (user_id, payload_hash) DO NOTHING
-	`, p.UserID, p.DeviceID, p.EncPayload, p.PayloadHash)
+	`, p.UserID, p.EncPayload, p.PayloadHash)
 	return err
 }
 
 // GetSyncPayloads returns encrypted payloads for a user, newest first.
 func (s *Store) GetSyncPayloads(ctx context.Context, userID string, limit int) ([]model.SyncPayload, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT user_id, device_id, enc_payload, payload_hash, created_at
+		SELECT user_id, enc_payload, payload_hash, created_at
 		FROM sync_payloads
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -134,7 +198,7 @@ func (s *Store) GetSyncPayloads(ctx context.Context, userID string, limit int) (
 	var payloads []model.SyncPayload
 	for rows.Next() {
 		var p model.SyncPayload
-		if err := rows.Scan(&p.UserID, &p.DeviceID, &p.EncPayload, &p.PayloadHash, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.UserID, &p.EncPayload, &p.PayloadHash, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		payloads = append(payloads, p)
@@ -142,48 +206,74 @@ func (s *Store) GetSyncPayloads(ctx context.Context, userID string, limit int) (
 	return payloads, rows.Err()
 }
 
-// SaveContribution stores an anonymized aggregate contribution.
+// SaveContribution stores a re-anonymized aggregate contribution.
+// The caller must set CreatedAt to a week-floored timestamp and
+// ContributorHash to the HMAC of the user ID.
 func (s *Store) SaveContribution(ctx context.Context, c *model.AggregateContribution) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO aggregate_contributions (id, metric_type, period, mean, std_dev, sample_count, age_group, region)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO aggregate_contributions (id, metric_type, period, mean, std_dev, sample_count, age_group, region, contributor_hash, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO NOTHING
-	`, c.ID, c.MetricType, c.Period, c.Mean, c.StdDev, c.SampleCount, c.AgeGroup, c.Region)
+	`, c.ID, c.MetricType, c.Period, c.Mean, c.StdDev, c.SampleCount, c.AgeGroup, c.Region, c.ContributorHash, c.CreatedAt)
 	return err
 }
 
-// GetCommunityAggregates returns averaged community stats for a metric.
-func (s *Store) GetCommunityAggregates(ctx context.Context, metricType, period string, limit int) ([]model.AggregateContribution, error) {
+// KAnonymityThreshold is the minimum number of contributors required
+// for a population bin to be included in public rollup results.
+const KAnonymityThreshold = 50
+
+// GetCommunityRollups returns population-level aggregates grouped by
+// (metric_type, period, age_group, region, week_bucket).
+// Bins with fewer than KAnonymityThreshold contributors are suppressed.
+func (s *Store) GetCommunityRollups(ctx context.Context, metricType, period string) ([]model.CommunityRollup, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, metric_type, period, mean, std_dev, sample_count, age_group, region, created_at
+		SELECT
+			metric_type,
+			period,
+			COALESCE(age_group, '') AS age_group,
+			COALESCE(region, '')   AS region,
+			to_char(created_at, 'IYYY-"W"IW') AS week_bucket,
+			COUNT(*)               AS contributor_count,
+			AVG(mean)              AS mean_of_means,
+			CASE
+				WHEN COUNT(*) > 1
+				THEN SQRT(AVG(std_dev * std_dev))
+				ELSE 0
+			END                    AS pooled_std_dev
 		FROM aggregate_contributions
 		WHERE metric_type = $1 AND period = $2
-		ORDER BY created_at DESC
-		LIMIT $3
-	`, metricType, period, limit)
+		GROUP BY metric_type, period, age_group, region, to_char(created_at, 'IYYY-"W"IW')
+		HAVING COUNT(*) >= $3
+		ORDER BY week_bucket DESC
+	`, metricType, period, KAnonymityThreshold)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var results []model.AggregateContribution
+	var results []model.CommunityRollup
 	for rows.Next() {
-		var c model.AggregateContribution
-		if err := rows.Scan(&c.ID, &c.MetricType, &c.Period, &c.Mean, &c.StdDev, &c.SampleCount, &c.AgeGroup, &c.Region, &c.CreatedAt); err != nil {
+		var r model.CommunityRollup
+		if err := rows.Scan(
+			&r.MetricType, &r.Period, &r.AgeGroup, &r.Region,
+			&r.WeekBucket, &r.ContributorCount,
+			&r.MeanOfMeans, &r.PooledStdDev,
+		); err != nil {
 			return nil, err
 		}
-		results = append(results, c)
+		results = append(results, r)
 	}
 	return results, rows.Err()
 }
 
 // UpsertUser creates or updates a user record.
+// last_seen_at is coarsened to day granularity to prevent activity pattern inference.
 func (s *Store) UpsertUser(ctx context.Context, u *model.User) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO users (id, public_key, sync_enabled, community_tier)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (id) DO UPDATE SET
-			last_seen_at = NOW(),
+			last_seen_at = date_trunc('day', NOW()),
 			sync_enabled = EXCLUDED.sync_enabled,
 			community_tier = EXCLUDED.community_tier
 	`, u.ID, u.PublicKey, u.SyncEnabled, u.CommunityTier)
@@ -206,7 +296,8 @@ func (s *Store) GetUser(ctx context.Context, id string) (*model.User, error) {
 
 // DeleteUser removes a user and all associated data. Irreversible.
 // Called when the owner requests "Delete all data" from the app.
-func (s *Store) DeleteUser(ctx context.Context, userID string) error {
+// Also retracts community contributions via contributor_hash (GDPR right to erasure).
+func (s *Store) DeleteUser(ctx context.Context, userID, contributorHash string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -217,12 +308,31 @@ func (s *Store) DeleteUser(ctx context.Context, userID string) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM sync_payloads WHERE user_id = $1`, userID); err != nil {
 		return err
 	}
+	// Retract community contributions (linked by one-way hash, not user ID)
+	if contributorHash != "" {
+		if _, err := tx.Exec(ctx, `DELETE FROM aggregate_contributions WHERE contributor_hash = $1`, contributorHash); err != nil {
+			return err
+		}
+	}
 	// Delete user record
 	if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
 		return err
 	}
 
 	return tx.Commit(ctx)
+}
+
+// PurgeSyncPayloads deletes sync payloads older than the given retention period.
+// Should be called periodically (e.g. daily) to enforce GDPR storage limitation.
+func (s *Store) PurgeSyncPayloads(ctx context.Context, retentionDays int) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `
+		DELETE FROM sync_payloads
+		WHERE created_at < NOW() - make_interval(days => $1)
+	`, retentionDays)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
 
 // GetPopulationSignals returns active population health signals.

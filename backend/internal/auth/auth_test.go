@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -110,5 +111,27 @@ func TestUniqueTokens(t *testing.T) {
 	token2, _ := GenerateToken("user", 1*time.Hour, testSecret)
 	if token1 == token2 {
 		t.Error("two tokens for same user should be unique")
+	}
+}
+
+func TestTokenIsOpaque(t *testing.T) {
+	userID := "sensitive-user-id-12345"
+	token, err := GenerateToken(userID, 1*time.Hour, testSecret)
+	if err != nil {
+		t.Fatalf("GenerateToken: %v", err)
+	}
+
+	// The user ID must NOT appear anywhere in the token string
+	if strings.Contains(token, userID) {
+		t.Error("token must not contain the user ID in cleartext")
+	}
+
+	// The token should still be valid and return the correct user ID
+	parsed, err := ValidateToken(token, testSecret)
+	if err != nil {
+		t.Fatalf("ValidateToken: %v", err)
+	}
+	if parsed.UserID != userID {
+		t.Errorf("UserID = %q, want %q", parsed.UserID, userID)
 	}
 }

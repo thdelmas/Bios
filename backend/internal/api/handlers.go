@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/bios-health/backend/internal/anon"
 	"github.com/bios-health/backend/internal/auth"
 	"github.com/bios-health/backend/internal/model"
 	"github.com/bios-health/backend/internal/store"
@@ -94,20 +96,37 @@ func (s *Server) handleSyncPull(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, payloads)
 }
 
-// handleContribute receives anonymized aggregate contributions.
+// handleContribute receives aggregate contributions and re-anonymizes
+// quasi-identifiers server-side before storage.
 func (s *Server) handleContribute(w http.ResponseWriter, r *http.Request) {
-	var contribution model.AggregateContribution
-	if err := json.NewDecoder(r.Body).Decode(&contribution); err != nil {
+	token := r.Context().Value(ctxTokenKey).(*auth.Token)
+
+	var req model.ContributeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		return
 	}
 
-	if contribution.MetricType == "" || contribution.Period == "" {
+	if req.MetricType == "" || req.Period == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "metric_type and period required"})
 		return
 	}
 
-	if err := s.store.SaveContribution(r.Context(), &contribution); err != nil {
+	// Server-side re-anonymization: coarsen quasi-identifiers
+	contribution := &model.AggregateContribution{
+		ID:              req.ID,
+		MetricType:      req.MetricType,
+		Period:          req.Period,
+		Mean:            req.Mean,
+		StdDev:          req.StdDev,
+		SampleCount:     anon.BracketSampleCount(req.SampleCount),
+		AgeGroup:        anon.CoarsenAgeGroup(req.AgeGroup),
+		Region:          anon.CoarsenRegion(req.Region),
+		ContributorHash: anon.ContributorHash(token.UserID, s.secret),
+		CreatedAt:       anon.FloorToWeek(time.Now().UTC()),
+	}
+
+	if err := s.store.SaveContribution(r.Context(), contribution); err != nil {
 		log.Printf("ERROR save contribution: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "storage error"})
 		return
@@ -116,7 +135,9 @@ func (s *Server) handleContribute(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "accepted"})
 }
 
-// handleCommunityAggregates returns public community-level statistics.
+// handleCommunityAggregates returns population-level rollups.
+// Individual contributions are never exposed — only aggregated bins
+// with at least KAnonymityThreshold contributors.
 func (s *Server) handleCommunityAggregates(w http.ResponseWriter, r *http.Request) {
 	metricType := r.URL.Query().Get("metric_type")
 	period := r.URL.Query().Get("period")
@@ -125,21 +146,17 @@ func (s *Server) handleCommunityAggregates(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	limit := 30
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 365 {
-			limit = parsed
-		}
-	}
-
-	results, err := s.store.GetCommunityAggregates(r.Context(), metricType, period, limit)
+	rollups, err := s.store.GetCommunityRollups(r.Context(), metricType, period)
 	if err != nil {
-		log.Printf("ERROR get community aggregates: %v", err)
+		log.Printf("ERROR get community rollups: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "storage error"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, results)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"rollups": rollups,
+		"count":   len(rollups),
+	})
 }
 
 // handlePopulationSignals returns anonymized population-level health signals.
@@ -200,19 +217,20 @@ func (s *Server) handleLatestModel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, m)
 }
 
-// handleDeleteAccount permanently removes the user and all associated data.
-// Called when the owner requests "Delete all data" from the app.
+// handleDeleteAccount permanently removes the user and all associated data,
+// including community contributions (GDPR right to erasure).
 // Server-side data is deleted within this request; no delayed processing.
 func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	token := r.Context().Value(ctxTokenKey).(*auth.Token)
+	contributorHash := anon.ContributorHash(token.UserID, s.secret)
 
-	if err := s.store.DeleteUser(r.Context(), token.UserID); err != nil {
-		log.Printf("ERROR delete user %s: %v", token.UserID, err)
+	if err := s.store.DeleteUser(r.Context(), token.UserID, contributorHash); err != nil {
+		log.Printf("ERROR delete account: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "deletion failed"})
 		return
 	}
 
-	log.Printf("User %s and all associated data deleted", token.UserID)
+	log.Println("Account and all associated data deleted")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
