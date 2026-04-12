@@ -11,11 +11,12 @@ PIXEL4A_ID := 0B201JECB13875
 PIXEL9A_ID := 59101JEBF02652
 
 BUILD ?= debug
+FLAVOR ?= standalone
 ifeq ($(BUILD),prod)
-  GRADLE_VARIANT := Release
+  GRADLE_VARIANT := $(shell echo $(FLAVOR) | sed 's/./\U&/')Release
 else
   BUILD := debug
-  GRADLE_VARIANT := Debug
+  GRADLE_VARIANT := $(shell echo $(FLAVOR) | sed 's/./\U&/')Debug
 endif
 
 .PHONY: all
@@ -115,3 +116,4 @@ help:
 	@echo "  make clean-daemons  - Stop idle Gradle daemons (frees ~4GB each)."
 	@echo ""
 	@echo "Build variant: BUILD=debug (default) or BUILD=prod"
+	@echo "Build flavor:  FLAVOR=standalone (default) or FLAVOR=lethe"
