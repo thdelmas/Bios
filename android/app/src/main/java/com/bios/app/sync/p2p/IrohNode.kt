@@ -24,21 +24,21 @@ import java.io.File
  * computer.iroh:iroh-ffi-android is published to Maven Central.
  * Track: https://github.com/n0-computer/iroh-ffi
  */
-class IrohNode(private val context: Context) {
+class IrohNode(private val context: Context) : P2PTransport {
 
     private var running = false
     private val dataDir: File get() = File(context.filesDir, IROH_DATA_DIR)
 
-    val isRunning: Boolean get() = running
+    override val isRunning: Boolean get() = running
 
     /** True when backed by a real Iroh FFI runtime; false while stubbed. */
-    val isAvailable: Boolean get() = false
+    override val isAvailable: Boolean get() = false
 
     /**
      * Start the embedded Iroh node.
      * Creates the data directory and generates a new identity if none exists.
      */
-    suspend fun start() {
+    override suspend fun start() {
         if (running) return
 
         try {
@@ -55,7 +55,7 @@ class IrohNode(private val context: Context) {
     /**
      * Stop the Iroh node gracefully.
      */
-    fun stop() {
+    override fun stop() {
         running = false
         Log.i(TAG, "Iroh node stopped")
     }
@@ -63,7 +63,7 @@ class IrohNode(private val context: Context) {
     /**
      * Returns this node's public key (peer ID).
      */
-    fun getNodeId(): String? {
+    override fun getNodeId(): String? {
         // TODO: return node?.nodeId()?.toString()
         return null
     }
@@ -72,7 +72,7 @@ class IrohNode(private val context: Context) {
      * Create a new Willow document (namespace).
      * Returns the document ID as a string, or null on failure.
      */
-    suspend fun createDocument(): String? {
+    override suspend fun createDocument(): String? {
         if (!running) return null
         // TODO: val doc = node.docCreate(); return doc.id().toString()
         Log.d(TAG, "createDocument stub — Iroh FFI not yet available")
@@ -83,7 +83,7 @@ class IrohNode(private val context: Context) {
      * Join a shared document using a ticket from another device.
      * Returns the document ID, or null on failure.
      */
-    suspend fun joinDocument(ticket: String): String? {
+    override suspend fun joinDocument(ticket: String): String? {
         if (!running) return null
         // TODO: val docTicket = DocTicket.fromString(ticket); return node.docJoin(docTicket).id().toString()
         Log.d(TAG, "joinDocument stub — Iroh FFI not yet available")
@@ -94,7 +94,7 @@ class IrohNode(private val context: Context) {
      * Generate a share ticket for a document.
      * The ticket encodes the document namespace, write capability, and relay info.
      */
-    fun generateShareTicket(docId: String, mode: String = "WRITE"): String? {
+    override fun generateShareTicket(docId: String, mode: String): String? {
         if (!running) return null
         // TODO: doc.share(mode, AddrInfoOptions.RELAY_AND_ADDRESSES).toString()
         Log.d(TAG, "generateShareTicket stub — Iroh FFI not yet available")
@@ -105,7 +105,7 @@ class IrohNode(private val context: Context) {
      * Set an entry in a document.
      * Key is a UTF-8 path, value is arbitrary bytes.
      */
-    suspend fun setEntry(docId: String, key: String, value: ByteArray) {
+    override suspend fun setEntry(docId: String, key: String, value: ByteArray) {
         if (!running) return
         // TODO: doc.setBytes(author, key.toByteArray(), value)
         Log.d(TAG, "setEntry stub — Iroh FFI not yet available")
@@ -115,7 +115,7 @@ class IrohNode(private val context: Context) {
      * Get an entry from a document.
      * Returns null if the key doesn't exist or on error.
      */
-    suspend fun getEntry(docId: String, key: String): ByteArray? {
+    override suspend fun getEntry(docId: String, key: String): ByteArray? {
         if (!running) return null
         // TODO: entry.contentBytes(doc)
         return null
@@ -125,7 +125,7 @@ class IrohNode(private val context: Context) {
      * List all keys in a document matching a prefix.
      * Returns key-value pairs.
      */
-    suspend fun listEntries(docId: String, prefix: String): Map<String, ByteArray> {
+    override suspend fun listEntries(docId: String, prefix: String): Map<String, ByteArray> {
         if (!running) return emptyMap()
         // TODO: iterate doc.getMany(Query.all(null)) and filter by prefix
         return emptyMap()
@@ -135,7 +135,7 @@ class IrohNode(private val context: Context) {
      * Destroy all Iroh data: node identity, documents, and local storage.
      * Called during emergency wipe. Does not require the node to be running.
      */
-    fun destroyAll() {
+    override fun destroyAll() {
         stop()
         try {
             dataDir.deleteRecursively()

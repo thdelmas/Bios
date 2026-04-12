@@ -38,18 +38,20 @@ class P2PSyncWorker(
             ?: return Result.success()
         val syncKey = SyncProtocol.deriveSyncKey(passkey.toByteArray(Charsets.UTF_8), salt)
 
+        // Select best available transport: Iroh (cross-network) > Local (same WiFi)
         val irohNode = IrohNode(context)
-        if (!irohNode.isAvailable) {
-            Log.d(TAG, "P2P sync not yet available — Iroh FFI dependency pending")
-            return Result.success()
+        val transport: P2PTransport = if (irohNode.isAvailable) {
+            irohNode
+        } else {
+            LocalNetworkTransport(context)
         }
 
         val db = BiosDatabase.getInstance(context)
-        val adapter = WillowSyncAdapter(context, db, irohNode)
-        val discovery = P2PDiscovery(context, irohNode)
+        val adapter = WillowSyncAdapter(context, db, transport)
+        val discovery = P2PDiscovery(context, transport)
 
         try {
-            irohNode.start()
+            transport.start()
 
             val pairedDevices = discovery.getPairedDevices()
             if (pairedDevices.isEmpty()) {
@@ -72,7 +74,7 @@ class P2PSyncWorker(
             return if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
         } finally {
             syncKey.fill(0)
-            irohNode.stop()
+            transport.stop()
         }
     }
 

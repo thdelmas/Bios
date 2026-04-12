@@ -29,7 +29,7 @@ import org.json.JSONObject
 class WillowSyncAdapter(
     private val context: Context,
     private val db: BiosDatabase,
-    private val irohNode: IrohNode
+    private val transport: P2PTransport
 ) {
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
@@ -84,7 +84,7 @@ class WillowSyncAdapter(
             val plaintext = json.toByteArray(Charsets.UTF_8)
             val encrypted = SyncProtocol.encryptBlob(plaintext, syncKey, blobType)
             val key = "${blobType.name.lowercase()}/$entityId"
-            irohNode.setEntry(documentId, key, encrypted)
+            transport.setEntry(documentId, key, encrypted)
             pushed++
         }
 
@@ -101,7 +101,7 @@ class WillowSyncAdapter(
         syncKey: ByteArray
     ) = withContext(Dispatchers.IO) {
         val prefix = "${blobType.name.lowercase()}/"
-        val entries = irohNode.listEntries(documentId, prefix)
+        val entries = transport.listEntries(documentId, prefix)
 
         if (entries.isEmpty()) return@withContext
 

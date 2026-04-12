@@ -26,7 +26,7 @@ import org.json.JSONObject
  */
 class P2PDiscovery(
     private val context: Context,
-    private val irohNode: IrohNode
+    private val transport: P2PTransport
 ) {
     private val prefs by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -47,16 +47,16 @@ class P2PDiscovery(
      * Returns null if P2P runtime is not available (Iroh FFI not yet shipped).
      */
     suspend fun generatePairingTicket(deviceName: String): PairingResult? {
-        if (!irohNode.isAvailable) {
+        if (!transport.isAvailable) {
             Log.w(TAG, "P2P sync not yet available — Iroh FFI dependency pending")
             return null
         }
-        val documentId = irohNode.createDocument() ?: return null
-        val ticket = irohNode.generateShareTicket(documentId) ?: return null
+        val documentId = transport.createDocument() ?: return null
+        val ticket = transport.generateShareTicket(documentId) ?: return null
 
         // Save this document as our sync document
         val device = PairedDevice(
-            nodeId = irohNode.getNodeId() ?: "self",
+            nodeId = transport.getNodeId() ?: "self",
             displayName = deviceName,
             pairedAt = System.currentTimeMillis(),
             documentId = documentId
@@ -72,11 +72,11 @@ class P2PDiscovery(
      * Returns null if P2P runtime is not available (Iroh FFI not yet shipped).
      */
     suspend fun acceptPairing(ticket: String, deviceName: String): PairedDevice? {
-        if (!irohNode.isAvailable) {
+        if (!transport.isAvailable) {
             Log.w(TAG, "P2P sync not yet available — Iroh FFI dependency pending")
             return null
         }
-        val documentId = irohNode.joinDocument(ticket) ?: return null
+        val documentId = transport.joinDocument(ticket) ?: return null
 
         val device = PairedDevice(
             nodeId = "peer", // will be discovered during sync
@@ -93,12 +93,15 @@ class P2PDiscovery(
     // MARK: - Local network discovery (mDNS)
 
     fun startDiscovery() {
+        // LocalNetworkTransport manages its own mDNS; skip duplicate registration
+        if (transport is LocalNetworkTransport) return
+
         val manager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager ?: return
         nsdManager = manager
 
         // Register this device
         val serviceInfo = NsdServiceInfo().apply {
-            serviceName = "Bios-${irohNode.getNodeId()?.take(8) ?: "unknown"}"
+            serviceName = "Bios-${transport.getNodeId()?.take(8) ?: "unknown"}"
             serviceType = SERVICE_TYPE
             port = 0 // discovery only, no direct socket connection
         }
@@ -127,7 +130,7 @@ class P2PDiscovery(
             }
             override fun onServiceFound(info: NsdServiceInfo) {
                 val peerId = info.serviceName.removePrefix("Bios-")
-                if (peerId != irohNode.getNodeId()?.take(8)) {
+                if (peerId != transport.getNodeId()?.take(8)) {
                     _discoveredPeers.add(DiscoveredPeer(
                         serviceName = info.serviceName,
                         nodeIdPrefix = peerId
