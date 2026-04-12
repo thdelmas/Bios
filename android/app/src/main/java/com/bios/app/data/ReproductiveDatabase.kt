@@ -153,6 +153,7 @@ abstract class ReproductiveDatabase : RoomDatabase() {
         private fun getEncryptedPrefs(context: Context): android.content.SharedPreferences {
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .setRequestStrongBoxBacked(true)
                 .build()
             return EncryptedSharedPreferences.create(
                 context,

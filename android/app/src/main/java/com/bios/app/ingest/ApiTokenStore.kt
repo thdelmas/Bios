@@ -16,6 +16,7 @@ class ApiTokenStore(context: Context) {
 
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .setRequestStrongBoxBacked(true)
         .build()
 
     private val prefs = EncryptedSharedPreferences.create(
