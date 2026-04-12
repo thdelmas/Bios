@@ -4,8 +4,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Teal "B" on transparent -->
+    <!-- Shield body -->
     <path
         android:fillColor="#FF009688"
-        android:pathData="M38,30h20c6.6,0 12,5.4 12,12c0,4.4 -2.4,8.2 -6,10.2c4.8,1.8 8,6.4 8,11.8c0,7.2 -5.8,13 -13,13H38V30zM48,49h8c2.2,0 4,-1.8 4,-4s-1.8,-4 -4,-4h-8v8zM48,67h11c2.8,0 5,-2.2 5,-5s-2.2,-5 -5,-5h-11v10z" />
+        android:pathData="M54,22 C40,22 28,29 28,36 L28,54 C28,69 54,86 54,86 C54,86 80,69 80,54 L80,36 C80,29 68,22 54,22 Z" />
+    <!-- Shield inner highlight (subtle lighter teal) -->
+    <path
+        android:fillColor="#FF26A69A"
+        android:pathData="M54,26 C42,26 32,32 32,38 L32,54 C32,66 54,82 54,82 C54,82 76,66 76,54 L76,38 C76,32 66,26 54,26 Z" />
+    <!-- ECG heartbeat line -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M33,54 L43,54 L46,47 L49,54 L52,34 L56,72 L59,54 L62,47 L65,54 L75,54" />
 </vector>
