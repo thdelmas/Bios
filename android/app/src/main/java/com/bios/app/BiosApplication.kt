@@ -3,6 +3,7 @@ package com.bios.app
 import android.app.Application
 import com.bios.app.alerts.DailyDigestWorker
 import com.bios.app.data.BiosDatabase
+import com.bios.app.ingest.GadgetbridgeReceiver
 import com.bios.app.ingest.SyncWorker
 import com.bios.app.platform.HealthApiServer
 import com.bios.app.platform.LetheCompat
@@ -26,6 +27,7 @@ class BiosApplication : Application() {
         private set
 
     private var healthApiServer: HealthApiServer? = null
+    private var gadgetbridgeReceiver: GadgetbridgeReceiver? = null
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -53,6 +55,12 @@ class BiosApplication : Application() {
             P2PSyncWorker.enqueuePeriodicSync(this)
         }
 
+        // Register Gadgetbridge real-time data receiver (push model).
+        // RECEIVER_EXPORTED because broadcasts come from the Gadgetbridge app.
+        gadgetbridgeReceiver = GadgetbridgeReceiver()
+        registerReceiver(gadgetbridgeReceiver, GadgetbridgeReceiver.intentFilter(),
+            RECEIVER_EXPORTED)
+
         // Schedule periodic health data sync (HTTP/IPFS)
         SyncWorker.enqueuePeriodicSync(this)
 
@@ -66,6 +74,7 @@ class BiosApplication : Application() {
     }
 
     override fun onTerminate() {
+        gadgetbridgeReceiver?.let { unregisterReceiver(it) }
         irohNode.stop()
         healthApiServer?.stop()
         letheCompat.unregisterWipeReceivers(this)
