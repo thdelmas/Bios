@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.bios.app.data.dao.DataSourceDao
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.DataSource
@@ -39,7 +41,8 @@ abstract class ReproductiveDatabase : RoomDatabase() {
         private var INSTANCE: ReproductiveDatabase? = null
 
         private const val DB_NAME = "bios_repro.db"
-        private const val PREFS_NAME = "bios_repro_secure"
+        private const val PLAIN_PREFS_NAME = "bios_repro_secure"
+        private const val ENCRYPTED_PREFS_NAME = "bios_repro_secure_encrypted"
         private const val KEY_PASSPHRASE = "repro_passphrase"
 
         fun getInstance(context: Context): ReproductiveDatabase {
@@ -53,8 +56,12 @@ abstract class ReproductiveDatabase : RoomDatabase() {
          * Used to determine whether to show reproductive health features.
          */
         fun isAvailable(context: Context): Boolean {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            return prefs.getString(KEY_PASSPHRASE, null) != null
+            // Check encrypted store first, then plain (pre-migration)
+            val encrypted = getEncryptedPrefs(context).getString(KEY_PASSPHRASE, null)
+            if (encrypted != null) return true
+            val plain = context.getSharedPreferences(PLAIN_PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_PASSPHRASE, null)
+            return plain != null
         }
 
         /**
@@ -63,17 +70,16 @@ abstract class ReproductiveDatabase : RoomDatabase() {
          * The passphrase is separate from the device PIN — an additional layer of protection.
          */
         fun initialize(context: Context, passphrase: String? = null) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            if (prefs.getString(KEY_PASSPHRASE, null) == null) {
-                // Generate random key if no passphrase provided, or derive from passphrase
+            val encryptedPrefs = getEncryptedPrefs(context)
+            if (encryptedPrefs.getString(KEY_PASSPHRASE, null) == null) {
                 val key = passphrase ?: java.util.UUID.randomUUID().toString()
-                prefs.edit().putString(KEY_PASSPHRASE, key).apply()
+                encryptedPrefs.edit().putString(KEY_PASSPHRASE, key).apply()
             }
         }
 
         /**
          * Destroy all reproductive health data irrecoverably.
-         * 1. Destroy the encryption key
+         * 1. Destroy the encryption key from both encrypted and plain stores
          * 2. Delete the database file
          * 3. Clear the instance
          *
@@ -85,8 +91,10 @@ abstract class ReproductiveDatabase : RoomDatabase() {
             INSTANCE?.close()
             INSTANCE = null
 
-            // Destroy key (makes DB unreadable even if file recovered)
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            // Destroy key from encrypted store
+            getEncryptedPrefs(context).edit().clear().commit()
+            // Also clear plain store in case migration hadn't run yet
+            context.getSharedPreferences(PLAIN_PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().clear().commit()
 
             // Delete database files
@@ -124,8 +132,35 @@ abstract class ReproductiveDatabase : RoomDatabase() {
         }
 
         private fun getPassphrase(context: Context): String? {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            return prefs.getString(KEY_PASSPHRASE, null)
+            val encryptedPrefs = getEncryptedPrefs(context)
+
+            // Check encrypted store first
+            val encrypted = encryptedPrefs.getString(KEY_PASSPHRASE, null)
+            if (encrypted != null) return encrypted
+
+            // Migrate from plain SharedPreferences if present (existing installs)
+            val plainPrefs = context.getSharedPreferences(PLAIN_PREFS_NAME, Context.MODE_PRIVATE)
+            val plain = plainPrefs.getString(KEY_PASSPHRASE, null)
+            if (plain != null) {
+                encryptedPrefs.edit().putString(KEY_PASSPHRASE, plain).apply()
+                plainPrefs.edit().remove(KEY_PASSPHRASE).commit()
+                return plain
+            }
+
+            return null
+        }
+
+        private fun getEncryptedPrefs(context: Context): android.content.SharedPreferences {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            return EncryptedSharedPreferences.create(
+                context,
+                ENCRYPTED_PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
         }
 
         /** Default retention for reproductive data: 90 days. */

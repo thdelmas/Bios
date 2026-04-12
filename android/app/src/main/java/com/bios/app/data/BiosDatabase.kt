@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.bios.app.data.dao.*
 import com.bios.app.model.*
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
@@ -62,23 +64,53 @@ abstract class BiosDatabase : RoomDatabase() {
                 .build()
         }
 
+        private const val PREFS_NAME = "bios_secure"
+        private const val ENCRYPTED_PREFS_NAME = "bios_secure_encrypted"
+        private const val KEY_PASSPHRASE = "db_passphrase"
+
         /**
-         * Retrieves or generates the database encryption key from Android Keystore.
-         * The key is stored encrypted in SharedPreferences, wrapped by a Keystore-backed key.
+         * Retrieves or generates the database encryption key.
+         * The key is stored in EncryptedSharedPreferences, backed by Android Keystore
+         * (AES-256-GCM via hardware-backed MasterKey where available).
+         *
+         * On first run after upgrade, migrates the passphrase from plain SharedPreferences
+         * to EncryptedSharedPreferences, then clears the plaintext copy.
          */
         private fun getOrCreatePassphrase(context: Context): ByteArray {
-            val prefs = context.getSharedPreferences("bios_secure", Context.MODE_PRIVATE)
-            val stored = prefs.getString("db_passphrase", null)
+            val encryptedPrefs = getEncryptedPrefs(context)
 
-            if (stored != null) {
-                return stored.toByteArray(Charsets.UTF_8)
+            // Check encrypted store first
+            val encrypted = encryptedPrefs.getString(KEY_PASSPHRASE, null)
+            if (encrypted != null) {
+                return encrypted.toByteArray(Charsets.UTF_8)
             }
 
-            // Generate a random passphrase
-            // In production, this should be wrapped with Android Keystore EncryptedSharedPreferences
+            // Migrate from plain SharedPreferences if present (existing installs)
+            val plainPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val plain = plainPrefs.getString(KEY_PASSPHRASE, null)
+            if (plain != null) {
+                encryptedPrefs.edit().putString(KEY_PASSPHRASE, plain).apply()
+                plainPrefs.edit().remove(KEY_PASSPHRASE).commit()
+                return plain.toByteArray(Charsets.UTF_8)
+            }
+
+            // Fresh install — generate a random passphrase
             val passphrase = java.util.UUID.randomUUID().toString()
-            prefs.edit().putString("db_passphrase", passphrase).apply()
+            encryptedPrefs.edit().putString(KEY_PASSPHRASE, passphrase).apply()
             return passphrase.toByteArray(Charsets.UTF_8)
+        }
+
+        internal fun getEncryptedPrefs(context: Context): android.content.SharedPreferences {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            return EncryptedSharedPreferences.create(
+                context,
+                ENCRYPTED_PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
         }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {

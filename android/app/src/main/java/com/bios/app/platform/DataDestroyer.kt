@@ -3,6 +3,7 @@ package com.bios.app.platform
 import android.content.Context
 import android.util.Log
 import androidx.work.WorkManager
+import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.ingest.OuraTokenStore
 import com.bios.app.sync.p2p.P2PDiscovery
@@ -77,8 +78,11 @@ object DataDestroyer {
 
     private fun destroyEncryptionKey(context: Context) {
         try {
-            val prefs = context.getSharedPreferences("bios_secure", Context.MODE_PRIVATE)
-            prefs.edit().remove("db_passphrase").commit() // commit() is intentional — synchronous
+            // Destroy from encrypted store (current location)
+            BiosDatabase.getEncryptedPrefs(context).edit().clear().commit()
+            // Also clear plain store in case migration hadn't run yet
+            context.getSharedPreferences("bios_secure", Context.MODE_PRIVATE)
+                .edit().remove("db_passphrase").commit()
             Log.d(TAG, "Encryption key destroyed")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to destroy encryption key", e)
@@ -170,11 +174,17 @@ object DataDestroyer {
 
     private fun clearPreferences(context: Context) {
         try {
-            val prefFiles = listOf("bios_secure", "bios_settings", "bios_oura_credentials", "bios_api_credentials")
-            for (name in prefFiles) {
+            // Clear plain SharedPreferences
+            val plainPrefFiles = listOf(
+                "bios_secure", "bios_settings", "bios_oura_credentials", "bios_api_credentials",
+                "bios_repro_secure"
+            )
+            for (name in plainPrefFiles) {
                 context.getSharedPreferences(name, Context.MODE_PRIVATE)
                     .edit().clear().commit()
             }
+            // Clear encrypted SharedPreferences (Keystore-backed)
+            BiosDatabase.getEncryptedPrefs(context).edit().clear().commit()
             Log.d(TAG, "Preferences cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear preferences", e)
