@@ -22,14 +22,22 @@ PATTERNS=(
     'BEGIN EC PRIVATE KEY'
 )
 
-# Get staged files (or all files if no commits yet)
-if git rev-parse HEAD >/dev/null 2>&1; then
-    FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
+# Get files to check:
+# - If files are staged, check only those (pre-commit context)
+# - Otherwise, check all tracked files (standalone run)
+STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
+if [ -n "$STAGED" ]; then
+    FILES="$STAGED"
+    echo "Checking staged files..."
+elif git rev-parse HEAD >/dev/null 2>&1; then
+    FILES=$(git ls-files -- '*.kt' '*.kts' '*.java' '*.go' '*.py' '*.sh' '*.json' '*.xml' '*.properties' '*.yaml' '*.yml' '*.toml')
+    echo "No staged files — checking all tracked source files..."
 else
-    FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || find . -type f -not -path './.git/*')
+    FILES=$(find . -type f -not -path './.git/*')
+    echo "Checking all files..."
 fi
 
-[ -z "$FILES" ] && { echo "OK: No staged files to check."; exit 0; }
+[ -z "$FILES" ] && { echo "OK: No files to check."; exit 0; }
 
 for pattern in "${PATTERNS[@]}"; do
     MATCHES=$(echo "$FILES" | grep -v 'check-secrets.sh' | xargs grep -lnE "$pattern" 2>/dev/null || true)
@@ -45,5 +53,5 @@ if [ "$FAILED" -eq 1 ]; then
     echo "Review the files above. Remove secrets and use environment variables or a secrets manager instead."
     exit 1
 else
-    echo "OK: No hardcoded secrets detected in staged files."
+    echo "OK: No hardcoded secrets detected."
 fi
