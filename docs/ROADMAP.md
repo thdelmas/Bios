@@ -68,7 +68,7 @@
 - Ticket-based device pairing, mDNS/DNS-SD discovery + Iroh relay for NAT traversal
 - Transport priority: Iroh P2P > IPFS (LETHE) > HTTP (fallback). Emergency wipe destroys all P2P state
 
-**Remaining:** trained TFLite model (requires ML pipeline)
+**ML pipeline:** Trained anomaly detection model (`anomaly_detector.tflite`) shipped in app assets. Training pipeline in `ml/` (synthetic data generation + training script).
 
 ---
 
