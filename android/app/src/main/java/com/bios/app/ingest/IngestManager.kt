@@ -3,6 +3,7 @@ package com.bios.app.ingest
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.PipelineStage
+import com.bios.app.engine.SignalQualityFilter
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
@@ -51,6 +52,9 @@ class IngestManager(
 
     private val _syncStatus = MutableStateFlow("")
     val syncStatus: StateFlow<String> = _syncStatus
+
+    /** Last reading per metric type, used for rate-of-change quality checks. */
+    private val lastReadingPerMetric = mutableMapOf<String, MetricReading>()
 
     private var healthConnectSourceId: String? = null
     private var ouraSourceId: String? = null
@@ -140,7 +144,9 @@ class IngestManager(
                 allReadings += fetchPhoneSensorReadings()
 
                 val deduped = deduplicate(allReadings)
-                readingDao.insertAll(deduped)
+                val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
+                readingDao.insertAll(quality)
+                updateLastReadings(quality)
             }
 
             if (latencyTracker != null) {
@@ -182,7 +188,9 @@ class IngestManager(
                 allReadings += fetchOuraReadings(current, chunkEnd)
 
                 val deduped = deduplicate(allReadings)
-                readingDao.insertAll(deduped)
+                val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
+                readingDao.insertAll(quality)
+                updateLastReadings(quality)
                 current = chunkEnd
                 completedDays++
                 _syncProgress.value = completedDays / totalDays
@@ -297,6 +305,12 @@ class IngestManager(
                 Instant.now()
             ).toInt()
             _dataAgeDays.value = days
+        }
+    }
+
+    private fun updateLastReadings(readings: List<MetricReading>) {
+        for (reading in readings) {
+            lastReadingPerMetric[reading.metricType] = reading
         }
     }
 

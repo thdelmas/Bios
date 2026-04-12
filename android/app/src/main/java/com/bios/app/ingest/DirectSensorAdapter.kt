@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.app.model.MetricType
@@ -71,8 +72,12 @@ class DirectSensorAdapter(context: Context) {
     }
 
     /**
-     * Sample inter-beat intervals and compute RMSSD-based HRV.
+     * Sample inter-beat intervals and compute HRV metrics.
      * Requires TYPE_HEART_BEAT sensor which reports individual heartbeat timestamps.
+     *
+     * Uses HrvAnalyzer (ported from hrv-analysis / HeartPy) for:
+     * - Malik threshold artifact rejection
+     * - RMSSD (primary), SDNN, pNN50 computation
      */
     suspend fun sampleHrv(
         durationMs: Long,
@@ -80,27 +85,21 @@ class DirectSensorAdapter(context: Context) {
     ): List<MetricReading> {
         val sensor = heartBeatSensor ?: return emptyList()
         val beatTimestamps = collectTimestampSamples(sensor, durationMs)
-        if (beatTimestamps.size < 3) return emptyList() // Need at least 3 beats for meaningful HRV
+        if (beatTimestamps.size < 3) return emptyList()
 
         // Compute inter-beat intervals (IBI) in milliseconds
         val ibis = beatTimestamps.zipWithNext { a, b -> b - a }
+        val hrv = HrvAnalyzer.analyze(ibis) ?: return emptyList()
 
-        // Compute successive differences
-        val successiveDiffs = ibis.zipWithNext { a, b -> (b - a) }
-
-        // RMSSD = root mean square of successive differences
-        val rmssd = kotlin.math.sqrt(
-            successiveDiffs.map { it * it }.average()
-        )
-
-        if (rmssd < 1 || rmssd > 300) return emptyList() // Discard unreasonable values
+        val now = System.currentTimeMillis()
+        val duration = (durationMs / 1000).toInt()
 
         return listOf(
             MetricReading(
                 metricType = MetricType.HEART_RATE_VARIABILITY.key,
-                value = rmssd,
-                timestamp = System.currentTimeMillis(),
-                durationSec = (durationMs / 1000).toInt(),
+                value = hrv.rmssd,
+                timestamp = now,
+                durationSec = duration,
                 sourceId = sourceId,
                 confidence = ConfidenceTier.LOW.level
             )
