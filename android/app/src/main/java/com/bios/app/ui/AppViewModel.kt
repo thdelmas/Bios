@@ -33,6 +33,7 @@ import com.bios.app.ui.diagnostics.DiagnosticResult
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
@@ -59,6 +60,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
     private val _initStatus = MutableStateFlow("")
     val initStatus: StateFlow<String> = _initStatus
@@ -137,9 +141,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun initialize() {
         viewModelScope.launch {
             try {
-                _initProgress.value = 0f
-                _initStatus.value = "Checking data sources..."
+                // Step 1: Load cached data from DB and show UI immediately
+                refreshAlerts()
+                refreshBaselines()
+                refreshHealthEvents()
+                refreshActionItems()
+            } catch (_: Throwable) {
+                // DB read failed — proceed with empty state
+            } finally {
+                _isInitialized.value = true
+            }
 
+            // Step 2: Sync new data in the background (UI is already visible)
+            syncInBackground()
+        }
+    }
+
+    private fun syncInBackground() {
+        viewModelScope.launch {
+            if (_isSyncing.value) return@launch
+            _isSyncing.value = true
+
+            try {
                 if (!healthConnect.isAvailable &&
                     !gadgetbridgeAdapter.isAvailable &&
                     !directSensorAdapter.hasAnySensor &&
@@ -154,7 +177,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val syncJob = viewModelScope.launch {
                     launch {
                         ingestManager.syncProgress.collect { syncPct ->
-                            _initProgress.value = 0.1f + syncPct * 0.3f
+                            _initProgress.value = 0.1f + syncPct * 0.6f
                         }
                     }
                     launch {
@@ -172,30 +195,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 } finally {
                     syncJob.cancel()
                 }
-                _initProgress.value = 0.4f
+                _initProgress.value = 0.7f
 
                 if (ingestManager.dataAgeDays.value >= BaselineEngine.MINIMUM_DATA_DAYS) {
-                    _initStatus.value = "Computing baselines..."
-                    _initProgress.value = 0.5f
+                    _initStatus.value = "Updating baselines..."
                     baselineEngine.computeAllBaselines()
                     baselineEngine.computeDailyAggregates()
 
                     _initStatus.value = "Detecting patterns..."
-                    _initProgress.value = 0.7f
+                    _initProgress.value = 0.85f
                     anomalyDetector.runDetection()
                 }
 
-                _initStatus.value = "Preparing dashboard..."
-                _initProgress.value = 0.85f
+                _initProgress.value = 1f
+                _initStatus.value = ""
+
+                // Refresh UI with newly synced data
                 refreshAlerts()
                 refreshBaselines()
                 refreshHealthEvents()
                 refreshActionItems()
-                _initProgress.value = 1f
             } catch (e: Throwable) {
-                _error.value = e.message ?: "Initialization failed"
+                _error.value = e.message ?: "Sync failed"
             } finally {
-                _isInitialized.value = true
+                _isSyncing.value = false
             }
         }
     }

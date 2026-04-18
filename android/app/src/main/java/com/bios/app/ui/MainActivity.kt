@@ -7,10 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -56,7 +53,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BiosRoot(viewModel: AppViewModel = viewModel()) {
     val hasPermissions by viewModel.hasPermissions.collectAsState()
-    val isInitialized by viewModel.isInitialized.collectAsState()
     var permissionDenied by remember { mutableStateOf(false) }
     var checkedInitialPermissions by remember { mutableStateOf(false) }
 
@@ -84,31 +80,12 @@ fun BiosRoot(viewModel: AppViewModel = viewModel()) {
         }
     }
 
-    if (!checkedInitialPermissions || (hasPermissions && !isInitialized)) {
-        val initStatus by viewModel.initStatus.collectAsState()
-        val initProgress by viewModel.initProgress.collectAsState()
-
+    if (!checkedInitialPermissions) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 48.dp)
-            ) {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(24.dp))
-                LinearProgressIndicator(
-                    progress = { initProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    initStatus.ifEmpty { "Loading your health data..." },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            CircularProgressIndicator()
         }
         return
     }
@@ -132,6 +109,8 @@ fun BiosApp(viewModel: AppViewModel) {
     val navController = rememberNavController()
     var selectedTab by remember { mutableIntStateOf(0) }
     val unacknowledgedAlerts by viewModel.unacknowledgedAlerts.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    val syncProgress by viewModel.initProgress.collectAsState()
     val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showEventSheet by remember { mutableStateOf(false) }
@@ -199,13 +178,22 @@ fun BiosApp(viewModel: AppViewModel) {
             }
         }
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = "home",
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (isSyncing) {
+                LinearProgressIndicator(
+                    progress = { syncProgress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            NavHost(
+                navController = navController,
+                startDestination = "home",
+                modifier = Modifier.weight(1f)
+            ) {
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
@@ -263,6 +251,7 @@ fun BiosApp(viewModel: AppViewModel) {
                 )
             }
         }
+        } // Column
     }
 
     if (showEventSheet) {

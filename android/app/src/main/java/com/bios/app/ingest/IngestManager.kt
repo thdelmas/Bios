@@ -9,6 +9,9 @@ import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
 import com.bios.app.model.SensorType
 import com.bios.app.model.SourceType
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
@@ -124,24 +127,18 @@ class IngestManager(
                 val end = Instant.now()
                 val start = end.minus(24, ChronoUnit.HOURS)
 
-                val allReadings = mutableListOf<MetricReading>()
-
-                // Health Connect (preferred)
-                healthConnectSourceId?.let { id ->
-                    allReadings += healthConnect.fetchReadings(start, end, id)
+                val allReadings = coroutineScope {
+                    val jobs = listOfNotNull(
+                        healthConnectSourceId?.let { id ->
+                            async { healthConnect.fetchReadings(start, end, id) }
+                        },
+                        async { fetchGadgetbridgeReadings(start, end) },
+                        async { fetchDirectSensorReadings() },
+                        async { fetchOuraReadings(start, end) },
+                        async { fetchPhoneSensorReadings() }
+                    )
+                    jobs.awaitAll().flatten()
                 }
-
-                // Gadgetbridge (degoogled fallback)
-                allReadings += fetchGadgetbridgeReadings(start, end)
-
-                // Direct sensors (HR, HRV from hardware)
-                allReadings += fetchDirectSensorReadings()
-
-                // Oura API
-                allReadings += fetchOuraReadings(start, end)
-
-                // Phone sensors (last resort)
-                allReadings += fetchPhoneSensorReadings()
 
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
@@ -179,13 +176,16 @@ class IngestManager(
             while (current.isBefore(end)) {
                 _syncStatus.value = "Syncing day ${completedDays + 1} of 30..."
                 val chunkEnd = minOf(current.plus(1, ChronoUnit.DAYS), end)
-                val allReadings = mutableListOf<MetricReading>()
-
-                healthConnectSourceId?.let { id ->
-                    allReadings += healthConnect.fetchReadings(current, chunkEnd, id)
+                val allReadings = coroutineScope {
+                    val jobs = listOfNotNull(
+                        healthConnectSourceId?.let { id ->
+                            async { healthConnect.fetchReadings(current, chunkEnd, id) }
+                        },
+                        async { fetchGadgetbridgeReadings(current, chunkEnd) },
+                        async { fetchOuraReadings(current, chunkEnd) }
+                    )
+                    jobs.awaitAll().flatten()
                 }
-                allReadings += fetchGadgetbridgeReadings(current, chunkEnd)
-                allReadings += fetchOuraReadings(current, chunkEnd)
 
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)

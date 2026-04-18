@@ -10,6 +10,9 @@ import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.app.model.MetricType
 import com.bios.app.model.SleepStage
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.time.Instant
 import java.util.UUID
 
@@ -50,20 +53,19 @@ class HealthConnectAdapter(private val context: Context) {
         startTime: Instant,
         endTime: Instant,
         sourceId: String
-    ): List<MetricReading> {
-        val readings = mutableListOf<MetricReading>()
-
-        readings += fetchHeartRate(startTime, endTime, sourceId)
-        readings += fetchHRV(startTime, endTime, sourceId)
-        readings += fetchRestingHR(startTime, endTime, sourceId)
-        readings += fetchSpO2(startTime, endTime, sourceId)
-        readings += fetchRespiratoryRate(startTime, endTime, sourceId)
-        readings += fetchSkinTemp(startTime, endTime, sourceId)
-        readings += fetchSleep(startTime, endTime, sourceId)
-        readings += fetchSteps(startTime, endTime, sourceId)
-        readings += fetchActiveCalories(startTime, endTime, sourceId)
-
-        return readings
+    ): List<MetricReading> = coroutineScope {
+        val jobs = listOf(
+            async { fetchHeartRate(startTime, endTime, sourceId) },
+            async { fetchHRV(startTime, endTime, sourceId) },
+            async { fetchRestingHR(startTime, endTime, sourceId) },
+            async { fetchSpO2(startTime, endTime, sourceId) },
+            async { fetchRespiratoryRate(startTime, endTime, sourceId) },
+            async { fetchSkinTemp(startTime, endTime, sourceId) },
+            async { fetchSleep(startTime, endTime, sourceId) },
+            async { fetchSteps(startTime, endTime, sourceId) },
+            async { fetchActiveCalories(startTime, endTime, sourceId) }
+        )
+        jobs.awaitAll().flatten()
     }
 
     // MARK: - Individual record types
