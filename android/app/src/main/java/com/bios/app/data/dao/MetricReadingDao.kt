@@ -68,6 +68,24 @@ interface MetricReadingDao {
     @Query("SELECT MIN(timestamp) FROM metric_readings")
     suspend fun oldestTimestamp(): Long?
 
+    data class MetricStatusRow(
+        val metricType: String,
+        val lastTimestamp: Long,
+        val count24h: Int,
+        val countTotal: Int,
+    )
+
+    @Query("""
+        SELECT metricType AS metricType,
+               COALESCE(MAX(timestamp), 0) AS lastTimestamp,
+               COALESCE(SUM(CASE WHEN timestamp >= :since24h THEN 1 ELSE 0 END), 0) AS count24h,
+               COUNT(*) AS countTotal
+        FROM metric_readings
+        WHERE isPrimary = 1
+        GROUP BY metricType
+    """)
+    suspend fun statusSummary(since24h: Long): List<MetricStatusRow>
+
     @Query("SELECT * FROM metric_readings WHERE createdAt > :sinceMillis ORDER BY createdAt ASC")
     suspend fun fetchCreatedAfter(sinceMillis: Long): List<MetricReading>
 
