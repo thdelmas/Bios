@@ -12,6 +12,13 @@
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <!--
+      Required so SyncWorker (WorkManager, runs in background) can read data
+      written by other apps (Google Fit, Fitbit, etc.). Without this, Health
+      Connect silently enforces "only the calling app's own data" on background
+      reads and Bios sees empty results because it has never written any data.
+    -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
 
     <!-- Network (P2P sync, API adapters) -->
     <uses-permission android:name="android.permission.INTERNET" />

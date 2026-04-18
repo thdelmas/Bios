@@ -37,6 +37,9 @@ class HealthConnectAdapter(private val context: Context) {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+        // SyncWorker runs in the background; without this the HC service returns
+        // only Bios' own written records (none) instead of Google Fit / Fitbit data.
+        HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND,
     )
 
     val isAvailable: Boolean
