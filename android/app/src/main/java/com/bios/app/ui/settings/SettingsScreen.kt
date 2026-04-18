@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
+import com.bios.app.export.FhirExporter
 import com.bios.app.model.PrivacyTier
 import com.bios.app.alerts.DailyDigestWorker
 import com.bios.app.privacy.ContributionWorker
@@ -175,6 +176,37 @@ fun SettingsScreen(viewModel: AppViewModel, onNavigateToPrivacy: () -> Unit = {}
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Export as CSV")
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        isExporting = true
+                        scope.launch {
+                            try {
+                                val exporter = FhirExporter(context, viewModel.db)
+                                val file = exporter.exportToFhirBundle()
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    file
+                                )
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/fhir+json"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(shareIntent, "Share FHIR Bundle with your doctor")
+                                )
+                            } finally {
+                                isExporting = false
+                            }
+                        }
+                    },
+                    enabled = !isExporting && totalReadings > 0,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Export as FHIR Bundle (for doctors)")
                 }
             }
         }
