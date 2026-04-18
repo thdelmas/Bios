@@ -64,6 +64,15 @@ android {
     androidResources {
         noCompress += "tflite"
     }
+
+    testOptions {
+        unitTests.all {
+            // FHIR R4 JSON Schema validation (FhirSchemaValidationTest) loads
+            // the full ~3 MB schema and eagerly constructs thousands of
+            // validators — the default 512 MB test heap OOMs.
+            it.maxHeapSize = "2g"
+        }
+    }
 }
 
 dependencies {
@@ -122,4 +131,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.json:json:20231013")
+    // HAPI FHIR R4 parser for strict validation of emitted resources
+    // (test-only — not shipped in the APK).
+    testImplementation("ca.uhn.hapi.fhir:hapi-fhir-base:7.4.0")
+    testImplementation("ca.uhn.hapi.fhir:hapi-fhir-structures-r4:7.4.0")
 }
