@@ -36,7 +36,9 @@ enum class ThresholdSource {
     /** Derived from peer-reviewed research with specific citation. */
     LITERATURE,
     /** Learned from the owner's own historical data (future). */
-    PERSONAL
+    PERSONAL,
+    /** Signal computed by a companion app (W2F) and injected via ContentProvider. */
+    COMPANION
 }
 
 object ConditionPatterns {
@@ -319,7 +321,9 @@ object ConditionPatterns {
         risks = "Undetected AFib increases stroke risk 5-fold. Many strokes are the first sign of previously undiagnosed AFib. AFib also contributes to heart failure, cognitive decline, and reduced quality of life. Paroxysmal AFib can progress to persistent or permanent AFib if underlying causes are not addressed. Early detection and treatment significantly reduce these risks — screening with wearable data, while imperfect, catches episodes that periodic clinical visits miss."
     )
 
-    /** Mental health correlates: sleep, HRV, activity pattern changes. Reports data only — never diagnoses. */
+    /** Mental health correlates: sleep, HRV, activity, + companion signals from W2F.
+     *  Reports data only — never diagnoses. When W2F is installed, typing cadence,
+     *  circadian phase shift, and mood drift score enrich this pattern significantly. */
     val mentalHealthCorrelate = ConditionPattern(
         id = "mental_health_correlate",
         title = "Behavioral pattern shift detected",
@@ -332,7 +336,14 @@ object ConditionPatterns {
             SignalRule(MetricType.STEPS, DeviationDirection.BELOW, 1.5, 168, 0.8,
                 ThresholdSource.LITERATURE, "Schuch et al. (2018) - activity reduction is both symptom and risk factor for depression"),
             SignalRule(MetricType.SLEEP_DURATION, DeviationDirection.IRREGULAR, 1.5, 168, 0.6,
-                ThresholdSource.LITERATURE, "Wirz-Justice (2006) - circadian rhythm disruption correlates with mood disorders")
+                ThresholdSource.LITERATURE, "Wirz-Justice (2006) - circadian rhythm disruption correlates with mood disorders"),
+            // Companion signals from W2F (gracefully ignored when W2F is not installed — no baseline = skipped)
+            SignalRule(MetricType.TYPING_CADENCE, DeviationDirection.IRREGULAR, 1.5, 168, 1.2,
+                ThresholdSource.LITERATURE, "BiAffect (npj Digital Medicine 2024) - typing speed and backspace rate are strongest mood predictors in bipolar"),
+            SignalRule(MetricType.CIRCADIAN_PHASE_SHIFT, DeviationDirection.IRREGULAR, 1.0, 168, 1.5,
+                ThresholdSource.LITERATURE, "Seoul Nat'l Univ (npj Digital Medicine 2024) - circadian phase shift is the strongest single predictor of manic episodes"),
+            SignalRule(MetricType.MOOD_DRIFT_SCORE, DeviationDirection.ABOVE, 1.0, 24, 1.5,
+                ThresholdSource.COMPANION, "W2F ADA-1/HDA-1 composite drift score — multivariate z-score + LSDD drift detection")
         ),
         minActiveSignals = 3,
         explanation = "Your sleep patterns, activity level, and autonomic markers have shifted over the past week. These physiological changes are correlated with stress, fatigue, or mood changes in clinical literature. This is a data observation, not a diagnosis.",
@@ -340,7 +351,9 @@ object ConditionPatterns {
         references = listOf(
             "Baglioni C et al. (2016) - Sleep and mental disorders: meta-analysis",
             "Koch C et al. (2019) - Heart rate variability and mental health",
-            "Schuch FB et al. (2018) - Physical activity and incident depression"
+            "Schuch FB et al. (2018) - Physical activity and incident depression",
+            "BiAffect (npj Digital Medicine 2024) - Smartphone keyboard dynamics predict affect in suicidal ideation",
+            "Seoul Nat'l Univ (npj Digital Medicine 2024) - Wearable sleep/circadian features predict mood episodes"
         ),
         earlyDetection = "Mental health changes produce a distinctive physiological fingerprint: sleep architecture deteriorates (less deep sleep, more awakenings, irregular timing), HRV declines (reflecting autonomic stress), and daily activity decreases. These changes often precede conscious awareness of mood shifts by days to weeks. Bios monitors this triad over a 7-day window, requiring 3 of 4 signals to activate — a high bar that reduces false positives from short-term stress or illness. This pattern is strictly reported as data, never as a mental health assessment.",
         prevention = "Protective factors for mental health include regular physical activity (the strongest modifiable factor, per Schuch 2018), consistent sleep schedule, social connection, time in nature, stress management practices, and limiting alcohol. Building these into routine creates resilience against acute stressors. If you have a history of mood disorders, maintaining these foundations is especially important — and monitoring for physiological pattern shifts can provide early warning.",

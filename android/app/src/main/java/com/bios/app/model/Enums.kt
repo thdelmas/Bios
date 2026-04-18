@@ -34,7 +34,12 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     RECOVERY_SCORE("recovery_score", MetricUnit.SCORE, MetricDomain.RECOVERY),
 
     // Women's Health
-    BASAL_BODY_TEMPERATURE("basal_body_temperature", MetricUnit.CELSIUS, MetricDomain.WOMENS_HEALTH);
+    BASAL_BODY_TEMPERATURE("basal_body_temperature", MetricUnit.CELSIUS, MetricDomain.WOMENS_HEALTH),
+
+    // Companion signals (injected by W2F or other companion apps via ContentProvider)
+    TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
+    CIRCADIAN_PHASE_SHIFT("circadian_phase_shift", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
+    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH);
 
     val readableName: String
         get() = key.replace("_", " ").replaceFirstChar { it.uppercase() }
@@ -62,7 +67,8 @@ enum class MetricUnit(val symbol: String) {
 
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
-    ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH
+    ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
+    MENTAL_HEALTH
 }
 
 // MARK: - Data Source

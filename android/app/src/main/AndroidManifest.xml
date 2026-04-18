@@ -22,12 +22,17 @@
     <!-- Background work -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Signature-level permission: only apps signed with same key can read health data -->
+    <!-- Signature-level permissions: only apps signed with same key can access health data -->
     <permission
         android:name="com.bios.app.permission.READ_HEALTH"
         android:protectionLevel="signature"
         android:label="Read Bios health data"
         android:description="@string/permission_read_health_desc" />
+    <permission
+        android:name="com.bios.app.permission.WRITE_COMPANION"
+        android:protectionLevel="signature"
+        android:label="Write companion signals to Bios"
+        android:description="@string/permission_write_companion_desc" />
 
     <application
         android:name=".BiosApplication"
@@ -62,7 +67,8 @@
             android:name=".provider.BiosHealthProvider"
             android:authorities="com.bios.app.health"
             android:exported="true"
-            android:readPermission="com.bios.app.permission.READ_HEALTH" />
+            android:readPermission="com.bios.app.permission.READ_HEALTH"
+            android:writePermission="com.bios.app.permission.WRITE_COMPANION" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
