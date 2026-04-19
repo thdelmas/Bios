@@ -97,6 +97,71 @@ bus*. "Ecosystem" ≠ "everyone reads Bios."
   consumes it. If it's a computed score owned by one companion, it still
   needs the canonical key in Bios for the cross-correlation engine.
 
+## Case study: nutrition in W2F
+
+A worked example of how to apply the rule when a companion grows a feature
+that sounds out-of-scope. Nutrition *seems* like it belongs in Bios (it
+affects physiology) or in a dedicated nutrition app — yet W2F has a
+nutrition surface. Why is that correct?
+
+### What W2F actually ships
+
+Three things, under one "nutrition" umbrella:
+
+1. **`FuelLog` entity** — logs `CAFFEINE`, `MEAL`, `SUPPLEMENT` events with
+   timestamp and dose. The drift engine consumes a single derived feature:
+   **fuel gap** — hours between caffeine and a meal (empty-stomach caffeine
+   is a hypomania amplifier). Used as one of seven factors in the
+   `InfluencesAnalyzer`.
+2. **Supplement adherence** — Magnesium and Riboflavin, tracked because
+   they're migraine prophylactics.
+3. **`GuideNutritionScreen`** — a static reference page with 22 foods and
+   supplements and their rationale for mood/cognitive/physical stability.
+   No logging, no tracker — pure education.
+
+### Why each piece is correctly placed
+
+| Piece | Verdict | Reasoning |
+|---|---|---|
+| FuelLog (caffeine, meal, fuel gap) | ✅ Correct in W2F | Intake logging *because it's a mood signal* — same pattern as typing cadence. Not general nutrition tracking. |
+| Static nutrition reference page | ✅ Correct in W2F | Content is framed for mood stability. No capture, no data bus involvement — just in-app education. W2F's own [SCOPE.md](../../W2F/docs/SCOPE.md) explicitly chose this compromise. |
+| Supplement adherence (Mg, B2) | ⚠️ Scope-adjacent | Migraine prevention, not mood detection. Tolerable today because it reuses `FuelLog`; should move to a migraine companion if one ever ships. |
+
+### What would make this *wrong*
+
+If W2F grew any of these, it would be drifting into an everything-app:
+
+- Calorie or macro tracking
+- Meal planning, recipes, grocery lists
+- Weight-loss goals
+- Hydration tracking untied to mood
+- Nutritional completeness (vitamins, fiber, etc.) as a goal in itself
+- Food database lookups or barcode scanning
+
+### The architectural observation
+
+The mood-relevant intake signals (`caffeine_intake`, `meal_timing_variance`,
+`fuel_gap_hours`) live only in W2F's local `fuel_logs` table. They are
+**not** pushed to Bios. That is fine today — no second consumer exists.
+
+If/when a second app needs intake data (e.g., Fil wants caffeine as an HRV
+confounder, or a migraine companion ships), the right move is:
+
+1. Add the keys to Bios's canonical `MetricType` vocabulary
+2. Extend the companion-write URI to accept them (today it only accepts the
+   three MENTAL_HEALTH keys — [CONSUMER_API.md](CONSUMER_API.md))
+3. W2F writes to Bios; the second app reads from Bios
+
+Do not pre-emptively hoist the schema before a second consumer exists. YAGNI
+applies to metric keys too — each key is a commitment to stability.
+
+### Rule of thumb distilled from this case
+
+> A companion may capture data *outside* its strict domain **if and only if**
+> that data is consumed as a signal *inside* its domain. The moment a second
+> app needs to consume it, the data belongs in Bios's metric bus — not in
+> two parallel private tables.
+
 ## Cross-references
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Bios system components
