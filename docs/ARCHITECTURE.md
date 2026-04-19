@@ -4,6 +4,21 @@
 
 Bios is **primarily designed to be embedded on LETHE** (OSmosis privacy-hardened Android overlay, LineageOS 22.1 base) and **portable across stock Android versions** (API 28–35).
 
+## Scope: Bios vs. Ecosystem Apps
+
+Bios is the **sensor backbone and generic body guardian**. Domain specialists
+(neurological, mood, safety) live in separate companion apps that read from
+Bios and — where applicable — push computed scores back into Bios's metric
+bus. See [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) for the full rule
+and per-app breakdown (Fil, W2F, Virgil).
+
+In short, Bios owns: ingestion adapters, encrypted storage, personal
+baselines, canonical metric vocabulary, and the generic multi-system
+detection engine. It does **not** own: specialized capture surfaces
+(AccessibilityService, active cognitive tests), domain-specific detection
+models (MS relapse, bipolar state), or social features (emergency contacts,
+SMS/call handling).
+
 ### Build Flavors
 
 | Flavor | Context | Install method | Permissions |
