@@ -270,5 +270,6 @@ enum class RejectionReason(val userMessage: String) {
     SATURATION("Too much light — lighten finger pressure or move away from bright light."),
     MOTION_ARTIFACT("Motion detected — rest your hand on a surface and hold still."),
     TOO_FEW_BEATS("Signal too weak to extract a heartbeat — check contact and retry."),
-    IRREGULAR_RHYTHM("Signal too irregular to score — retry with a steadier hand.")
+    IRREGULAR_RHYTHM("Signal too irregular to score — retry with a steadier hand."),
+    HARDWARE_UNAVAILABLE("Camera or flash unavailable — this device may not support fingertip-PPG capture.")
 }

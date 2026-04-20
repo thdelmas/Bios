@@ -118,6 +118,11 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$cameraxVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
+    // .await() on CameraX's ListenableFuture<ProcessCameraProvider>. Full
+    // Guava is required because the listenablefuture stub gets swapped for
+    // an empty 1-byte jar by the standard Guava/stub dedup rules.
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
+    implementation("com.google.guava:guava:33.3.1-android")
 
     // LiteRT (on-device ML) – rebranded TF Lite with 16KB page alignment
     implementation("com.google.ai.edge.litert:litert:1.4.2")
