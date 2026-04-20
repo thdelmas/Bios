@@ -31,7 +31,11 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: AppViewModel, onNavigateToDiagnostics: () -> Unit = {}) {
+fun HomeScreen(
+    viewModel: AppViewModel,
+    onNavigateToDiagnostics: () -> Unit = {},
+    onNavigateToPpgCapture: () -> Unit = {}
+) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
@@ -112,6 +116,44 @@ fun HomeScreen(viewModel: AppViewModel, onNavigateToDiagnostics: () -> Unit = {}
                             outcomeAccurate = input.outcomeAccurate
                         )
                     }
+                )
+            }
+        }
+
+        // HRV snapshot entry (camera-PPG)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onNavigateToPpgCapture,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.CameraAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Take HRV Snapshot",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        "Fingertip reading via camera — 60 seconds",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

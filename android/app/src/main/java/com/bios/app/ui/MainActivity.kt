@@ -31,6 +31,7 @@ import com.bios.app.ui.diagnostics.ConditionDetailScreen
 import com.bios.app.ui.diagnostics.DiagnosticsScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.bios.app.ui.ppg.PpgCaptureScreen
 import com.bios.app.ui.reference.LongevityReferenceScreen
 import com.bios.app.ui.theme.BiosTheme
 import com.bios.app.ui.timeline.TimelineScreen
@@ -197,8 +198,12 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
-                    onNavigateToDiagnostics = { navController.navigate("diagnostics") }
+                    onNavigateToDiagnostics = { navController.navigate("diagnostics") },
+                    onNavigateToPpgCapture = { navController.navigate("ppg_capture") }
                 )
+            }
+            composable("ppg_capture") {
+                PpgCaptureScreen(onBack = { navController.popBackStack() })
             }
             composable("diagnostics") {
                 DiagnosticsScreen(
