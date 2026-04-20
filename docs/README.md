@@ -8,6 +8,9 @@
 - [TECH_STACK.md](TECH_STACK.md) — Technology choices and platform strategy
 - [CONSUMER_API.md](CONSUMER_API.md) — `BiosHealthProvider` contract for companion apps
 
+## Feature Guides
+- [CAMERA_PPG.md](CAMERA_PPG.md) — Camera-PPG HRV snapshot: when to use, limitations, privacy
+
 ## Planning
 - [ROADMAP.md](ROADMAP.md) — Owner-protection roadmap (Phases 1–5)
 - [PHASE1_PROTOTYPE.md](PHASE1_PROTOTYPE.md) — Prototype scope and proof-of-concept
