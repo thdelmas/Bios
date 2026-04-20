@@ -83,7 +83,8 @@ enum class SourceType(val key: String) {
     WITHINGS_API("withings_api"),
     DEXCOM_API("dexcom_api"),
     POLAR_API("polar_api"),
-    PHONE_SENSOR("phone_sensor")
+    PHONE_SENSOR("phone_sensor"),
+    CAMERA_PPG("camera_ppg")
 }
 
 enum class SensorType {

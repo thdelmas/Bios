@@ -29,6 +29,15 @@
     <!-- Background work -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Camera (fingertip-PPG HRV snapshots via rear camera + flash) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.flash"
+        android:required="false" />
+
     <!-- Signature-level permissions: only apps signed with same key can access health data -->
     <permission
         android:name="com.bios.app.permission.READ_HEALTH"

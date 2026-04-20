@@ -112,6 +112,13 @@ dependencies {
         exclude(group = "com.google.crypto.tink", module = "tink")
     }
 
+    // CameraX (fingertip-PPG HRV snapshots — user-initiated, no streaming)
+    val cameraxVersion = "1.4.1"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+
     // LiteRT (on-device ML) – rebranded TF Lite with 16KB page alignment
     implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
