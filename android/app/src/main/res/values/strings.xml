@@ -4,6 +4,14 @@
     <string name="permission_read_health_desc">Allows companion apps signed with the same key to read health metric data from Bios.</string>
     <string name="permission_write_companion_desc">Allows companion apps signed with the same key to write computed signals (typing cadence, circadian phase, drift score) to Bios.</string>
 
+    <string name="monthly_ask_title">A note from the developer</string>
+    <string name="monthly_ask_body">Bios is made by one person and is free, with no ads, no tracking, and no premium tier. If it has been useful to you, here are three ways you can help keep it going.</string>
+    <string name="monthly_ask_donate">Donate</string>
+    <string name="monthly_ask_review">Leave a review</string>
+    <string name="monthly_ask_feedback">Send feedback</string>
+    <string name="monthly_ask_dismiss">Maybe later</string>
+    <string name="monthly_ask_feedback_subject">Bios feedback</string>
+
     <array name="health_permissions">
         <item>android.permission.health.READ_HEART_RATE</item>
         <item>android.permission.health.READ_HEART_RATE_VARIABILITY</item>

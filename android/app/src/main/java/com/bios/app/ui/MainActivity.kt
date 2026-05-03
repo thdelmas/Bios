@@ -33,9 +33,12 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.bios.app.ui.ppg.PpgCaptureScreen
 import com.bios.app.ui.reference.LongevityReferenceScreen
+import com.bios.app.ui.support.MonthlyAskPopup
+import com.bios.app.ui.support.MonthlyAskScheduler
 import com.bios.app.ui.theme.BiosTheme
 import com.bios.app.ui.timeline.TimelineScreen
 import com.bios.app.ui.trends.TrendsScreen
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,6 +120,15 @@ fun BiosApp(viewModel: AppViewModel) {
     var showEventSheet by remember { mutableStateOf(false) }
     var eventSheetParentId by remember { mutableStateOf<String?>(null) }
     var eventSheetDefaultType by remember { mutableStateOf<HealthEventType?>(null) }
+
+    val context = LocalContext.current
+    val monthlyAskScheduler = remember { MonthlyAskScheduler(context) }
+    var showMonthlyAsk by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (monthlyAskScheduler.shouldShow()) {
+            showMonthlyAsk = true
+        }
+    }
 
     // Show errors as snackbar
     LaunchedEffect(error) {
@@ -257,6 +269,13 @@ fun BiosApp(viewModel: AppViewModel) {
             }
         }
         } // Column
+    }
+
+    if (showMonthlyAsk) {
+        MonthlyAskPopup(onClose = {
+            monthlyAskScheduler.markShown()
+            showMonthlyAsk = false
+        })
     }
 
     if (showEventSheet) {
