@@ -37,7 +37,9 @@ Bios shares LETHE's protection philosophy:
 - See docs/ARCHITECTURE.md for system diagrams
 - See docs/DATA_MODEL.md for unified metric schema
 - See docs/PRIVACY_ARCHITECTURE.md for privacy/encryption details
-- See docs/ROADMAP.md for the owner-protection roadmap (Phases 1-5 complete)
+- See docs/CONSUMER_API.md for the `BiosHealthProvider` ContentProvider contract (read by W2F, future companions)
+- See docs/ECOSYSTEM_BOUNDARIES.md for what belongs in Bios vs. companion apps (Fil, W2F, Virgil, SoulRadio)
+- See docs/ROADMAP.md for the owner-protection roadmap (Phases 1-6 complete; Phase 7 companion-ecosystem outbound pending keystore decision)
 
 ## Code Conventions
 
