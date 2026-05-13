@@ -55,9 +55,6 @@ class BiosHealthProvider : ContentProvider() {
 
         private const val DAY_MILLIS = 24L * 60L * 60L * 1000L
 
-        // See [CompanionContract] for the writable-metric whitelist and its rationale.
-        private val COMPANION_METRICS get() = CompanionContract.WRITABLE_METRICS
-
         private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
             addURI(AUTHORITY, "readings/*", READINGS)
             addURI(AUTHORITY, "baselines", BASELINES_ALL)
@@ -87,8 +84,13 @@ class BiosHealthProvider : ContentProvider() {
     private var companionSourceEnsured = false
 
     override fun onCreate(): Boolean {
-        db = BiosDatabase.getInstance(context!!)
-        gate = CompanionGate(db.companionGrantDao())
+        val ctx = context!!
+        db = BiosDatabase.getInstance(ctx)
+        val notifier = CompanionAccessNotifier(ctx)
+        gate = CompanionGate(
+            dao = db.companionGrantDao(),
+            onFirstPending = { pkg -> notifier.notifyPending(pkg) }
+        )
         return true
     }
 
@@ -143,6 +145,7 @@ class BiosHealthProvider : ContentProvider() {
      * Only MENTAL_HEALTH domain metrics are writable — everything else is rejected.
      */
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
+        val caller = callingPackage
         if (!isAllowed()) {
             throw SecurityException("Companion not approved by owner")
         }
@@ -151,8 +154,8 @@ class BiosHealthProvider : ContentProvider() {
         }
         val metricType = uri.lastPathSegment
             ?: throw IllegalArgumentException("Missing metric type in URI")
-        if (metricType !in COMPANION_METRICS) {
-            throw SecurityException("Metric '$metricType' is not writable by companion apps")
+        if (!CompanionContract.canWrite(caller, metricType)) {
+            throw SecurityException("'$caller' may not write '$metricType'")
         }
         val cv = values ?: throw IllegalArgumentException("ContentValues required")
         val value = cv.getAsDouble("value")

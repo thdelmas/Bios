@@ -17,7 +17,8 @@ import com.bios.app.model.CompanionGrant
  */
 class CompanionGate(
     private val dao: CompanionGrantDao,
-    private val clock: () -> Long = { System.currentTimeMillis() }
+    private val clock: () -> Long = { System.currentTimeMillis() },
+    private val onFirstPending: (String) -> Unit = {}
 ) {
 
     sealed interface Decision {
@@ -63,6 +64,7 @@ class CompanionGate(
                     lastAccessAt = now,
                     accessCount = 1
                 ))
+                onFirstPending(callingPackage)
                 Decision.Deny(Decision.Reason.PENDING_APPROVAL)
             }
             else -> Decision.Deny(Decision.Reason.PENDING_APPROVAL)

@@ -5,6 +5,7 @@ import com.bios.app.model.MetricType
 import com.bios.app.model.MetricUnit
 import com.bios.app.provider.CompanionContract
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,5 +60,37 @@ class BiosHealthProviderContractTest {
         assertEquals(MetricUnit.EVENT, MetricType.TOBACCO_USE.unit)
         assertEquals(MetricDomain.INTAKE, MetricType.TOBACCO_CRAVING.domain)
         assertEquals(MetricUnit.EVENT, MetricType.TOBACCO_CRAVING.unit)
+    }
+
+    @Test
+    fun `W2F may only write its own mental-health keys`() {
+        val w2f = "com.w2f.app"
+        assertTrue(CompanionContract.canWrite(w2f, "typing_cadence"))
+        assertTrue(CompanionContract.canWrite(w2f, "mood_drift_score"))
+        assertTrue(CompanionContract.canWrite(w2f, "circadian_phase_shift"))
+        // Cross-package isolation — W2F must not write Smokeless keys
+        assertFalse(CompanionContract.canWrite(w2f, "tobacco_use"))
+        assertFalse(CompanionContract.canWrite(w2f, "tobacco_craving"))
+    }
+
+    @Test
+    fun `Smokeless may only write its own intake keys`() {
+        val sml = "com.smokless.smokeless"
+        assertTrue(CompanionContract.canWrite(sml, "tobacco_use"))
+        assertTrue(CompanionContract.canWrite(sml, "tobacco_craving"))
+        // Cross-package isolation — Smokeless must not write W2F keys
+        assertFalse(CompanionContract.canWrite(sml, "mood_drift_score"))
+        assertFalse(CompanionContract.canWrite(sml, "typing_cadence"))
+    }
+
+    @Test
+    fun `unknown packages cannot write any whitelisted key`() {
+        for (key in CompanionContract.WRITABLE_METRICS) {
+            assertFalse(
+                "'com.unknown.app' must not be able to write '$key'",
+                CompanionContract.canWrite("com.unknown.app", key)
+            )
+        }
+        assertFalse(CompanionContract.canWrite(null, "tobacco_use"))
     }
 }

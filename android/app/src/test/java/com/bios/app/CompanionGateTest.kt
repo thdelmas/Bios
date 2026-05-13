@@ -30,7 +30,7 @@ class CompanionGateTest {
     }
 
     private fun gate(now: Long = 1_000L, dao: FakeDao = FakeDao()) =
-        Pair(dao, CompanionGate(dao) { now })
+        Pair(dao, CompanionGate(dao, clock = { now }))
 
     @Test
     fun `unknown package is recorded as pending and denied`() = runBlocking {
@@ -63,7 +63,7 @@ class CompanionGateTest {
     @Test
     fun `granted package is allowed and access is recorded`() = runBlocking {
         val dao = FakeDao()
-        val gate = CompanionGate(dao) { 9_000L }
+        val gate = CompanionGate(dao, clock = { 9_000L })
         gate.approve("com.w2f")
 
         val decision = gate.check("com.w2f")
@@ -78,7 +78,7 @@ class CompanionGateTest {
     @Test
     fun `revoked package is denied and access is not recorded`() = runBlocking {
         val dao = FakeDao()
-        val gate = CompanionGate(dao) { 1_000L }
+        val gate = CompanionGate(dao, clock = { 1_000L })
         gate.approve("com.w2f")
         gate.revoke("com.w2f")
 
@@ -106,11 +106,11 @@ class CompanionGateTest {
     @Test
     fun `approve preserves firstSeenAt and clears revokedAt`() = runBlocking {
         val dao = FakeDao()
-        val gate = CompanionGate(dao) { 100L }
+        val gate = CompanionGate(dao, clock = { 100L })
         gate.check("com.w2f") // creates PENDING at 100
-        val gateLater = CompanionGate(dao) { 500L }
+        val gateLater = CompanionGate(dao, clock = { 500L })
         gateLater.revoke("com.w2f")
-        val gateLatest = CompanionGate(dao) { 900L }
+        val gateLatest = CompanionGate(dao, clock = { 900L })
         gateLatest.approve("com.w2f")
 
         val row = dao.find("com.w2f")!!
@@ -127,5 +127,35 @@ class CompanionGateTest {
         gate.revoke("com.never.seen")
 
         assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `onFirstPending fires exactly once on first sighting per package`() = runBlocking {
+        val dao = FakeDao()
+        val seen = mutableListOf<String>()
+        val gate = CompanionGate(dao, clock = { 1L }, onFirstPending = { seen += it })
+
+        gate.check("com.a")
+        gate.check("com.a")   // already PENDING — no second fire
+        gate.check("com.b")
+        gate.check("com.a")
+        gate.check("com.b")
+
+        assertEquals(listOf("com.a", "com.b"), seen)
+    }
+
+    @Test
+    fun `onFirstPending does not fire for granted or revoked transitions`() = runBlocking {
+        val dao = FakeDao()
+        val seen = mutableListOf<String>()
+        val gate = CompanionGate(dao, clock = { 1L }, onFirstPending = { seen += it })
+
+        gate.approve("com.preapproved")   // no PENDING transition
+        gate.check("com.preapproved")
+        assertTrue("Approving directly should not notify", seen.isEmpty())
+
+        gate.revoke("com.preapproved")
+        gate.check("com.preapproved")
+        assertTrue("Revoked re-check should not notify", seen.isEmpty())
     }
 }

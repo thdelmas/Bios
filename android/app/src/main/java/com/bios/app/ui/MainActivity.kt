@@ -130,6 +130,20 @@ fun BiosApp(viewModel: AppViewModel) {
         }
     }
 
+    // Deep-link from CompanionAccessNotifier — opens Settings → Companion Apps.
+    LaunchedEffect(Unit) {
+        val activity = context as? android.app.Activity ?: return@LaunchedEffect
+        val intent = activity.intent ?: return@LaunchedEffect
+        if (intent.getBooleanExtra(
+                com.bios.app.provider.CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS,
+                false
+            )
+        ) {
+            intent.removeExtra(com.bios.app.provider.CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS)
+            navController.navigate("companions")
+        }
+    }
+
     // Show errors as snackbar
     LaunchedEffect(error) {
         error?.let {
