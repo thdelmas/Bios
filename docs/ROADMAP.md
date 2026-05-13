@@ -225,12 +225,12 @@ backed positive trajectory (RHR ↓, HRV ↑, SpO2 ↑ over 2–12 weeks; Benowi
 2009, Mahmud 2003). Information-only, no praise, no streaks — respects
 the "silence is a feature" principle.
 
-**Acceptance:** Smokeless writes `TOBACCO_USE` and `TOBACCO_CRAVING`
-events to Bios via the companion URI. Bios surfaces them in diagnostics
-the same way it surfaces other event streams. Cross-correlation pattern
-runs alongside the existing patterns. No keys added beyond what Smokeless
-actively emits today (YAGNI applies — cannabis keys reserved, not yet
-whitelisted in the URI).
+**Acceptance:** Smokeless writes `TOBACCO_USE` / `TOBACCO_CRAVING` and
+(as of its Phase 2.1) `CANNABIS_USE` / `CANNABIS_CRAVING` events to Bios
+via the companion URI, routed per the `Substance` persisted on each
+session. Bios surfaces them in diagnostics the same way it surfaces other
+event streams. Cross-correlation pattern runs alongside the existing
+patterns.
 
 See also: [Smokeless/docs/ECOSYSTEM.md](../../Smokeless/docs/ECOSYSTEM.md).
 

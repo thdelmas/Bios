@@ -112,12 +112,12 @@ all five; cravings cluster around sleep debt and autonomic stress —
 exactly the cross-system patterns Bios is built to surface.
 
 Smokeless's [`docs/ECOSYSTEM.md`](../../Smokeless/docs/ECOSYSTEM.md)
-reserves two initial metric keys (`TOBACCO_USE`, `TOBACCO_CRAVING`) plus
-two future keys for when the app ships multi-substance support
-(`CANNABIS_USE`, `CANNABIS_CRAVING`). All four are timestamp + opaque
-event-id only — no dose, no brand, no location, no method. Per the YAGNI
-rule, only the two active keys are whitelisted in the companion-write URI
-until Smokeless actually emits the cannabis events.
+defines four metric keys: `TOBACCO_USE`, `TOBACCO_CRAVING`,
+`CANNABIS_USE`, `CANNABIS_CRAVING`. All four are timestamp + opaque
+event-id only — no dose, no brand, no location, no method. All four are
+whitelisted on the companion-write URI as of Smokeless Phase 2.1, which
+landed the `Substance` enum (`TOBACCO`, `CANNABIS`) on the session
+entity and routes each event to its substance-matched key.
 
 A new `MetricDomain` (`INTAKE`) and `MetricUnit.EVENT` are introduced for
 this purpose. They are the natural home for any future discrete-intake

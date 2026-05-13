@@ -41,12 +41,12 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
-    fun `cannabis keys are reserved but not yet whitelisted (YAGNI)`() {
-        // Per docs/ECOSYSTEM_BOUNDARIES.md: cannabis keys are reserved in the
-        // ROADMAP but not whitelisted until Smokeless actually ships
-        // multi-substance support.
-        assertTrue("cannabis_use" !in CompanionContract.WRITABLE_METRICS)
-        assertTrue("cannabis_craving" !in CompanionContract.WRITABLE_METRICS)
+    fun `companion whitelist contains Smokeless cannabis keys (Phase 2_1)`() {
+        // Smokeless persists Substance.{TOBACCO,CANNABIS} on each session and
+        // routes cannabis events to cannabis_use / cannabis_craving — both keys
+        // must be writable for the per-substance routing to land in Bios.
+        assertTrue("cannabis_use" in CompanionContract.WRITABLE_METRICS)
+        assertTrue("cannabis_craving" in CompanionContract.WRITABLE_METRICS)
     }
 
     @Test
@@ -66,6 +66,14 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
+    fun `cannabis metric types are INTAKE domain with EVENT unit`() {
+        assertEquals(MetricDomain.INTAKE, MetricType.CANNABIS_USE.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.CANNABIS_USE.unit)
+        assertEquals(MetricDomain.INTAKE, MetricType.CANNABIS_CRAVING.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.CANNABIS_CRAVING.unit)
+    }
+
+    @Test
     fun `W2F may only write its own mental-health keys`() {
         val w2f = "com.w2f.app"
         assertTrue(CompanionContract.canWrite(w2f, "typing_cadence"))
@@ -81,6 +89,8 @@ class BiosHealthProviderContractTest {
         val sml = "com.smokless.smokeless"
         assertTrue(CompanionContract.canWrite(sml, "tobacco_use"))
         assertTrue(CompanionContract.canWrite(sml, "tobacco_craving"))
+        assertTrue(CompanionContract.canWrite(sml, "cannabis_use"))
+        assertTrue(CompanionContract.canWrite(sml, "cannabis_craving"))
         // Cross-package isolation — Smokeless must not write W2F or Virgil keys
         assertFalse(CompanionContract.canWrite(sml, "mood_drift_score"))
         assertFalse(CompanionContract.canWrite(sml, "typing_cadence"))

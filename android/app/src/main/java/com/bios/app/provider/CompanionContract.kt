@@ -20,11 +20,9 @@ package com.bios.app.provider
  *
  * Membership rules:
  * - W2F (com.w2f.app) writes MENTAL_HEALTH signals
- * - Smokeless (com.smokless.smokeless) writes INTAKE events
+ * - Smokeless (com.smokless.smokeless) writes INTAKE events (tobacco + cannabis,
+ *   matching its Substance enum surface from Phase 2.1).
  * - Virgil (com.virgil.app) writes SAFETY events
- * - CANNABIS_USE / CANNABIS_CRAVING are reserved in docs/ROADMAP §7.7 but stay
- *   off the whitelist until Smokeless actually emits them (YAGNI — see
- *   docs/ECOSYSTEM_BOUNDARIES.md).
  */
 internal object CompanionContract {
 
@@ -53,6 +51,8 @@ internal object CompanionContract {
             writableMetrics = setOf(
                 "tobacco_use",
                 "tobacco_craving",
+                "cannabis_use",
+                "cannabis_craving",
             ),
         ),
         Companion(

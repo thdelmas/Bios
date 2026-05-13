@@ -45,6 +45,8 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Timestamp + opaque event-id only — no dose, brand, or method.
     TOBACCO_USE("tobacco_use", MetricUnit.EVENT, MetricDomain.INTAKE),
     TOBACCO_CRAVING("tobacco_craving", MetricUnit.EVENT, MetricDomain.INTAKE),
+    CANNABIS_USE("cannabis_use", MetricUnit.EVENT, MetricDomain.INTAKE),
+    CANNABIS_CRAVING("cannabis_craving", MetricUnit.EVENT, MetricDomain.INTAKE),
 
     // Safety events (injected by Virgil via ContentProvider)
     // Timestamp + opaque event-id only — no GPS, SMS contents, or contact identity.

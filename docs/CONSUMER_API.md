@@ -113,7 +113,7 @@ Current allocations:
 | Companion | `applicationId` | Writable keys |
 |---|---|---|
 | W2F | `com.w2f.app` | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
-| Smokeless | `com.smokless.smokeless` | `tobacco_use`, `tobacco_craving` |
+| Smokeless | `com.smokless.smokeless` | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` |
 | Virgil | `com.virgil.app` | `fall_event`, `near_miss_fall`, `check_in_miss` |
 
 `ContentValues`:
@@ -153,7 +153,8 @@ underscores, case-sensitive.
 **Mental Health (W2F-writable)**: `typing_cadence`,
 `circadian_phase_shift`, `mood_drift_score`
 
-**Intake (Smokeless-writable)**: `tobacco_use`, `tobacco_craving`
+**Intake (Smokeless-writable)**: `tobacco_use`, `tobacco_craving`,
+`cannabis_use`, `cannabis_craving`
 
 **Safety (Virgil-writable)**: `fall_event`, `near_miss_fall`, `check_in_miss`
 
