@@ -102,13 +102,30 @@ val useBios = last != 0L && fresh24h > 0
 
 ### `content://com.bios.app.health/companion/{metric_type}`
 
-Accepts only the three MENTAL_HEALTH-domain signals:
-`typing_cadence`, `circadian_phase_shift`, `mood_drift_score`. Any other
-metric key throws `SecurityException`.
+The writable keys are **per-package** — each companion may only write keys
+allocated to its `applicationId`. Cross-package writes throw `SecurityException`
+(an approved Smokeless install cannot write `mood_drift_score`, etc.). The
+source of truth is `provider.CompanionContract.WHITELIST_BY_PACKAGE` in the
+Android source.
+
+Current allocations:
+
+| Companion | `applicationId` | Writable keys |
+|---|---|---|
+| W2F | `com.w2f.app` | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
+| Smokeless | `com.smokless.smokeless` | `tobacco_use`, `tobacco_craving` |
 
 `ContentValues`:
 - `value` (Double) — required
 - `timestamp` (Long, epoch ms) — optional, defaults to `now`
+
+## First-connection notification
+
+The first time any unknown package calls the provider, Bios fires a
+notification on the **Companion approvals** channel and records the package
+as PENDING. Tapping the notification deep-links into Settings → Companion
+Apps for review. Without this, an unapproved companion would sit silently
+denied with no surface for the owner to act on.
 
 ## Metric keys
 
@@ -132,8 +149,10 @@ underscores, case-sensitive.
 
 **Women's Health**: `basal_body_temperature`
 
-**Mental Health (companion-writable)**: `typing_cadence`,
+**Mental Health (W2F-writable)**: `typing_cadence`,
 `circadian_phase_shift`, `mood_drift_score`
+
+**Intake (Smokeless-writable)**: `tobacco_use`, `tobacco_craving`
 
 The source of truth is `MetricType` in
 [`android/app/src/main/java/com/bios/app/model/Enums.kt`](../android/app/src/main/java/com/bios/app/model/Enums.kt).

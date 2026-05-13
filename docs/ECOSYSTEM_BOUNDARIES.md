@@ -209,8 +209,10 @@ If/when a second app needs intake data (e.g., Fil wants caffeine as an HRV
 confounder, or a migraine companion ships), the right move is:
 
 1. Add the keys to Bios's canonical `MetricType` vocabulary
-2. Extend the companion-write URI to accept them (today it only accepts the
-   three MENTAL_HEALTH keys — [CONSUMER_API.md](CONSUMER_API.md))
+2. Extend the companion-write URI to accept them by adding the keys to the
+   appropriate package's entry in `provider.CompanionContract.WHITELIST_BY_PACKAGE`
+   — see [CONSUMER_API.md](CONSUMER_API.md). Each key belongs to exactly one
+   companion to prevent cross-package spoofing.
 3. W2F writes to Bios; the second app reads from Bios
 
 Do not pre-emptively hoist the schema before a second consumer exists. YAGNI

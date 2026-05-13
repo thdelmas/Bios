@@ -84,7 +84,7 @@ the-loop review, localization (6 regions), and detection latency SLOs.
 
 ---
 
-## Phase 7: Companion Ecosystem — Open the metric bus to sibling apps [PLANNED]
+## Phase 7: Companion Ecosystem — Open the metric bus to sibling apps [IN PROGRESS]
 
 > Bios is the suite hub: W2F (mood/bipolar) already reads sensors and writes
 > three MENTAL_HEALTH keys back; Virgil (solo-living safety) has discrete
@@ -92,9 +92,12 @@ the-loop review, localization (6 regions), and detection latency SLOs.
 > stays outside the bus. This phase formalizes the contract so any companion
 > the owner explicitly approves can read and (narrowly) write.
 >
-> **Access model:** per-app keystores + `dangerous` OS permissions +
+> **Access model [SHIPPED]:** per-app keystores + `dangerous` OS permissions +
 > per-package owner allowlist managed in Bios Settings → Companion Apps.
-> See [CONSUMER_API.md](CONSUMER_API.md#access) and `provider/CompanionGate.kt`.
+> First-connection notification deep-links into the consent UI. Per-package
+> key isolation prevents cross-companion spoofing. See
+> [CONSUMER_API.md](CONSUMER_API.md#access), `provider/CompanionGate.kt`,
+> `provider/CompanionContract.kt`, and `ui/companions/CompanionsScreen.kt`.
 > Third-party companions are explicitly supported; a shared signing key
 > is **not** required.
 
@@ -113,10 +116,13 @@ event-id only — no GPS, no SMS contents, no contact identity (see
 - `CHECK_IN_MISS` — 5-minute grace expired with no response. Recurrent
   patterns are signals for cognitive decline, syncope, depression.
 
-### 7.2 Extend companion-write URI
+### 7.2 Extend companion-write URI [PARTIAL]
 
-Today the `/companion/{metric_type}` URI accepts only the three mental-health
-keys. Extend the whitelist to include the three Virgil keys above. Document
+The `/companion/{metric_type}` URI now accepts the three mental-health keys
+(W2F → `com.w2f.app`) and the two Smokeless intake keys (`tobacco_use`,
+`tobacco_craving` → `com.smokless.smokeless`), gated per package by
+`CompanionContract.WHITELIST_BY_PACKAGE`. Extend the whitelist to include the
+three Virgil keys above when Virgil's `applicationId` is finalised. Document
 the new metric_types in [CONSUMER_API.md](CONSUMER_API.md). Add contract
 tests so a future companion can write each whitelisted key end-to-end.
 
