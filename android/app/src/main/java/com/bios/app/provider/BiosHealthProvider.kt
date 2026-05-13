@@ -44,7 +44,6 @@ class BiosHealthProvider : ContentProvider() {
 
     companion object {
         const val AUTHORITY = "com.bios.app.health"
-        private const val COMPANION_SOURCE_ID = "companion_w2f"
 
         private const val READINGS = 1
         private const val BASELINES_ALL = 2
@@ -81,7 +80,7 @@ class BiosHealthProvider : ContentProvider() {
 
     private lateinit var db: BiosDatabase
     private lateinit var gate: CompanionGate
-    private var companionSourceEnsured = false
+    private val ensuredSources = mutableSetOf<String>()
 
     override fun onCreate(): Boolean {
         val ctx = context!!
@@ -104,22 +103,24 @@ class BiosHealthProvider : ContentProvider() {
         return runBlocking { gate.check(pkg) is CompanionGate.Decision.Allow }
     }
 
-    /** Ensure the companion data source row exists (once per provider lifecycle). */
-    private fun ensureCompanionSource() {
-        if (companionSourceEnsured) return
+    /**
+     * Ensure the data source row exists for [companion]. Each companion has its
+     * own row so the owner can trace any reading back to the exact app that
+     * wrote it. Idempotent — REPLACE handles re-inserts, the in-memory set
+     * skips the I/O after the first call per process.
+     */
+    private fun ensureSourceFor(companion: CompanionContract.Companion) {
+        if (companion.sourceId in ensuredSources) return
         runBlocking {
-            val existing = db.dataSourceDao().findByType("companion")
-            if (existing == null) {
-                db.dataSourceDao().insert(DataSource(
-                    id = COMPANION_SOURCE_ID,
-                    sourceType = "companion",
-                    deviceName = "W2F",
-                    deviceModel = "Companion App",
-                    sensorType = SensorType.DERIVED.name
-                ))
-            }
+            db.dataSourceDao().insert(DataSource(
+                id = companion.sourceId,
+                sourceType = "companion",
+                deviceName = companion.displayName,
+                deviceModel = companion.packageName,
+                sensorType = SensorType.DERIVED.name
+            ))
         }
-        companionSourceEnsured = true
+        ensuredSources += companion.sourceId
     }
 
     override fun query(
@@ -141,8 +142,10 @@ class BiosHealthProvider : ContentProvider() {
     }
 
     /**
-     * Accepts companion signals from W2F.
-     * Only MENTAL_HEALTH domain metrics are writable — everything else is rejected.
+     * Accepts companion signals from approved companion apps. Each package may
+     * only write the keys allocated to it in [CompanionContract.PACKAGES]; the
+     * resulting reading is tagged with that companion's source so provenance
+     * is preserved.
      */
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
         val caller = callingPackage
@@ -154,7 +157,8 @@ class BiosHealthProvider : ContentProvider() {
         }
         val metricType = uri.lastPathSegment
             ?: throw IllegalArgumentException("Missing metric type in URI")
-        if (!CompanionContract.canWrite(caller, metricType)) {
+        val companion = CompanionContract.sourceFor(caller)
+        if (companion == null || metricType !in companion.writableMetrics) {
             throw SecurityException("'$caller' may not write '$metricType'")
         }
         val cv = values ?: throw IllegalArgumentException("ContentValues required")
@@ -163,13 +167,13 @@ class BiosHealthProvider : ContentProvider() {
         val timestamp = cv.getAsLong("timestamp")
             ?: System.currentTimeMillis()
 
-        ensureCompanionSource()
+        ensureSourceFor(companion)
 
         val reading = MetricReading(
             metricType = metricType,
             value = value,
             timestamp = timestamp,
-            sourceId = COMPANION_SOURCE_ID,
+            sourceId = companion.sourceId,
             confidence = ConfidenceTier.MEDIUM.level,
             isPrimary = true
         )

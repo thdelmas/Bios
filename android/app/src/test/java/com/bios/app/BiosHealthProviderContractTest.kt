@@ -6,6 +6,9 @@ import com.bios.app.model.MetricUnit
 import com.bios.app.provider.CompanionContract
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -92,5 +95,23 @@ class BiosHealthProviderContractTest {
             )
         }
         assertFalse(CompanionContract.canWrite(null, "tobacco_use"))
+    }
+
+    @Test
+    fun `each companion gets a distinct sourceId for provenance`() {
+        val w2f = CompanionContract.sourceFor("com.w2f.app")
+        val sml = CompanionContract.sourceFor("com.smokless.smokeless")
+        assertNotNull(w2f)
+        assertNotNull(sml)
+        assertEquals("W2F", w2f!!.displayName)
+        assertEquals("Smokeless", sml!!.displayName)
+        assertNotEquals("Companions must not share a sourceId — provenance would collapse",
+            w2f.sourceId, sml.sourceId)
+    }
+
+    @Test
+    fun `sourceFor returns null for unknown or null packages`() {
+        assertNull(CompanionContract.sourceFor("com.unknown.app"))
+        assertNull(CompanionContract.sourceFor(null))
     }
 }
