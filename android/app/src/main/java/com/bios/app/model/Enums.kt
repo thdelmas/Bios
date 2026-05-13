@@ -39,7 +39,12 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Companion signals (injected by W2F or other companion apps via ContentProvider)
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
     CIRCADIAN_PHASE_SHIFT("circadian_phase_shift", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
-    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH);
+    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
+
+    // Substance-use events (injected by Smokeless via ContentProvider)
+    // Timestamp + opaque event-id only — no dose, brand, or method.
+    TOBACCO_USE("tobacco_use", MetricUnit.EVENT, MetricDomain.INTAKE),
+    TOBACCO_CRAVING("tobacco_craving", MetricUnit.EVENT, MetricDomain.INTAKE);
 
     val readableName: String
         get() = key.replace("_", " ").replaceFirstChar { it.uppercase() }
@@ -62,13 +67,14 @@ enum class MetricUnit(val symbol: String) {
     COUNT(""),
     KCAL("kcal"),
     MG_PER_DL("mg/dL"),
-    SCORE("")
+    SCORE(""),
+    EVENT("")
 }
 
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
     ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH
+    MENTAL_HEALTH, INTAKE
 }
 
 // MARK: - Data Source

@@ -89,12 +89,14 @@ the-loop review, localization (6 regions), and detection latency SLOs.
 > Bios is the suite hub: W2F (mood/bipolar) already reads sensors and writes
 > three MENTAL_HEALTH keys back; Virgil (solo-living safety) has discrete
 > fall events to contribute; SoulRadio is a sibling (not a companion) and
-> stays outside the bus. This phase formalizes the contract so any signed
-> companion can read and (narrowly) write.
+> stays outside the bus. This phase formalizes the contract so any companion
+> the owner explicitly approves can read and (narrowly) write.
 >
-> **Blocker:** keystore strategy decision (single suite keystore vs.
-> per-app + dangerous-perm). All work below assumes signature-perm IPC; if
-> the keystore decision lands differently, swap to a runtime grant model.
+> **Access model:** per-app keystores + `dangerous` OS permissions +
+> per-package owner allowlist managed in Bios Settings → Companion Apps.
+> See [CONSUMER_API.md](CONSUMER_API.md#access) and `provider/CompanionGate.kt`.
+> Third-party companions are explicitly supported; a shared signing key
+> is **not** required.
 
 ### 7.1 Three new MetricType keys for Virgil outbound
 

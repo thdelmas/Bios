@@ -254,11 +254,18 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("settings") {
                 SettingsScreen(
                     viewModel = viewModel,
-                    onNavigateToPrivacy = { navController.navigate("privacy") }
+                    onNavigateToPrivacy = { navController.navigate("privacy") },
+                    onNavigateToCompanions = { navController.navigate("companions") }
                 )
             }
             composable("privacy") {
                 com.bios.app.ui.privacy.PrivacyDashboardScreen(viewModel)
+            }
+            composable("companions") {
+                com.bios.app.ui.companions.CompanionsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable("longevity_reference") {
                 val trackedMetrics by viewModel.trackedMetricTypes.collectAsState()

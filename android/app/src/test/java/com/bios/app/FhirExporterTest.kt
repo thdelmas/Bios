@@ -208,6 +208,7 @@ class FhirExporterTest {
             MetricUnit.MG_PER_DL -> "mg/dL"
             MetricUnit.SCORE -> "{score}"
             MetricUnit.CATEGORY -> "{category}"
+            MetricUnit.EVENT -> "{event}"
         }
     }
 }

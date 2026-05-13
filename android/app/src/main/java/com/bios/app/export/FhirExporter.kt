@@ -244,6 +244,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.MG_PER_DL -> "mg/dL"
     MetricUnit.SCORE -> "{score}"
     MetricUnit.CATEGORY -> "{category}"
+    MetricUnit.EVENT -> "{event}"
 }
 
 internal fun formatInstant(instant: Instant): String =

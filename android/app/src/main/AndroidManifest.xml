@@ -38,15 +38,24 @@
         android:name="android.hardware.camera.flash"
         android:required="false" />
 
-    <!-- Signature-level permissions: only apps signed with same key can access health data -->
+    <!--
+      Two-layer gate for companion access (Phase 7, Option C):
+        Layer 1 — these "dangerous" permissions; the OS prompts the owner when a
+        companion app declares them.
+        Layer 2 — Bios's per-package allowlist (Settings → Companion Apps),
+        managed by the owner. The OS permission is the coarse filter; the
+        allowlist is the fine filter. See provider/CompanionGate.kt.
+      Rationale: each companion keeps its own signing key, third-party companions
+      are possible, and a single leaked key never compromises the whole suite.
+    -->
     <permission
         android:name="com.bios.app.permission.READ_HEALTH"
-        android:protectionLevel="signature"
+        android:protectionLevel="dangerous"
         android:label="Read Bios health data"
         android:description="@string/permission_read_health_desc" />
     <permission
         android:name="com.bios.app.permission.WRITE_COMPANION"
-        android:protectionLevel="signature"
+        android:protectionLevel="dangerous"
         android:label="Write companion signals to Bios"
         android:description="@string/permission_write_companion_desc" />
 

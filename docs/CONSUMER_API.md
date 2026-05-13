@@ -4,8 +4,27 @@ Interface for companion apps (e.g. W2F) that consume Bios health data via
 `BiosHealthProvider`.
 
 **Authority:** `com.bios.app.health`
-**Access:** signature-level permission — only apps signed with the same key can
-read or write.
+
+## Access
+
+Two-layer gate (Phase 7, Option C — per-app keystores + owner consent):
+
+1. **OS permission.** Companion app declares one or both of:
+   - `com.bios.app.permission.READ_HEALTH` (dangerous)
+   - `com.bios.app.permission.WRITE_COMPANION` (dangerous)
+
+   These are `dangerous` permissions, so on first use Android shows a runtime
+   prompt. The companion does **not** need to be signed by the Bios key.
+
+2. **Owner allowlist.** On the first call from any package, Bios records the
+   caller as `PENDING` and denies the request. The owner reviews and approves
+   the companion in **Bios → Settings → Companion Apps**. Approved companions
+   pass; revoked companions are denied with `SecurityException` on writes and
+   `null` cursors on reads.
+
+This design intentionally allows third-party companions (a shared signing key
+is **not** required) while keeping the owner in final control of every
+connection.
 
 ## Contract
 

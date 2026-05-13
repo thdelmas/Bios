@@ -25,7 +25,11 @@ import com.bios.app.ui.AppViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(viewModel: AppViewModel, onNavigateToPrivacy: () -> Unit = {}) {
+fun SettingsScreen(
+    viewModel: AppViewModel,
+    onNavigateToPrivacy: () -> Unit = {},
+    onNavigateToCompanions: () -> Unit = {}
+) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val hasPermissions by viewModel.hasPermissions.collectAsState()
@@ -342,6 +346,15 @@ fun SettingsScreen(viewModel: AppViewModel, onNavigateToPrivacy: () -> Unit = {}
                     Icon(Icons.Default.Shield, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Privacy Dashboard")
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = onNavigateToCompanions,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Apps, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Companion Apps")
                 }
                 Spacer(Modifier.height(4.dp))
                 Button(

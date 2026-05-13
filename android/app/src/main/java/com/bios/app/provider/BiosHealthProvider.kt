@@ -27,13 +27,18 @@ import kotlinx.coroutines.runBlocking
  * Write URI (companion signals only):
  *   content://com.bios.app.health/companion/{metricType}
  *   ContentValues: "value" (Double), "timestamp" (Long)
- *   Only accepts MENTAL_HEALTH domain metrics (typing_cadence, circadian_phase_shift, mood_drift_score).
+ *   Accepts MENTAL_HEALTH signals from W2F (typing_cadence, circadian_phase_shift, mood_drift_score)
+ *   and INTAKE events from Smokeless (tobacco_use, tobacco_craving).
  *
  * Contract: the provider is passive — it serves what SyncWorker has already written.
  * Queries do NOT trigger ingestion. Consumers that need fresher data should rely on
  * SyncWorker's schedule (default: ~15 min) or fall back to Health Connect directly.
  *
- * Security: signature-level permission — only apps signed with the same key can read/write.
+ * Security: two-layer gate.
+ *   1. Android dangerous-level permissions (READ_HEALTH / WRITE_COMPANION) — coarse OS filter.
+ *   2. [CompanionGate] — fine per-package allowlist managed by the owner in Settings →
+ *      Companion Apps. Unknown packages are recorded as PENDING and denied until the owner
+ *      explicitly approves them. Revoke is one tap. Aligned with the "owner is final" rule.
  */
 class BiosHealthProvider : ContentProvider() {
 
@@ -50,10 +55,8 @@ class BiosHealthProvider : ContentProvider() {
 
         private const val DAY_MILLIS = 24L * 60L * 60L * 1000L
 
-        // Metric types companion apps are allowed to write
-        private val COMPANION_METRICS = setOf(
-            "typing_cadence", "circadian_phase_shift", "mood_drift_score"
-        )
+        // See [CompanionContract] for the writable-metric whitelist and its rationale.
+        private val COMPANION_METRICS get() = CompanionContract.WRITABLE_METRICS
 
         private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
             addURI(AUTHORITY, "readings/*", READINGS)
@@ -80,11 +83,23 @@ class BiosHealthProvider : ContentProvider() {
     }
 
     private lateinit var db: BiosDatabase
+    private lateinit var gate: CompanionGate
     private var companionSourceEnsured = false
 
     override fun onCreate(): Boolean {
         db = BiosDatabase.getInstance(context!!)
+        gate = CompanionGate(db.companionGrantDao())
         return true
+    }
+
+    /**
+     * Returns true if the calling package is allowed through the owner gate.
+     * For reads we resolve via [getCallingPackage]; for writes the calling
+     * package is available the same way (ContentProvider IPC is the same path).
+     */
+    private fun isAllowed(): Boolean {
+        val pkg = callingPackage
+        return runBlocking { gate.check(pkg) is CompanionGate.Decision.Allow }
     }
 
     /** Ensure the companion data source row exists (once per provider lifecycle). */
@@ -112,6 +127,7 @@ class BiosHealthProvider : ContentProvider() {
         selectionArgs: Array<out String>?,
         sortOrder: String?
     ): Cursor? {
+        if (!isAllowed()) return null
         return when (uriMatcher.match(uri)) {
             READINGS -> queryReadings(uri)
             BASELINES_ALL -> queryBaselines(null)
@@ -127,6 +143,9 @@ class BiosHealthProvider : ContentProvider() {
      * Only MENTAL_HEALTH domain metrics are writable — everything else is rejected.
      */
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
+        if (!isAllowed()) {
+            throw SecurityException("Companion not approved by owner")
+        }
         if (uriMatcher.match(uri) != COMPANION_WRITE) {
             throw UnsupportedOperationException("Only companion/* path accepts writes")
         }
