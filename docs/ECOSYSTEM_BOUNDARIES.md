@@ -1,9 +1,9 @@
 # Ecosystem Boundaries
 
 Defines what belongs to Bios and what belongs to its companion apps (Fil,
-Virgil, W2F). The goal is to keep Bios a clean, domain-neutral backbone and
-push domain specialization to companions — so each app stays sharp, and none
-grows into an everything-app.
+Virgil, W2F, SoulRadio, Smokeless). The goal is to keep Bios a clean,
+domain-neutral backbone and push domain specialization to companions — so
+each app stays sharp, and none grows into an everything-app.
 
 ## The rule
 
@@ -54,7 +54,9 @@ logic.
 |---|---|---|---|---|
 | **Fil** | Neurological / MS | Gait analysis (phone accel), keystroke analysis, active cognitive micro-tests (SDMT, tapping, contrast), MS drift engine, fall/auto-answer | HRV, sleep, steps, activity | `gait_asymmetry`, `cognitive_speed`, `motor_score`, `relapse_risk` (future keys) |
 | **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
-| **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | *nothing* |
+| **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | `fall_event`, `near_miss_fall`, `check_in_miss` (opt-in, future) |
+| **SoulRadio** | Ambient sound / nervous-system rest | 24-hour Solfeggio + Schumann auto-loop, dial, listener library, frequency-band catalogue | *nothing — standalone* | *nothing* |
+| **Smokeless** | Substance-use tracking / cessation | Use + craving event capture, per-substance history, widget, cessation UI | *nothing — standalone* | `tobacco_use`, `tobacco_craving` (initial); `cannabis_use`, `cannabis_craving` (reserved, future) |
 
 ### Fil — the nervous-system specialist
 
@@ -74,11 +76,70 @@ reserved in the Bios schema.
 
 ### Virgil — the solitary-living safety net
 
-Virgil is the outlier: it does not read from Bios. Its user may not own a
-wearable, may not have Bios installed, and often just wants fall detection
-and a dead-man check-in with nothing else. Virgil shares the ecosystem's
-*principles* (local-only, no accounts, honest framing) but not its *data
-bus*. "Ecosystem" ≠ "everyone reads Bios."
+Virgil's user may not own a wearable, may not have Bios installed, and
+often just wants fall detection and a dead-man check-in with nothing
+else. Virgil shares the ecosystem's *principles* (local-only, no
+accounts, honest framing) and remains fully functional standalone.
+
+Where Virgil **does** belong on the metric bus is outbound: discrete fall
+and check-in events. Recurrent falls are a clinically significant signal
+for gait instability, syncope, orthostatic hypotension, neuropathy,
+hypoglycemia, MS relapse, and medication side effects — exactly the
+cross-system patterns Bios's condition engine and Fil's neurological
+engine exist to detect. Virgil's own
+[`docs/ECOSYSTEM.md`](../../Virgil/docs/ECOSYSTEM.md) reserves three
+metric keys (`FALL_EVENT`, `NEAR_MISS_FALL`, `CHECK_IN_MISS`), all opt-in
+and timestamp-only — no GPS, no SMS contents, no contact identity. None
+of these keys yet exist in `MetricType`; adding them is a Bios-side
+change that pairs with a companion-write URI extension.
+
+Virgil also names a small set of admissible inbound integrations
+(suppress check-in expiry during detected exercise; treat SoulRadio
+playback as a sign of life) — all opt-in, all bounded, none currently
+wired.
+
+### Smokeless — the substance-use ledger
+
+Smokeless owns discrete substance-use and craving event capture: tap-to-log
+UI, per-substance history, widget for one-tap logging, and the cessation
+UX (streak/abstinence framing is owned by Smokeless and intentionally kept
+*out* of Bios — Bios is silent about behavioral judgments).
+
+Where Smokeless belongs on the metric bus is outbound: timestamp-only
+events that the Bios cross-correlation engine consumes against RHR, HRV,
+SpO2, sleep latency, and skin temperature trajectories. Tobacco affects
+all five; cravings cluster around sleep debt and autonomic stress —
+exactly the cross-system patterns Bios is built to surface.
+
+Smokeless's [`docs/ECOSYSTEM.md`](../../Smokeless/docs/ECOSYSTEM.md)
+reserves two initial metric keys (`TOBACCO_USE`, `TOBACCO_CRAVING`) plus
+two future keys for when the app ships multi-substance support
+(`CANNABIS_USE`, `CANNABIS_CRAVING`). All four are timestamp + opaque
+event-id only — no dose, no brand, no location, no method. Per the YAGNI
+rule, only the two active keys are whitelisted in the companion-write URI
+until Smokeless actually emits the cannabis events.
+
+A new `MetricDomain` (`INTAKE`) and `MetricUnit.EVENT` are introduced for
+this purpose. They are the natural home for any future discrete-intake
+events (caffeine, meals, supplements) that hoist up from W2F when a
+second consumer appears — see the "case study: nutrition in W2F" rule
+below.
+
+### SoulRadio — the ambient surface
+
+SoulRadio is a sibling, not a companion in the data-bus sense. It does
+not read Bios and does not write to the metric bus. Its role in the
+ecosystem is the room's air: a 24-hour frequency-band loop that recedes
+into the background. The manifesto rule "wallpaper, not wallpaper-paste"
+makes auto-switching by biometric a violation by construction.
+
+SoulRadio's own [`docs/ECOSYSTEM.md`](../../SoulRadio/docs/ECOSYSTEM.md)
+defines the narrow inbound surface it would accept: `ACTION_SUGGEST_BAND`
+(non-modal hint, 5-minute hysteresis) and `ACTION_REQUEST_STOP` (used by
+Virgil during an emergency, by W2F during SOS state). No `PLAY_BAND`, no
+override of the auto-loop, no biometric reads. Bios may, in the future,
+emit suggestions from HRV or arousal state — but only as hints the
+listener must reach for.
 
 ## Consequences for Bios design
 
