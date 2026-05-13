@@ -22,9 +22,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         HealthEvent::class,
         ActionItem::class,
         UserFeedback::class,
-        ProfessionalReview::class
+        ProfessionalReview::class,
+        CompanionGrant::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -38,6 +39,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun actionItemDao(): ActionItemDao
     abstract fun userFeedbackDao(): UserFeedbackDao
     abstract fun professionalReviewDao(): ProfessionalReviewDao
+    abstract fun companionGrantDao(): CompanionGrantDao
 
     companion object {
         @Volatile
@@ -60,7 +62,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
         }
 
@@ -178,6 +180,23 @@ abstract class BiosDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_user_feedback_surface ON user_feedback(surface)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_user_feedback_createdAt ON user_feedback(createdAt)")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS companion_grants (
+                        packageName TEXT NOT NULL PRIMARY KEY,
+                        state TEXT NOT NULL,
+                        firstSeenAt INTEGER NOT NULL,
+                        grantedAt INTEGER,
+                        revokedAt INTEGER,
+                        lastAccessAt INTEGER,
+                        accessCount INTEGER NOT NULL DEFAULT 0
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_companion_grants_state ON companion_grants(state)")
             }
         }
 
