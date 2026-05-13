@@ -101,13 +101,14 @@ the-loop review, localization (6 regions), and detection latency SLOs.
 > Third-party companions are explicitly supported; a shared signing key
 > is **not** required.
 
-### 7.1 Three new MetricType keys for Virgil outbound
+### 7.1 Three new MetricType keys for Virgil outbound [COMPLETE]
 
-Reserve canonical keys for fall and check-in events so the cross-correlation
-engine can use them like any other metric. Each carries timestamp + opaque
-event-id only — no GPS, no SMS contents, no contact identity (see
-[Virgil/docs/ECOSYSTEM.md](../../Virgil/docs/ECOSYSTEM.md)).
+`FALL_EVENT`, `NEAR_MISS_FALL`, and `CHECK_IN_MISS` live on the new
+`MetricDomain.SAFETY` with `MetricUnit.EVENT` (timestamp + opaque event-id
+only — no GPS, no SMS contents, no contact identity). The cross-correlation
+engine can use them like any other metric. See `model/Enums.kt`.
 
+Clinical context preserved here for future condition-pattern work (§7.3):
 - `FALL_EVENT` — verified fall, dispatch fired. Clinical proxy for gait
   instability, syncope, orthostatic hypotension, neuropathy, MS relapse,
   medication side effects, alcohol.
@@ -116,15 +117,15 @@ event-id only — no GPS, no SMS contents, no contact identity (see
 - `CHECK_IN_MISS` — 5-minute grace expired with no response. Recurrent
   patterns are signals for cognitive decline, syncope, depression.
 
-### 7.2 Extend companion-write URI [PARTIAL]
+### 7.2 Extend companion-write URI [COMPLETE]
 
-The `/companion/{metric_type}` URI now accepts the three mental-health keys
-(W2F → `com.w2f.app`) and the two Smokeless intake keys (`tobacco_use`,
-`tobacco_craving` → `com.smokless.smokeless`), gated per package by
-`CompanionContract.WHITELIST_BY_PACKAGE`. Extend the whitelist to include the
-three Virgil keys above when Virgil's `applicationId` is finalised. Document
-the new metric_types in [CONSUMER_API.md](CONSUMER_API.md). Add contract
-tests so a future companion can write each whitelisted key end-to-end.
+The `/companion/{metric_type}` URI accepts mental-health keys (W2F →
+`com.w2f.app`), Smokeless intake keys (`com.smokless.smokeless`), and the
+three Virgil safety keys (`com.virgil.app`), all gated per package by
+`CompanionContract.PACKAGES`. Each companion is tagged with its own
+`sourceId` for provenance. Documented in [CONSUMER_API.md](CONSUMER_API.md);
+contract tests in `BiosHealthProviderContractTest` pin per-package isolation
+and source attribution.
 
 ### 7.3 Cross-correlation patterns over the new keys
 

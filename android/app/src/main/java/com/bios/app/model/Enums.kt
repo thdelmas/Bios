@@ -44,7 +44,13 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Substance-use events (injected by Smokeless via ContentProvider)
     // Timestamp + opaque event-id only — no dose, brand, or method.
     TOBACCO_USE("tobacco_use", MetricUnit.EVENT, MetricDomain.INTAKE),
-    TOBACCO_CRAVING("tobacco_craving", MetricUnit.EVENT, MetricDomain.INTAKE);
+    TOBACCO_CRAVING("tobacco_craving", MetricUnit.EVENT, MetricDomain.INTAKE),
+
+    // Safety events (injected by Virgil via ContentProvider)
+    // Timestamp + opaque event-id only — no GPS, SMS contents, or contact identity.
+    FALL_EVENT("fall_event", MetricUnit.EVENT, MetricDomain.SAFETY),
+    NEAR_MISS_FALL("near_miss_fall", MetricUnit.EVENT, MetricDomain.SAFETY),
+    CHECK_IN_MISS("check_in_miss", MetricUnit.EVENT, MetricDomain.SAFETY);
 
     val readableName: String
         get() = key.replace("_", " ").replaceFirstChar { it.uppercase() }
@@ -74,7 +80,7 @@ enum class MetricUnit(val symbol: String) {
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
     ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, INTAKE
+    MENTAL_HEALTH, INTAKE, SAFETY
 }
 
 // MARK: - Data Source

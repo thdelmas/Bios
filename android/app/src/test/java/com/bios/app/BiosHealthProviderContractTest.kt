@@ -81,9 +81,31 @@ class BiosHealthProviderContractTest {
         val sml = "com.smokless.smokeless"
         assertTrue(CompanionContract.canWrite(sml, "tobacco_use"))
         assertTrue(CompanionContract.canWrite(sml, "tobacco_craving"))
-        // Cross-package isolation — Smokeless must not write W2F keys
+        // Cross-package isolation — Smokeless must not write W2F or Virgil keys
         assertFalse(CompanionContract.canWrite(sml, "mood_drift_score"))
         assertFalse(CompanionContract.canWrite(sml, "typing_cadence"))
+        assertFalse(CompanionContract.canWrite(sml, "fall_event"))
+    }
+
+    @Test
+    fun `Virgil may only write its own safety keys`() {
+        val v = "com.virgil.app"
+        assertTrue(CompanionContract.canWrite(v, "fall_event"))
+        assertTrue(CompanionContract.canWrite(v, "near_miss_fall"))
+        assertTrue(CompanionContract.canWrite(v, "check_in_miss"))
+        // Cross-package isolation — Virgil must not write W2F or Smokeless keys
+        assertFalse(CompanionContract.canWrite(v, "mood_drift_score"))
+        assertFalse(CompanionContract.canWrite(v, "tobacco_use"))
+    }
+
+    @Test
+    fun `safety metric types are SAFETY domain with EVENT unit`() {
+        assertEquals(MetricDomain.SAFETY, MetricType.FALL_EVENT.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.FALL_EVENT.unit)
+        assertEquals(MetricDomain.SAFETY, MetricType.NEAR_MISS_FALL.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.NEAR_MISS_FALL.unit)
+        assertEquals(MetricDomain.SAFETY, MetricType.CHECK_IN_MISS.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.CHECK_IN_MISS.unit)
     }
 
     @Test

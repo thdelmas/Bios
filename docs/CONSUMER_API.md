@@ -114,6 +114,7 @@ Current allocations:
 |---|---|---|
 | W2F | `com.w2f.app` | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
 | Smokeless | `com.smokless.smokeless` | `tobacco_use`, `tobacco_craving` |
+| Virgil | `com.virgil.app` | `fall_event`, `near_miss_fall`, `check_in_miss` |
 
 `ContentValues`:
 - `value` (Double) — required
@@ -153,6 +154,8 @@ underscores, case-sensitive.
 `circadian_phase_shift`, `mood_drift_score`
 
 **Intake (Smokeless-writable)**: `tobacco_use`, `tobacco_craving`
+
+**Safety (Virgil-writable)**: `fall_event`, `near_miss_fall`, `check_in_miss`
 
 The source of truth is `MetricType` in
 [`android/app/src/main/java/com/bios/app/model/Enums.kt`](../android/app/src/main/java/com/bios/app/model/Enums.kt).
