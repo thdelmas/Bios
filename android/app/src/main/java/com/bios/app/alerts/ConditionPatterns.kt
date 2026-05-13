@@ -25,10 +25,27 @@ data class SignalRule(
     val minDurationHours: Int,
     val weight: Double,
     val source: ThresholdSource = ThresholdSource.ENGINEERING,
-    val citation: String = ""
+    val citation: String = "",
+    /**
+     * If true, the pattern only fires when this rule is active. Lets a pattern
+     * gate on the *presence* (or [ABSENT]: absence) of one signal before any
+     * supporting signals count — e.g. cessation-recovery requires tobacco-use
+     * absence before reading positive cardiovascular trends as recovery.
+     */
+    val required: Boolean = false,
 )
 
-enum class DeviationDirection { ABOVE, BELOW, IRREGULAR }
+enum class DeviationDirection {
+    ABOVE, BELOW, IRREGULAR,
+
+    /**
+     * No readings of this metric in the [SignalRule.minDurationHours] window.
+     * Intended for EVENT-unit metrics where "no event for N hours" is the signal
+     * (e.g. tobacco-use absence as a cessation marker). Doesn't read a baseline;
+     * [SignalRule.thresholdSigma] is unused for this direction.
+     */
+    ABSENT,
+}
 
 enum class ThresholdSource {
     /** Set by engineering judgment — not yet validated against literature. */
@@ -47,7 +64,7 @@ object ConditionPatterns {
         listOf(
             infectionOnset, sleepDisruption, cardiovascularStress, overtraining,
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit
-        )
+        ) + CompanionConditionPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
@@ -148,7 +165,7 @@ object ConditionPatterns {
             "Plews et al. (2013) - Training adaptation and HRV in elite endurance athletes"
         ),
         earlyDetection = "Overtraining develops when training load consistently exceeds recovery capacity. The earliest wearable-detectable sign is a persistent drop in HRV despite adequate sleep — your body cannot fully restore parasympathetic tone overnight. Resting heart rate creeps up, sleep quality declines even though you feel exhausted, and daily activity (steps) drops as fatigue accumulates. Paradoxically, calorie burn may remain high from recent intense sessions. Bios looks for this combination over 48-72 hours, distinguishing normal training fatigue from the overreaching threshold.",
-        prevention = "Follow the 10% rule: increase weekly training volume by no more than 10%. Schedule at least one full rest day per week and one recovery week per month. Periodize training with cycles of building and recovery. Prioritize sleep (8+ hours for athletes) and nutrition — adequate protein and carbohydrate intake supports recovery. Monitor your morning HRV trend; a declining trend over several days signals that you should back off. Listen to subjective cues: persistent muscle soreness, irritability, and loss of motivation are early warnings.",
+        prevention = "Follow the 10% rule: increase weekly training volume by no more than 10%. Schedule at least one full rest day per week and one recovery week per month. Periodize training with cycles of building and recovery. Prioritize sleep (8+ hours for athletes) and nutrition — adequate protein and carbohydrate intake supports recovery. Monitor your morning HRV trend; a declining trend over several days is a signal to ease intensity. Listen to subjective cues: persistent muscle soreness, irritability, and loss of motivation are early warnings.",
         healing = "Reduce training volume and intensity by 50-75% for at least one week. Focus on low-intensity active recovery: walking, gentle yoga, or swimming. Prioritize 8-9 hours of sleep. Increase caloric intake, especially carbohydrates and protein, to support tissue repair. Address any nutritional deficiencies (iron, vitamin D, B12 are common in athletes). If symptoms persist beyond two weeks of reduced training, consult a sports medicine professional — blood work may reveal hormonal imbalances (cortisol, testosterone) or iron deficiency that require targeted treatment.",
         risks = "Overtraining syndrome (OTS) can take weeks to months to fully recover from if left unchecked. Continued high-intensity training during overreaching leads to chronic performance decline, hormonal disruption (elevated cortisol, suppressed testosterone), immune suppression with frequent illness, and increased injury risk from impaired coordination and weakened tissues. Psychological effects include chronic fatigue, depression, insomnia, and loss of motivation. In severe cases, athletes require 3-6 months of structured recovery before returning to prior training levels."
     )

@@ -273,11 +273,13 @@ private fun SignalDetailRow(signal: SignalStatus) {
         DeviationDirection.ABOVE -> ">"
         DeviationDirection.BELOW -> "<"
         DeviationDirection.IRREGULAR -> "||>"
+        DeviationDirection.ABSENT -> "∅"
     }
     val thresholdLabel = when (signal.direction) {
         DeviationDirection.ABOVE -> "+${String.format("%.1f", signal.thresholdSigma)}σ"
         DeviationDirection.BELOW -> "-${String.format("%.1f", signal.thresholdSigma)}σ"
         DeviationDirection.IRREGULAR -> "±${String.format("%.1f", signal.thresholdSigma)}σ"
+        DeviationDirection.ABSENT -> "no events"
     }
 
     val valueText = when {

@@ -127,19 +127,24 @@ three Virgil safety keys (`com.virgil.app`), all gated per package by
 contract tests in `BiosHealthProviderContractTest` pin per-package isolation
 and source attribution.
 
-### 7.3 Cross-correlation patterns over the new keys
+### 7.3 Cross-correlation patterns over the new keys [COMPLETE]
 
-Once data arrives, the condition engine should correlate:
+Six event-driven `ConditionPattern`s landed in `alerts/CompanionConditionPatterns.kt`
+and are registered in `ConditionPatterns.all`. Each gates on a required EVENT-unit
+rule so vital-sign drift alone never triggers a companion pattern; every supporting
+rule is literature- or companion-sourced.
 
-- Fall frequency vs. resting HR, blood pressure (orthostatic hypotension)
-- Fall frequency vs. blood glucose (hypoglycemia)
-- Fall frequency vs. HRV trend (neurological deterioration)
-- `CHECK_IN_MISS` rate vs. sleep latency, mood_drift_score (cognitive /
-  depressive load)
+- `fall_orthostatic_pattern` — FALL_EVENT + low systolic/diastolic BP (Rutan 1992,
+  Ricci 2015).
+- `fall_neurological_pattern` — FALL_EVENT + NEAR_MISS_FALL + depressed HRV
+  (Sleimen-Malkoun 2014).
+- `fall_hypoglycemia_pattern` — FALL_EVENT + low blood glucose (Yale & Begg 2002).
+- `check_in_decline_pattern` — CHECK_IN_MISS + irregular sleep + elevated
+  mood_drift_score + depressed HRV (Riemann 2020, Koch 2019).
+- Plus the substance-use patterns from §7.7.
 
-Add one new ConditionPattern per cluster (literature-backed where research
-supports — gait instability literature is rich) following the Phase 3.6
-"never evaluate the person" content rule.
+Content-policy compliance (`AlertContentPolicy.validateAll()`) is enforced as a
+unit test so future edits cannot regress the manifesto.
 
 ### 7.4 Extract `bios-contracts` artifact
 
@@ -207,23 +212,17 @@ canonical encoding — these are discrete events, not continuous readings.
 mental-health and Virgil keys from 7.1–7.2. Contract test:
 Smokeless-shape insert end-to-end on each key.
 
-**Cross-correlation patterns** (Phase 3.6 content-policy compliant —
-data statements, never lifestyle judgments):
+**Cross-correlation patterns [COMPLETE]** — landed in
+`alerts/CompanionConditionPatterns.kt` alongside the §7.3 patterns:
 
-- Tobacco-use rate vs. RHR drift, HRV trend (cardiovascular load from
-  active use; recovery signal during cessation)
-- Craving rate vs. sleep efficiency, sleep latency (sleep debt is the
-  best-documented craving amplifier — Jaehne 2012, Hamidovic 2009)
-- Craving rate vs. HRV (autonomic stress correlate)
-- Tobacco-use → SpO2 dip + skin-temp deviation pattern (already detected
-  by existing condition patterns; tagging with the event aids causal
-  attribution)
-
-One new `ConditionPattern` proposed: **cessation recovery signal** —
-during a sustained tobacco-use absence (>72h), surface the literature-
-backed positive trajectory (RHR ↓, HRV ↑, SpO2 ↑ over 2–12 weeks; Benowitz
-2009, Mahmud 2003). Information-only, no praise, no streaks — respects
-the "silence is a feature" principle.
+- `substance_use_cv_load_pattern` — TOBACCO_USE + RHR ↑ / HRV ↓ / SpO2 ↓
+  (Benowitz 2009, Mahmud 2003, Macnee 2005).
+- `craving_sleep_debt_pattern` — TOBACCO_CRAVING + short sleep + low sleep
+  efficiency + depressed HRV (Jaehne 2012, Hamidovic 2009, Eddie 2015).
+- `cessation_recovery_pattern` — gated on `DeviationDirection.ABSENT` of
+  TOBACCO_USE for ≥72h, surfaces the literature-backed positive
+  trajectory (RHR ↓, HRV ↑, SpO2 ↑). Information-only, no praise, no
+  streaks. Content-policy enforced by unit test.
 
 **Acceptance:** Smokeless writes `TOBACCO_USE` / `TOBACCO_CRAVING` and
 (as of its Phase 2.1) `CANNABIS_USE` / `CANNABIS_CRAVING` events to Bios

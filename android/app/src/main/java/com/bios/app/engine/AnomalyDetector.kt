@@ -159,29 +159,47 @@ class AnomalyDetector(
         var activeCount = 0
         var baselinesFound = 0
 
-        for (rule in pattern.signalRules) {
-            val baseline = baselineDao.fetch(rule.metricType.key)
-            val hasBaseline = baseline != null
-            if (hasBaseline) baselinesFound++
+        var requiredMissing = false
 
+        for (rule in pattern.signalRules) {
             var zScore: Double? = null
             var isActive = false
+            var hasBaseline = false
 
-            if (baseline != null) {
+            if (rule.direction == DeviationDirection.ABSENT) {
+                // No baseline needed — "no events in window" is the signal.
+                hasBaseline = true
+                baselinesFound++
                 val values = fetchRecentValues(rule.metricType, rule.minDurationHours)
-                if (values.isNotEmpty()) {
-                    zScore = baseline.zScore(values.average())
-                    isActive = when (rule.direction) {
-                        DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
-                        DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
-                        DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
-                    }
-                    if (isActive) {
-                        activeCount++
-                        totalWeightedScore += abs(zScore) * rule.weight
+                isActive = values.isEmpty()
+                if (isActive) {
+                    activeCount++
+                    totalWeightedScore += rule.weight  // binary signal, full weight
+                }
+            } else {
+                val baseline = baselineDao.fetch(rule.metricType.key)
+                hasBaseline = baseline != null
+                if (hasBaseline) baselinesFound++
+
+                if (baseline != null) {
+                    val values = fetchRecentValues(rule.metricType, rule.minDurationHours)
+                    if (values.isNotEmpty()) {
+                        zScore = baseline.zScore(values.average())
+                        isActive = when (rule.direction) {
+                            DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
+                            DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
+                            DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
+                            DeviationDirection.ABSENT -> false  // unreachable, see above
+                        }
+                        if (isActive) {
+                            activeCount++
+                            totalWeightedScore += abs(zScore) * rule.weight
+                        }
                     }
                 }
             }
+
+            if (rule.required && !isActive) requiredMissing = true
 
             totalWeight += rule.weight
             signals.add(SignalStatus(
@@ -198,7 +216,7 @@ class AnomalyDetector(
         val hasEnoughData = baselinesFound >= pattern.minActiveSignals
         val rawScore = if (totalWeight > 0) totalWeightedScore / totalWeight else 0.0
         val activationRatio = activeCount.toDouble() / pattern.minActiveSignals.toDouble()
-        val probability = if (!hasEnoughData || activeCount == 0) 0.0
+        val probability = if (!hasEnoughData || activeCount == 0 || requiredMissing) 0.0
             else min(1.0, activationRatio * rawScore / (rawScore + 2.0))
 
         return DiagnosticResult(
@@ -220,26 +238,42 @@ class AnomalyDetector(
         var totalWeight = 0.0
 
         for (rule in pattern.signalRules) {
-            val baseline = baselineDao.fetch(rule.metricType.key) ?: continue
-
             val recentValues = fetchRecentValues(rule.metricType, rule.minDurationHours)
-            if (recentValues.isEmpty()) continue
-
-            val recentMean = recentValues.average()
-            val zScore = baseline.zScore(recentMean)
-
-            val isDeviating = when (rule.direction) {
-                DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
-                DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
-                DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
+            val (isActive, contributedScore) = when (rule.direction) {
+                DeviationDirection.ABSENT -> {
+                    val active = recentValues.isEmpty()
+                    Pair(active, if (active) rule.weight else 0.0)
+                }
+                else -> {
+                    val baseline = baselineDao.fetch(rule.metricType.key)
+                    if (baseline == null || recentValues.isEmpty()) {
+                        Pair(false, 0.0)
+                    } else {
+                        val zScore = baseline.zScore(recentValues.average())
+                        val deviating = when (rule.direction) {
+                            DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
+                            DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
+                            DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
+                            DeviationDirection.ABSENT -> false  // unreachable, see above
+                        }
+                        if (deviating) {
+                            activeDeviations[rule.metricType] = zScore
+                            Pair(true, abs(zScore) * rule.weight)
+                        } else {
+                            Pair(false, 0.0)
+                        }
+                    }
+                }
             }
 
-            if (isDeviating) {
-                activeDeviations[rule.metricType] = zScore
-                totalWeightedScore += abs(zScore) * rule.weight
-            }
-
+            if (rule.required && !isActive) return null
+            totalWeightedScore += contributedScore
             totalWeight += rule.weight
+            if (isActive && rule.direction == DeviationDirection.ABSENT) {
+                // Carry ABSENT rules in the active map so they appear in the
+                // anomaly's signals JSON (z=0 sentinel for "no readings").
+                activeDeviations[rule.metricType] = 0.0
+            }
         }
 
         if (activeDeviations.size < pattern.minActiveSignals) return null
@@ -307,7 +341,11 @@ class AnomalyDetector(
         pattern: ConditionPattern,
         deviations: Map<MetricType, Double>
     ): String {
+        // Per-signal phrasing is z-score-based; rules carried in with z=0 are
+        // ABSENT-direction sentinels (no event in window) and don't fit that
+        // template, so we leave them to pattern.explanation.
         val parts = deviations.entries
+            .filter { it.value != 0.0 }
             .sortedByDescending { abs(it.value) }
             .map { (metric, zScore) ->
                 val direction = if (zScore > 0) "above" else "below"
