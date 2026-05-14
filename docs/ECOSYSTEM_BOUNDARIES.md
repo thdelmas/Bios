@@ -52,7 +52,7 @@ logic.
 
 | App | Domain | Owns | Reads from Bios | Writes to Bios |
 |---|---|---|---|---|
-| **Fil** | Neurological / MS | Gait analysis (phone accel), keystroke analysis, active cognitive micro-tests (SDMT, tapping, contrast), MS drift engine, fall/auto-answer | HRV, sleep, steps, activity | `gait_asymmetry`, `cognitive_speed`, `motor_score`, `relapse_risk` (future keys) |
+| **Fil** | Neurological / MS | **Built:** gait analysis (phone accel), drift z-score engine, fall detection. **Planned:** keystroke analysis, active cognitive micro-tests (SDMT, tapping, contrast), MS-specific composite, fall auto-answer | HRV, sleep, steps, activity | `gait_asymmetry`, `cognitive_speed`, `motor_score`, `relapse_risk` (future keys) |
 | **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
 | **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | `fall_event`, `near_miss_fall`, `check_in_miss` (opt-in, future) |
 | **SoulRadio** | Ambient sound / nervous-system rest | 24-hour Solfeggio + Schumann auto-loop, dial, listener library, frequency-band catalogue | *nothing — standalone* | *nothing* |
@@ -65,6 +65,14 @@ signals Bios doesn't (gait from phone accelerometer, keystroke dynamics from
 AccessibilityService, active 30-second micro-tests), runs a MS-specific drift
 engine over them plus the generic biometrics Bios already provides, and
 pushes computed neurological scores back.
+
+**Status (2026-05):** the gait pipeline (stride time, variability, asymmetry,
+cadence, step count, walking segments), the per-axis + composite drift
+z-score engine, and on-device fall detection are implemented and stored
+locally. Keystroke analysis (AccessibilityService), the SDMT/tapping/contrast
+micro-tests, and the MS-specific composite are documented as core
+capabilities but not yet present in source. No Bios writes are wired today;
+the four reserved keys above remain future work.
 
 ### W2F — the mood/bipolar navigator
 
@@ -156,7 +164,11 @@ listener must reach for.
   specialized model (MS, bipolar, Parkinson's, postpartum, etc.), it belongs
   in a companion. Bios exposes the primitives; companions compose them.
 - **No active tests in Bios.** Anything that asks the user to *do* something
-  (tap, type, watch a screen) lives in a companion. Bios is passive.
+  (tap, type, watch a screen) lives in a companion. Bios is passive. The
+  *results* of an active test, however, are data; once a second app
+  consumes them, the canonical key belongs in Bios's metric bus per the
+  second-consumer rule. See
+  [SELF_REPORTED_DATA_HOME.md §5](SELF_REPORTED_DATA_HOME.md).
 - **No capture surfaces beyond sensors.** AccessibilityService, foreground
   fall-detection services, SMS/call handling, call-answering — all companion
   concerns.
