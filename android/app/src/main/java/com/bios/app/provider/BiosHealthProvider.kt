@@ -108,7 +108,8 @@ class BiosHealthProvider : ContentProvider() {
                 sourceType = "companion",
                 deviceName = companion.displayName,
                 deviceModel = companion.packageName,
-                sensorType = SensorType.DERIVED.name
+                sensorType = SensorType.DERIVED.name,
+                readingKind = companion.defaultReadingKind.name
             ))
         }
         ensuredSources += companion.sourceId
