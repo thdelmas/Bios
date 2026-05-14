@@ -66,6 +66,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Gitleaks-action scans <pr-head>^..<pr-head>; the parent commit must
+          # be present in the checkout, so we need full history.
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
