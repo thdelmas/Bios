@@ -9,7 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.*
 import com.bios.app.data.BiosDatabase
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 

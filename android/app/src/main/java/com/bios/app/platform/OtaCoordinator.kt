@@ -3,7 +3,7 @@ package com.bios.app.platform
 import android.content.Context
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.AlertTier
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit

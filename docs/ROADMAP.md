@@ -146,19 +146,21 @@ rule is literature- or companion-sourced.
 Content-policy compliance (`AlertContentPolicy.validateAll()`) is enforced as a
 unit test so future edits cannot regress the manifesto.
 
-### 7.4 Extract `bios-contracts` artifact
+### 7.4 Extract `bios-contracts` artifact [COMPLETE]
 
-Today W2F duplicates the `MetricType` enum and URI constants. With a second
-real consumer (Virgil) the duplication cost exceeds the extraction cost.
-Ship a thin AAR (or Maven-local) containing:
+Shipped as the `:bios-contracts` Gradle module, published to mavenLocal as
+`com.bios:bios-contracts:0.1.0` via `./gradlew :bios-contracts:publishToMavenLocal`.
+Surface (single source of truth — renames here recompile every consumer):
 
-- `MetricType` enum
-- `BiosHealthProvider` URI constants
-- Intent action strings (e.g. for SoulRadio's `ACTION_SUGGEST_BAND`)
-- Permission name constants
+- `MetricType` (+ `MetricUnit`, `MetricDomain`)
+- `BiosHealthContract` — authority, URI paths, column-name arrays, `CompanionInsert` keys
+- `BiosPermissions` — `READ_HEALTH`, `WRITE_COMPANION`
+- `BiosIntentActions` — `ACTION_SUGGEST_BAND`, `ACTION_REQUEST_STOP` (reserved for §7.5)
 
-Companions consume the artifact; Bios publishes it on tag. Single source
-of truth for the inter-app contract.
+App code now imports from `com.bios.contracts.*`; `BiosHealthProvider` reads
+its authority + paths + column names from the contract. Consumer ProGuard
+rules ship inside the AAR. Usage example in `android/bios-contracts/README.md`.
+Contract test (`MetricTypeTest`) guards every key against accidental renames.
 
 ### 7.5 SoulRadio inbound suggest API (manifesto-bounded)
 

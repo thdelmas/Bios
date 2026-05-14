@@ -21,7 +21,7 @@ import com.bios.app.engine.BaselineEngine
 import com.bios.app.ingest.SyncWorker
 import com.bios.app.model.AlertTier
 import com.bios.app.model.HealthEventType
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
 import com.bios.app.ui.components.MetricCard

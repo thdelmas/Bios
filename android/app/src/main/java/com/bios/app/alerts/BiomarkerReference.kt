@@ -1,6 +1,6 @@
 package com.bios.app.alerts
 
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 
 /**
  * Maps a clinical biomarker tracked in longevity research to the wearable-derived

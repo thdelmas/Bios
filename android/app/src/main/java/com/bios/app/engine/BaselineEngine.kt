@@ -2,6 +2,9 @@ package com.bios.app.engine
 
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.*
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
+import com.bios.contracts.MetricDomain
 import java.time.LocalDate
 import java.time.ZoneId
 

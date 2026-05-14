@@ -1,7 +1,7 @@
 package com.bios.app.config
 
-import com.bios.app.model.MetricType
-import com.bios.app.model.MetricUnit
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
 
 /**
  * Formats metric values for display using the active RegionConfig.

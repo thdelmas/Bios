@@ -8,7 +8,7 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

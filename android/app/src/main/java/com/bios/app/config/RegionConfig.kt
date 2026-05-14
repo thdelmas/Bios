@@ -1,6 +1,6 @@
 package com.bios.app.config
 
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 
 /**
  * Region-specific configuration for localized health thresholds, unit display,

@@ -3,7 +3,7 @@ package com.bios.app
 import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import org.junit.Assert.*
 import org.junit.Test
 

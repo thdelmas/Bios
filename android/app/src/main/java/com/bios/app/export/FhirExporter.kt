@@ -5,8 +5,8 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.model.Anomaly
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
-import com.bios.app.model.MetricUnit
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
 import com.bios.app.model.PersonalBaseline
 import org.json.JSONArray
 import org.json.JSONObject

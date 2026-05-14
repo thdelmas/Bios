@@ -1,7 +1,7 @@
 package com.bios.app.alerts
 
 import com.bios.app.model.ConditionCategory
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 
 /**
  * Cross-correlation patterns over the keys companion apps inject — Phase 7.3 and

@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.TrendDirection
 import com.bios.app.ui.AppViewModel

@@ -1,0 +1,65 @@
+package com.bios.contracts
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
+
+/**
+ * Guards the inter-app contract surface — every key here is a public API
+ * consumed by companions. Breakage shows up here before it ships.
+ */
+class MetricTypeTest {
+
+    @Test
+    fun fromKey_roundTrips_every_entry() {
+        for (type in MetricType.entries) {
+            assertEquals(type, MetricType.fromKey(type.key))
+        }
+    }
+
+    @Test
+    fun fromKey_returns_null_for_unknown_keys() {
+        assertNull(MetricType.fromKey("not_a_real_metric"))
+    }
+
+    @Test
+    fun substance_use_keys_are_intake_events() {
+        val intakeEvents = setOf(
+            MetricType.TOBACCO_USE, MetricType.TOBACCO_CRAVING,
+            MetricType.CANNABIS_USE, MetricType.CANNABIS_CRAVING,
+        )
+        for (t in intakeEvents) {
+            assertEquals(MetricDomain.INTAKE, t.domain)
+            assertEquals(MetricUnit.EVENT, t.unit)
+        }
+    }
+
+    @Test
+    fun safety_keys_are_safety_events() {
+        val safetyEvents = setOf(
+            MetricType.FALL_EVENT, MetricType.NEAR_MISS_FALL, MetricType.CHECK_IN_MISS,
+        )
+        for (t in safetyEvents) {
+            assertEquals(MetricDomain.SAFETY, t.domain)
+            assertEquals(MetricUnit.EVENT, t.unit)
+        }
+    }
+
+    @Test
+    fun health_contract_authority_is_stable() {
+        assertEquals("com.bios.app.health", BiosHealthContract.AUTHORITY)
+    }
+
+    @Test
+    fun permission_names_match_manifest() {
+        assertEquals("com.bios.app.permission.READ_HEALTH", BiosPermissions.READ_HEALTH)
+        assertEquals("com.bios.app.permission.WRITE_COMPANION", BiosPermissions.WRITE_COMPANION)
+    }
+
+    @Test
+    fun reserved_intent_actions_are_present() {
+        assertNotNull(BiosIntentActions.ACTION_SUGGEST_BAND)
+        assertNotNull(BiosIntentActions.ACTION_REQUEST_STOP)
+    }
+}

@@ -7,7 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

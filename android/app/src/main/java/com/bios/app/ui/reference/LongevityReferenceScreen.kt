@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.BiomarkerReference
 import com.bios.app.alerts.BiomarkerReferences
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,6 +1,6 @@
 package com.bios.app
 
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import org.junit.Assert.*
 import org.junit.Test
 import kotlin.math.abs

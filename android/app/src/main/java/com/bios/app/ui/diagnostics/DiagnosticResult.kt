@@ -2,7 +2,7 @@ package com.bios.app.ui.diagnostics
 
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 
 data class SignalStatus(
     val metricType: MetricType,

@@ -2,6 +2,9 @@ package com.bios.app
 
 import com.bios.app.export.DataExporter
 import com.bios.app.model.*
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
+import com.bios.contracts.MetricDomain
 import org.junit.Assert.*
 import org.junit.Test
 

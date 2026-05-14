@@ -54,7 +54,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bios.app.engine.RejectionReason
 import com.bios.app.ingest.CaptureResult
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import kotlinx.coroutines.delay
 
 /**

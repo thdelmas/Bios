@@ -1,7 +1,7 @@
 package com.bios.app.alerts
 
 import com.bios.app.model.ConditionCategory
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 
 data class ConditionPattern(
     val id: String,

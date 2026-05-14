@@ -1,7 +1,7 @@
 package com.bios.app
 
 import com.bios.app.model.BaselineContext
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.TrendDirection
 import org.junit.Assert.*

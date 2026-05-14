@@ -1,8 +1,8 @@
 package com.bios.app
 
-import com.bios.app.model.MetricDomain
-import com.bios.app.model.MetricType
-import com.bios.app.model.MetricUnit
+import com.bios.contracts.MetricDomain
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
 import com.bios.app.provider.CompanionContract
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

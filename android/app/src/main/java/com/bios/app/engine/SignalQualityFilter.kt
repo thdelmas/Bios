@@ -1,7 +1,7 @@
 package com.bios.app.engine
 
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import kotlin.math.abs
 
 /**

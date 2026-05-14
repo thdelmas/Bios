@@ -5,7 +5,7 @@ import com.bios.app.engine.PpgResult
 import com.bios.app.engine.RejectionReason
 import com.bios.app.ingest.CameraPpgAdapter
 import com.bios.app.model.ConfidenceTier
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import org.junit.Assert.*
 import org.junit.Test
 import java.nio.ByteBuffer

@@ -2,7 +2,7 @@ package com.bios.app.privacy
 
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.Stats
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.PrivacyTier
 import kotlin.math.ln
 import kotlin.random.Random

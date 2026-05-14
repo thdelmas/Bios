@@ -6,7 +6,7 @@ import android.database.Cursor
 import android.net.Uri
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
 import java.time.Instant
 

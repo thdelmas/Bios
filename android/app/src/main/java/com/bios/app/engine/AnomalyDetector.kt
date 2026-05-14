@@ -5,6 +5,9 @@ import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.*
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
+import com.bios.contracts.MetricDomain
 import com.bios.app.ui.diagnostics.DiagnosticResult
 import com.bios.app.ui.diagnostics.SignalStatus
 import kotlin.math.abs

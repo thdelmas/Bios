@@ -8,7 +8,7 @@ import android.hardware.SensorManager
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 

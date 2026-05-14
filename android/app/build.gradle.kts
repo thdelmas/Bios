@@ -76,6 +76,10 @@ android {
 }
 
 dependencies {
+    // Inter-app contract (MetricType keys, provider URIs, permission/intent names).
+    // Shared with companions (W2F, Smokeless, Virgil) — see bios-contracts/README.md.
+    implementation(project(":bios-contracts"))
+
     // Compose
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)

@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Bios"
-include(":app")
+include(":app", ":bios-contracts")

@@ -1,7 +1,7 @@
 package com.bios.app
 
-import com.bios.app.model.MetricType
-import com.bios.app.model.MetricUnit
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
 import org.junit.Assert.*
 import org.junit.Test
 

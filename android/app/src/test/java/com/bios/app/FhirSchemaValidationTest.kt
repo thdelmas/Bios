@@ -12,7 +12,7 @@ import com.bios.app.export.bundleEntry
 import com.bios.app.model.Anomaly
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import org.hl7.fhir.r4.model.Bundle
 import org.hl7.fhir.r4.model.DetectedIssue

@@ -6,8 +6,8 @@ import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.alerts.ThresholdSource
 import com.bios.app.model.ConditionCategory
-import com.bios.app.model.MetricType
-import com.bios.app.model.MetricUnit
+import com.bios.contracts.MetricType
+import com.bios.contracts.MetricUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue

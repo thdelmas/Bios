@@ -1,7 +1,7 @@
 package com.bios.app
 
 import com.bios.app.model.AlertTier
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
 import org.junit.Assert.*

@@ -2,7 +2,7 @@ package com.bios.app.ingest
 
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

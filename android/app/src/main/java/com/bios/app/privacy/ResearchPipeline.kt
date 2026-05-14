@@ -3,7 +3,7 @@ package com.bios.app.privacy
 import android.content.Context
 import android.util.Log
 import com.bios.app.data.BiosDatabase
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.SecureRandom

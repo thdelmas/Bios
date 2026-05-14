@@ -3,7 +3,7 @@ package com.bios.app.platform
 import android.util.Log
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.AlertTier
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -13,7 +13,7 @@ import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext

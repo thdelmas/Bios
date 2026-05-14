@@ -3,7 +3,7 @@ package com.bios.app.federated
 import android.content.Context
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.TFLiteAnomalyModel
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.SecureRandom

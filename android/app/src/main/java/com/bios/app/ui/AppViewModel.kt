@@ -24,7 +24,7 @@ import com.bios.app.model.HealthEvent
 import com.bios.app.model.HealthEventStatus
 import com.bios.app.model.HealthEventType
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
+import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.ProfessionalReview
 import com.bios.app.model.ReviewStatus

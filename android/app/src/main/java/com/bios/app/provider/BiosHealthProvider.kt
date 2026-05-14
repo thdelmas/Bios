@@ -10,8 +10,9 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
-import com.bios.app.model.MetricType
 import com.bios.app.model.SensorType
+import com.bios.contracts.BiosHealthContract
+import com.bios.contracts.MetricType
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -43,7 +44,7 @@ import kotlinx.coroutines.runBlocking
 class BiosHealthProvider : ContentProvider() {
 
     companion object {
-        const val AUTHORITY = "com.bios.app.health"
+        const val AUTHORITY = BiosHealthContract.AUTHORITY
 
         private const val READINGS = 1
         private const val BASELINES_ALL = 2
@@ -55,27 +56,17 @@ class BiosHealthProvider : ContentProvider() {
         private const val DAY_MILLIS = 24L * 60L * 60L * 1000L
 
         private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
-            addURI(AUTHORITY, "readings/*", READINGS)
-            addURI(AUTHORITY, "baselines", BASELINES_ALL)
-            addURI(AUTHORITY, "baselines/*", BASELINE_TYPE)
-            addURI(AUTHORITY, "companion/*", COMPANION_WRITE)
-            addURI(AUTHORITY, "status", STATUS_ALL)
-            addURI(AUTHORITY, "status/*", STATUS_TYPE)
+            addURI(AUTHORITY, "${BiosHealthContract.PATH_READINGS}/*", READINGS)
+            addURI(AUTHORITY, BiosHealthContract.PATH_BASELINES, BASELINES_ALL)
+            addURI(AUTHORITY, "${BiosHealthContract.PATH_BASELINES}/*", BASELINE_TYPE)
+            addURI(AUTHORITY, "${BiosHealthContract.PATH_COMPANION}/*", COMPANION_WRITE)
+            addURI(AUTHORITY, BiosHealthContract.PATH_STATUS, STATUS_ALL)
+            addURI(AUTHORITY, "${BiosHealthContract.PATH_STATUS}/*", STATUS_TYPE)
         }
 
-        val READING_COLUMNS = arrayOf(
-            "id", "metric_type", "value", "timestamp", "duration_sec",
-            "source_id", "confidence", "is_primary"
-        )
-
-        val BASELINE_COLUMNS = arrayOf(
-            "metric_type", "context", "window_days", "computed_at",
-            "mean", "std_dev", "p5", "p95", "trend", "trend_slope"
-        )
-
-        val STATUS_COLUMNS = arrayOf(
-            "metric_type", "last_ingested_at", "reading_count_24h", "reading_count_total"
-        )
+        val READING_COLUMNS = BiosHealthContract.READING_COLUMNS
+        val BASELINE_COLUMNS = BiosHealthContract.BASELINE_COLUMNS
+        val STATUS_COLUMNS = BiosHealthContract.STATUS_COLUMNS
     }
 
     private lateinit var db: BiosDatabase
@@ -162,9 +153,9 @@ class BiosHealthProvider : ContentProvider() {
             throw SecurityException("'$caller' may not write '$metricType'")
         }
         val cv = values ?: throw IllegalArgumentException("ContentValues required")
-        val value = cv.getAsDouble("value")
+        val value = cv.getAsDouble(BiosHealthContract.CompanionInsert.VALUE)
             ?: throw IllegalArgumentException("'value' (Double) required")
-        val timestamp = cv.getAsLong("timestamp")
+        val timestamp = cv.getAsLong(BiosHealthContract.CompanionInsert.TIMESTAMP)
             ?: System.currentTimeMillis()
 
         ensureSourceFor(companion)
@@ -181,7 +172,7 @@ class BiosHealthProvider : ContentProvider() {
         runBlocking { db.metricReadingDao().insert(reading) }
 
         val resultUri = Uri.withAppendedPath(
-            Uri.parse("content://$AUTHORITY/readings"), metricType
+            Uri.parse("content://$AUTHORITY/${BiosHealthContract.PATH_READINGS}"), metricType
         )
         context?.contentResolver?.notifyChange(resultUri, null)
         return resultUri

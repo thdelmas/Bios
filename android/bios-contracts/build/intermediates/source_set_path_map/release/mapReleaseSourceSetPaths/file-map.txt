@@ -1,0 +1,7 @@
+com.bios.contracts.bios-contracts-pngs-0 /home/mia/Bios/android/bios-contracts/build/generated/res/pngs/release
+com.bios.contracts.bios-contracts-resValues-1 /home/mia/Bios/android/bios-contracts/build/generated/res/resValues/release
+com.bios.contracts.bios-contracts-mergeReleaseResources-2 /home/mia/Bios/android/bios-contracts/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
+com.bios.contracts.bios-contracts-mergeReleaseResources-3 /home/mia/Bios/android/bios-contracts/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
+com.bios.contracts.bios-contracts-release-4 /home/mia/Bios/android/bios-contracts/build/intermediates/merged_res/release/mergeReleaseResources
+com.bios.contracts.bios-contracts-main-5 /home/mia/Bios/android/bios-contracts/src/main/res
+com.bios.contracts.bios-contracts-release-6 /home/mia/Bios/android/bios-contracts/src/release/res
