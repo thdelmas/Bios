@@ -15,6 +15,14 @@ import kotlin.math.abs
  * Applied in IngestManager before deduplicate + storage. Readings that fail any
  * check are silently dropped — they would corrupt baselines and trigger false alerts.
  *
+ * **SENSOR-only contract.** This filter assumes its input is direct sensor data.
+ * Rate-of-change checks are meaningless for self-reported events (an owner
+ * logging "smoked at 9am" then "smoked at 9:05am" is not a 5-bpm-per-minute
+ * artifact). Companion writes route via `BiosHealthProvider.insertCompanionReading`
+ * and bypass this filter by design — see docs/SELF_REPORTED_DATA_HOME.md
+ * decision 3. If a future call site wants to push SELF_REPORTED or DERIVED
+ * data through here, gate it on `DataSource.readingKind == SENSOR` first.
+ *
  * References:
  * - Makowski et al. (2021) NeuroKit2: signal quality indices
  * - van Gent et al. (2019) HeartPy: noise-resistant PPG analysis
