@@ -1,5 +1,5 @@
-# Build outputs
-android/app/build/
+# Build outputs (matches any Gradle subproject)
+android/**/build/
 android/build/
 
 # Gradle caches
