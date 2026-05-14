@@ -25,7 +25,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ProfessionalReview::class,
         CompanionGrant::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -62,7 +62,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .build()
         }
 
@@ -197,6 +197,19 @@ abstract class BiosDatabase : RoomDatabase() {
                     )
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_companion_grants_state ON companion_grants(state)")
+            }
+        }
+
+        // Existing rows back-fill to SENSOR: every pre-v7 source is either a
+        // sensor adapter (Health Connect, Gadgetbridge, camera PPG) or a
+        // companion writer. Companion writers will be re-tagged at next
+        // ensureSourceFor() call (REPLACE strategy), so the SENSOR default is
+        // only load-bearing until the first companion write after upgrade.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE data_sources ADD COLUMN readingKind TEXT NOT NULL DEFAULT 'SENSOR'"
+                )
             }
         }
 

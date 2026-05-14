@@ -26,6 +26,17 @@ enum class SensorType {
     MICROPHONE, DERIVED
 }
 
+// Kind of data a `DataSource` produces. Engine policies key off this:
+// `BaselineEngine` and `SignalQualityFilter` only consume SENSOR; self-reports
+// and active-test results route to a separate, descriptive (not evaluative)
+// engine. Decided in docs/SELF_REPORTED_DATA_HOME.md.
+enum class ReadingKind {
+    SENSOR,
+    SELF_REPORTED,
+    DERIVED,
+    ACTIVE_TEST
+}
+
 enum class ConfidenceTier(val level: Int) {
     VENDOR_DERIVED(0),
     LOW(1),
