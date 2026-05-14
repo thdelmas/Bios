@@ -38,7 +38,8 @@ class BaselineEngine(
                 MetricType.SKIN_TEMPERATURE_DEVIATION,
                 MetricType.STEPS,
                 MetricType.ACTIVE_MINUTES,
-                MetricType.SLEEP_STAGE
+                MetricType.SLEEP_STAGE,
+                MetricType.SLEEP_DURATION
             )
 
             for (metricType in metricsToBaseline) {
@@ -100,7 +101,8 @@ class BaselineEngine(
             MetricType.BLOOD_OXYGEN,
             MetricType.RESPIRATORY_RATE,
             MetricType.STEPS,
-            MetricType.ACTIVE_CALORIES
+            MetricType.ACTIVE_CALORIES,
+            MetricType.SLEEP_DURATION
         )
 
         for (metricType in metricsToAggregate) {

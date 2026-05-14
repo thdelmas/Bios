@@ -18,9 +18,14 @@ import com.bios.app.ui.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TrendsScreen(viewModel: AppViewModel) {
+fun TrendsScreen(
+    viewModel: AppViewModel,
+    initialMetric: MetricType? = null
+) {
     val baselines by viewModel.baselines.collectAsState()
-    var selectedMetric by remember { mutableStateOf(MetricType.HEART_RATE) }
+    var selectedMetric by remember(initialMetric) {
+        mutableStateOf(initialMetric ?: MetricType.HEART_RATE)
+    }
 
     val trackableMetrics = listOf(
         MetricType.HEART_RATE to "Heart Rate",
@@ -30,6 +35,7 @@ fun TrendsScreen(viewModel: AppViewModel) {
         MetricType.RESPIRATORY_RATE to "Resp. Rate",
         MetricType.STEPS to "Steps",
         MetricType.SKIN_TEMPERATURE_DEVIATION to "Skin Temp",
+        MetricType.SLEEP_DURATION to "Sleep",
     )
 
     Column(
