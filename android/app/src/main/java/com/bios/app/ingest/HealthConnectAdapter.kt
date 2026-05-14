@@ -208,7 +208,7 @@ class HealthConnectAdapter(private val context: Context) {
             )
         )
         return response.records.flatMap { session ->
-            session.stages.mapNotNull { stage ->
+            val stageReadings = session.stages.mapNotNull { stage ->
                 val biosStage = when (stage.stage) {
                     SleepSessionRecord.STAGE_TYPE_AWAKE,
                     SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> SleepStage.AWAKE
@@ -231,6 +231,27 @@ class HealthConnectAdapter(private val context: Context) {
                     confidence = ConfidenceTier.MEDIUM.level
                 )
             }
+
+            // Asleep time = session total minus AWAKE stages (matches Oura/Whoop semantics).
+            // If the session has no stage breakdown, fall back to the full session length.
+            val awakeSec = stageReadings
+                .filter { it.value.toInt() == SleepStage.AWAKE.value }
+                .sumOf { it.durationSec ?: 0 }
+            val sessionSec = java.time.Duration.between(
+                session.startTime, session.endTime
+            ).seconds.toInt()
+            val asleepSec = (sessionSec - awakeSec).coerceAtLeast(0)
+
+            val durationReading = MetricReading(
+                metricType = MetricType.SLEEP_DURATION.key,
+                value = asleepSec.toDouble(),
+                timestamp = session.endTime.toEpochMilli(),
+                durationSec = sessionSec,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.MEDIUM.level
+            )
+
+            stageReadings + durationReading
         }
     }
 

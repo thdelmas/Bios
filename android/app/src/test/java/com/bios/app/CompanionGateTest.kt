@@ -22,6 +22,8 @@ class CompanionGateTest {
         override suspend fun getAll(): List<CompanionGrant> = rows.values.toList()
         override suspend fun getByState(state: String): List<CompanionGrant> =
             rows.values.filter { it.state == state }
+        override fun pendingCountFlow(): Flow<Int> =
+            flowOf(rows.values.count { it.state == CompanionGrant.STATE_PENDING })
         override suspend fun recordAccess(pkg: String, ts: Long) {
             rows[pkg]?.let { rows[pkg] = it.copy(lastAccessAt = ts, accessCount = it.accessCount + 1) }
         }

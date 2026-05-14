@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.export.FhirExporter
+import com.bios.app.model.CompanionGrant
 import com.bios.app.model.PrivacyTier
 import com.bios.app.alerts.DailyDigestWorker
 import com.bios.app.privacy.ContributionWorker
@@ -40,6 +41,11 @@ fun SettingsScreen(
     var isExporting by remember { mutableStateOf(false) }
     var showOuraDialog by remember { mutableStateOf(false) }
     var isOuraConnected by remember { mutableStateOf(viewModel.ouraTokenStore.hasToken()) }
+    val companionGrants by viewModel.db.companionGrantDao()
+        .observeAll()
+        .collectAsState(initial = emptyList())
+    val pendingCompanionCount = companionGrants.count { it.state == CompanionGrant.STATE_PENDING }
+    val approvedCompanionCount = companionGrants.count { it.state == CompanionGrant.STATE_GRANTED }
     var privacyTier by remember {
         val prefs = context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
         val tier = prefs.getString("privacy_tier", PrivacyTier.PRIVATE.name)
@@ -96,6 +102,13 @@ fun SettingsScreen(
                         Text("Disconnect Oura", color = MaterialTheme.colorScheme.error)
                     }
                 }
+
+                Spacer(Modifier.height(4.dp))
+                CompanionAppsRow(
+                    pendingCount = pendingCompanionCount,
+                    approvedCount = approvedCompanionCount,
+                    onClick = onNavigateToCompanions
+                )
             }
         }
 
@@ -346,15 +359,6 @@ fun SettingsScreen(
                     Icon(Icons.Default.Shield, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Privacy Dashboard")
-                }
-                Spacer(Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = onNavigateToCompanions,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Apps, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Companion Apps")
                 }
                 Spacer(Modifier.height(4.dp))
                 Button(
