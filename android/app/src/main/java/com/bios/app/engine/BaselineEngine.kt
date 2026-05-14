@@ -62,7 +62,12 @@ class BaselineEngine(
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - windowDays.toLong() * 24 * 3600 * 1000
 
-        val values = readingDao.fetchValues(metricType.key, startMillis, endMillis)
+        // Baselines only meaningful on direct sensor data — self-reports are
+        // perception not physiology, and DERIVED is already smoothed.
+        // docs/SELF_REPORTED_DATA_HOME.md decision 3.
+        val values = readingDao.fetchValues(
+            metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
+        )
         if (values.size < 10) return  // need minimum samples
 
         val stats = Stats.compute(values)
@@ -106,7 +111,9 @@ class BaselineEngine(
         )
 
         for (metricType in metricsToAggregate) {
-            val values = readingDao.fetchValues(metricType.key, dayStart, dayEnd)
+            val values = readingDao.fetchValues(
+                metricType.key, dayStart, dayEnd, ReadingKind.SENSOR.name
+            )
             if (values.isEmpty()) continue
 
             val stats = Stats.compute(values)
@@ -138,7 +145,7 @@ class BaselineEngine(
     ): List<Double> {
         val dayMillis = 24L * 3600 * 1000
         return readingDao.fetchBucketedMeans(
-            metricType.key, startMillis, endMillis, dayMillis
+            metricType.key, startMillis, endMillis, dayMillis, ReadingKind.SENSOR.name
         )
     }
 

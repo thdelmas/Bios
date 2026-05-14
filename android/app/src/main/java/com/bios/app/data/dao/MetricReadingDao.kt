@@ -25,15 +25,25 @@ interface MetricReadingDao {
     """)
     suspend fun fetch(metricType: String, startMillis: Long, endMillis: Long): List<MetricReading>
 
+    // `readingKind = null` returns all sources; pass "SENSOR" from engine code
+    // to exclude self-reports / derived values from baselines and aggregates
+    // (docs/SELF_REPORTED_DATA_HOME.md decision 3).
     @Query("""
-        SELECT value FROM metric_readings
-        WHERE metricType = :metricType
-          AND timestamp >= :startMillis
-          AND timestamp <= :endMillis
-          AND isPrimary = 1
-        ORDER BY timestamp ASC
+        SELECT mr.value FROM metric_readings mr
+        INNER JOIN data_sources ds ON mr.sourceId = ds.id
+        WHERE mr.metricType = :metricType
+          AND mr.timestamp >= :startMillis
+          AND mr.timestamp <= :endMillis
+          AND mr.isPrimary = 1
+          AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
+        ORDER BY mr.timestamp ASC
     """)
-    suspend fun fetchValues(metricType: String, startMillis: Long, endMillis: Long): List<Double>
+    suspend fun fetchValues(
+        metricType: String,
+        startMillis: Long,
+        endMillis: Long,
+        readingKind: String? = null
+    ): List<Double>
 
     @Query("""
         SELECT * FROM metric_readings
@@ -50,19 +60,22 @@ interface MetricReadingDao {
     suspend fun countAll(): Int
 
     @Query("""
-        SELECT AVG(value) FROM metric_readings
-        WHERE metricType = :metricType
-          AND timestamp >= :startMillis
-          AND timestamp <= :endMillis
-          AND isPrimary = 1
-        GROUP BY (timestamp / :bucketMillis)
-        ORDER BY (timestamp / :bucketMillis) ASC
+        SELECT AVG(mr.value) FROM metric_readings mr
+        INNER JOIN data_sources ds ON mr.sourceId = ds.id
+        WHERE mr.metricType = :metricType
+          AND mr.timestamp >= :startMillis
+          AND mr.timestamp <= :endMillis
+          AND mr.isPrimary = 1
+          AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
+        GROUP BY (mr.timestamp / :bucketMillis)
+        ORDER BY (mr.timestamp / :bucketMillis) ASC
     """)
     suspend fun fetchBucketedMeans(
         metricType: String,
         startMillis: Long,
         endMillis: Long,
-        bucketMillis: Long
+        bucketMillis: Long,
+        readingKind: String? = null
     ): List<Double>
 
     @Query("SELECT MIN(timestamp) FROM metric_readings")
