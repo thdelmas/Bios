@@ -3,6 +3,7 @@ package com.bios.app
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
+import com.bios.app.model.ReadingKind
 import com.bios.app.provider.CompanionContract
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -145,5 +146,25 @@ class BiosHealthProviderContractTest {
     fun `sourceFor returns null for unknown or null packages`() {
         assertNull(CompanionContract.sourceFor("com.unknown.app"))
         assertNull(CompanionContract.sourceFor(null))
+    }
+
+    @Test
+    fun `Smokeless companion source is tagged SELF_REPORTED`() {
+        // Owner-logged tobacco/cannabis events are self-reports, never sensor
+        // streams. BaselineEngine must skip these (decision 3 in
+        // SELF_REPORTED_DATA_HOME) — that filter keys off readingKind.
+        val sml = CompanionContract.sourceFor("com.smokless.smokeless")!!
+        assertEquals(ReadingKind.SELF_REPORTED, sml.defaultReadingKind)
+    }
+
+    @Test
+    fun `W2F and Virgil companion sources are tagged DERIVED`() {
+        // W2F/Virgil write algorithmic outputs (cadence, drift, miss
+        // detection), not raw owner logs. DERIVED is also excluded from
+        // BaselineEngine — but for a different reason (already smoothed).
+        val w2f = CompanionContract.sourceFor("com.w2f.app")!!
+        val virgil = CompanionContract.sourceFor("com.virgil.app")!!
+        assertEquals(ReadingKind.DERIVED, w2f.defaultReadingKind)
+        assertEquals(ReadingKind.DERIVED, virgil.defaultReadingKind)
     }
 }
