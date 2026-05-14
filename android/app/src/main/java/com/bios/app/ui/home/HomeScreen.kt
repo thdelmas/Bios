@@ -34,12 +34,17 @@ import java.util.Locale
 fun HomeScreen(
     viewModel: AppViewModel,
     onNavigateToDiagnostics: () -> Unit = {},
-    onNavigateToPpgCapture: () -> Unit = {}
+    onNavigateToPpgCapture: () -> Unit = {},
+    onNavigateToCompanions: () -> Unit = {},
+    onNavigateToMetric: (MetricType) -> Unit = {}
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
     val isSyncing by viewModel.ingestManager.isSyncing.collectAsState()
+    val pendingCompanions by viewModel.db.companionGrantDao()
+        .pendingCountFlow()
+        .collectAsState(initial = 0)
 
     PullToRefreshBox(
         isRefreshing = isSyncing,
@@ -79,6 +84,13 @@ fun HomeScreen(
             (System.currentTimeMillis() - lastSync!!) > staleThresholdMillis
         if (isStale) {
             StaleDataBanner()
+        }
+
+        if (pendingCompanions > 0) {
+            PendingCompanionBanner(
+                count = pendingCompanions,
+                onReview = onNavigateToCompanions
+            )
         }
 
         // Status card
@@ -206,11 +218,12 @@ fun HomeScreen(
             Triple(MetricType.RESPIRATORY_RATE, "Resp. Rate", Icons.Default.Air),
             Triple(MetricType.STEPS, "Steps", Icons.Default.DirectionsWalk),
             Triple(MetricType.SKIN_TEMPERATURE_DEVIATION, "Skin Temp", Icons.Default.Thermostat),
+            Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
         )
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            modifier = Modifier.height(380.dp),
+            modifier = Modifier.height(510.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             userScrollEnabled = false
@@ -221,7 +234,8 @@ fun HomeScreen(
                     label = label,
                     icon = icon,
                     viewModel = viewModel,
-                    refreshKey = lastSync
+                    refreshKey = lastSync,
+                    onClick = { onNavigateToMetric(metricType) }
                 )
             }
         }
@@ -384,6 +398,48 @@ fun QuickSymptomCard(onLogSymptom: (String) -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PendingCompanionBanner(count: Int, onReview: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onReview,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.Apps,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (count == 1) "1 app waiting for approval"
+                    else "$count apps waiting for approval",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    "Bios is blocking their access until you decide.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer
+            )
         }
     }
 }

@@ -6,6 +6,10 @@ android/build/
 android/.gradle/
 .gradle/
 
+# Kotlin daemon caches
+android/**/.kotlin/
+android/.kotlin/
+
 # IDE
 .idea/
 *.iml

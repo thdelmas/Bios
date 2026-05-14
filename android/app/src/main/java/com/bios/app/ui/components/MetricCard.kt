@@ -14,13 +14,15 @@ import com.bios.app.model.PersonalBaseline
 import com.bios.app.ui.AppViewModel
 import kotlin.math.abs
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MetricCard(
     metricType: MetricType,
     label: String,
     icon: ImageVector,
     viewModel: AppViewModel,
-    refreshKey: Any? = null
+    refreshKey: Any? = null,
+    onClick: (() -> Unit)? = null
 ) {
     var latestValue by remember { mutableStateOf<Double?>(null) }
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
@@ -30,45 +32,61 @@ fun MetricCard(
         baseline = viewModel.getBaseline(metricType)
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = label,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                baseline?.let { bl ->
-                    latestValue?.let { v ->
-                        DeviationIndicator(v, bl)
-                    }
+    val colors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant
+    )
+    val modifier = Modifier.fillMaxWidth()
+    if (onClick != null) {
+        Card(modifier = modifier, onClick = onClick, colors = colors) {
+            MetricCardBody(metricType, label, icon, latestValue, baseline)
+        }
+    } else {
+        Card(modifier = modifier, colors = colors) {
+            MetricCardBody(metricType, label, icon, latestValue, baseline)
+        }
+    }
+}
+
+@Composable
+private fun MetricCardBody(
+    metricType: MetricType,
+    label: String,
+    icon: ImageVector,
+    latestValue: Double?,
+    baseline: PersonalBaseline?
+) {
+    Column(modifier = Modifier.padding(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            baseline?.let { bl ->
+                latestValue?.let { v ->
+                    DeviationIndicator(v, bl)
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = latestValue?.let { formatValue(it, metricType) } ?: "--",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = latestValue?.let { formatValue(it, metricType) } ?: "--",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -89,7 +107,7 @@ private fun DeviationIndicator(value: Double, baseline: PersonalBaseline) {
     )
 }
 
-private fun formatValue(value: Double, metricType: MetricType): String {
+internal fun formatValue(value: Double, metricType: MetricType): String {
     return when (metricType) {
         MetricType.HEART_RATE, MetricType.RESTING_HEART_RATE, MetricType.RESPIRATORY_RATE ->
             "${value.toInt()}"
@@ -102,6 +120,12 @@ private fun formatValue(value: Double, metricType: MetricType): String {
         MetricType.SKIN_TEMPERATURE_DEVIATION -> {
             val sign = if (value >= 0) "+" else ""
             "$sign${String.format("%.1f", value)}°"
+        }
+        MetricType.SLEEP_DURATION -> {
+            val totalMinutes = (value / 60).toInt()
+            val hours = totalMinutes / 60
+            val minutes = totalMinutes % 60
+            "${hours}h ${minutes}m"
         }
         else -> String.format("%.1f", value)
     }

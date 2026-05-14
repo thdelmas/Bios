@@ -30,6 +30,11 @@ class CompanionAccessNotifier(private val context: Context) {
     }
 
     fun notifyPending(packageName: String) {
+        val manager = NotificationManagerCompat.from(context)
+        // On API 33+ POST_NOTIFICATIONS is a runtime perm. If the owner declined,
+        // stay silent — the consent UI is still reachable from Settings.
+        if (!manager.areNotificationsEnabled()) return
+
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_NAVIGATE_TO_COMPANIONS, true)
@@ -56,8 +61,11 @@ class CompanionAccessNotifier(private val context: Context) {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        NotificationManagerCompat.from(context)
-            .notify(NOTIFICATION_ID_BASE + (packageName.hashCode() and 0xFF), notification)
+        try {
+            manager.notify(NOTIFICATION_ID_BASE + (packageName.hashCode() and 0xFF), notification)
+        } catch (_: SecurityException) {
+            // Race: perm revoked between the check above and notify(). Swallow.
+        }
     }
 
     private fun ensureChannel() {

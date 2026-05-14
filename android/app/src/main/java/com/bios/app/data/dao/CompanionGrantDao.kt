@@ -25,6 +25,9 @@ interface CompanionGrantDao {
     @Query("SELECT * FROM companion_grants WHERE state = :state ORDER BY firstSeenAt DESC")
     suspend fun getByState(state: String): List<CompanionGrant>
 
+    @Query("SELECT COUNT(*) FROM companion_grants WHERE state = 'PENDING'")
+    fun pendingCountFlow(): Flow<Int>
+
     @Query("UPDATE companion_grants SET lastAccessAt = :ts, accessCount = accessCount + 1 WHERE packageName = :pkg")
     suspend fun recordAccess(pkg: String, ts: Long)
 

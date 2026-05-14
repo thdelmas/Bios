@@ -225,7 +225,16 @@ fun BiosApp(viewModel: AppViewModel) {
                 HomeScreen(
                     viewModel = viewModel,
                     onNavigateToDiagnostics = { navController.navigate("diagnostics") },
-                    onNavigateToPpgCapture = { navController.navigate("ppg_capture") }
+                    onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
+                    onNavigateToCompanions = { navController.navigate("companions") },
+                    onNavigateToMetric = { metric ->
+                        selectedTab = tabs.indexOfFirst { it.first == "trends" }
+                        navController.navigate("trends?metric=${metric.key}") {
+                            popUpTo("home") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
             composable("ppg_capture") {
@@ -253,7 +262,22 @@ fun BiosApp(viewModel: AppViewModel) {
                     onBack = { navController.popBackStack() }
                 )
             }
-            composable("trends") { TrendsScreen(viewModel) }
+            composable(
+                route = "trends?metric={metric}",
+                arguments = listOf(
+                    navArgument("metric") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val metricKey = backStackEntry.arguments?.getString("metric")
+                TrendsScreen(
+                    viewModel = viewModel,
+                    initialMetric = metricKey?.let { com.bios.contracts.MetricType.fromKey(it) }
+                )
+            }
             composable("alerts") { AlertsScreen(viewModel) }
             composable("timeline") {
                 TimelineScreen(
