@@ -11,6 +11,7 @@ data class DataSource(
     val deviceName: String? = null,
     val deviceModel: String? = null,
     val sensorType: String,
+    val readingKind: String = ReadingKind.SENSOR.name,
     val connectedAt: Long = System.currentTimeMillis(),
     val lastSyncAt: Long = System.currentTimeMillis()
 )

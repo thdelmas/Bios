@@ -1,5 +1,7 @@
 package com.bios.app.provider
 
+import com.bios.app.model.ReadingKind
+
 /**
  * Companion-write contract: which packages may insert which metric keys via
  * [BiosHealthProvider]'s `/companion/{metricType}` URI, and how their writes
@@ -26,11 +28,17 @@ package com.bios.app.provider
  */
 internal object CompanionContract {
 
+    // `defaultReadingKind` is the dominant kind of data the companion writes.
+    // Mixed-kind companions (e.g. W2F writing both DERIVED cadence and
+    // SELF_REPORTED mood) must split into multiple sourceIds when that
+    // ambiguity actually bites — tracked as an open question in
+    // docs/SELF_REPORTED_DATA_HOME.md.
     data class Companion(
         val packageName: String,
         val displayName: String,
         val sourceId: String,
         val writableMetrics: Set<String>,
+        val defaultReadingKind: ReadingKind,
     )
 
     val PACKAGES: Map<String, Companion> = listOf(
@@ -43,6 +51,7 @@ internal object CompanionContract {
                 "circadian_phase_shift",
                 "mood_drift_score",
             ),
+            defaultReadingKind = ReadingKind.DERIVED,
         ),
         Companion(
             packageName = "com.smokless.smokeless",
@@ -54,6 +63,7 @@ internal object CompanionContract {
                 "cannabis_use",
                 "cannabis_craving",
             ),
+            defaultReadingKind = ReadingKind.SELF_REPORTED,
         ),
         Companion(
             packageName = "com.virgil.app",
@@ -64,6 +74,7 @@ internal object CompanionContract {
                 "near_miss_fall",
                 "check_in_miss",
             ),
+            defaultReadingKind = ReadingKind.DERIVED,
         ),
     ).associateBy { it.packageName }
 
