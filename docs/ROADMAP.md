@@ -235,6 +235,109 @@ See also: [Smokeless/docs/ECOSYSTEM.md](../../Smokeless/docs/ECOSYSTEM.md).
 
 ---
 
+## Phase 8: Perimeter completion — close the bio-hacking coverage gaps [PLANNED]
+
+> A gap audit across the five-app suite (Bios, W2F, Smokeless, Virgil,
+> SoulRadio) surfaced canonical signals that the schema either reserves
+> but doesn't implement, or doesn't cover at all. Phase 8 ships the
+> *Bios-owned* additions — passive sensors, derivations, and multi-system
+> body signals that pass question 1 of the
+> [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) three-question test.
+> Companion-owned gaps (substance ledger expansion, Virgil wire-up) are
+> tracked in the paired companion ROADMAPs.
+
+### 8.1 Ambient light writer (Phone Sensors adapter)
+
+Cheapest-win in the audit. Phone's ambient-light sensor is already a
+declared adapter source in [ARCHITECTURE.md](ARCHITECTURE.md); the
+`ambient_light` key is in the planned-but-unimplemented set. Wire the
+adapter to emit lux samples on a duty cycle that doesn't burn battery
+(default: 1 sample / 5 min during waking hours, gated by screen-on).
+
+Unlocks circadian-alignment baselines, which pair with W2F's
+`circadian_phase_shift` and SoulRadio's 24-hour loop without violating
+SoulRadio's manifesto (Bios derives, SoulRadio does not consume).
+
+### 8.2 Body composition via Withings adapter
+
+Withings is already an active adapter ([§Current State](#current-state-v020)),
+but `body_mass` and `body_fat_pct` are not yet in `MetricType`. Add the
+keys (domain: `METABOLIC` or new `BODY_COMPOSITION`), wire the Withings
+adapter to write them, and baseline like any other metric.
+
+### 8.3 HRV decomposition (autonomic-tone derivations)
+
+Raw HRV is canonical but the clinically useful numbers (LF/HF ratio,
+parasympathetic tone) aren't. Derive over the existing HRV time-series
+in the baseline engine. New keys: `lf_hf_ratio`, `parasympathetic_tone`
+(domain: `CARDIOVASCULAR`, unit derived). Resolves the "raw HRV present,
+no autonomic surface" finding from the audit.
+
+### 8.4 Sleep derivations: latency + score
+
+`sleep_latency` and `sleep_score` are in the planned set. Derive from
+the existing `sleep_stage` time-series. Sleep latency = wake → first
+non-wake stage; sleep score = composite over duration, efficiency,
+fragmentation, and stage balance. Literature-anchored thresholds only.
+
+### 8.5 Cycle inference from BBT
+
+`basal_body_temperature` is in the schema with no consumer; `cycle_day`
+and `cycle_phase` are planned-but-unimplemented. Implement cycle-phase
+inference in the existing reproductive-health DB (encrypted, independent
+key, independent wipe — already isolated). Writes the two derived keys
+back to the canonical schema gated by reproductive-data consent.
+
+### 8.6 Lab / biomarker inbound surface
+
+FHIR R4 export is shipped ([§Current State](#current-state-v020)); FHIR
+*import* is the symmetric add. Accept lab results (CBC, lipid, ApoB,
+hsCRP, HbA1c, vitamin D, thyroid, etc.) via FHIR file picker. Manual
+structured entry as a second path. Store as time-series in a new
+`BIOMARKER` domain. Reference ranges are localization-aware (clinical
+thresholds already region-config'd per the localization layer).
+
+No new companion required — the data is canonical multi-system body
+signal, and the import surface is a thin settings flow on top of the
+existing FHIR machinery.
+
+### 8.7 Stress score — Bios-only autonomic derivation
+
+Audit ownership debate resolved: `stress_score` is a *passive autonomic
+derivation* over HRV/RHR, not a behavioral score. Bios derives it; W2F
+consumes if it wants, no W2F-side write. Avoids overlap with
+`mood_drift_score` and keeps the boundary clean (W2F owns mood; Bios
+owns autonomic state). Domain: `CARDIOVASCULAR`.
+
+### 8.8 Acceptance for Phase 8
+
+- All eight new/derived keys live in `MetricType` with literature
+  citations in the rule files.
+- Each has at least one cross-correlation use (a `ConditionPattern` that
+  consumes it, or a baseline-engine derivation, or a documented
+  companion read).
+- No new companion shipped; no companion-write URI changes (these are
+  all Bios-internal).
+- Schema-waste audit re-run: `skin_temperature`, `respiratory_rate`,
+  `basal_body_temperature` all have at least one writer or consumer.
+
+---
+
+## Phase 9 (deferred): New companions if earned
+
+Two companions are noted in the audit but explicitly *not* committed:
+
+- **Posology** — meds + supplement adherence with reminders. New keys
+  `med_taken`, `supplement_taken` on `INTAKE`. Migrates W2F's Mg/B2
+  prophylaxis out of FuelLog. Ship only if the longevity-stack daily
+  adherence surface becomes load-bearing.
+- **Journaling / reflection** — *out of scope* for the bio-hacking
+  suite. miam-knowledge-base holds the reflective surface; the therapy
+  register is a closed direction. Recorded here only to prevent
+  re-litigation.
+
+---
+
 ## Non-negotiable principles
 
 1. **The owner is final.** Bios advises, never overrides. Every feature is off by default or requires explicit opt-in.

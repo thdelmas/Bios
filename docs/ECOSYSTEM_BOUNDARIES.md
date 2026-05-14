@@ -56,7 +56,7 @@ logic.
 | **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
 | **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | `fall_event`, `near_miss_fall`, `check_in_miss` (opt-in, future) |
 | **SoulRadio** | Ambient sound / nervous-system rest | 24-hour Solfeggio + Schumann auto-loop, dial, listener library, frequency-band catalogue | *nothing — standalone* | *nothing* |
-| **Smokeless** | Substance-use tracking / cessation | Use + craving event capture, per-substance history, widget, cessation UI | *nothing — standalone* | `tobacco_use`, `tobacco_craving` (initial); `cannabis_use`, `cannabis_craving` (reserved, future) |
+| **Smokeless** | Substance-use tracking / cessation | Use + craving event capture, per-substance history, widget, cessation UI | *nothing — standalone* (Phase 3 plan: RHR/HRV/sleep/SpO2 reads for recovery trajectory) | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` (shipped Phase 2.1); `caffeine_use`, `caffeine_craving`, `alcohol_use`, `alcohol_craving` (reserved — Phase 2.4, paired with W2F FuelLog hoist) |
 
 ### Fil — the nervous-system specialist
 
@@ -124,6 +124,15 @@ this purpose. They are the natural home for any future discrete-intake
 events (caffeine, meals, supplements) that hoist up from W2F when a
 second consumer appears — see the "case study: nutrition in W2F" rule
 below.
+
+**Caffeine + alcohol expansion (reserved, paired with Smokeless Phase 2.4):**
+the audit identified asymmetric substance coverage — tobacco/cannabis on
+the bus but caffeine/alcohol still W2F-local-only. The second-consumer
+trigger has fired (Bios cessation patterns + Smokeless as canonical
+ledger), so the four-key extension (`caffeine_use`, `caffeine_craving`,
+`alcohol_use`, `alcohol_craving`) is reserved on `INTAKE` and whitelisted
+for `com.smokless.smokeless`. W2F drops its caffeine write and reads
+from Bios.
 
 ### SoulRadio — the ambient surface
 
