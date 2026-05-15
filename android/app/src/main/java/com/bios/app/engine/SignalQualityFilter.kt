@@ -101,7 +101,12 @@ object SignalQualityFilter {
         MetricType.ACTIVE_MINUTES.key to Bounds(0.0, 1440.0, null),
         MetricType.SLEEP_DURATION.key to Bounds(0.0, 86400.0, null),
         MetricType.RECOVERY_SCORE.key to Bounds(0.0, 100.0, null),
-        MetricType.BASAL_BODY_TEMPERATURE.key to Bounds(35.0, 39.0, 1.0)
+        MetricType.BASAL_BODY_TEMPERATURE.key to Bounds(35.0, 39.0, 1.0),
+        // 20 kg lower bound covers severe pediatric / wasting cases without
+        // admitting decimal-place errors; 300 kg upper bound is beyond
+        // documented extremes. No rate-of-change cap — body mass doesn't
+        // change rapidly between readings.
+        MetricType.BODY_MASS.key to Bounds(20.0, 300.0, null)
     )
 
     internal data class Bounds(
