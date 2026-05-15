@@ -104,9 +104,26 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `13 metric types have LOINC mappings`() {
+    fun `15 metric types have LOINC mappings`() {
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(13, mapped)
+        assertEquals(15, mapped)
+    }
+
+    @Test
+    fun `HbA1c maps to LOINC 4548-4`() {
+        val (code, _) = loincCode(MetricType.HBA1C)!!
+        assertEquals("4548-4", code)
+    }
+
+    @Test
+    fun `hsCRP maps to LOINC 30522-7`() {
+        val (code, _) = loincCode(MetricType.HSCRP)!!
+        assertEquals("30522-7", code)
+    }
+
+    @Test
+    fun `mg per L maps to mg per L UCUM`() {
+        assertEquals("mg/L", ucumCode(MetricType.HSCRP))
     }
 
     // --- UCUM code mappings ---
@@ -196,6 +213,8 @@ class FhirExporterTest {
             MetricType.SKIN_TEMPERATURE -> "8310-5" to "Body temperature"
             MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
             MetricType.BODY_MASS -> "29463-7" to "Body weight"
+            MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
+            MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
             else -> null
         }
     }
@@ -214,6 +233,7 @@ class FhirExporterTest {
             MetricUnit.KCAL -> "kcal"
             MetricUnit.KILOGRAMS -> "kg"
             MetricUnit.MG_PER_DL -> "mg/dL"
+            MetricUnit.MG_PER_L -> "mg/L"
             MetricUnit.SCORE -> "{score}"
             MetricUnit.CATEGORY -> "{category}"
             MetricUnit.EVENT -> "{event}"

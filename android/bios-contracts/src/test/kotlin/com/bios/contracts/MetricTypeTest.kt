@@ -65,6 +65,19 @@ class MetricTypeTest {
     }
 
     @Test
+    fun hba1c_is_biomarker_percent() {
+        assertEquals(MetricDomain.BIOMARKER, MetricType.HBA1C.domain)
+        assertEquals(MetricUnit.PERCENT, MetricType.HBA1C.unit)
+    }
+
+    @Test
+    fun hscrp_is_biomarker_mg_per_l() {
+        assertEquals(MetricDomain.BIOMARKER, MetricType.HSCRP.domain)
+        assertEquals(MetricUnit.MG_PER_L, MetricType.HSCRP.unit)
+        assertEquals("mg/L", MetricUnit.MG_PER_L.symbol)
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
