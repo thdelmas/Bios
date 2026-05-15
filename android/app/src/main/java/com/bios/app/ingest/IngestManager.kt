@@ -38,6 +38,7 @@ class IngestManager(
     private val phoneSensorAdapter: PhoneSensorAdapter? = null,
     private val gadgetbridgeAdapter: GadgetbridgeAdapter? = null,
     private val directSensorAdapter: DirectSensorAdapter? = null,
+    private val withingsAdapter: WithingsApiAdapter? = null,
     private val latencyTracker: DetectionLatencyTracker? = null
 ) {
     private val readingDao = db.metricReadingDao()
@@ -66,6 +67,7 @@ class IngestManager(
     private var phoneSensorSourceId: String? = null
     private var gadgetbridgeSourceId: String? = null
     private var directSensorSourceId: String? = null
+    private var withingsSourceId: String? = null
 
     // MARK: - Setup
 
@@ -98,6 +100,13 @@ class IngestManager(
             )
         }
 
+        // Withings API (scale-first device — body composition, BP, sleep summary)
+        if (withingsAdapter?.isConnected == true) {
+            withingsSourceId = getOrCreateSource(
+                SourceType.WITHINGS_API, "Withings", SensorType.DERIVED
+            )
+        }
+
         // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
             phoneSensorAdapter?.hasStepCounter == true ||
@@ -127,7 +136,8 @@ class IngestManager(
         // matter how many times we ask, so don't burn syncs.
         val hasWearableHistorySource = healthConnectSourceId != null ||
             gadgetbridgeSourceId != null ||
-            ouraSourceId != null
+            ouraSourceId != null ||
+            withingsSourceId != null
         if (!hasWearableHistorySource) return false
         for (metric in PRIMARY_METRICS_FOR_BACKFILL) {
             if (readingDao.count(metric.key) == 0) return true
@@ -155,6 +165,7 @@ class IngestManager(
                         async { fetchGadgetbridgeReadings(start, end) },
                         async { fetchDirectSensorReadings() },
                         async { fetchOuraReadings(start, end) },
+                        async { fetchWithingsReadings(start, end) },
                         async { fetchPhoneSensorReadings() }
                     )
                     jobs.awaitAll().flatten()
@@ -203,7 +214,8 @@ class IngestManager(
                             async { healthConnect.fetchReadings(current, chunkEnd, id) }
                         },
                         async { fetchGadgetbridgeReadings(current, chunkEnd) },
-                        async { fetchOuraReadings(current, chunkEnd) }
+                        async { fetchOuraReadings(current, chunkEnd) },
+                        async { fetchWithingsReadings(current, chunkEnd) }
                     )
                     jobs.awaitAll().flatten()
                 }
@@ -315,6 +327,16 @@ class IngestManager(
     private suspend fun fetchOuraReadings(start: Instant, end: Instant): List<MetricReading> {
         val sourceId = ouraSourceId ?: return emptyList()
         val adapter = ouraAdapter ?: return emptyList()
+        return try {
+            adapter.fetchReadings(start, end, sourceId)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private suspend fun fetchWithingsReadings(start: Instant, end: Instant): List<MetricReading> {
+        val sourceId = withingsSourceId ?: return emptyList()
+        val adapter = withingsAdapter ?: return emptyList()
         return try {
             adapter.fetchReadings(start, end, sourceId)
         } catch (_: Exception) {
