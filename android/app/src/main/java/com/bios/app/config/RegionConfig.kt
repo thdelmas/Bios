@@ -69,8 +69,14 @@ data class ClinicalThresholds(
  *  - [BandDirection.ABOVE] (default): high values are concerning. Typical
  *    for hsCRP, HbA1c, LDL, ApoB, triglycerides — values at or above
  *    [borderlineCeiling] classify as [BiomarkerBand.CONCERNING].
- *  - [BandDirection.BELOW]: low values are concerning. Typical for HDL —
- *    values below [normalCeiling] classify as [BiomarkerBand.CONCERNING].
+ *  - [BandDirection.BELOW]: low values are concerning. Typical for HDL,
+ *    25-OH vitamin D — values below [normalCeiling] classify as
+ *    [BiomarkerBand.CONCERNING].
+ *
+ * For markers that are concerning at **both** extremes (TSH is the canonical
+ * case: low → hyperthyroid, high → hypothyroid), [lowCeiling] adds a second
+ * CONCERNING band on the low side without breaking the simple ABOVE shape.
+ * Only meaningful when [concerningDirection] is `ABOVE`.
  *
  * Comparisons are inclusive at the lower edge and exclusive at the upper
  * edge so values sitting exactly on a published cut-off slot into the
@@ -81,23 +87,35 @@ data class BiomarkerBands(
     val normalCeiling: Double,
     val borderlineCeiling: Double,
     val concerningDirection: BandDirection = BandDirection.ABOVE,
+    val lowCeiling: Double? = null,
 ) {
     init {
         require(normalCeiling < borderlineCeiling) {
             "normalCeiling ($normalCeiling) must be < borderlineCeiling ($borderlineCeiling)"
         }
+        if (lowCeiling != null) {
+            require(concerningDirection == BandDirection.ABOVE) {
+                "lowCeiling only applies when concerningDirection = ABOVE (BELOW already treats low values as concerning)"
+            }
+            require(lowCeiling < normalCeiling) {
+                "lowCeiling ($lowCeiling) must be < normalCeiling ($normalCeiling)"
+            }
+        }
     }
 
-    fun classify(value: Double): BiomarkerBand = when (concerningDirection) {
-        BandDirection.ABOVE -> when {
-            value < normalCeiling -> BiomarkerBand.NORMAL
-            value < borderlineCeiling -> BiomarkerBand.BORDERLINE
-            else -> BiomarkerBand.CONCERNING
-        }
-        BandDirection.BELOW -> when {
-            value >= borderlineCeiling -> BiomarkerBand.NORMAL
-            value >= normalCeiling -> BiomarkerBand.BORDERLINE
-            else -> BiomarkerBand.CONCERNING
+    fun classify(value: Double): BiomarkerBand {
+        if (lowCeiling != null && value < lowCeiling) return BiomarkerBand.CONCERNING
+        return when (concerningDirection) {
+            BandDirection.ABOVE -> when {
+                value < normalCeiling -> BiomarkerBand.NORMAL
+                value < borderlineCeiling -> BiomarkerBand.BORDERLINE
+                else -> BiomarkerBand.CONCERNING
+            }
+            BandDirection.BELOW -> when {
+                value >= borderlineCeiling -> BiomarkerBand.NORMAL
+                value >= normalCeiling -> BiomarkerBand.BORDERLINE
+                else -> BiomarkerBand.CONCERNING
+            }
         }
     }
 }

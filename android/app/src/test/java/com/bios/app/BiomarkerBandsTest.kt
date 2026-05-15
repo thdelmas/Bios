@@ -51,6 +51,57 @@ class BiomarkerBandsTest {
         }
     }
 
+    // -- lowCeiling: bidirectional CONCERNING bands --
+
+    @Test
+    fun lowCeiling_requires_ABOVE_direction() {
+        // BELOW direction already treats low values as concerning, so a
+        // lowCeiling on top of that is meaningless and rejected outright.
+        assertThrows(IllegalArgumentException::class.java) {
+            BiomarkerBands(
+                normalCeiling = 4.0, borderlineCeiling = 10.0,
+                concerningDirection = com.bios.app.config.BandDirection.BELOW,
+                lowCeiling = 0.4,
+            )
+        }
+    }
+
+    @Test
+    fun lowCeiling_must_be_below_normalCeiling() {
+        assertThrows(IllegalArgumentException::class.java) {
+            BiomarkerBands(
+                normalCeiling = 4.0, borderlineCeiling = 10.0,
+                lowCeiling = 4.0,  // not strictly less
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            BiomarkerBands(
+                normalCeiling = 4.0, borderlineCeiling = 10.0,
+                lowCeiling = 5.0,  // above normalCeiling
+            )
+        }
+    }
+
+    @Test
+    fun lowCeiling_classifies_low_extreme_as_CONCERNING() {
+        val bands = BiomarkerBands(
+            normalCeiling = 4.0, borderlineCeiling = 10.0,
+            lowCeiling = 0.4,
+        )
+        // TSH-like: low extreme is hyperthyroid concern.
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(0.1))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(0.399))
+        // Inclusive at the lower edge of NORMAL.
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(0.4))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(2.0))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(3.999))
+        // High side: BORDERLINE then CONCERNING.
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(4.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(9.999))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(10.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(50.0))
+    }
+
     // -- hsCRP literature thresholds --
 
     @Test
@@ -90,6 +141,7 @@ class BiomarkerBandsTest {
             MetricType.TOTAL_CHOLESTEROL, MetricType.LDL_CHOLESTEROL,
             MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
             MetricType.APO_B, MetricType.VITAMIN_D_25OH,
+            MetricType.TSH, MetricType.FREE_T4,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
@@ -177,6 +229,38 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.NORMAL, apob.classify(80.0))
         assertEquals(BiomarkerBand.BORDERLINE, apob.classify(90.0))
         assertEquals(BiomarkerBand.CONCERNING, apob.classify(120.0))
+    }
+
+    @Test
+    fun tsh_band_uses_AACE_ATA_2012_bidirectional_thresholds() {
+        val tsh = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.TSH]!!
+        // <0.4 hyperthyroid concern (low extreme)
+        assertEquals(BiomarkerBand.CONCERNING, tsh.classify(0.2))
+        // 0.4–4.0 normal
+        assertEquals(BiomarkerBand.NORMAL, tsh.classify(0.4))
+        assertEquals(BiomarkerBand.NORMAL, tsh.classify(2.0))
+        // 4.0–10.0 subclinical hypothyroid (BORDERLINE)
+        assertEquals(BiomarkerBand.BORDERLINE, tsh.classify(4.0))
+        assertEquals(BiomarkerBand.BORDERLINE, tsh.classify(7.5))
+        // ≥10.0 overt hypothyroid (CONCERNING high)
+        assertEquals(BiomarkerBand.CONCERNING, tsh.classify(10.0))
+        assertEquals(BiomarkerBand.CONCERNING, tsh.classify(25.0))
+    }
+
+    @Test
+    fun free_t4_band_uses_hypo_focused_BELOW_thresholds() {
+        val ft4 = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.FREE_T4]!!
+        // <0.8 overt hypothyroid
+        assertEquals(BiomarkerBand.CONCERNING, ft4.classify(0.5))
+        assertEquals(BiomarkerBand.CONCERNING, ft4.classify(0.799))
+        // 0.8–1.0 borderline-low
+        assertEquals(BiomarkerBand.BORDERLINE, ft4.classify(0.8))
+        assertEquals(BiomarkerBand.BORDERLINE, ft4.classify(0.999))
+        // ≥1.0 normal (for hypo screening)
+        assertEquals(BiomarkerBand.NORMAL, ft4.classify(1.0))
+        assertEquals(BiomarkerBand.NORMAL, ft4.classify(1.5))
     }
 
     @Test
