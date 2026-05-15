@@ -62,6 +62,11 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // proxies when an owner imports labs.
     HBA1C("hba1c", MetricUnit.PERCENT, MetricDomain.BIOMARKER),
     HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER),
+    TOTAL_CHOLESTEROL("total_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    LDL_CHOLESTEROL("ldl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    HDL_CHOLESTEROL("hdl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    TRIGLYCERIDES("triglycerides", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    APO_B("apo_b", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
 
     // Companion signals (injected by W2F via ContentProvider)
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
