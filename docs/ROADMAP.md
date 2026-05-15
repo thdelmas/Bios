@@ -13,7 +13,7 @@
 - SQLCipher encrypted local database (7 tables, AES-256, key in Android Keystore)
 - Separate encrypted reproductive health database (independent key, independent wipe)
 - 14-day rolling personal baselines per metric
-- 12 condition patterns: infection onset, sleep disruption, cardiovascular stress, overtraining, metabolic drift, cardiorespiratory deconditioning, chronic inflammation, recovery deficit, respiratory infection, AFib screening, mental health correlate, menstrual cycle anomaly
+- 13 condition patterns: infection onset, sleep disruption, cardiovascular stress, overtraining, metabolic drift, cardiorespiratory deconditioning, chronic inflammation, recovery deficit, respiratory infection, AFib screening, mental health correlate, menstrual cycle anomaly, circadian disruption
 - 33 signal rules (24 literature-backed with citations)
 - LiteRT anomaly model wrapper (heuristic fallback active — model asset not shipped)
 - 4-tier alert system with push notifications (Observation / Notice / Advisory / Urgent)
