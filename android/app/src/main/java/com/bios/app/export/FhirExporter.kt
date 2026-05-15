@@ -239,6 +239,11 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.TSH -> "3016-3" to "Thyrotropin [Units/volume] in Serum or Plasma"
     MetricType.FREE_T4 -> "3024-7" to "Thyroxine (T4) free [Mass/volume] in Serum or Plasma"
     MetricType.FREE_T3 -> "3051-0" to "Triiodothyronine (T3) free [Mass/volume] in Serum or Plasma"
+    MetricType.HEMOGLOBIN -> "718-7" to "Hemoglobin [Mass/volume] in Blood"
+    MetricType.HEMATOCRIT -> "4544-3" to "Hematocrit [Volume Fraction] of Blood by Automated count"
+    MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
+    MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
+    MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
     else -> null
 }
 
@@ -260,6 +265,9 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.NG_PER_DL -> "ng/dL"
     MetricUnit.PG_PER_ML -> "pg/mL"
     MetricUnit.MIU_PER_L -> "m[IU]/L"
+    MetricUnit.G_PER_DL -> "g/dL"
+    MetricUnit.GIGA_PER_L -> "10*9/L"
+    MetricUnit.TERA_PER_L -> "10*12/L"
     MetricUnit.SCORE -> "{score}"
     MetricUnit.CATEGORY -> "{category}"
     MetricUnit.EVENT -> "{event}"
