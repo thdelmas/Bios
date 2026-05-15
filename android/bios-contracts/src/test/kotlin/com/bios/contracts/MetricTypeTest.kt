@@ -47,6 +47,12 @@ class MetricTypeTest {
     }
 
     @Test
+    fun sleep_latency_is_sleep_seconds() {
+        assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
+        assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
+    }
+
+    @Test
     fun body_fat_pct_is_metabolic_percent() {
         assertEquals(MetricDomain.METABOLIC, MetricType.BODY_FAT_PCT.domain)
         assertEquals(MetricUnit.PERCENT, MetricType.BODY_FAT_PCT.unit)

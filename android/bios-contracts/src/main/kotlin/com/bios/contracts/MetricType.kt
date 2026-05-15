@@ -30,6 +30,7 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Sleep
     SLEEP_STAGE("sleep_stage", MetricUnit.CATEGORY, MetricDomain.SLEEP),
     SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP),
+    SLEEP_LATENCY("sleep_latency", MetricUnit.SECONDS, MetricDomain.SLEEP),
 
     // Activity
     STEPS("steps", MetricUnit.COUNT, MetricDomain.ACTIVITY),
