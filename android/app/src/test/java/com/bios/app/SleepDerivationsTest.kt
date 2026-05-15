@@ -87,4 +87,95 @@ class SleepDerivationsTest {
         val latency = SleepDerivations.deriveSleepLatency(readings, "src")!!
         assertEquals(600.0, latency.value, 0.0)
     }
+
+    // MARK: - Efficiency
+
+    @Test
+    fun `efficiency is asleep over total session duration`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),  // 300s awake
+            stage(SleepStage.LIGHT, 1_300_000L),  // 300s
+            stage(SleepStage.DEEP, 1_600_000L),   // 300s
+            stage(SleepStage.AWAKE, 1_900_000L),  // 300s awake
+        )
+        val efficiency = SleepDerivations.deriveSleepEfficiency(readings, "src")!!
+        assertEquals(MetricType.SLEEP_EFFICIENCY.key, efficiency.metricType)
+        assertEquals(50.0, efficiency.value, 0.0001)
+        assertEquals(1_000_000L, efficiency.timestamp)
+        assertEquals(1200, efficiency.durationSec)
+    }
+
+    @Test
+    fun `efficiency is null when only AWAKE rows present`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),
+            stage(SleepStage.AWAKE, 1_300_000L),
+        )
+        assertNull(SleepDerivations.deriveSleepEfficiency(readings, "src"))
+    }
+
+    @Test
+    fun `efficiency is 100 percent when no AWAKE rows`() {
+        val readings = listOf(
+            stage(SleepStage.LIGHT, 1_000_000L),
+            stage(SleepStage.DEEP, 1_300_000L),
+        )
+        val efficiency = SleepDerivations.deriveSleepEfficiency(readings, "src")!!
+        assertEquals(100.0, efficiency.value, 0.0001)
+    }
+
+    @Test
+    fun `efficiency is null when no stage rows`() {
+        assertNull(SleepDerivations.deriveSleepEfficiency(emptyList(), "src"))
+    }
+
+    // MARK: - Fragmentation
+
+    @Test
+    fun `fragmentation counts post-onset awakenings only`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),  // pre-onset, not counted
+            stage(SleepStage.LIGHT, 1_300_000L),  // onset
+            stage(SleepStage.AWAKE, 1_600_000L),  // awakening 1
+            stage(SleepStage.LIGHT, 1_900_000L),
+            stage(SleepStage.DEEP, 2_200_000L),
+            stage(SleepStage.AWAKE, 2_500_000L),  // awakening 2
+        )
+        val frag = SleepDerivations.deriveSleepFragmentation(readings, "src")!!
+        assertEquals(MetricType.SLEEP_FRAGMENTATION_INDEX.key, frag.metricType)
+        assertEquals(2.0, frag.value, 0.0)
+    }
+
+    @Test
+    fun `fragmentation contiguous AWAKE block counts once`() {
+        val readings = listOf(
+            stage(SleepStage.LIGHT, 1_000_000L),
+            stage(SleepStage.AWAKE, 1_300_000L),
+            stage(SleepStage.AWAKE, 1_600_000L),
+            stage(SleepStage.AWAKE, 1_900_000L),
+            stage(SleepStage.LIGHT, 2_200_000L),
+        )
+        val frag = SleepDerivations.deriveSleepFragmentation(readings, "src")!!
+        assertEquals(1.0, frag.value, 0.0)
+    }
+
+    @Test
+    fun `fragmentation is zero for unbroken sleep`() {
+        val readings = listOf(
+            stage(SleepStage.LIGHT, 1_000_000L),
+            stage(SleepStage.DEEP, 1_300_000L),
+            stage(SleepStage.REM, 1_600_000L),
+        )
+        val frag = SleepDerivations.deriveSleepFragmentation(readings, "src")!!
+        assertEquals(0.0, frag.value, 0.0)
+    }
+
+    @Test
+    fun `fragmentation is null when session never reaches sleep`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),
+            stage(SleepStage.AWAKE, 1_300_000L),
+        )
+        assertNull(SleepDerivations.deriveSleepFragmentation(readings, "src"))
+    }
 }
