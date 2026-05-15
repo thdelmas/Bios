@@ -11,6 +11,7 @@ import com.bios.app.engine.BaselineEngine
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.LatencyPercentiles
 import com.bios.app.engine.TFLiteAnomalyModel
+import com.bios.app.ingest.ApiTokenStore
 import com.bios.app.ingest.DirectSensorAdapter
 import com.bios.app.ingest.GadgetbridgeAdapter
 import com.bios.app.ingest.HealthConnectAdapter
@@ -18,6 +19,7 @@ import com.bios.app.ingest.IngestManager
 import com.bios.app.ingest.OuraApiAdapter
 import com.bios.app.ingest.OuraTokenStore
 import com.bios.app.ingest.PhoneSensorAdapter
+import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.model.ActionItem
 import com.bios.app.model.Anomaly
@@ -40,20 +42,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
-
     val db = BiosDatabase.getInstance(application)
     val healthConnect = HealthConnectAdapter(application)
     val ouraTokenStore = OuraTokenStore(application)
     val ouraAdapter = OuraApiAdapter(ouraTokenStore)
+    val apiTokenStore = ApiTokenStore(application)
+    val withingsAdapter = WithingsApiAdapter(apiTokenStore)
     val phoneSensorAdapter = PhoneSensorAdapter(application)
     val gadgetbridgeAdapter = GadgetbridgeAdapter(application)
     val directSensorAdapter = DirectSensorAdapter(application)
     val latencyTracker = DetectionLatencyTracker()
     val ingestManager = IngestManager(
         healthConnect, db, ouraAdapter, phoneSensorAdapter,
-        gadgetbridgeAdapter = gadgetbridgeAdapter,
-        directSensorAdapter = directSensorAdapter,
-        latencyTracker = latencyTracker
+        gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, latencyTracker
     )
     val baselineEngine = BaselineEngine(db, latencyTracker)
     val mlModel = TFLiteAnomalyModel.load(application)

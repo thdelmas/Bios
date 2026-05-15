@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.export.FhirExporter
+import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.model.CompanionGrant
 import com.bios.app.model.PrivacyTier
 import com.bios.app.alerts.DailyDigestWorker
@@ -43,6 +44,10 @@ fun SettingsScreen(
     var isExporting by remember { mutableStateOf(false) }
     var showOuraDialog by remember { mutableStateOf(false) }
     var isOuraConnected by remember { mutableStateOf(viewModel.ouraTokenStore.hasToken()) }
+    var showWithingsDialog by remember { mutableStateOf(false) }
+    var isWithingsConnected by remember {
+        mutableStateOf(viewModel.apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY))
+    }
     val companionGrants by viewModel.db.companionGrantDao()
         .observeAll()
         .collectAsState(initial = emptyList())
@@ -81,29 +86,28 @@ fun SettingsScreen(
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Oura Ring")
-                    if (isOuraConnected) {
-                        Text("Connected", color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        TextButton(onClick = { showOuraDialog = true }) {
-                            Text("Connect")
-                        }
-                    }
-                }
-                if (isOuraConnected) {
-                    TextButton(
-                        onClick = {
-                            viewModel.ouraTokenStore.clearToken()
-                            isOuraConnected = false
-                        }
-                    ) {
-                        Text("Disconnect Oura", color = MaterialTheme.colorScheme.error)
-                    }
-                }
+                ConnectableSourceRow(
+                    name = "Oura Ring",
+                    isConnected = isOuraConnected,
+                    onConnect = { showOuraDialog = true },
+                    onDisconnect = {
+                        viewModel.ouraTokenStore.clearToken()
+                        isOuraConnected = false
+                    },
+                )
+
+                Spacer(Modifier.height(4.dp))
+                ConnectableSourceRow(
+                    name = "Withings",
+                    isConnected = isWithingsConnected,
+                    onConnect = { showWithingsDialog = true },
+                    onDisconnect = {
+                        viewModel.apiTokenStore.clearToken(
+                            WithingsApiAdapter.PROVIDER_KEY
+                        )
+                        isWithingsConnected = false
+                    },
+                )
 
                 Spacer(Modifier.height(4.dp))
                 CompanionAppsRow(
@@ -468,16 +472,16 @@ fun SettingsScreen(
             onDismiss = { showOuraDialog = false }
         )
     }
-}
 
-@Composable
-private fun SettingsRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (showWithingsDialog) {
+        WithingsConnectDialog(
+            onConnect = { token ->
+                viewModel.apiTokenStore.saveToken(WithingsApiAdapter.PROVIDER_KEY, token)
+                isWithingsConnected = true
+                showWithingsDialog = false
+            },
+            onDismiss = { showWithingsDialog = false }
+        )
     }
 }
 

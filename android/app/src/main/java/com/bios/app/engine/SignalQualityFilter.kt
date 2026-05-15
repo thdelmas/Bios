@@ -106,7 +106,12 @@ object SignalQualityFilter {
         // admitting decimal-place errors; 300 kg upper bound is beyond
         // documented extremes. No rate-of-change cap — body mass doesn't
         // change rapidly between readings.
-        MetricType.BODY_MASS.key to Bounds(20.0, 300.0, null)
+        MetricType.BODY_MASS.key to Bounds(20.0, 300.0, null),
+        // Body fat % physiological range: ~3% (extreme male athlete) to ~60%
+        // (severe obesity). Tighter than the impedance-scale rated range,
+        // wider than population averages — anything outside is a sensor or
+        // entry artifact.
+        MetricType.BODY_FAT_PCT.key to Bounds(3.0, 60.0, null)
     )
 
     internal data class Bounds(

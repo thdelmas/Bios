@@ -31,13 +31,18 @@ class SyncWorker(
             val healthConnect = HealthConnectAdapter(applicationContext)
             val tokenStore = OuraTokenStore(applicationContext)
             val ouraAdapter = if (tokenStore.hasToken()) OuraApiAdapter(tokenStore) else null
+            val apiTokenStore = ApiTokenStore(applicationContext)
+            val withings = if (apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY)) {
+                WithingsApiAdapter(apiTokenStore)
+            } else null
             val phoneSensor = PhoneSensorAdapter(applicationContext)
             val gadgetbridge = GadgetbridgeAdapter(applicationContext)
             val directSensor = DirectSensorAdapter(applicationContext)
             val ingestManager = IngestManager(
                 healthConnect, db, ouraAdapter, phoneSensor,
                 gadgetbridgeAdapter = gadgetbridge,
-                directSensorAdapter = directSensor
+                directSensorAdapter = directSensor,
+                withingsAdapter = withings
             )
 
             // Stage 1: Sync recent data

@@ -277,11 +277,9 @@ suppresses melatonin), Roenneberg 2007 (social-jetlag tracks light
 irregularity). Pairs cleanly with W2F's `circadian_phase_shift` without
 violating SoulRadio's manifesto (Bios derives, SoulRadio doesn't consume).
 
-### 8.2 Body composition via Withings adapter
+### 8.2 Body composition via Withings adapter [LIVE]
 
-Withings is an active adapter ([§Current State](#current-state-v020));
-`body_mass` and `body_fat_pct` aren't yet in `MetricType`. Add the keys
-(domain: `METABOLIC` or new `BODY_COMPOSITION`), wire the adapter, baseline.
+`BODY_MASS` + `BODY_FAT_PCT` (`METABOLIC` domain) emit from `WithingsApiAdapter.fetchMeasures` (types 1, 6); wired into `IngestManager` alongside Oura. Settings → Withings pastes an OAuth access token (full OAuth dance is a future PR — needs a registered Withings dev app). Both keys baseline (14-day) + bounded (mass 20–300 kg; fat 3–60 %). `DataDestroyer` wipes via `ApiTokenStore.clearAll()`; LOINC 41982-0 ships in `FhirExporter`.
 
 ### 8.3 HRV decomposition (autonomic-tone derivations) [PARTIAL — parasympathetic shipped, LF/HF deferred]
 
