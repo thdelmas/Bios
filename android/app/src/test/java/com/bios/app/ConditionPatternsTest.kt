@@ -120,6 +120,44 @@ class ConditionPatternsTest {
     }
 
     @Test
+    fun `circadian disruption pattern is registered in the global all list`() {
+        assertTrue(ConditionPatterns.circadianDisruption in ConditionPatterns.all)
+    }
+
+    @Test
+    fun `circadian disruption gates on AMBIENT_LIGHT irregularity as the required rule`() {
+        val pattern = ConditionPatterns.circadianDisruption
+        val lightRule = pattern.signalRules.first {
+            it.metricType == com.bios.contracts.MetricType.AMBIENT_LIGHT
+        }
+        assertTrue(
+            "AMBIENT_LIGHT must be the required gate so sleep drift alone never fires the pattern",
+            lightRule.required
+        )
+        assertEquals(DeviationDirection.IRREGULAR, lightRule.direction)
+        assertEquals(168, lightRule.minDurationHours)
+    }
+
+    @Test
+    fun `circadian disruption corroborators cover sleep depth and timing`() {
+        val pattern = ConditionPatterns.circadianDisruption
+        val corroborators = pattern.signalRules
+            .filter { !it.required }
+            .map { it.metricType }
+            .toSet()
+        // Sleep depth (SLEEP_STAGE BELOW) + timing variability (SLEEP_DURATION
+        // IRREGULAR) — the two halves of the sleep-architecture response to
+        // misaligned light exposure.
+        assertTrue(com.bios.contracts.MetricType.SLEEP_STAGE in corroborators)
+        assertTrue(com.bios.contracts.MetricType.SLEEP_DURATION in corroborators)
+    }
+
+    @Test
+    fun `circadian disruption requires at least one corroborator alongside the light gate`() {
+        assertEquals(2, ConditionPatterns.circadianDisruption.minActiveSignals)
+    }
+
+    @Test
     fun `all patterns have a suggested action`() {
         for (pattern in ConditionPatterns.all) {
             assertNotNull("Pattern ${pattern.id} should have a suggested action", pattern.suggestedAction)
