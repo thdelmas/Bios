@@ -23,6 +23,7 @@ fun TrendsScreen(
     initialMetric: MetricType? = null
 ) {
     val baselines by viewModel.baselines.collectAsState()
+    val coverage by viewModel.metricCoverage.collectAsState()
     var selectedMetric by remember(initialMetric) {
         mutableStateOf(initialMetric ?: MetricType.HEART_RATE)
     }
@@ -67,7 +68,9 @@ fun TrendsScreen(
         if (selectedBaseline != null) {
             BaselineSummaryCard(selectedBaseline)
         } else {
-            NoBaselineCard()
+            val metricLabel = trackableMetrics.firstOrNull { it.first == selectedMetric }?.second
+                ?: selectedMetric.readableName
+            NoBaselineCard(metricLabel, coverage[selectedMetric])
         }
 
         // All baselines
@@ -167,7 +170,10 @@ fun TrendBadge(trend: TrendDirection) {
 }
 
 @Composable
-fun NoBaselineCard() {
+fun NoBaselineCard(
+    metricLabel: String,
+    coverage: BaselineEngine.Coverage?
+) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -177,15 +183,47 @@ fun NoBaselineCard() {
             modifier = Modifier.padding(24.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("No baseline yet", style = MaterialTheme.typography.titleSmall)
+            val (title, body) = noBaselineMessage(metricLabel, coverage)
+            Text(title, style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Bios needs at least ${BaselineEngine.MINIMUM_DATA_DAYS} days of data to compute a baseline for this metric.",
+                body,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
+}
+
+internal fun noBaselineMessage(
+    metricLabel: String,
+    coverage: BaselineEngine.Coverage?
+): Pair<String, String> {
+    if (coverage == null || !coverage.hasAnyData) {
+        return "No $metricLabel data yet" to
+            "Bios hasn't received any $metricLabel readings. " +
+            "Check that your watch is sending $metricLabel to Health Connect, " +
+            "or that the source you use (Gadgetbridge, Oura, etc.) is connected and syncing."
+    }
+    val staleHours = coverage.lastTimestamp?.let {
+        (System.currentTimeMillis() - it) / (3600L * 1000)
+    } ?: Long.MAX_VALUE
+    if (staleHours >= 48) {
+        val days = (staleHours / 24).toInt()
+        return "$metricLabel feed looks stale" to
+            "Last $metricLabel reading was $days day${if (days == 1) "" else "s"} ago. " +
+            "Bios has ${coverage.totalSamples} reading${if (coverage.totalSamples == 1) "" else "s"} on file, " +
+            "but the source seems to have stopped syncing."
+    }
+    if (!coverage.meetsBaselineMinimum) {
+        return "Building $metricLabel baseline" to
+            "Bios has ${coverage.sensorSamplesInWindow} sensor reading${if (coverage.sensorSamplesInWindow == 1) "" else "s"} " +
+            "in the last ${BaselineEngine.DEFAULT_WINDOW_DAYS} days. " +
+            "Need at least ${BaselineEngine.MIN_SAMPLES_FOR_BASELINE} to compute a baseline."
+    }
+    return "Baseline pending" to
+        "Bios has ${coverage.sensorSamplesInWindow} recent $metricLabel readings. " +
+        "Baseline will compute on the next sync."
 }
 
 private fun formatStat(value: Double): String {

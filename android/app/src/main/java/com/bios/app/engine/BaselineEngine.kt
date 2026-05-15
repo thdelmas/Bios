@@ -23,7 +23,55 @@ class BaselineEngine(
     companion object {
         const val MINIMUM_DATA_DAYS = 7
         const val DEFAULT_WINDOW_DAYS = 14
+        const val MIN_SAMPLES_FOR_BASELINE = 10
     }
+
+    /**
+     * What Bios actually has for a metric, expressed in the same terms the
+     * baseline computation uses. Drives UI that explains why a baseline is
+     * (or is not) computable, instead of the previous "needs 7 days" stub
+     * which lied when the real problem was zero ingested readings.
+     */
+    data class Coverage(
+        val sensorSamplesInWindow: Int,
+        val totalSamples: Int,
+        val lastTimestamp: Long?,
+    ) {
+        val hasAnyData: Boolean get() = totalSamples > 0
+        val meetsBaselineMinimum: Boolean get() = sensorSamplesInWindow >= MIN_SAMPLES_FOR_BASELINE
+    }
+
+    suspend fun coverageFor(
+        metricType: MetricType,
+        windowDays: Int = DEFAULT_WINDOW_DAYS
+    ): Coverage {
+        val endMillis = System.currentTimeMillis()
+        val startMillis = endMillis - windowDays.toLong() * 24 * 3600 * 1000
+        val sensor = readingDao.countInRange(
+            metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
+        )
+        val total = readingDao.count(metricType.key)
+        val last = readingDao.lastTimestampFor(metricType.key)
+        return Coverage(
+            sensorSamplesInWindow = sensor,
+            totalSamples = total,
+            lastTimestamp = last,
+        )
+    }
+
+    suspend fun coverageForTracked(): Map<MetricType, Coverage> =
+        TRACKED_METRICS.associateWith { coverageFor(it) }
+
+    private val TRACKED_METRICS = listOf(
+        MetricType.HEART_RATE,
+        MetricType.HEART_RATE_VARIABILITY,
+        MetricType.RESTING_HEART_RATE,
+        MetricType.BLOOD_OXYGEN,
+        MetricType.RESPIRATORY_RATE,
+        MetricType.SKIN_TEMPERATURE_DEVIATION,
+        MetricType.STEPS,
+        MetricType.SLEEP_DURATION,
+    )
 
     // MARK: - Compute all baselines
 
@@ -70,7 +118,7 @@ class BaselineEngine(
         val values = readingDao.fetchValues(
             metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
         )
-        if (values.size < 10) return  // need minimum samples
+        if (values.size < MIN_SAMPLES_FOR_BASELINE) return
 
         val stats = Stats.compute(values)
 

@@ -107,13 +107,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _trackedMetricTypes = MutableStateFlow<Set<MetricType>>(emptySet())
     val trackedMetricTypes: StateFlow<Set<MetricType>> = _trackedMetricTypes
+    private val _metricCoverage = MutableStateFlow<Map<MetricType, BaselineEngine.Coverage>>(emptyMap())
+    val metricCoverage: StateFlow<Map<MetricType, BaselineEngine.Coverage>> = _metricCoverage
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    fun clearError() {
-        _error.value = null
-    }
+    fun clearError() { _error.value = null }
 
     /** Check permissions without initializing. Returns true if all granted or if alternate sources exist. */
     suspend fun checkPermissions(): Boolean {
@@ -377,9 +377,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshBaselines() {
         val allBaselines = db.personalBaselineDao().fetchAll()
         _baselines.value = allBaselines
-        _trackedMetricTypes.value = allBaselines
-            .mapNotNull { MetricType.fromKey(it.metricType) }
-            .toSet()
+        _trackedMetricTypes.value = allBaselines.mapNotNull { MetricType.fromKey(it.metricType) }.toSet()
+        _metricCoverage.value = baselineEngine.coverageForTracked()
     }
 
     fun refreshDiagnostics() {
