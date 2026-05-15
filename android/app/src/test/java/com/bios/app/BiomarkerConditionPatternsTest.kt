@@ -283,4 +283,61 @@ class BiomarkerConditionPatternsTest {
     fun hyperthyroid_signature_requires_at_least_one_corroborator() {
         assertEquals(2, BiomarkerConditionPatterns.hyperthyroidSignature.minActiveSignals)
     }
+
+    // -- anemia_signature --
+
+    @Test
+    fun anemia_signature_is_registered_in_global_all_list() {
+        assertTrue(BiomarkerConditionPatterns.anemiaSignature in ConditionPatterns.all)
+    }
+
+    @Test
+    fun anemia_signature_gates_on_hemoglobin_below_12_g_per_dL() {
+        val pattern = BiomarkerConditionPatterns.anemiaSignature
+        val hgbRule = pattern.signalRules.first { it.metricType == MetricType.HEMOGLOBIN }
+        assertTrue("hemoglobin rule should be required so the lab anchors the pattern", hgbRule.required)
+        assertTrue(hgbRule.isAbsolute)
+        // WHO universal-female anemia floor — conservative single threshold
+        // captures anemia in either sex without sex-stratified config.
+        assertEquals(12.0, hgbRule.absoluteBelow!!, 1e-9)
+        assertNull(hgbRule.absoluteAbove)
+        assertEquals(ThresholdSource.LITERATURE, hgbRule.source)
+    }
+
+    @Test
+    fun anemia_signature_carries_full_CBC_corroborator_set() {
+        val pattern = BiomarkerConditionPatterns.anemiaSignature
+        val hctRule = pattern.signalRules.first { it.metricType == MetricType.HEMATOCRIT }
+        assertFalse("hematocrit is corroborating, not gating", hctRule.required)
+        assertTrue(hctRule.isAbsolute)
+        assertEquals(36.0, hctRule.absoluteBelow!!, 1e-9)
+
+        val rbcRule = pattern.signalRules.first { it.metricType == MetricType.RBC }
+        assertFalse(rbcRule.required)
+        assertTrue(rbcRule.isAbsolute)
+        assertEquals(4.0, rbcRule.absoluteBelow!!, 1e-9)
+    }
+
+    @Test
+    fun anemia_signature_wearable_corroborators_match_compensatory_physiology() {
+        val pattern = BiomarkerConditionPatterns.anemiaSignature
+        val rhrRule = pattern.signalRules.first { it.metricType == MetricType.RESTING_HEART_RATE }
+        // Compensatory tachycardia: ABOVE baseline, deviation-relative
+        // (not an absolute clinical cutoff like the labs).
+        assertFalse(rhrRule.isAbsolute)
+        assertEquals(com.bios.app.alerts.DeviationDirection.ABOVE, rhrRule.direction)
+
+        val activityRule = pattern.signalRules.first { it.metricType == MetricType.ACTIVE_MINUTES }
+        assertFalse(activityRule.isAbsolute)
+        assertEquals(com.bios.app.alerts.DeviationDirection.BELOW, activityRule.direction)
+    }
+
+    @Test
+    fun anemia_signature_requires_at_least_one_corroborator() {
+        // Hemoglobin alone (1 active signal) won't fire; minActiveSignals=2
+        // forces at least one corroborator — either another CBC marker
+        // confirming the drop, or a wearable signal consistent with reduced
+        // oxygen-carrying capacity.
+        assertEquals(2, BiomarkerConditionPatterns.anemiaSignature.minActiveSignals)
+    }
 }
