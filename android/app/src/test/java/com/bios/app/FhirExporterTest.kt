@@ -105,9 +105,15 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `29 metric types have LOINC mappings`() {
+    fun `body fat percent maps to LOINC 41982-0`() {
+        val (code, _) = loincCode(MetricType.BODY_FAT_PCT)!!
+        assertEquals("41982-0", code)
+    }
+
+    @Test
+    fun `30 metric types have LOINC mappings`() {
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(29, mapped)
+        assertEquals(30, mapped)
     }
 
     @Test
@@ -258,6 +264,7 @@ class FhirExporterTest {
             MetricType.SKIN_TEMPERATURE -> "8310-5" to "Body temperature"
             MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
             MetricType.BODY_MASS -> "29463-7" to "Body weight"
+            MetricType.BODY_FAT_PCT -> "41982-0" to "Percentage of body fat Measured"
             MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
             MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
             MetricType.TOTAL_CHOLESTEROL -> "2093-3" to "Cholesterol [Mass/volume] in Serum or Plasma"

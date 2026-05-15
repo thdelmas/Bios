@@ -90,6 +90,8 @@ class BaselineEngine(
                 MetricType.SLEEP_STAGE,
                 MetricType.SLEEP_DURATION,
                 MetricType.AMBIENT_LIGHT,
+                MetricType.BODY_MASS,
+                MetricType.BODY_FAT_PCT,
             )
 
             for (metricType in metricsToBaseline) {
