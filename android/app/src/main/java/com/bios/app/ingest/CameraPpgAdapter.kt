@@ -148,6 +148,14 @@ class CameraPpgAdapter(private val context: Context) {
                     durationSec = durSec,
                     sourceId = sourceId,
                     confidence = ConfidenceTier.LOW.level
+                ),
+                MetricReading(
+                    metricType = MetricType.PARASYMPATHETIC_TONE.key,
+                    value = hrv.lnRmssd,
+                    timestamp = timestamp,
+                    durationSec = durSec,
+                    sourceId = sourceId,
+                    confidence = ConfidenceTier.LOW.level
                 )
             )
             return CaptureResult(

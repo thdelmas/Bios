@@ -4,6 +4,7 @@ import com.bios.app.engine.HrvAnalyzer
 import org.junit.Assert.*
 import org.junit.Test
 import kotlin.math.abs
+import kotlin.math.ln
 
 class HrvAnalyzerTest {
 
@@ -122,5 +123,21 @@ class HrvAnalyzerTest {
         val result = HrvAnalyzer.analyze(ibis)
         assertNotNull(result)
         assertTrue("Should have rejected artifacts", result!!.artifactsRejected > 0)
+    }
+
+    @Test
+    fun `lnRmssd matches the natural log of RMSSD when positive`() {
+        val ibis = listOf(800.0, 815.0, 795.0, 810.0, 805.0, 820.0, 790.0)
+        val result = HrvAnalyzer.analyze(ibis)!!
+        assertTrue(result.rmssd > 0.0)
+        assertEquals(ln(result.rmssd), result.lnRmssd, 1e-9)
+    }
+
+    @Test
+    fun `lnRmssd is zero when RMSSD is zero`() {
+        val ibis = listOf(800.0, 800.0, 800.0, 800.0, 800.0)
+        val result = HrvAnalyzer.analyze(ibis)!!
+        assertEquals(0.0, result.rmssd, 0.0)
+        assertEquals(0.0, result.lnRmssd, 0.0)
     }
 }
