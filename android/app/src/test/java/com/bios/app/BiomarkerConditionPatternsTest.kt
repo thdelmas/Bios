@@ -122,4 +122,42 @@ class BiomarkerConditionPatternsTest {
             }
         }
     }
+
+    // -- dyslipidemia_signature --
+
+    @Test
+    fun dyslipidemia_signature_gates_on_LDL_at_or_above_160_mg_per_dL() {
+        val pattern = BiomarkerConditionPatterns.dyslipidemiaSignature
+        val ldlRule = pattern.signalRules.first { it.metricType == MetricType.LDL_CHOLESTEROL }
+        assertTrue(ldlRule.required)
+        assertTrue(ldlRule.isAbsolute)
+        assertEquals(160.0, ldlRule.absoluteAbove!!, 1e-9)
+    }
+
+    @Test
+    fun dyslipidemia_signature_carries_corroborating_lipid_markers() {
+        val pattern = BiomarkerConditionPatterns.dyslipidemiaSignature
+        val supporting = pattern.signalRules.filter { !it.required }
+        val supportingMetrics = supporting.map { it.metricType }.toSet()
+        assertTrue(MetricType.HDL_CHOLESTEROL in supportingMetrics)
+        assertTrue(MetricType.TRIGLYCERIDES in supportingMetrics)
+        assertTrue(MetricType.APO_B in supportingMetrics)
+    }
+
+    @Test
+    fun dyslipidemia_HDL_rule_uses_absoluteBelow_for_low_concern() {
+        val pattern = BiomarkerConditionPatterns.dyslipidemiaSignature
+        val hdlRule = pattern.signalRules.first { it.metricType == MetricType.HDL_CHOLESTEROL }
+        assertTrue(hdlRule.isAbsolute)
+        assertEquals(40.0, hdlRule.absoluteBelow!!, 1e-9)
+        assertNull(hdlRule.absoluteAbove)
+    }
+
+    @Test
+    fun dyslipidemia_signature_requires_at_least_one_corroborator_via_minActiveSignals() {
+        // LDL required + 1 corroborator = 2 active signals = pattern fires.
+        // LDL alone would only be 1 active signal — minActiveSignals = 2
+        // prevents an isolated LDL spike from triggering the pattern.
+        assertEquals(2, BiomarkerConditionPatterns.dyslipidemiaSignature.minActiveSignals)
+    }
 }

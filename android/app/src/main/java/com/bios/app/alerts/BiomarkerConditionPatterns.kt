@@ -23,7 +23,9 @@ import com.bios.contracts.MetricType
  */
 object BiomarkerConditionPatterns {
 
-    val all by lazy { listOf(inflammationSignature, prediabetesSignature) }
+    val all by lazy {
+        listOf(inflammationSignature, prediabetesSignature, dyslipidemiaSignature)
+    }
 
     /**
      * Elevated hsCRP (≥1.0 mg/L, borderline-or-higher per Ridker AHA/CDC
@@ -102,5 +104,54 @@ object BiomarkerConditionPatterns {
             "Hall H et al. (2018) — Glucotypes reveal new patterns of glucose dysregulation",
         ),
         earlyDetection = "Wearable-only metabolic proxies (sleep, resting HR) are too indirect to be diagnostic. Pairing them with a measured HbA1c narrows the signal to genuine metabolic risk.",
+    )
+
+    /**
+     * LDL ≥ 160 mg/dL (NCEP ATP III "high" tier) paired with at least one
+     * supporting dyslipidemia marker: HDL below 40 mg/dL, triglycerides at
+     * or above 200 mg/dL, or ApoB at or above 120 mg/dL (Sniderman 2019 —
+     * the atherogenic-particle-count threshold). Multi-marker confirmation
+     * is the clinical pattern for dyslipidemia; a single elevated lipid in
+     * isolation is too noisy to alert on.
+     */
+    val dyslipidemiaSignature = ConditionPattern(
+        id = "biomarker_dyslipidemia_signature",
+        title = "Elevated LDL with corroborating lipid markers",
+        category = ConditionCategory.CARDIOVASCULAR,
+        signalRules = listOf(
+            SignalRule(
+                MetricType.LDL_CHOLESTEROL, DeviationDirection.ABOVE, 0.0, 0, 1.5,
+                ThresholdSource.LITERATURE,
+                "NCEP ATP III — LDL ≥160 mg/dL is the high-risk tier",
+                required = true,
+                absoluteAbove = 160.0,
+            ),
+            SignalRule(
+                MetricType.HDL_CHOLESTEROL, DeviationDirection.BELOW, 0.0, 0, 1.0,
+                ThresholdSource.LITERATURE,
+                "NCEP ATP III — HDL <40 mg/dL is independently atherogenic",
+                absoluteBelow = 40.0,
+            ),
+            SignalRule(
+                MetricType.TRIGLYCERIDES, DeviationDirection.ABOVE, 0.0, 0, 1.0,
+                ThresholdSource.LITERATURE,
+                "NCEP ATP III — triglycerides ≥200 mg/dL is the high tier",
+                absoluteAbove = 200.0,
+            ),
+            SignalRule(
+                MetricType.APO_B, DeviationDirection.ABOVE, 0.0, 0, 1.2,
+                ThresholdSource.LITERATURE,
+                "Sniderman et al. 2019 — ApoB ≥120 mg/dL is the atherogenic-particle-count threshold",
+                absoluteAbove = 120.0,
+            ),
+        ),
+        minActiveSignals = 2,
+        explanation = "The most recent LDL reading sits at or above 160 mg/dL while at least one corroborating lipid marker — low HDL, high triglycerides, or high ApoB — is also out of range. NCEP and recent ApoB literature treat this multi-marker combination as the dyslipidemia pattern most predictive of atherosclerotic cardiovascular risk.",
+        suggestedAction = "Discuss the lipid panel with a healthcare provider. The LDL, HDL, triglyceride, and ApoB values from Bios are all useful to share alongside the original lab report.",
+        references = listOf(
+            "NCEP ATP III (2002) — Detection, Evaluation, and Treatment of High Blood Cholesterol in Adults",
+            "Sniderman AD et al. (2019) — Apolipoprotein B particles and cardiovascular disease",
+        ),
+        earlyDetection = "An isolated LDL elevation can have transient causes (diet, weight cycling). Multi-marker confirmation across the lipid panel narrows the signal to durable dyslipidemia worth investigating.",
     )
 }

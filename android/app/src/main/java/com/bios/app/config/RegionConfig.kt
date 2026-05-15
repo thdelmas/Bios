@@ -62,19 +62,25 @@ data class ClinicalThresholds(
 )
 
 /**
- * Three-band clinical classification for a lab value. Bands ascend
- * monotonically: [normalCeiling] is the upper bound of the
- * `NORMAL` band, [borderlineCeiling] is the upper bound of the
- * `BORDERLINE` band; values at or above [borderlineCeiling] are `HIGH`.
+ * Three-band clinical classification for a lab value. Always declared in
+ * ascending value order — [normalCeiling] < [borderlineCeiling] — and the
+ * [concerningDirection] flag picks which extreme is clinically concerning:
  *
- * Use [classify] to map a measurement to a band — the comparisons are
- * inclusive at the lower edge and exclusive at the upper edge so values
- * that sit exactly on the published cut-off slot into the higher-risk
- * band by clinical convention (e.g. HbA1c = 6.5% reads as diabetic).
+ *  - [BandDirection.ABOVE] (default): high values are concerning. Typical
+ *    for hsCRP, HbA1c, LDL, ApoB, triglycerides — values at or above
+ *    [borderlineCeiling] classify as [BiomarkerBand.CONCERNING].
+ *  - [BandDirection.BELOW]: low values are concerning. Typical for HDL —
+ *    values below [normalCeiling] classify as [BiomarkerBand.CONCERNING].
+ *
+ * Comparisons are inclusive at the lower edge and exclusive at the upper
+ * edge so values sitting exactly on a published cut-off slot into the
+ * higher-risk band by clinical convention (e.g. HbA1c = 6.5% reads as
+ * diabetic; HDL = 40 reads as borderline, not concerning).
  */
 data class BiomarkerBands(
     val normalCeiling: Double,
-    val borderlineCeiling: Double
+    val borderlineCeiling: Double,
+    val concerningDirection: BandDirection = BandDirection.ABOVE,
 ) {
     init {
         require(normalCeiling < borderlineCeiling) {
@@ -82,14 +88,24 @@ data class BiomarkerBands(
         }
     }
 
-    fun classify(value: Double): BiomarkerBand = when {
-        value < normalCeiling -> BiomarkerBand.NORMAL
-        value < borderlineCeiling -> BiomarkerBand.BORDERLINE
-        else -> BiomarkerBand.HIGH
+    fun classify(value: Double): BiomarkerBand = when (concerningDirection) {
+        BandDirection.ABOVE -> when {
+            value < normalCeiling -> BiomarkerBand.NORMAL
+            value < borderlineCeiling -> BiomarkerBand.BORDERLINE
+            else -> BiomarkerBand.CONCERNING
+        }
+        BandDirection.BELOW -> when {
+            value >= borderlineCeiling -> BiomarkerBand.NORMAL
+            value >= normalCeiling -> BiomarkerBand.BORDERLINE
+            else -> BiomarkerBand.CONCERNING
+        }
     }
 }
 
-enum class BiomarkerBand { NORMAL, BORDERLINE, HIGH }
+enum class BiomarkerBand { NORMAL, BORDERLINE, CONCERNING }
+
+/** Which end of the value range is clinically concerning. */
+enum class BandDirection { ABOVE, BELOW }
 
 /**
  * Regulatory and compliance configuration per region.
