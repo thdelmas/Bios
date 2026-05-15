@@ -131,6 +131,25 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
+    fun `reaction_time_ms is reserved but not writable by any companion`() {
+        // Decision 5 of SELF_REPORTED_DATA_HOME: pre-register active-test keys
+        // before a second consumer ships, so both apps land on the same shape.
+        // The key must round-trip through MetricType but stay out of every
+        // companion's writableMetrics until a real producer is wired up.
+        assertNotNull(MetricType.fromKey("reaction_time_ms"))
+        assertFalse(
+            "reaction_time_ms must remain unwritable until a producer is whitelisted",
+            "reaction_time_ms" in CompanionContract.WRITABLE_METRICS
+        )
+        for (pkg in CompanionContract.PACKAGES.keys) {
+            assertFalse(
+                "$pkg must not be able to write reserved key reaction_time_ms",
+                CompanionContract.canWrite(pkg, "reaction_time_ms")
+            )
+        }
+    }
+
+    @Test
     fun `each companion gets a distinct sourceId for provenance`() {
         val w2f = CompanionContract.sourceFor("com.w2f.app")
         val sml = CompanionContract.sourceFor("com.smokless.smokeless")
