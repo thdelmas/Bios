@@ -234,4 +234,53 @@ class BiomarkerConditionPatternsTest {
     fun hypothyroid_signature_requires_at_least_one_corroborator() {
         assertEquals(2, BiomarkerConditionPatterns.hypothyroidSignature.minActiveSignals)
     }
+
+    // -- hyperthyroid_signature --
+
+    @Test
+    fun hyperthyroid_signature_is_registered_in_global_all_list() {
+        assertTrue(BiomarkerConditionPatterns.hyperthyroidSignature in ConditionPatterns.all)
+    }
+
+    @Test
+    fun hyperthyroid_signature_gates_on_TSH_below_0_4_mIU_per_L() {
+        val pattern = BiomarkerConditionPatterns.hyperthyroidSignature
+        val tshRule = pattern.signalRules.first { it.metricType == MetricType.TSH }
+        assertTrue("TSH rule should be required so the lab anchors the pattern", tshRule.required)
+        assertTrue(tshRule.isAbsolute)
+        // Mirror of the hypothyroid gate: same lab, opposite extreme.
+        assertEquals(0.4, tshRule.absoluteBelow!!, 1e-9)
+        assertNull(tshRule.absoluteAbove)
+        assertEquals(ThresholdSource.LITERATURE, tshRule.source)
+    }
+
+    @Test
+    fun hyperthyroid_signature_uses_free_T3_above_4_2_as_a_thyrotoxicosis_corroborator() {
+        val pattern = BiomarkerConditionPatterns.hyperthyroidSignature
+        val ft3Rule = pattern.signalRules.first { it.metricType == MetricType.FREE_T3 }
+        assertFalse("free T3 is corroborating, not gating", ft3Rule.required)
+        assertTrue(ft3Rule.isAbsolute)
+        // Upper end of adult reference range — T3 is the most sensitive
+        // single marker for T3-predominant thyrotoxicosis.
+        assertEquals(4.2, ft3Rule.absoluteAbove!!, 1e-9)
+        assertNull(ft3Rule.absoluteBelow)
+    }
+
+    @Test
+    fun hyperthyroid_signature_corroborators_match_high_metabolism_presentation() {
+        val pattern = BiomarkerConditionPatterns.hyperthyroidSignature
+        val rhrRule = pattern.signalRules.first { it.metricType == MetricType.RESTING_HEART_RATE }
+        // Tachycardia: ABOVE baseline (mirror of hypo's BELOW), baseline-relative.
+        assertFalse(rhrRule.isAbsolute)
+        assertEquals(com.bios.app.alerts.DeviationDirection.ABOVE, rhrRule.direction)
+
+        val activityRule = pattern.signalRules.first { it.metricType == MetricType.ACTIVE_MINUTES }
+        assertFalse(activityRule.isAbsolute)
+        assertEquals(com.bios.app.alerts.DeviationDirection.ABOVE, activityRule.direction)
+    }
+
+    @Test
+    fun hyperthyroid_signature_requires_at_least_one_corroborator() {
+        assertEquals(2, BiomarkerConditionPatterns.hyperthyroidSignature.minActiveSignals)
+    }
 }
