@@ -358,74 +358,52 @@ No new companion required — the data is canonical multi-system body
 signal, and the import surface is a thin settings flow on top of the
 existing FHIR machinery.
 
-**Foundation (shipped):**
+**16 biomarker keys shipped** across four waves in
+`bios-contracts/MetricType` (`MetricDomain.BIOMARKER`), each with its
+canonical LOINC + UCUM mapping wired into `export/FhirExporter.kt`:
 
-- `BIOMARKER` domain added to `MetricDomain`; `MG_PER_L` added to
-  `MetricUnit` (UCUM "mg/L").
-- First-wave biomarker keys: `HBA1C` (PERCENT, LOINC 4548-4) and
-  `HSCRP` (MG_PER_L, LOINC 30522-7). Both already have clinical-context
-  entries in `alerts/BiomarkerReference.kt`; direct readings will
-  displace the wearable proxies in those references when an owner
-  imports labs.
-- LOINC + UCUM mappings wired in `export/FhirExporter.kt` so the
-  existing FHIR *export* round-trips the new keys today.
+| Wave | Keys | Units added |
+|------|------|-------------|
+| Foundation | `HBA1C` (4548-4), `HSCRP` (30522-7) | `MG_PER_L` |
+| Lipid + ApoB | `TOTAL_CHOLESTEROL` (2093-3), `LDL_CHOLESTEROL` (2089-1), `HDL_CHOLESTEROL` (2085-9), `TRIGLYCERIDES` (2571-8), `APO_B` (1884-6) | — (reuses `MG_PER_DL`) |
+| Vit D + thyroid | `VITAMIN_D_25OH` (14635-7), `TSH` (3016-3), `FREE_T4` (3024-7), `FREE_T3` (3051-0) | `NG_PER_ML`, `NG_PER_DL`, `PG_PER_ML`, `MIU_PER_L` |
+| CBC panel | `HEMOGLOBIN` (718-7), `HEMATOCRIT` (4544-3), `WBC` (6690-2), `RBC` (789-8), `PLATELETS` (777-3) | `G_PER_DL`, `GIGA_PER_L` (UCUM `10*9/L`), `TERA_PER_L` (UCUM `10*12/L`) |
 
-**Lipid panel + ApoB (shipped):**
+Each thyroid assay keeps its own clinically-conventional unit (TSH
+`mIU/L`, free T4 `ng/dL`, free T3 `pg/mL`); collapsing onto one unit
+would force misleading conversions across assay-specific reference
+ranges. SI ↔ US conversions are a localization concern owned by
+`RegionConfigProvider`, not contract changes.
 
-- `TOTAL_CHOLESTEROL` (LOINC 2093-3), `LDL_CHOLESTEROL` (LOINC 2089-1),
-  `HDL_CHOLESTEROL` (LOINC 2085-9), `TRIGLYCERIDES` (LOINC 2571-8),
-  `APO_B` (LOINC 1884-6) — all `MG_PER_DL`, all in the BIOMARKER domain.
-  No new units; the existing `MG_PER_DL` covers the entire panel under
-  US conventions. SI-unit (mmol/L) conversion is a localization concern,
-  not a contract change, and is owned by `RegionConfigProvider`.
+**Write path (shipped):** `BiomarkerEntryRepo` (`data/`) wraps a single
+`SELF_REPORTED` `DataSource` (new `SourceType.SELF_REPORTED`,
+`ReadingKind.SELF_REPORTED`). `BaselineEngine` already filters
+`kind != SENSOR` per decision 3 in `docs/SELF_REPORTED_DATA_HOME.md`,
+so lab values show up in trends and FHIR export but never corrupt
+sensor-derived baselines.
 
-**Vitamin D + thyroid panel (shipped):**
+**Manual entry (shipped):** `BiomarkerEntryScreen` (`ui/biomarkers/`)
+reachable from Settings → "Add Lab Values". Picker over the 16
+biomarkers, numeric value with the per-key unit suffix, Material3
+date picker, recent-entries list.
 
-- `VITAMIN_D_25OH` (LOINC 14635-7, `NG_PER_ML`).
-- `TSH` (LOINC 3016-3, `MIU_PER_L` → UCUM `m[IU]/L`).
-- `FREE_T4` (LOINC 3024-7, `NG_PER_DL`).
-- `FREE_T3` (LOINC 3051-0, `PG_PER_ML`).
-
-Each thyroid assay keeps its own clinically-conventional unit — TSH in
-`mIU/L`, free T4 in `ng/dL`, free T3 in `pg/mL`. Collapsing them onto
-one unit would force misleading conversions across reference ranges
-that are already assay-specific.
-
-**CBC panel (shipped):**
-
-- `HEMOGLOBIN` (LOINC 718-7, `G_PER_DL`).
-- `HEMATOCRIT` (LOINC 4544-3, `PERCENT` — existing unit).
-- `WBC` (LOINC 6690-2, `GIGA_PER_L` → UCUM `10*9/L`).
-- `RBC` (LOINC 789-8, `TERA_PER_L` → UCUM `10*12/L`).
-- `PLATELETS` (LOINC 777-3, `GIGA_PER_L`).
-
-WBC and platelets share the giga-per-litre cell-count unit; RBC alone
-uses tera-per-litre. UCUM symbols `10*9/L` and `10*12/L` are the
-canonical exponential forms — naming the enum entries semantically
-(`GIGA_PER_L`, `TERA_PER_L`) keeps Kotlin call sites readable.
-
-**Manual structured-entry form (shipped):**
-
-- `BiomarkerEntryScreen` (`ui/biomarkers/`) reachable from
-  Settings → "Add Lab Values". Owner picks a biomarker (the 16 keys
-  shipped in waves 1–4), enters a numeric value, picks the draw date,
-  saves. Recent entries list at the bottom shows what's been logged.
-- Persistence routes through `BiomarkerEntryRepo` (`data/`): a single
-  `SELF_REPORTED` `DataSource` (new `SourceType.SELF_REPORTED`, sensor
-  type `DERIVED`, `ReadingKind.SELF_REPORTED`) owns every manually
-  entered row. The baseline engine and anomaly detector already filter
-  `kind != SENSOR` (decision 3 in `docs/SELF_REPORTED_DATA_HOME.md`), so
-  lab values show up in trends and FHIR export but never corrupt
-  sensor-derived baselines.
+**FHIR Observation import (shipped):** `FhirImporter` (`export/`)
+reads a FHIR R4 JSON file (Bundle or single Observation), extracts
+LOINC + `valueQuantity` + date (with `issued` / `effectivePeriod.start`
+fallbacks), and routes accepted readings through the same
+`BiomarkerEntryRepo` write path. The LOINC → MetricType reverse map is
+built by scanning `MetricType.entries` through `loincCode()`, so
+export and import sides never drift. Skip-and-report semantics: every
+rejection (no LOINC coding, unmapped code, non-biomarker mapping,
+missing `valueQuantity`, unparseable date) is captured in
+`FhirImportSummary.skipped` with a reason and the offending LOINC.
+UI: "Import from FHIR" card on the entry screen with a SAF file
+picker + summary dialog.
 
 **Remaining work (separate PRs):**
 
-- FHIR R4 Observation parser: file picker + LOINC → MetricType mapping.
-  The manual-entry path proves the write-side of the import flow; the
-  parser inherits the same `BiomarkerEntryRepo` write path so it only
-  has to do the FHIR-side decoding.
 - Region-aware reference-range expansion in `RegionConfigProvider`'s
-  `ClinicalThresholds`.
+  `ClinicalThresholds` (the last piece of §8.6).
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 
