@@ -228,6 +228,8 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.SKIN_TEMPERATURE -> "8310-5" to "Body temperature"
     MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
     MetricType.BODY_MASS -> "29463-7" to "Body weight"
+    MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
+    MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -244,6 +246,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.KCAL -> "kcal"
     MetricUnit.KILOGRAMS -> "kg"
     MetricUnit.MG_PER_DL -> "mg/dL"
+    MetricUnit.MG_PER_L -> "mg/L"
     MetricUnit.SCORE -> "{score}"
     MetricUnit.CATEGORY -> "{category}"
     MetricUnit.EVENT -> "{event}"
