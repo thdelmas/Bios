@@ -67,6 +67,32 @@ class HealthConnectAdapterTest {
         assertTrue(reading.value < 0)
     }
 
+    @Test
+    fun `skin temp delta with baseline yields raw plus deviation`() {
+        val baselineC = 33.5
+        val deltaC = 0.4
+        val tMs = 4500L
+        val readings = listOf(
+            MetricReading(
+                metricType = MetricType.SKIN_TEMPERATURE_DEVIATION.key,
+                value = deltaC,
+                timestamp = tMs,
+                sourceId = "health_connect",
+                confidence = ConfidenceTier.MEDIUM.level
+            ),
+            MetricReading(
+                metricType = MetricType.SKIN_TEMPERATURE.key,
+                value = baselineC + deltaC,
+                timestamp = tMs,
+                sourceId = "health_connect",
+                confidence = ConfidenceTier.MEDIUM.level
+            )
+        )
+        val byType = readings.associateBy { it.metricType }
+        assertEquals(33.9, byType.getValue(MetricType.SKIN_TEMPERATURE.key).value, 0.0001)
+        assertEquals(0.4, byType.getValue(MetricType.SKIN_TEMPERATURE_DEVIATION.key).value, 0.0001)
+    }
+
     // -- Sleep stage mapping --
 
     @Test

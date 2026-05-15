@@ -185,15 +185,33 @@ class HealthConnectAdapter(private val context: Context) {
             )
         )
         return response.records.flatMap { record ->
-            val baseline = record.baseline?.inCelsius ?: 0.0
-            record.deltas.map { delta ->
-                MetricReading(
+            val baselineC = record.baseline?.inCelsius
+            record.deltas.flatMap { delta ->
+                val tMs = delta.time.toEpochMilli()
+                val deviation = MetricReading(
                     metricType = MetricType.SKIN_TEMPERATURE_DEVIATION.key,
                     value = delta.delta.inCelsius,
-                    timestamp = delta.time.toEpochMilli(),
+                    timestamp = tMs,
                     sourceId = sourceId,
                     confidence = ConfidenceTier.MEDIUM.level
                 )
+                // Reconstruct raw absolute temp when the record supplies a baseline.
+                // Needed for febrile-range thresholds and menstrual phase detection,
+                // which require absolute °C rather than personal-baseline deltas.
+                if (baselineC != null) {
+                    listOf(
+                        deviation,
+                        MetricReading(
+                            metricType = MetricType.SKIN_TEMPERATURE.key,
+                            value = baselineC + delta.delta.inCelsius,
+                            timestamp = tMs,
+                            sourceId = sourceId,
+                            confidence = ConfidenceTier.MEDIUM.level
+                        )
+                    )
+                } else {
+                    listOf(deviation)
+                }
             }
         }
     }
