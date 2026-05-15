@@ -92,11 +92,11 @@ fun LongevityReferenceScreen(
 
 @Composable
 private fun CoverageSummaryCard(trackedMetrics: Set<MetricType>) {
-    val allProxyMetrics = BiomarkerReferences.all
-        .flatMap { it.proxyMetrics }
+    val allReferencedMetrics = BiomarkerReferences.all
+        .flatMap { it.proxyMetrics + listOfNotNull(it.directMetric) }
         .toSet()
-    val covered = allProxyMetrics.intersect(trackedMetrics)
-    val missing = allProxyMetrics - trackedMetrics
+    val covered = allReferencedMetrics.intersect(trackedMetrics)
+    val missing = allReferencedMetrics - trackedMetrics
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -175,15 +175,18 @@ private fun BiomarkerCard(
     val proxyStatus = biomarker.proxyMetrics.map { metric ->
         metric to (metric in trackedMetrics)
     }
+    val directTracked = biomarker.directMetric?.let { it in trackedMetrics } == true
     val allTracked = proxyStatus.all { it.second }
     val someTracked = proxyStatus.any { it.second }
 
     val statusColor = when {
+        directTracked -> Color(0xFF4CAF50)
         allTracked -> Color(0xFF4CAF50)
         someTracked -> Color(0xFFFFC107)
         else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     }
     val statusLabel = when {
+        directTracked -> "Direct lab reading"
         allTracked -> "Fully tracked"
         someTracked -> "Partially tracked"
         else -> "Not tracked"
@@ -242,6 +245,37 @@ private fun BiomarkerCard(
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
+
+                biomarker.directMetric?.let { directMetric ->
+                    Text(
+                        "Direct lab reading",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (directTracked) Icons.Default.CheckCircle
+                            else Icons.Default.RadioButtonUnchecked,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = if (directTracked) Color(0xFF4CAF50) else Color.Gray
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(directMetric.readableName, style = MaterialTheme.typography.bodySmall)
+                        if (!directTracked) {
+                            Text(
+                                " — enter or import labs in Settings",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
 
                 // Proxy metrics status
                 Text(
