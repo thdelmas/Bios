@@ -30,7 +30,8 @@ fun SettingsScreen(
     viewModel: AppViewModel,
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
-    onNavigateToBiomarkerEntry: () -> Unit = {}
+    onNavigateToBiomarkerEntry: () -> Unit = {},
+    onNavigateToBbtEntry: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -117,6 +118,13 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Add Lab Values")
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = onNavigateToBbtEntry,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Track BBT")
                 }
             }
         }
