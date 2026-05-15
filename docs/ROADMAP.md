@@ -329,14 +329,15 @@ that can't be expressed as a rule over the components.
   three consecutive daily BBTs sit strictly above the coverline. Emits
   FOLLICULAR / OVULATORY / LUTEAL via the `CyclePhase` enum.
 - **BBT writer (shipped):** `data/BbtEntryRepo.kt` + `ui/bbt/BbtEntryScreen.kt`
-  reachable from Settings → "Track BBT". Owner enters a temperature
-  (35–39 °C) and date; the repo persists the BBT row through the same
-  `SELF_REPORTED` `DataSource` the biomarker entry surface uses, then
-  re-runs `CycleInference` over the last 90 days. Derived `cycle_phase`
-  rows use a deterministic id keyed by UTC day bucket so re-derivation
-  is idempotent under `OnConflictStrategy.REPLACE`. The screen surfaces
-  the current phase as soon as enough BBTs are in (≥9 daily samples
-  with a sustained rise).
+  reachable from Settings → "Track BBT". BBT and derived `cycle_phase`
+  rows persist into `ReproductiveDatabase` (separate SQLCipher file,
+  independent key, priority destruction on duress PIN — the post-Dobbs
+  isolation). Lazy `ReproductiveDatabase.initialize()` on first write,
+  no separate enable flow. `CycleInference` re-runs over the last 90
+  days on save; derived rows use a deterministic UTC-day id so
+  re-derivation is idempotent. FHIR exporter skips
+  `MetricDomain.WOMENS_HEALTH` by default; per-export opt-in is the
+  future path to clinician sharing.
 - `cycle_day` — **deferred.** The clinical numbering convention starts
   cycle day 1 at the first day of menstruation; BBT alone cannot
   reliably distinguish menstrual from early follicular. Ships when a
@@ -437,8 +438,7 @@ active minutes ↓ over 7d; WHO 2011 + Williams Hematology + Patel 2008
 + Duke/Abelmann 1969). Biomarker gate rule is `required = true` so
 wearable drift alone never fires the pattern.
 
-**§8.6 complete.** Future biomarker waves (fasting insulin, sex
-hormones, homocysteine, etc.) are new scope, not §8.6 follow-on.
+**§8.6 complete.** Future biomarker waves (fasting insulin, sex hormones, homocysteine, etc.) are new scope, not §8.6 follow-on.
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 

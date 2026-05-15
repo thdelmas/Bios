@@ -1,5 +1,6 @@
 package com.bios.app
 
+import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
 import org.junit.Assert.*
@@ -275,6 +276,38 @@ class FhirExporterTest {
             MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
             else -> null
         }
+    }
+
+    // --- Reproductive-data isolation guard ---
+
+    @Test
+    fun `reproductive metrics stay in WOMENS_HEALTH so FhirExporter skips them by default`() {
+        // The FhirExporter bundle loop skips MetricDomain.WOMENS_HEALTH because
+        // those readings live in the isolated ReproductiveDatabase (separate
+        // SQLCipher key, independent wipe). Moving either of these keys to a
+        // different domain would silently start leaking reproductive data into
+        // the default FHIR export — this test fails first instead.
+        assertEquals(MetricDomain.WOMENS_HEALTH, MetricType.BASAL_BODY_TEMPERATURE.domain)
+        assertEquals(MetricDomain.WOMENS_HEALTH, MetricType.CYCLE_PHASE.domain)
+    }
+
+    @Test
+    fun `every WOMENS_HEALTH MetricType is excluded from the default FHIR enumeration`() {
+        // Mirror of the FhirExporter `for (metricType in MetricType.entries) …
+        // if (domain == WOMENS_HEALTH) continue` loop. If any new reproductive
+        // key is added without a corresponding exporter exclusion (or a
+        // conscious opt-in path), this test makes the gap visible.
+        val included = MetricType.entries.filter { it.domain != MetricDomain.WOMENS_HEALTH }
+        val excluded = MetricType.entries - included.toSet()
+        assertTrue(
+            "WOMENS_HEALTH key(s) leaked into the default-export set: " +
+                "${included.filter { it.domain == MetricDomain.WOMENS_HEALTH }}",
+            included.none { it.domain == MetricDomain.WOMENS_HEALTH }
+        )
+        assertTrue(
+            "Expected at least one WOMENS_HEALTH key to assert non-vacuously",
+            excluded.any { it.domain == MetricDomain.WOMENS_HEALTH }
+        )
     }
 
     private fun ucumCode(metricType: MetricType): String {
