@@ -56,6 +56,16 @@ enum class SleepStage(val value: Int) {
     AWAKE(0), LIGHT(1), DEEP(2), REM(3)
 }
 
+// MARK: - Cycle
+
+// MENSTRUAL is reserved for when a menstruation-onset signal exists; BBT
+// alone can't reliably distinguish it from the early follicular phase, so
+// the BBT-driven CycleInference currently emits only FOLLICULAR / OVULATORY
+// / LUTEAL. Numeric values are stable once written; do not renumber.
+enum class CyclePhase(val value: Int) {
+    MENSTRUAL(0), FOLLICULAR(1), OVULATORY(2), LUTEAL(3)
+}
+
 // MARK: - Aggregation
 
 enum class AggregatePeriod { HOUR, DAY, WEEK, MONTH }
