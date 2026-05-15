@@ -35,6 +35,7 @@ class BaselineEngine(
                 MetricType.RESTING_HEART_RATE,
                 MetricType.BLOOD_OXYGEN,
                 MetricType.RESPIRATORY_RATE,
+                MetricType.SKIN_TEMPERATURE,
                 MetricType.SKIN_TEMPERATURE_DEVIATION,
                 MetricType.STEPS,
                 MetricType.ACTIVE_MINUTES,
