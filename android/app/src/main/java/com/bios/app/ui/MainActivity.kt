@@ -32,7 +32,9 @@ import com.bios.app.ui.diagnostics.DiagnosticsScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.bios.app.ui.ppg.PpgCaptureScreen
+import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.ui.reference.LongevityReferenceScreen
+import com.bios.contracts.MetricType
 import com.bios.app.ui.support.MonthlyAskPopup
 import com.bios.app.ui.support.MonthlyAskScheduler
 import com.bios.app.ui.theme.BiosTheme
@@ -321,8 +323,17 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("longevity_reference") {
                 val trackedMetrics by viewModel.trackedMetricTypes.collectAsState()
+                var latestDirectValues by remember { mutableStateOf<Map<MetricType, Double>>(emptyMap()) }
+                LaunchedEffect(Unit) {
+                    val dao = viewModel.db.metricReadingDao()
+                    val directKeys = BiomarkerReferences.all.mapNotNull { it.directMetric }
+                    latestDirectValues = directKeys.mapNotNull { mt ->
+                        dao.fetchLatest(mt.key, 1).firstOrNull()?.let { mt to it.value }
+                    }.toMap()
+                }
                 LongevityReferenceScreen(
                     trackedMetrics = trackedMetrics,
+                    latestDirectBiomarkerValues = latestDirectValues,
                     onBack = { navController.popBackStack() }
                 )
             }

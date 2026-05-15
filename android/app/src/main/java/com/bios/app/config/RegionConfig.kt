@@ -50,8 +50,46 @@ data class ClinicalThresholds(
     /** Blood pressure systolic hypertension stage 1 threshold (mmHg). */
     val hypertensionSystolic: Int,
     /** Blood pressure diastolic hypertension stage 1 threshold (mmHg). */
-    val hypertensionDiastolic: Int
+    val hypertensionDiastolic: Int,
+    /**
+     * Clinical bands (low risk / borderline / high risk) for biomarker
+     * readings, indexed by [MetricType]. Values in the metric's native unit
+     * (matching the contract). Missing entries mean Bios has no clinical
+     * band defined for that biomarker yet — the reading is shown without
+     * a risk classification.
+     */
+    val biomarkerBands: Map<MetricType, BiomarkerBands> = emptyMap()
 )
+
+/**
+ * Three-band clinical classification for a lab value. Bands ascend
+ * monotonically: [normalCeiling] is the upper bound of the
+ * `NORMAL` band, [borderlineCeiling] is the upper bound of the
+ * `BORDERLINE` band; values at or above [borderlineCeiling] are `HIGH`.
+ *
+ * Use [classify] to map a measurement to a band — the comparisons are
+ * inclusive at the lower edge and exclusive at the upper edge so values
+ * that sit exactly on the published cut-off slot into the higher-risk
+ * band by clinical convention (e.g. HbA1c = 6.5% reads as diabetic).
+ */
+data class BiomarkerBands(
+    val normalCeiling: Double,
+    val borderlineCeiling: Double
+) {
+    init {
+        require(normalCeiling < borderlineCeiling) {
+            "normalCeiling ($normalCeiling) must be < borderlineCeiling ($borderlineCeiling)"
+        }
+    }
+
+    fun classify(value: Double): BiomarkerBand = when {
+        value < normalCeiling -> BiomarkerBand.NORMAL
+        value < borderlineCeiling -> BiomarkerBand.BORDERLINE
+        else -> BiomarkerBand.HIGH
+    }
+}
+
+enum class BiomarkerBand { NORMAL, BORDERLINE, HIGH }
 
 /**
  * Regulatory and compliance configuration per region.
