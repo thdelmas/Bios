@@ -23,9 +23,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ActionItem::class,
         UserFeedback::class,
         ProfessionalReview::class,
-        CompanionGrant::class
+        CompanionGrant::class,
+        LoggedEvent::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -40,6 +41,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun userFeedbackDao(): UserFeedbackDao
     abstract fun professionalReviewDao(): ProfessionalReviewDao
     abstract fun companionGrantDao(): CompanionGrantDao
+    abstract fun loggedEventDao(): LoggedEventDao
 
     companion object {
         @Volatile
@@ -62,7 +64,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 .build()
         }
 
@@ -209,6 +211,44 @@ abstract class BiosDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE data_sources ADD COLUMN readingKind TEXT NOT NULL DEFAULT 'SENSOR'"
+                )
+            }
+        }
+
+        // Parallel table for event-shaped data (substance use, falls,
+        // symptom episodes). Schema mirrors the sketch in
+        // docs/SELF_REPORTED_DATA_HOME.md decision 2. Existing data is
+        // left alone — Smokeless's `MetricReading.value=1.0` rows stay
+        // where they are; the migration of legacy data is its own PR
+        // and depends on the still-open question in the doc.
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS logged_events (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        eventType TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        severity INTEGER,
+                        durationMs INTEGER,
+                        value REAL,
+                        sourceId TEXT NOT NULL,
+                        packageName TEXT,
+                        note TEXT,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY (sourceId) REFERENCES data_sources(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_logged_events_eventType_timestamp " +
+                        "ON logged_events(eventType, timestamp)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_logged_events_timestamp " +
+                        "ON logged_events(timestamp)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_logged_events_sourceId " +
+                        "ON logged_events(sourceId)"
                 )
             }
         }
