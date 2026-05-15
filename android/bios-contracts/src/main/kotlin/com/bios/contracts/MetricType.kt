@@ -61,7 +61,14 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Timestamp + opaque event-id only — no GPS, SMS contents, or contact identity.
     FALL_EVENT("fall_event", MetricUnit.EVENT, MetricDomain.SAFETY),
     NEAR_MISS_FALL("near_miss_fall", MetricUnit.EVENT, MetricDomain.SAFETY),
-    CHECK_IN_MISS("check_in_miss", MetricUnit.EVENT, MetricDomain.SAFETY);
+    CHECK_IN_MISS("check_in_miss", MetricUnit.EVENT, MetricDomain.SAFETY),
+
+    // Active-test results (reserved, no companion whitelisted yet).
+    // W2F has PVT data today (cognitive_probes); Fil plans SDMT. Reserving
+    // the key now commits the shape upfront so two companions don't ship
+    // divergent definitions of the same signal. See decision 5 in
+    // docs/SELF_REPORTED_DATA_HOME.md.
+    REACTION_TIME_MS("reaction_time_ms", MetricUnit.MILLISECONDS, MetricDomain.MENTAL_HEALTH);
 
     val readableName: String
         get() = key.replace("_", " ").replaceFirstChar { it.uppercase() }
