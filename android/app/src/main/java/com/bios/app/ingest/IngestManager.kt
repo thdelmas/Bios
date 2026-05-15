@@ -219,6 +219,8 @@ class IngestManager(
         val derived = mutableListOf<MetricReading>()
         quality.groupBy { it.sourceId }.forEach { (sourceId, rows) ->
             SleepDerivations.deriveSleepLatency(rows, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepEfficiency(rows, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepFragmentation(rows, sourceId)?.let { derived += it }
         }
         return derived
     }

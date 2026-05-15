@@ -53,6 +53,18 @@ class MetricTypeTest {
     }
 
     @Test
+    fun sleep_efficiency_is_sleep_percent() {
+        assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_EFFICIENCY.domain)
+        assertEquals(MetricUnit.PERCENT, MetricType.SLEEP_EFFICIENCY.unit)
+    }
+
+    @Test
+    fun sleep_fragmentation_is_sleep_count() {
+        assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_FRAGMENTATION_INDEX.domain)
+        assertEquals(MetricUnit.COUNT, MetricType.SLEEP_FRAGMENTATION_INDEX.unit)
+    }
+
+    @Test
     fun body_fat_pct_is_metabolic_percent() {
         assertEquals(MetricDomain.METABOLIC, MetricType.BODY_FAT_PCT.domain)
         assertEquals(MetricUnit.PERCENT, MetricType.BODY_FAT_PCT.unit)
