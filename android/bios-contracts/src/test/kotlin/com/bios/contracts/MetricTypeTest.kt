@@ -115,6 +115,25 @@ class MetricTypeTest {
     }
 
     @Test
+    fun cbc_panel_uses_canonical_per_assay_units() {
+        assertEquals(MetricDomain.BIOMARKER, MetricType.HEMOGLOBIN.domain)
+        assertEquals(MetricUnit.G_PER_DL, MetricType.HEMOGLOBIN.unit)
+        assertEquals("g/dL", MetricUnit.G_PER_DL.symbol)
+
+        assertEquals(MetricDomain.BIOMARKER, MetricType.HEMATOCRIT.domain)
+        assertEquals(MetricUnit.PERCENT, MetricType.HEMATOCRIT.unit)
+
+        // WBC and platelets share the giga-per-litre cell-count unit.
+        for (t in setOf(MetricType.WBC, MetricType.PLATELETS)) {
+            assertEquals(MetricDomain.BIOMARKER, t.domain)
+            assertEquals(MetricUnit.GIGA_PER_L, t.unit)
+        }
+
+        assertEquals(MetricDomain.BIOMARKER, MetricType.RBC.domain)
+        assertEquals(MetricUnit.TERA_PER_L, MetricType.RBC.unit)
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)

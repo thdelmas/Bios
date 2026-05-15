@@ -104,9 +104,9 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `24 metric types have LOINC mappings`() {
+    fun `29 metric types have LOINC mappings`() {
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(24, mapped)
+        assertEquals(29, mapped)
     }
 
     @Test
@@ -144,6 +144,25 @@ class FhirExporterTest {
         assertEquals("ng/dL", ucumCode(MetricType.FREE_T4))
         assertEquals("pg/mL", ucumCode(MetricType.FREE_T3))
         assertEquals("m[IU]/L", ucumCode(MetricType.TSH))
+    }
+
+    @Test
+    fun `CBC panel maps to canonical LOINC codes`() {
+        assertEquals("718-7", loincCode(MetricType.HEMOGLOBIN)!!.first)
+        assertEquals("4544-3", loincCode(MetricType.HEMATOCRIT)!!.first)
+        assertEquals("6690-2", loincCode(MetricType.WBC)!!.first)
+        assertEquals("789-8", loincCode(MetricType.RBC)!!.first)
+        assertEquals("777-3", loincCode(MetricType.PLATELETS)!!.first)
+    }
+
+    @Test
+    fun `CBC units map to canonical UCUM codes`() {
+        assertEquals("g/dL", ucumCode(MetricType.HEMOGLOBIN))
+        // WBC and platelets share the 10*9/L cell-count unit per CBC convention.
+        assertEquals("10*9/L", ucumCode(MetricType.WBC))
+        assertEquals("10*9/L", ucumCode(MetricType.PLATELETS))
+        // RBC reports in trillions per litre.
+        assertEquals("10*12/L", ucumCode(MetricType.RBC))
     }
 
     @Test
@@ -249,6 +268,11 @@ class FhirExporterTest {
             MetricType.TSH -> "3016-3" to "Thyrotropin [Units/volume] in Serum or Plasma"
             MetricType.FREE_T4 -> "3024-7" to "Thyroxine (T4) free [Mass/volume] in Serum or Plasma"
             MetricType.FREE_T3 -> "3051-0" to "Triiodothyronine (T3) free [Mass/volume] in Serum or Plasma"
+            MetricType.HEMOGLOBIN -> "718-7" to "Hemoglobin [Mass/volume] in Blood"
+            MetricType.HEMATOCRIT -> "4544-3" to "Hematocrit [Volume Fraction] of Blood by Automated count"
+            MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
+            MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
+            MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
             else -> null
         }
     }
@@ -272,6 +296,9 @@ class FhirExporterTest {
             MetricUnit.NG_PER_DL -> "ng/dL"
             MetricUnit.PG_PER_ML -> "pg/mL"
             MetricUnit.MIU_PER_L -> "m[IU]/L"
+            MetricUnit.G_PER_DL -> "g/dL"
+            MetricUnit.GIGA_PER_L -> "10*9/L"
+            MetricUnit.TERA_PER_L -> "10*12/L"
             MetricUnit.SCORE -> "{score}"
             MetricUnit.CATEGORY -> "{category}"
             MetricUnit.EVENT -> "{event}"

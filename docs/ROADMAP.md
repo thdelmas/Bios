@@ -391,11 +391,21 @@ Each thyroid assay keeps its own clinically-conventional unit — TSH in
 one unit would force misleading conversions across reference ranges
 that are already assay-specific.
 
+**CBC panel (shipped):**
+
+- `HEMOGLOBIN` (LOINC 718-7, `G_PER_DL`).
+- `HEMATOCRIT` (LOINC 4544-3, `PERCENT` — existing unit).
+- `WBC` (LOINC 6690-2, `GIGA_PER_L` → UCUM `10*9/L`).
+- `RBC` (LOINC 789-8, `TERA_PER_L` → UCUM `10*12/L`).
+- `PLATELETS` (LOINC 777-3, `GIGA_PER_L`).
+
+WBC and platelets share the giga-per-litre cell-count unit; RBC alone
+uses tera-per-litre. UCUM symbols `10*9/L` and `10*12/L` are the
+canonical exponential forms — naming the enum entries semantically
+(`GIGA_PER_L`, `TERA_PER_L`) keeps Kotlin call sites readable.
+
 **Remaining work (separate PRs):**
 
-- CBC: hemoglobin (`G_PER_DL`), hematocrit (`PERCENT`, exists), WBC /
-  RBC / platelet counts (cell-count unit needs deciding — `10*9/L` is
-  the UCUM-blessed form).
 - FHIR R4 Observation parser: file picker + LOINC → MetricType mapping.
 - Manual structured-entry form for owners without a FHIR-emitting lab.
 - Region-aware reference-range expansion in `RegionConfigProvider`'s
