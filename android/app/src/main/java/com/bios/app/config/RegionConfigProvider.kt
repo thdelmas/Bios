@@ -51,6 +51,13 @@ object RegionConfigProvider {
         MetricType.APO_B to BiomarkerBands(
             normalCeiling = 90.0, borderlineCeiling = 120.0,
         ),
+        // 25-OH vitamin D (ng/mL): <20 deficient, 20–30 insufficient, ≥30 sufficient
+        // — INVERSE direction: low values are the clinical concern
+        // (Holick et al. 2011 — Endocrine Society Clinical Practice Guideline)
+        MetricType.VITAMIN_D_25OH to BiomarkerBands(
+            normalCeiling = 20.0, borderlineCeiling = 30.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
     )
 
     private val configs: Map<String, RegionConfig> = mapOf(
