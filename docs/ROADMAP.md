@@ -395,7 +395,7 @@ missing `valueQuantity`, unparseable date) is captured in
 UI: "Import from FHIR" card on the entry screen with a SAF file
 picker + summary dialog.
 
-**Clinical bands (shipped for hsCRP + HbA1c + lipid panel + vit D + TSH/freeT4):**
+**Clinical bands (shipped for hsCRP + HbA1c + lipid panel + vit D + TSH/freeT4/freeT3):**
 `ClinicalThresholds.biomarkerBands` carries three-band classifications
 (NORMAL / BORDERLINE / CONCERNING) per region. `BiomarkerBands` has a
 `concerningDirection` flag — `ABOVE` for most lab values, `BELOW` for HDL
@@ -414,7 +414,7 @@ a direct reading is available.
 `AnomalyDetector` reads the metric's latest reading via `fetchLatest` (no
 SENSOR filter, no time window) and compares against the hard cutoff — labs
 are dated and a six-month-old hsCRP is still meaningful.
-`alerts/BiomarkerConditionPatterns.kt` ships five patterns:
+`alerts/BiomarkerConditionPatterns.kt` ships six patterns:
 `inflammation_signature` (hsCRP ≥ 1.0 mg/L + sustained RHR ↑ + HRV ↓
 over 7d; Ridker 2003 + Furman 2019), `prediabetes_signature` (HbA1c ≥
 5.7% + sustained sleep-efficiency ↓ + RHR ↑ over 7d; ADA 2024 + Hall
@@ -422,16 +422,16 @@ over 7d; Ridker 2003 + Furman 2019), `prediabetes_signature` (HbA1c ≥
 ≤ 40, TG ≥ 200, ApoB ≥ 120; NCEP ATP III + Sniderman 2019),
 `vitamin_d_deficiency_signature` (25-OH D < 20 ng/mL + at least one of
 sleep efficiency ↓, active minutes ↓, mood-drift score ↑ over 7d;
-Endocrine Society 2011 + Romano/Roy/Anglin), and `hypothyroid_signature`
+Endocrine Society 2011 + Romano/Roy/Anglin), `hypothyroid_signature`
 (TSH ≥ 4.0 mIU/L + at least one of free T4 < 0.8 ng/dL, RHR ↓, active
-minutes ↓ over 7d; AACE/ATA 2012 + Klein/Surks). Biomarker gate rule is
+minutes ↓ over 7d; AACE/ATA 2012 + Klein/Surks), and
+`hyperthyroid_signature` (TSH < 0.4 mIU/L + at least one of free T3 >
+4.2 pg/mL, RHR ↑, active minutes ↑ over 7d; AACE/ATA 2012 + Ross 2016
++ Biondi/Cooper 2008 + Klein 2001). Biomarker gate rule is
 `required = true` so wearable drift alone never fires the pattern.
 
 **Remaining work (separate PRs):**
 
-- Free T3 band + a dedicated `hyperthyroid_signature` (TSH < 0.4 + RHR ↑
-  + active-minutes ↑). The TSH `lowCeiling` shipped now already classifies
-  the lab side; only the pattern is missing.
 - CBC bands + anemia signature (hemoglobin BELOW, hematocrit, WBC, RBC,
   platelets).
 

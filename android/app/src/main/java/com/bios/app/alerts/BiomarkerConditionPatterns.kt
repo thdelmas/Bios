@@ -26,7 +26,7 @@ object BiomarkerConditionPatterns {
     val all by lazy {
         listOf(
             inflammationSignature, prediabetesSignature, dyslipidemiaSignature,
-            vitaminDDeficiencySignature, hypothyroidSignature,
+            vitaminDDeficiencySignature, hypothyroidSignature, hyperthyroidSignature,
         )
     }
 
@@ -218,9 +218,8 @@ object BiomarkerConditionPatterns {
      * adults and presents with the classic slow-metabolism signature
      * (bradycardia + fatigue) that wearables can corroborate.
      *
-     * Hyperthyroidism (TSH below 0.4) is captured by the bands but doesn't
-     * have its own pattern yet — a dedicated hyperthyroid signature with
-     * tachycardia + RHR↑ + active minutes↑ corroborators is a future PR.
+     * The mirror condition (hyperthyroidism, TSH below 0.4 with tachycardia
+     * and elevated free T3) ships as [hyperthyroidSignature] below.
      */
     val hypothyroidSignature = ConditionPattern(
         id = "biomarker_hypothyroid_signature",
@@ -260,5 +259,55 @@ object BiomarkerConditionPatterns {
             "Surks MI et al. (2004) — Subclinical thyroid disease: scientific review and guidelines",
         ),
         earlyDetection = "Subclinical hypothyroidism is silent for months and the wearable signature (bradycardia + fatigue) overlaps with fitness, illness recovery, and overtraining. Pairing it with a measured TSH narrows the signal to thyroid involvement.",
+    )
+
+    /**
+     * TSH below 0.4 mIU/L (AACE/ATA 2012 subclinical-hyperthyroidism threshold,
+     * Biondi & Cooper 2008) paired with at least one of: free T3 above 4.2
+     * pg/mL (the upper end of the adult reference range — T3 is the most
+     * sensitive single marker for T3-predominant thyrotoxicosis), sustained
+     * resting-HR tachycardia, or elevated active minutes. The mirror of
+     * [hypothyroidSignature]: same gating logic on the lab, opposite
+     * direction on every corroborator.
+     */
+    val hyperthyroidSignature = ConditionPattern(
+        id = "biomarker_hyperthyroid_signature",
+        title = "Suppressed TSH with corroborating high-metabolism signals",
+        category = ConditionCategory.METABOLIC,
+        signalRules = listOf(
+            SignalRule(
+                MetricType.TSH, DeviationDirection.BELOW, 0.0, 0, 1.5,
+                ThresholdSource.LITERATURE,
+                "AACE/ATA 2012 — TSH <0.4 mIU/L is the subclinical-hyperthyroid threshold",
+                required = true,
+                absoluteBelow = 0.4,
+            ),
+            SignalRule(
+                MetricType.FREE_T3, DeviationDirection.ABOVE, 0.0, 0, 1.2,
+                ThresholdSource.LITERATURE,
+                "Ross DS et al. 2016 — free T3 above the adult reference range (>4.2 pg/mL) indicates thyrotoxicosis, often T3-predominant",
+                absoluteAbove = 4.2,
+            ),
+            SignalRule(
+                MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE,
+                "Klein & Ojamaa 2001 — hyperthyroidism produces sinus tachycardia via increased sympathetic drive and direct chronotropic effect",
+            ),
+            SignalRule(
+                MetricType.ACTIVE_MINUTES, DeviationDirection.ABOVE, 1.0, 168, 0.8,
+                ThresholdSource.LITERATURE,
+                "Biondi & Cooper 2008 — hyperthyroidism presents with restlessness and elevated baseline activity; sustained active-minute increase corroborates the lab",
+            ),
+        ),
+        minActiveSignals = 2,
+        explanation = "The most recent TSH reading sits below 0.4 mIU/L — the AACE/ATA subclinical-hyperthyroidism threshold — while at least one corroborating signal of accelerated metabolism has appeared: elevated free T3, sustained tachycardia, or increased baseline activity. The lab anchors the pattern; the wearable signals are individually nonspecific.",
+        suggestedAction = "Discuss the TSH and (if available) free T3 values along with the resting-HR and active-minutes trends with a healthcare provider. A repeat TSH 6–12 weeks later is the standard clinical follow-up for a suppressed reading; persistent suppression warrants free T3 / free T4 confirmation.",
+        references = listOf(
+            "Garber JR et al. (2012) — Clinical practice guidelines for hypothyroidism (AACE/ATA, includes hyperthyroid reference ranges)",
+            "Ross DS et al. (2016) — 2016 American Thyroid Association guidelines for hyperthyroidism and other causes of thyrotoxicosis",
+            "Biondi B, Cooper DS (2008) — The clinical significance of subclinical thyroid dysfunction",
+            "Klein I, Ojamaa K (2001) — Thyroid hormone and the cardiovascular system",
+        ),
+        earlyDetection = "Subclinical hyperthyroidism is silent for months and the wearable signature (tachycardia + restlessness) overlaps with caffeine, anxiety, stimulant medication, and early infection. Pairing it with a suppressed TSH narrows the signal to thyroid involvement.",
     )
 }

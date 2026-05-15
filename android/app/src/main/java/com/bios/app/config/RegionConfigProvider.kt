@@ -68,12 +68,27 @@ object RegionConfigProvider {
         ),
         // Free T4 (ng/dL) — hypo-focused window. <0.8 overt hypothyroid,
         // 0.8–1.0 borderline-low, ≥1.0 normal-for-hypo-screening. The
-        // bidirectional hyperthyroid case (high free T4) is covered by the
-        // TSH low-extreme; a future PR can add a dual-direction free T4
-        // band once a hyperthyroid pattern lands. (AACE 2012)
+        // hyperthyroid case is covered by the TSH low-extreme and by Free T3
+        // (which rises earlier than Free T4 in T3-toxicosis presentations);
+        // a single-axis BiomarkerBands can't express both a low-concern and
+        // a high-concern threshold, and Free T4 is the lower-yield half of
+        // that pair, so it stays hypo-focused here. (AACE 2012)
         MetricType.FREE_T4 to BiomarkerBands(
             normalCeiling = 0.8, borderlineCeiling = 1.0,
             concerningDirection = BandDirection.BELOW,
+        ),
+        // Free T3 (pg/mL): <2.3 low (hypothyroid), 2.3–4.2 normal,
+        // 4.2–6.5 borderline-high (subclinical / early thyrotoxicosis),
+        // ≥6.5 overt hyperthyroidism / T3-toxicosis. Bidirectional via
+        // [lowCeiling] so both extremes flag — Free T3 is the most
+        // sensitive single marker for T3-predominant hyperthyroidism, which
+        // can present with elevated Free T3 before Free T4 leaves range.
+        // (Ross DS et al. 2016 — ATA Hyperthyroidism Guideline;
+        // Garber JR et al. 2012 — AACE/ATA reference ranges)
+        MetricType.FREE_T3 to BiomarkerBands(
+            normalCeiling = 4.2, borderlineCeiling = 6.5,
+            concerningDirection = BandDirection.ABOVE,
+            lowCeiling = 2.3,
         ),
     )
 
