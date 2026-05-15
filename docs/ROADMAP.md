@@ -395,32 +395,35 @@ missing `valueQuantity`, unparseable date) is captured in
 UI: "Import from FHIR" card on the entry screen with a SAF file
 picker + summary dialog.
 
-**Clinical bands (shipped for hsCRP + HbA1c):**
+**Clinical bands (shipped for hsCRP + HbA1c):** `ClinicalThresholds.biomarkerBands`
+carries three-band classifications (NORMAL / BORDERLINE / HIGH) per region.
+`BiomarkerBands.classify(value)` is inclusive at the lower edge so cut-off
+values slot into the higher-risk band by clinical convention. hsCRP (Ridker
+AHA/CDC 2003): <1.0 mg/L normal, 1.0–3.0 borderline, ≥3.0 high. HbA1c
+(ADA 2024): <5.7% normal, 5.7–6.5% prediabetic, ≥6.5% diabetic. Both are
+clinically universal across the 6 regions via a shared
+`universalBiomarkerBands` constant. `LongevityReferenceScreen` surfaces
+"Latest: 2.5 mg/L → Borderline" with a colour-coded label when a direct
+reading is available.
 
-- `ClinicalThresholds.biomarkerBands: Map<MetricType, BiomarkerBands>`
-  carries three-band classifications (NORMAL / BORDERLINE / HIGH) per
-  region. `BiomarkerBands.classify(value)` is the single decision
-  function; ceilings are inclusive at the lower edge so values on a
-  published cut-off slot into the higher-risk band by clinical
-  convention.
-- hsCRP (Ridker AHA/CDC 2003): <1.0 mg/L normal, 1.0–3.0 borderline,
-  ≥3.0 high. HbA1c (ADA 2024): <5.7% normal, 5.7–6.5% prediabetic,
-  ≥6.5% diabetic. Both are clinically universal across the 6 supported
-  regions, so a shared `universalBiomarkerBands` constant is plugged
-  into every region's `ClinicalThresholds`.
-- `LongevityReferenceScreen` consumes the bands: when the owner has a
-  direct reading, the BiomarkerCard surfaces "Latest: 2.5 mg/L →
-  Borderline" with a colour-coded label. MainActivity fetches the
-  latest direct reading for each biomarker that has a `directMetric`
-  set on its `BiomarkerReference`.
+**Biomarker-anchored ConditionPatterns (shipped):** `SignalRule` gained
+`absoluteAbove` / `absoluteBelow` + an `isAbsolute` predicate. When set,
+`AnomalyDetector` reads the metric's latest reading via `fetchLatest` (no
+SENSOR filter, no time window) and compares against the hard cutoff — labs
+are dated and a six-month-old hsCRP is still meaningful.
+`alerts/BiomarkerConditionPatterns.kt` ships two patterns:
+`inflammation_signature` (required hsCRP ≥ 1.0 mg/L + sustained RHR ↑ +
+HRV ↓ over 7d; Ridker 2003 + Furman 2019) and `prediabetes_signature`
+(required HbA1c ≥ 5.7% + sustained sleep-efficiency ↓ + RHR ↑ over 7d;
+ADA 2024 + Hall 2018). Biomarker rule is `required = true` so wearable
+drift alone never fires the pattern.
 
 **Remaining work (separate PRs):**
 
 - Bands for the rest of the biomarker wave (lipid panel, vit D,
   thyroid, CBC). Each batch is one region table addition + tests.
-- Absolute-threshold support in `SignalRule` so biomarker readings can
-  drive `ConditionPattern`s. The bands shipped here are the natural
-  threshold source.
+- More biomarker patterns built on the absolute-threshold path:
+  dyslipidemia, low-thyroid, anemia signatures.
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 

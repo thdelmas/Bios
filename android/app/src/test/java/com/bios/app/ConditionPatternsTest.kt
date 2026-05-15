@@ -38,9 +38,12 @@ class ConditionPatternsTest {
     }
 
     @Test
-    fun `all signal rules have positive thresholds`() {
+    fun `all baseline-relative signal rules have positive thresholds`() {
+        // Absolute-threshold rules carry their cutoff in absoluteAbove /
+        // absoluteBelow and intentionally leave thresholdSigma at 0.
         for (pattern in ConditionPatterns.all) {
             for (rule in pattern.signalRules) {
+                if (rule.isAbsolute) continue
                 assertTrue(
                     "Pattern ${pattern.id}, metric ${rule.metricType}: threshold must be positive",
                     rule.thresholdSigma > 0.0
@@ -62,12 +65,29 @@ class ConditionPatternsTest {
     }
 
     @Test
-    fun `all signal rules have positive duration hours`() {
+    fun `all baseline-relative signal rules have positive duration hours`() {
+        // Absolute-threshold rules read the latest lab via fetchLatest — no
+        // time window is meaningful, so minDurationHours is intentionally 0.
         for (pattern in ConditionPatterns.all) {
             for (rule in pattern.signalRules) {
+                if (rule.isAbsolute) continue
                 assertTrue(
                     "Pattern ${pattern.id}, metric ${rule.metricType}: duration must be positive",
                     rule.minDurationHours > 0
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `every absolute-threshold rule sets at least one bound`() {
+        for (pattern in ConditionPatterns.all) {
+            for (rule in pattern.signalRules) {
+                if (!rule.isAbsolute) continue
+                assertTrue(
+                    "Pattern ${pattern.id}, metric ${rule.metricType}: " +
+                        "isAbsolute true but neither absoluteAbove nor absoluteBelow set",
+                    rule.absoluteAbove != null || rule.absoluteBelow != null
                 )
             }
         }

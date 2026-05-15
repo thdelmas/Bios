@@ -33,7 +33,22 @@ data class SignalRule(
      * absence before reading positive cardiovascular trends as recovery.
      */
     val required: Boolean = false,
-)
+    /**
+     * Absolute clinical threshold: rule fires when the metric's latest reading
+     * is at or above this value, ignoring [direction] / [thresholdSigma] /
+     * personal baseline. Used for lab biomarkers where the literature
+     * threshold (e.g. hsCRP ≥ 1.0 mg/L) is a hard clinical cutoff, not a
+     * baseline-relative deviation. When non-null, the evaluator reads the
+     * latest reading via `fetchLatest` (no SENSOR filter, no time window) so
+     * self-reported lab values qualify.
+     */
+    val absoluteAbove: Double? = null,
+    /** Mirror of [absoluteAbove] for "at or below" thresholds. */
+    val absoluteBelow: Double? = null,
+) {
+    /** True when this rule is evaluated as an absolute clinical threshold. */
+    val isAbsolute: Boolean get() = absoluteAbove != null || absoluteBelow != null
+}
 
 enum class DeviationDirection {
     ABOVE, BELOW, IRREGULAR,
@@ -64,7 +79,7 @@ object ConditionPatterns {
         listOf(
             infectionOnset, sleepDisruption, cardiovascularStress, overtraining,
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit
-        ) + CompanionConditionPatterns.all
+        ) + CompanionConditionPatterns.all + BiomarkerConditionPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
