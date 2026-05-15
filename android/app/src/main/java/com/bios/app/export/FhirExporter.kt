@@ -235,6 +235,10 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.HDL_CHOLESTEROL -> "2085-9" to "Cholesterol in HDL [Mass/volume] in Serum or Plasma"
     MetricType.TRIGLYCERIDES -> "2571-8" to "Triglyceride [Mass/volume] in Serum or Plasma"
     MetricType.APO_B -> "1884-6" to "Apolipoprotein B [Mass/volume] in Serum or Plasma"
+    MetricType.VITAMIN_D_25OH -> "14635-7" to "25-hydroxyvitamin D2+D3 [Mass/volume] in Serum or Plasma"
+    MetricType.TSH -> "3016-3" to "Thyrotropin [Units/volume] in Serum or Plasma"
+    MetricType.FREE_T4 -> "3024-7" to "Thyroxine (T4) free [Mass/volume] in Serum or Plasma"
+    MetricType.FREE_T3 -> "3051-0" to "Triiodothyronine (T3) free [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -252,6 +256,10 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.KILOGRAMS -> "kg"
     MetricUnit.MG_PER_DL -> "mg/dL"
     MetricUnit.MG_PER_L -> "mg/L"
+    MetricUnit.NG_PER_ML -> "ng/mL"
+    MetricUnit.NG_PER_DL -> "ng/dL"
+    MetricUnit.PG_PER_ML -> "pg/mL"
+    MetricUnit.MIU_PER_L -> "m[IU]/L"
     MetricUnit.SCORE -> "{score}"
     MetricUnit.CATEGORY -> "{category}"
     MetricUnit.EVENT -> "{event}"

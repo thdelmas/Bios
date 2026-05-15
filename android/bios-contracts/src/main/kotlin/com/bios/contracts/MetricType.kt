@@ -67,6 +67,10 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     HDL_CHOLESTEROL("hdl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
     TRIGLYCERIDES("triglycerides", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
     APO_B("apo_b", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    VITAMIN_D_25OH("vitamin_d_25oh", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
+    TSH("tsh", MetricUnit.MIU_PER_L, MetricDomain.BIOMARKER),
+    FREE_T4("free_t4", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER),
+    FREE_T3("free_t3", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
 
     // Companion signals (injected by W2F via ContentProvider)
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
@@ -116,6 +120,10 @@ enum class MetricUnit(val symbol: String) {
     KILOGRAMS("kg"),
     MG_PER_DL("mg/dL"),
     MG_PER_L("mg/L"),
+    NG_PER_ML("ng/mL"),
+    NG_PER_DL("ng/dL"),
+    PG_PER_ML("pg/mL"),
+    MIU_PER_L("mIU/L"),
     SCORE(""),
     EVENT(""),
     LUX("lx")

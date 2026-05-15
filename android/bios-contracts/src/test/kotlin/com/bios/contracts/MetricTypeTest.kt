@@ -91,6 +91,30 @@ class MetricTypeTest {
     }
 
     @Test
+    fun vitamin_d_25oh_is_biomarker_ng_per_ml() {
+        assertEquals(MetricDomain.BIOMARKER, MetricType.VITAMIN_D_25OH.domain)
+        assertEquals(MetricUnit.NG_PER_ML, MetricType.VITAMIN_D_25OH.unit)
+        assertEquals("ng/mL", MetricUnit.NG_PER_ML.symbol)
+    }
+
+    @Test
+    fun thyroid_panel_uses_canonical_per_assay_units() {
+        // Each assay reports in a different unit by clinical convention —
+        // collapsing them into one unit would force misleading conversions.
+        assertEquals(MetricDomain.BIOMARKER, MetricType.TSH.domain)
+        assertEquals(MetricUnit.MIU_PER_L, MetricType.TSH.unit)
+        assertEquals("mIU/L", MetricUnit.MIU_PER_L.symbol)
+
+        assertEquals(MetricDomain.BIOMARKER, MetricType.FREE_T4.domain)
+        assertEquals(MetricUnit.NG_PER_DL, MetricType.FREE_T4.unit)
+        assertEquals("ng/dL", MetricUnit.NG_PER_DL.symbol)
+
+        assertEquals(MetricDomain.BIOMARKER, MetricType.FREE_T3.domain)
+        assertEquals(MetricUnit.PG_PER_ML, MetricType.FREE_T3.unit)
+        assertEquals("pg/mL", MetricUnit.PG_PER_ML.symbol)
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
