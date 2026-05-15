@@ -395,7 +395,19 @@ object ConditionPatterns {
         risks = "Untreated mental health changes tend to deepen over time. Sustained sleep disruption and autonomic stress (low HRV) impair immune function, increase cardiovascular risk, and worsen cognitive performance. Social withdrawal and activity reduction create a feedback loop that accelerates decline. Early intervention — when physiological signals are shifting but before clinical symptoms fully manifest — has the highest success rate. If you are in crisis, contact a crisis helpline or emergency services immediately."
     )
 
-    /** Menstrual cycle anomalies: BBT pattern deviation, cycle irregularity. Stored in isolated reproductive DB. */
+    /**
+     * Menstrual cycle anomalies: BBT pattern deviation, cycle irregularity.
+     *
+     * BBT and `CYCLE_PHASE` readings live in `ReproductiveDatabase` (separate
+     * SQLCipher file, independent key, independent wipe). The AnomalyDetector
+     * queries only the main `BiosDatabase`, so the BBT rule will currently
+     * find no data and won't activate; the HRV + sleep corroborators are in
+     * the main DB and can still fire the pattern via `minActiveSignals = 2`
+     * (a less specific cycle signal — autonomic + sleep variability without
+     * the temperature anchor). Wiring AnomalyDetector to optionally consult
+     * the reproductive DB is the path to restoring full BBT-anchored
+     * detection; tracked as a follow-up.
+     */
     val menstrualCycleAnomaly = ConditionPattern(
         id = "menstrual_cycle_anomaly",
         title = "Cycle pattern deviation detected",

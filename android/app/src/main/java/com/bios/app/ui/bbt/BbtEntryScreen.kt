@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -53,7 +54,10 @@ fun BbtEntryScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit
 ) {
-    val repo = remember(viewModel.db) { BbtEntryRepo(viewModel.db) }
+    val context = LocalContext.current
+    // BBT writes land in the isolated ReproductiveDatabase, not viewModel.db —
+    // the repo lazily initializes that DB on construction.
+    val repo = remember(context) { BbtEntryRepo(context) }
     val scope = rememberCoroutineScope()
 
     var valueText by remember { mutableStateOf("") }

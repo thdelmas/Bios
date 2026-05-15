@@ -5,6 +5,7 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.model.Anomaly
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
+import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
 import com.bios.app.model.PersonalBaseline
@@ -67,6 +68,15 @@ class FhirExporter(
 
         val thirtyDaysAgo = System.currentTimeMillis() - 30L * 24 * 3600 * 1000
         for (metricType in MetricType.entries) {
+            // Reproductive-domain readings live in the isolated ReproductiveDatabase
+            // (separate encryption key, independent wipe, priority destruction on
+            // duress PIN). The main-DB-backed exporter must never read them, both
+            // because the rows aren't here and — critically — because including
+            // them in a default FHIR bundle would collapse the isolation the
+            // separate DB exists to provide. A future per-export "include
+            // reproductive data" opt-in would query ReproductiveDatabase
+            // explicitly; today's default is hard-skip.
+            if (metricType.domain == MetricDomain.WOMENS_HEALTH) continue
             val readings = readingDao.fetch(metricType.key, thirtyDaysAgo, Long.MAX_VALUE)
             for (reading in readings.take(500)) {
                 entries.put(bundleEntry(buildObservationResource(reading, metricType)))
