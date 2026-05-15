@@ -395,10 +395,32 @@ missing `valueQuantity`, unparseable date) is captured in
 UI: "Import from FHIR" card on the entry screen with a SAF file
 picker + summary dialog.
 
+**Clinical bands (shipped for hsCRP + HbA1c):**
+
+- `ClinicalThresholds.biomarkerBands: Map<MetricType, BiomarkerBands>`
+  carries three-band classifications (NORMAL / BORDERLINE / HIGH) per
+  region. `BiomarkerBands.classify(value)` is the single decision
+  function; ceilings are inclusive at the lower edge so values on a
+  published cut-off slot into the higher-risk band by clinical
+  convention.
+- hsCRP (Ridker AHA/CDC 2003): <1.0 mg/L normal, 1.0–3.0 borderline,
+  ≥3.0 high. HbA1c (ADA 2024): <5.7% normal, 5.7–6.5% prediabetic,
+  ≥6.5% diabetic. Both are clinically universal across the 6 supported
+  regions, so a shared `universalBiomarkerBands` constant is plugged
+  into every region's `ClinicalThresholds`.
+- `LongevityReferenceScreen` consumes the bands: when the owner has a
+  direct reading, the BiomarkerCard surfaces "Latest: 2.5 mg/L →
+  Borderline" with a colour-coded label. MainActivity fetches the
+  latest direct reading for each biomarker that has a `directMetric`
+  set on its `BiomarkerReference`.
+
 **Remaining work (separate PRs):**
 
-- Region-aware reference-range expansion in `RegionConfigProvider`'s
-  `ClinicalThresholds` (the last piece of §8.6).
+- Bands for the rest of the biomarker wave (lipid panel, vit D,
+  thyroid, CBC). Each batch is one region table addition + tests.
+- Absolute-threshold support in `SignalRule` so biomarker readings can
+  drive `ConditionPattern`s. The bands shipped here are the natural
+  threshold source.
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 
