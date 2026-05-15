@@ -173,11 +173,16 @@ On the Bios side, opt-in emission from HRV/arousal classifications.
 **Manifesto risk:** highest of any Phase 7 item. Defer until 7.1–7.3 land
 and there's a clear, listener-facing reason to ship it.
 
-### 7.6 Cross-repo CI / contract tests
+### 7.6 Cross-repo CI / contract tests [COMPLETE]
 
-Once `bios-contracts` exists (7.4), add a CI workflow that verifies
-companion consumers compile against the latest artifact. Catches breakages
-before they reach a release of either side.
+`cross-repo-contracts.yml` publishes `bios-contracts` to a per-job
+mavenLocal, then builds each public companion (Smokeless, SoulRadio,
+Virgil, Fil) against it through `.github/scripts/consumer-init.gradle`.
+Runs on every change to `android/bios-contracts/**` or the workflow
+itself, plus manual dispatch. Until a companion adds
+`implementation("com.bios:bios-contracts:0.1.0")`, this also serves as a
+companion build-health probe; the day a consumer adopts the artifact, the
+workflow becomes a real contract gate without further setup.
 
 ### 7.7 Smokeless companion: substance-use signals
 
