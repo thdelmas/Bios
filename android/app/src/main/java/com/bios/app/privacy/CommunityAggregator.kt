@@ -4,6 +4,7 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.Stats
 import com.bios.contracts.MetricType
 import com.bios.app.model.PrivacyTier
+import com.bios.app.model.ReadingKind
 import kotlin.math.ln
 import kotlin.random.Random
 
@@ -64,7 +65,13 @@ class CommunityAggregator(private val db: BiosDatabase) {
         val startMillis = endMillis - 7L * 24 * 3600 * 1000
 
         for (metricType in CONTRIBUTABLE_METRICS) {
-            val values = readingDao.fetchValues(metricType.key, startMillis, endMillis)
+            // SENSOR-only: a community pool of self-reports would compound
+            // noise across owners (different journaling habits) and is not
+            // what the cross-cohort baselines downstream are designed to
+            // model. docs/SELF_REPORTED_DATA_HOME.md decision 3.
+            val values = readingDao.fetchValues(
+                metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
+            )
             if (values.size < 10) continue
 
             val stats = Stats.compute(values)

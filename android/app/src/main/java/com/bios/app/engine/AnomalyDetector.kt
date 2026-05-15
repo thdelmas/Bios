@@ -130,7 +130,12 @@ class AnomalyDetector(
 
         for (metric in metrics) {
             val baseline = baselineDao.fetch(metric) ?: continue
-            val values = readingDao.fetchValues(metric, startMillis, endMillis)
+            // SENSOR-only: z-scores are deviations from a sensor baseline;
+            // mixing in self-reports would compare physiology to perception.
+            // docs/SELF_REPORTED_DATA_HOME.md decision 3.
+            val values = readingDao.fetchValues(
+                metric, startMillis, endMillis, ReadingKind.SENSOR.name
+            )
             if (values.isEmpty()) continue
             zScores[metric] = baseline.zScore(values.average())
         }
@@ -364,6 +369,8 @@ class AnomalyDetector(
     private suspend fun fetchRecentValues(metricType: MetricType, hours: Int): List<Double> {
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - hours.toLong() * 3600 * 1000
-        return readingDao.fetchValues(metricType.key, startMillis, endMillis)
+        return readingDao.fetchValues(
+            metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
+        )
     }
 }
