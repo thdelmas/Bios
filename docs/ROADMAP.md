@@ -316,13 +316,34 @@ literature-backed signal) and stay within the manifesto. `sleep_score`
 is parked unless a future condition pattern needs a single-number input
 that can't be expressed as a rule over the components.
 
-### 8.5 Cycle inference from BBT
+### 8.5 Cycle inference from BBT [PARTIAL — cycle_phase shipped, cycle_day deferred]
 
 `basal_body_temperature` is in the schema with no consumer; `cycle_day`
-and `cycle_phase` are planned-but-unimplemented. Implement cycle-phase
-inference in the existing reproductive-health DB (encrypted, independent
-key, independent wipe — already isolated). Writes the two derived keys
-back to the canonical schema gated by reproductive-data consent.
+and `cycle_phase` are planned-but-unimplemented. Cycle-phase inference
+ships now; persistence routing and `cycle_day` follow when their
+prerequisites land.
+
+- `cycle_phase` (WOMENS_HEALTH, CATEGORY) — **shipped.** Implemented as
+  the classic biphasic 3-day rule (Marshall 1968; Barron & Fehring 2005)
+  in `engine/CycleInference.kt`: follicular baseline = mean of the first
+  six daily BBTs, coverline = baseline + 0.1°C, ovulation = the day
+  before three consecutive daily BBTs sit strictly above the coverline.
+  Pure function over `MetricReading` rows — unopinionated about
+  persistence, so the caller routes the derived readings to the encrypted
+  reproductive-health DB once reproductive-data consent is on. Emits
+  FOLLICULAR / OVULATORY / LUTEAL via the `CyclePhase` enum.
+- `cycle_day` — **deferred.** The clinical numbering convention starts
+  cycle day 1 at the first day of menstruation; BBT alone cannot
+  reliably distinguish menstrual from early follicular, so we'd have to
+  fabricate an origin or invent a non-standard numbering. Ships when a
+  menstruation-onset signal exists (manual log, or a wearable that
+  reports it).
+- `MENSTRUAL` is reserved on the `CyclePhase` enum for the same reason.
+
+A BBT writer is still missing (no current adapter emits
+`basal_body_temperature`); the inference is dormant until a writer
+appears, mirroring how `SleepDerivations` waited for SLEEP_STAGE writers
+to come online.
 
 ### 8.6 Lab / biomarker inbound surface
 

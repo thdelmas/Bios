@@ -59,6 +59,12 @@ class MetricTypeTest {
     }
 
     @Test
+    fun cycle_phase_is_womens_health_category() {
+        assertEquals(MetricDomain.WOMENS_HEALTH, MetricType.CYCLE_PHASE.domain)
+        assertEquals(MetricUnit.CATEGORY, MetricType.CYCLE_PHASE.unit)
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
