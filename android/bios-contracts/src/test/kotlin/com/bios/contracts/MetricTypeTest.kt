@@ -47,6 +47,12 @@ class MetricTypeTest {
     }
 
     @Test
+    fun parasympathetic_tone_is_cardiovascular_score() {
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.PARASYMPATHETIC_TONE.domain)
+        assertEquals(MetricUnit.SCORE, MetricType.PARASYMPATHETIC_TONE.unit)
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
