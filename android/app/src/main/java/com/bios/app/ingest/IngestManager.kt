@@ -4,6 +4,7 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.PipelineStage
 import com.bios.app.engine.SignalQualityFilter
+import com.bios.app.engine.SleepDerivations
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
@@ -143,7 +144,8 @@ class IngestManager(
 
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
-                readingDao.insertAll(quality)
+                val derived = deriveAll(quality)
+                readingDao.insertAll(quality + derived)
                 updateLastReadings(quality)
             }
 
@@ -190,7 +192,8 @@ class IngestManager(
 
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
-                readingDao.insertAll(quality)
+                val derived = deriveAll(quality)
+                readingDao.insertAll(quality + derived)
                 updateLastReadings(quality)
                 current = chunkEnd
                 completedDays++
@@ -203,6 +206,21 @@ class IngestManager(
             _isSyncing.value = false
             _syncProgress.value = 1f
         }
+    }
+
+    // MARK: - Derivations
+
+    /**
+     * Compute derived readings (sleep latency, etc.) over a quality-filtered batch.
+     * Grouping by sourceId keeps each derivation coherent — a session's latency is
+     * computed from one source's stage rows, not a cross-source mix.
+     */
+    private fun deriveAll(quality: List<MetricReading>): List<MetricReading> {
+        val derived = mutableListOf<MetricReading>()
+        quality.groupBy { it.sourceId }.forEach { (sourceId, rows) ->
+            SleepDerivations.deriveSleepLatency(rows, sourceId)?.let { derived += it }
+        }
+        return derived
     }
 
     // MARK: - Deduplication
