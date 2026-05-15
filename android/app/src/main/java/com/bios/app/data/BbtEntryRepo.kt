@@ -1,5 +1,6 @@
 package com.bios.app.data
 
+import android.content.Context
 import com.bios.app.engine.CycleInference
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
@@ -17,14 +18,38 @@ import com.bios.contracts.MetricType
  * a daily morning measurement, not a lab value, and because saving it has a
  * downstream effect: [CycleInference] is re-run over the last 90 days of
  * BBT history so the owner sees the cycle classification update in real
- * time. Cycle-phase rows are written with a deterministic id keyed by the
- * UTC day bucket so re-derivation is idempotent (REPLACE on conflict).
+ * time.
+ *
+ * **Storage isolation.** BBT and the derived `CYCLE_PHASE` rows are
+ * persisted in [ReproductiveDatabase] — a separate SQLCipher file with an
+ * independent encryption key, independent retention, and priority
+ * destruction on LETHE duress PIN / dead-man's-switch. The owner can wipe
+ * reproductive data without touching the main DB. The repo lazily calls
+ * [ReproductiveDatabase.initialize] on first construction so the entry
+ * surface "just works" — no separate enable flow — while still landing on
+ * the isolated key. Owners who want to set an explicit passphrase can do
+ * so before first BBT entry; the lazy init only fires when no key exists.
  *
  * Reuses the same `SELF_REPORTED` [DataSource] tag as [BiomarkerEntryRepo]
- * so the baseline engine and anomaly detector keep ignoring it per decision
- * 3 in `docs/SELF_REPORTED_DATA_HOME.md`.
+ * for provenance. Note that the source rows live in the reproductive DB
+ * (foreign-key constraint requires them in the same SQLCipher file as the
+ * readings), so a separate `SELF_REPORTED` row will appear there
+ * alongside the one in the main DB.
+ *
+ * Cycle-phase rows are written with a deterministic id keyed by the UTC
+ * day bucket so re-derivation is idempotent (REPLACE on conflict).
  */
-class BbtEntryRepo(private val db: BiosDatabase) {
+class BbtEntryRepo(context: Context) {
+
+    private val appContext = context.applicationContext
+
+    init {
+        // Idempotent — no-op if a key already exists.
+        ReproductiveDatabase.initialize(appContext)
+    }
+
+    private val db: ReproductiveDatabase
+        get() = ReproductiveDatabase.getInstance(appContext)
 
     /** Physiological BBT bounds (°C). Outside this range = data-entry error. */
     private val minTempC = 35.0
@@ -38,7 +63,7 @@ class BbtEntryRepo(private val db: BiosDatabase) {
             "BBT $temperatureC°C is outside the $minTempC–$maxTempC range"
         }
         val sourceId = getOrCreateSelfReportedSource()
-        db.metricReadingDao().insert(
+        db.readingDao().insert(
             MetricReading(
                 metricType = MetricType.BASAL_BODY_TEMPERATURE.key,
                 value = temperatureC,
@@ -51,14 +76,14 @@ class BbtEntryRepo(private val db: BiosDatabase) {
     }
 
     suspend fun fetchRecentBbts(limit: Int = 30): List<MetricReading> =
-        db.metricReadingDao().fetchLatest(MetricType.BASAL_BODY_TEMPERATURE.key, limit)
+        db.readingDao().fetchLatest(MetricType.BASAL_BODY_TEMPERATURE.key, limit)
 
     suspend fun fetchLatestCyclePhase(): MetricReading? =
-        db.metricReadingDao().fetchLatest(MetricType.CYCLE_PHASE.key, limit = 1).firstOrNull()
+        db.readingDao().fetchLatest(MetricType.CYCLE_PHASE.key, limit = 1).firstOrNull()
 
     private suspend fun rederiveCyclePhases(sourceId: String) {
         val windowStart = System.currentTimeMillis() - rederivationWindowMs
-        val bbts = db.metricReadingDao().fetch(
+        val bbts = db.readingDao().fetch(
             MetricType.BASAL_BODY_TEMPERATURE.key,
             windowStart,
             Long.MAX_VALUE
@@ -66,7 +91,7 @@ class BbtEntryRepo(private val db: BiosDatabase) {
         val phases = CycleInference.deriveCyclePhases(bbts, sourceId)
         if (phases.isEmpty()) return
         val withStableIds = phases.map { it.copy(id = stableCyclePhaseId(it.timestamp)) }
-        db.metricReadingDao().insertAll(withStableIds)
+        db.readingDao().insertAll(withStableIds)
     }
 
     private suspend fun getOrCreateSelfReportedSource(): String {
