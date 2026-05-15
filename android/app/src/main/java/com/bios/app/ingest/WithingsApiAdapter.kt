@@ -81,7 +81,7 @@ class WithingsApiAdapter(
                 val value = m.getDouble("value") * Math.pow(10.0, m.getDouble("unit"))
 
                 val (metricType, confidence) = when (type) {
-                    1 -> Pair(MetricType.BLOOD_GLUCOSE, ConfidenceTier.HIGH) // Using as body mass placeholder
+                    1 -> Pair(MetricType.BODY_MASS, ConfidenceTier.HIGH) // weight in kg
                     6 -> Pair(null, ConfidenceTier.MEDIUM) // Fat % - no MetricType yet
                     9 -> Pair(MetricType.BLOOD_PRESSURE_DIASTOLIC, ConfidenceTier.HIGH)
                     10 -> Pair(MetricType.BLOOD_PRESSURE_SYSTOLIC, ConfidenceTier.HIGH)

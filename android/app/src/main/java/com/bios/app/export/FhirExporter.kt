@@ -227,6 +227,7 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.SLEEP_DURATION -> "93832-4" to "Sleep duration"
     MetricType.SKIN_TEMPERATURE -> "8310-5" to "Body temperature"
     MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
+    MetricType.BODY_MASS -> "29463-7" to "Body weight"
     else -> null
 }
 
@@ -241,6 +242,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.SECONDS -> "s"
     MetricUnit.COUNT -> "{count}"
     MetricUnit.KCAL -> "kcal"
+    MetricUnit.KILOGRAMS -> "kg"
     MetricUnit.MG_PER_DL -> "mg/dL"
     MetricUnit.SCORE -> "{score}"
     MetricUnit.CATEGORY -> "{category}"
