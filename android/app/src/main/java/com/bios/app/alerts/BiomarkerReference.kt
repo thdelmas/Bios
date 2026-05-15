@@ -3,13 +3,20 @@ package com.bios.app.alerts
 import com.bios.contracts.MetricType
 
 /**
- * Maps a clinical biomarker tracked in longevity research to the wearable-derived
- * proxy metrics that Bios can monitor. Informational only — never prescriptive.
+ * Maps a clinical biomarker tracked in longevity research to (a) the
+ * wearable-derived proxy metrics that Bios infers from, and (b) the
+ * canonical lab reading itself when the owner has imported or entered one.
+ * Informational only — never prescriptive.
+ *
+ * [directMetric] is non-null when Bios ships a canonical lab key for the
+ * biomarker (e.g. `HSCRP`, `HBA1C`). When it's tracked the reference card
+ * surfaces the direct reading instead of (or in addition to) the proxies.
  */
 data class BiomarkerReference(
     val id: String,
     val clinicalName: String,
     val description: String,
+    val directMetric: MetricType? = null,
     val proxyMetrics: List<MetricType>,
     val proxyExplanation: String,
     val normalRange: String,
@@ -28,12 +35,13 @@ object BiomarkerReferences {
     }
 
     fun forMetric(metricType: MetricType): List<BiomarkerReference> =
-        all.filter { metricType in it.proxyMetrics }
+        all.filter { metricType in it.proxyMetrics || metricType == it.directMetric }
 
     val inflammation = BiomarkerReference(
         id = "hscrp_inflammation",
         clinicalName = "hsCRP (High-Sensitivity C-Reactive Protein)",
         description = "A blood marker of systemic inflammation. Elevated hsCRP is associated with increased cardiovascular risk, infection, and chronic disease progression.",
+        directMetric = MetricType.HSCRP,
         proxyMetrics = listOf(
             MetricType.RESTING_HEART_RATE,
             MetricType.HEART_RATE_VARIABILITY
@@ -53,6 +61,7 @@ object BiomarkerReferences {
         id = "hba1c_metabolic",
         clinicalName = "HbA1c (Glycated Hemoglobin)",
         description = "A 3-month average of blood glucose levels. Elevated HbA1c indicates pre-diabetes or diabetes risk.",
+        directMetric = MetricType.HBA1C,
         proxyMetrics = listOf(
             MetricType.BLOOD_GLUCOSE,
             MetricType.SLEEP_STAGE,
