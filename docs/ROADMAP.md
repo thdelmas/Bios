@@ -184,7 +184,7 @@ itself, plus manual dispatch. Until a companion adds
 companion build-health probe; the day a consumer adopts the artifact, the
 workflow becomes a real contract gate without further setup.
 
-### 7.7 Smokeless companion: substance-use signals
+### 7.7 Smokeless companion: substance-use signals [BIOS COMPLETE — awaiting Smokeless adoption]
 
 Smokeless ([thdelmas/Smokeless](https://github.com/thdelmas/Smokeless))
 already captures two discrete event streams locally (`smoking_sessions`
@@ -196,8 +196,8 @@ sleep latency, and skin temperature — all metrics Bios already ingests
 and baselines. Cravings (rate, time-of-day clustering, response to sleep
 debt) carry independent predictive value for relapse risk.
 
-**Initial reserved keys** (two pairs, matching Smokeless's current
-single-substance scope plus its near-term cannabis expansion):
+**Initial reserved keys [COMPLETE]** — landed in `bios-contracts`
+`MetricType`:
 
 - `TOBACCO_USE` — discrete tobacco consumption event. Timestamp + opaque
   event-id. No dose, no brand, no method.
@@ -207,17 +207,19 @@ single-substance scope plus its near-term cannabis expansion):
   Form (joint / vape / edible) is Smokeless-local; Bios sees the event only.
 - `CANNABIS_CRAVING` — same shape.
 
-**New `MetricDomain`: `INTAKE`.** None of the existing domains fit
-substance-use events. `INTAKE` is the natural home and leaves room for
-the W2F caffeine/meal signals to hoist up later if a second consumer
-appears (per the ECOSYSTEM_BOUNDARIES.md "case study: nutrition in W2F"
-rule). `MetricUnit.EVENT` (count-style, value always `1.0`) is the
-canonical encoding — these are discrete events, not continuous readings.
+**New `MetricDomain`: `INTAKE` [COMPLETE]** — added to `bios-contracts`
+`MetricDomain`. Leaves room for the W2F caffeine/meal signals to hoist up
+later if a second consumer appears (per the ECOSYSTEM_BOUNDARIES.md "case
+study: nutrition in W2F" rule). `MetricUnit.EVENT` (count-style, value
+always `1.0`) is the canonical encoding — these are discrete events, not
+continuous readings.
 
-**Companion-write URI extension.** Whitelist the four keys above in
-`content://com.bios.app.health/companion/{metric_type}` alongside the
-mental-health and Virgil keys from 7.1–7.2. Contract test:
-Smokeless-shape insert end-to-end on each key.
+**Companion-write URI extension [COMPLETE]** — the four keys are
+whitelisted for `com.smokless.smokeless` in
+`provider/CompanionContract.kt` alongside the mental-health and Virgil
+keys from 7.1–7.2; Smokeless is tagged `SELF_REPORTED` for provenance.
+`BiosHealthProviderContractTest` pins writability, cross-package
+isolation, and source attribution for every key.
 
 **Cross-correlation patterns [COMPLETE]** — landed in
 `alerts/CompanionConditionPatterns.kt` alongside the §7.3 patterns:
@@ -230,6 +232,11 @@ Smokeless-shape insert end-to-end on each key.
   TOBACCO_USE for ≥72h, surfaces the literature-backed positive
   trajectory (RHR ↓, HRV ↑, SpO2 ↑). Information-only, no praise, no
   streaks. Content-policy enforced by unit test.
+
+**Remaining work is on the Smokeless side:** call the companion URI for
+each `Substance`-routed session/craving event. The Bios-side surface is
+frozen via `bios-contracts` 0.1.0 and the cross-repo CI workflow from §7.6
+will catch any drift the day Smokeless adopts `bios-contracts`.
 
 **Acceptance:** Smokeless writes `TOBACCO_USE` / `TOBACCO_CRAVING` and
 (as of its Phase 2.1) `CANNABIS_USE` / `CANNABIS_CRAVING` events to Bios
