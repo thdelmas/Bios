@@ -142,6 +142,8 @@ class BiomarkerBandsTest {
             MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
             MetricType.APO_B, MetricType.VITAMIN_D_25OH,
             MetricType.TSH, MetricType.FREE_T4, MetricType.FREE_T3,
+            MetricType.HEMOGLOBIN, MetricType.HEMATOCRIT, MetricType.WBC,
+            MetricType.RBC, MetricType.PLATELETS,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
@@ -296,5 +298,77 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.BORDERLINE, vd.classify(29.999))
         assertEquals(BiomarkerBand.NORMAL, vd.classify(30.0))
         assertEquals(BiomarkerBand.NORMAL, vd.classify(50.0))
+    }
+
+    // -- CBC panel literature thresholds --
+
+    @Test
+    fun hemoglobin_band_matches_WHO_2011_anemia_threshold_with_BELOW_direction() {
+        val hgb = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.HEMOGLOBIN]!!
+        // <12 g/dL = anemia (WHO universal-female floor; male anemia <13)
+        assertEquals(BiomarkerBand.CONCERNING, hgb.classify(10.0))
+        assertEquals(BiomarkerBand.CONCERNING, hgb.classify(11.999))
+        // 12–13.5 = sex-dependent borderline zone
+        assertEquals(BiomarkerBand.BORDERLINE, hgb.classify(12.0))
+        assertEquals(BiomarkerBand.BORDERLINE, hgb.classify(13.499))
+        // ≥13.5 = normal across sexes
+        assertEquals(BiomarkerBand.NORMAL, hgb.classify(13.5))
+        assertEquals(BiomarkerBand.NORMAL, hgb.classify(15.5))
+    }
+
+    @Test
+    fun hematocrit_band_uses_female_floor_36_as_universal_anemia_concern() {
+        val hct = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.HEMATOCRIT]!!
+        assertEquals(BiomarkerBand.CONCERNING, hct.classify(32.0))
+        assertEquals(BiomarkerBand.BORDERLINE, hct.classify(36.0))
+        assertEquals(BiomarkerBand.BORDERLINE, hct.classify(39.999))
+        assertEquals(BiomarkerBand.NORMAL, hct.classify(40.0))
+        assertEquals(BiomarkerBand.NORMAL, hct.classify(45.0))
+    }
+
+    @Test
+    fun wbc_band_uses_bidirectional_thresholds_for_leukopenia_and_leukocytosis() {
+        val wbc = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.WBC]!!
+        // <4.5 = leukopenia (CONCERNING low)
+        assertEquals(BiomarkerBand.CONCERNING, wbc.classify(3.0))
+        assertEquals(BiomarkerBand.CONCERNING, wbc.classify(4.499))
+        // 4.5–11 = normal
+        assertEquals(BiomarkerBand.NORMAL, wbc.classify(4.5))
+        assertEquals(BiomarkerBand.NORMAL, wbc.classify(7.5))
+        // 11–15 = borderline-high (mild leukocytosis)
+        assertEquals(BiomarkerBand.BORDERLINE, wbc.classify(11.0))
+        assertEquals(BiomarkerBand.BORDERLINE, wbc.classify(14.999))
+        // ≥15 = marked leukocytosis (CONCERNING high)
+        assertEquals(BiomarkerBand.CONCERNING, wbc.classify(15.0))
+        assertEquals(BiomarkerBand.CONCERNING, wbc.classify(25.0))
+    }
+
+    @Test
+    fun rbc_band_treats_low_count_as_concerning() {
+        val rbc = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.RBC]!!
+        assertEquals(BiomarkerBand.CONCERNING, rbc.classify(3.5))
+        assertEquals(BiomarkerBand.BORDERLINE, rbc.classify(4.0))
+        assertEquals(BiomarkerBand.BORDERLINE, rbc.classify(4.499))
+        assertEquals(BiomarkerBand.NORMAL, rbc.classify(4.5))
+        assertEquals(BiomarkerBand.NORMAL, rbc.classify(5.5))
+    }
+
+    @Test
+    fun platelets_band_matches_NCI_thrombocytopenia_grades_with_BELOW_direction() {
+        val plt = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.PLATELETS]!!
+        // <100 = clinically significant thrombocytopenia
+        assertEquals(BiomarkerBand.CONCERNING, plt.classify(50.0))
+        assertEquals(BiomarkerBand.CONCERNING, plt.classify(99.999))
+        // 100–150 = mild thrombocytopenia
+        assertEquals(BiomarkerBand.BORDERLINE, plt.classify(100.0))
+        assertEquals(BiomarkerBand.BORDERLINE, plt.classify(149.999))
+        // ≥150 = normal range
+        assertEquals(BiomarkerBand.NORMAL, plt.classify(150.0))
+        assertEquals(BiomarkerBand.NORMAL, plt.classify(300.0))
     }
 }
