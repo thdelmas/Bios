@@ -379,10 +379,20 @@ existing FHIR machinery.
   US conventions. SI-unit (mmol/L) conversion is a localization concern,
   not a contract change, and is owned by `RegionConfigProvider`.
 
+**Vitamin D + thyroid panel (shipped):**
+
+- `VITAMIN_D_25OH` (LOINC 14635-7, `NG_PER_ML`).
+- `TSH` (LOINC 3016-3, `MIU_PER_L` → UCUM `m[IU]/L`).
+- `FREE_T4` (LOINC 3024-7, `NG_PER_DL`).
+- `FREE_T3` (LOINC 3051-0, `PG_PER_ML`).
+
+Each thyroid assay keeps its own clinically-conventional unit — TSH in
+`mIU/L`, free T4 in `ng/dL`, free T3 in `pg/mL`. Collapsing them onto
+one unit would force misleading conversions across reference ranges
+that are already assay-specific.
+
 **Remaining work (separate PRs):**
 
-- Vitamin D 25-OH (needs `NG_PER_ML`) and thyroid panel (TSH needs
-  `MIU_PER_L`; free T4 / free T3 each have their own unit conventions).
 - CBC: hemoglobin (`G_PER_DL`), hematocrit (`PERCENT`, exists), WBC /
   RBC / platelet counts (cell-count unit needs deciding — `10*9/L` is
   the UCUM-blessed form).
