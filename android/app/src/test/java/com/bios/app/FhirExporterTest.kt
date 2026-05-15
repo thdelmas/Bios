@@ -217,6 +217,7 @@ class FhirExporterTest {
             MetricUnit.SCORE -> "{score}"
             MetricUnit.CATEGORY -> "{category}"
             MetricUnit.EVENT -> "{event}"
+            MetricUnit.LUX -> "lx"
         }
     }
 }

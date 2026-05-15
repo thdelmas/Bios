@@ -82,4 +82,18 @@ class PhoneSensorAdapterTest {
         val gravity = 9.81f
         assertTrue(gravity > 9.7f && gravity < 9.9f)
     }
+
+    @Test
+    fun `ambient light reading uses LOW confidence and lux value`() {
+        val reading = MetricReading(
+            metricType = MetricType.AMBIENT_LIGHT.key,
+            value = 240.0,
+            timestamp = 1000L,
+            sourceId = "phone_sensor",
+            confidence = ConfidenceTier.LOW.level
+        )
+        assertEquals("ambient_light", reading.metricType)
+        assertEquals(240.0, reading.value, 0.0)
+        assertEquals(ConfidenceTier.LOW.level, reading.confidence)
+    }
 }

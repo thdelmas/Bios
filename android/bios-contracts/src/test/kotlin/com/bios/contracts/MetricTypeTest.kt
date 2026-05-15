@@ -47,6 +47,13 @@ class MetricTypeTest {
     }
 
     @Test
+    fun ambient_light_is_environment_lux() {
+        assertEquals(MetricDomain.ENVIRONMENT, MetricType.AMBIENT_LIGHT.domain)
+        assertEquals(MetricUnit.LUX, MetricType.AMBIENT_LIGHT.unit)
+        assertEquals("lx", MetricUnit.LUX.symbol)
+    }
+
+    @Test
     fun health_contract_authority_is_stable() {
         assertEquals("com.bios.app.health", BiosHealthContract.AUTHORITY)
     }
