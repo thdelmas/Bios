@@ -160,4 +160,37 @@ class BiomarkerConditionPatternsTest {
         // prevents an isolated LDL spike from triggering the pattern.
         assertEquals(2, BiomarkerConditionPatterns.dyslipidemiaSignature.minActiveSignals)
     }
+
+    // -- vitamin_d_deficiency_signature --
+
+    @Test
+    fun vitamin_d_signature_gates_on_25_OH_below_20_ng_per_mL() {
+        val pattern = BiomarkerConditionPatterns.vitaminDDeficiencySignature
+        val vdRule = pattern.signalRules.first { it.metricType == MetricType.VITAMIN_D_25OH }
+        assertTrue(vdRule.required)
+        assertTrue(vdRule.isAbsolute)
+        // BELOW threshold — low vit D is the concern, mirroring the bands.
+        assertEquals(20.0, vdRule.absoluteBelow!!, 1e-9)
+        assertNull(vdRule.absoluteAbove)
+        assertEquals(ThresholdSource.LITERATURE, vdRule.source)
+    }
+
+    @Test
+    fun vitamin_d_signature_carries_recovery_proxies_as_corroborators() {
+        val pattern = BiomarkerConditionPatterns.vitaminDDeficiencySignature
+        val corroborators = pattern.signalRules
+            .filter { !it.required }
+            .map { it.metricType }
+            .toSet()
+        // Sleep / activity / mood are the three best-evidenced wearable
+        // proxies for symptomatic vitamin D deficiency.
+        assertTrue(MetricType.SLEEP_EFFICIENCY in corroborators)
+        assertTrue(MetricType.ACTIVE_MINUTES in corroborators)
+        assertTrue(MetricType.MOOD_DRIFT_SCORE in corroborators)
+    }
+
+    @Test
+    fun vitamin_d_signature_requires_at_least_one_corroborator() {
+        assertEquals(2, BiomarkerConditionPatterns.vitaminDDeficiencySignature.minActiveSignals)
+    }
 }

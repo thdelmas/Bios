@@ -89,7 +89,7 @@ class BiomarkerBandsTest {
             MetricType.HSCRP, MetricType.HBA1C,
             MetricType.TOTAL_CHOLESTEROL, MetricType.LDL_CHOLESTEROL,
             MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
-            MetricType.APO_B,
+            MetricType.APO_B, MetricType.VITAMIN_D_25OH,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
@@ -177,5 +177,20 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.NORMAL, apob.classify(80.0))
         assertEquals(BiomarkerBand.BORDERLINE, apob.classify(90.0))
         assertEquals(BiomarkerBand.CONCERNING, apob.classify(120.0))
+    }
+
+    @Test
+    fun vitamin_d_band_matches_Endocrine_Society_2011_thresholds_with_BELOW_direction() {
+        val vd = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.VITAMIN_D_25OH]!!
+        // <20 ng/mL = deficient (CONCERNING)
+        // 20–29 = insufficient (BORDERLINE)
+        // ≥30 = sufficient (NORMAL)
+        assertEquals(BiomarkerBand.CONCERNING, vd.classify(15.0))
+        assertEquals(BiomarkerBand.CONCERNING, vd.classify(19.999))
+        assertEquals(BiomarkerBand.BORDERLINE, vd.classify(20.0))
+        assertEquals(BiomarkerBand.BORDERLINE, vd.classify(29.999))
+        assertEquals(BiomarkerBand.NORMAL, vd.classify(30.0))
+        assertEquals(BiomarkerBand.NORMAL, vd.classify(50.0))
     }
 }
