@@ -26,6 +26,31 @@ object RegionConfigProvider {
         MetricType.HSCRP to BiomarkerBands(normalCeiling = 1.0, borderlineCeiling = 3.0),
         // HbA1c (%): <5.7 normal, 5.7–6.5 prediabetic, ≥6.5 diabetic (ADA 2024)
         MetricType.HBA1C to BiomarkerBands(normalCeiling = 5.7, borderlineCeiling = 6.5),
+        // Total cholesterol (mg/dL): <200 desirable, 200–239 borderline, ≥240 high
+        // (NCEP ATP III; AHA 2018 guideline)
+        MetricType.TOTAL_CHOLESTEROL to BiomarkerBands(
+            normalCeiling = 200.0, borderlineCeiling = 240.0,
+        ),
+        // LDL-C (mg/dL): <100 optimal, 100–160 borderline, ≥160 high (NCEP ATP III)
+        MetricType.LDL_CHOLESTEROL to BiomarkerBands(
+            normalCeiling = 100.0, borderlineCeiling = 160.0,
+        ),
+        // HDL-C (mg/dL): <40 concerning low, 40–60 borderline, ≥60 protective
+        // — INVERSE direction: low HDL is the clinical concern (NCEP ATP III)
+        MetricType.HDL_CHOLESTEROL to BiomarkerBands(
+            normalCeiling = 40.0, borderlineCeiling = 60.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
+        // Triglycerides (mg/dL): <150 normal, 150–200 borderline, ≥200 high
+        // (NCEP ATP III)
+        MetricType.TRIGLYCERIDES to BiomarkerBands(
+            normalCeiling = 150.0, borderlineCeiling = 200.0,
+        ),
+        // ApoB (mg/dL): <90 desirable, 90–120 borderline, ≥120 high
+        // (Sniderman et al. 2019; AACC 2023 — particle-count gold standard)
+        MetricType.APO_B to BiomarkerBands(
+            normalCeiling = 90.0, borderlineCeiling = 120.0,
+        ),
     )
 
     private val configs: Map<String, RegionConfig> = mapOf(
