@@ -287,12 +287,24 @@ in the baseline engine. New keys: `lf_hf_ratio`, `parasympathetic_tone`
 (domain: `CARDIOVASCULAR`, unit derived). Resolves the "raw HRV present,
 no autonomic surface" finding from the audit.
 
-### 8.4 Sleep derivations: latency + score
+### 8.4 Sleep derivations: latency + components [LATENCY + COMPONENTS SHIPPED]
 
-`sleep_latency` and `sleep_score` are in the planned set. Derive from
-the existing `sleep_stage` time-series. Sleep latency = wake → first
-non-wake stage; sleep score = composite over duration, efficiency,
-fragmentation, and stage balance. Literature-anchored thresholds only.
+Derive from the existing `sleep_stage` time-series in `engine/SleepDerivations.kt`:
+
+- `sleep_latency` (SECONDS) — first AWAKE → first non-AWAKE.
+- `sleep_efficiency` (PERCENT) — TST / TIB × 100; the canonical clinical
+  formula. Threshold ≥85% is the well-established normal range.
+- `sleep_fragmentation_index` (COUNT) — number of post-onset awakenings;
+  contiguous AWAKE blocks count as one.
+
+**Reframe from `sleep_score`:** the original 8.4 specified a composite
+score. Shipping a 0–100 grade on the owner's sleep clashes with the
+"never evaluate the person" principle — even with literature-anchored
+thresholds, a single number invites comparison and reads as judgment.
+The decomposed components above are clinically richer (each is its own
+literature-backed signal) and stay within the manifesto. `sleep_score`
+is parked unless a future condition pattern needs a single-number input
+that can't be expressed as a rule over the components.
 
 ### 8.5 Cycle inference from BBT
 
