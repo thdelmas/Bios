@@ -71,6 +71,11 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     TSH("tsh", MetricUnit.MIU_PER_L, MetricDomain.BIOMARKER),
     FREE_T4("free_t4", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER),
     FREE_T3("free_t3", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
+    HEMOGLOBIN("hemoglobin", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER),
+    HEMATOCRIT("hematocrit", MetricUnit.PERCENT, MetricDomain.BIOMARKER),
+    WBC("wbc", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
+    RBC("rbc", MetricUnit.TERA_PER_L, MetricDomain.BIOMARKER),
+    PLATELETS("platelets", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
 
     // Companion signals (injected by W2F via ContentProvider)
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
@@ -124,6 +129,9 @@ enum class MetricUnit(val symbol: String) {
     NG_PER_DL("ng/dL"),
     PG_PER_ML("pg/mL"),
     MIU_PER_L("mIU/L"),
+    G_PER_DL("g/dL"),
+    GIGA_PER_L("10⁹/L"),
+    TERA_PER_L("10¹²/L"),
     SCORE(""),
     EVENT(""),
     LUX("lx")
