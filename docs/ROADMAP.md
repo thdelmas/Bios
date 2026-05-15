@@ -395,38 +395,40 @@ missing `valueQuantity`, unparseable date) is captured in
 UI: "Import from FHIR" card on the entry screen with a SAF file
 picker + summary dialog.
 
-**Clinical bands (shipped for hsCRP + HbA1c + full lipid panel):**
+**Clinical bands (shipped for hsCRP + HbA1c + full lipid panel + vit D):**
 `ClinicalThresholds.biomarkerBands` carries three-band classifications
 (NORMAL / BORDERLINE / CONCERNING) per region. `BiomarkerBands` has a
 `concerningDirection` flag — `ABOVE` for most lab values (high is bad),
-`BELOW` for HDL where low is the cardiovascular concern.
+`BELOW` for HDL and 25-OH vitamin D where low is the clinical concern.
 `classify(value)` is inclusive at the lower edge so cut-off values slot
 into the higher-risk band by clinical convention. Universal thresholds:
 hsCRP (Ridker AHA/CDC 2003), HbA1c (ADA 2024), TC / LDL / HDL / TG (NCEP
-ATP III), ApoB (Sniderman 2019). `LongevityReferenceScreen` surfaces
-"Latest: 2.5 mg/L → Borderline" with a colour-coded label when a direct
-reading is available.
+ATP III), ApoB (Sniderman 2019), 25-OH vit D (Endocrine Society 2011).
+`LongevityReferenceScreen` surfaces "Latest: 2.5 mg/L → Borderline" with
+a colour-coded label when a direct reading is available.
 
 **Biomarker-anchored ConditionPatterns (shipped):** `SignalRule` gained
 `absoluteAbove` / `absoluteBelow` + an `isAbsolute` predicate. When set,
 `AnomalyDetector` reads the metric's latest reading via `fetchLatest` (no
 SENSOR filter, no time window) and compares against the hard cutoff — labs
 are dated and a six-month-old hsCRP is still meaningful.
-`alerts/BiomarkerConditionPatterns.kt` ships three patterns:
-`inflammation_signature` (required hsCRP ≥ 1.0 mg/L + sustained RHR ↑ +
-HRV ↓ over 7d; Ridker 2003 + Furman 2019), `prediabetes_signature`
-(required HbA1c ≥ 5.7% + sustained sleep-efficiency ↓ + RHR ↑ over 7d;
-ADA 2024 + Hall 2018), and `dyslipidemia_signature` (required LDL ≥
-160 mg/dL + at least one of HDL ≤ 40, TG ≥ 200, ApoB ≥ 120; NCEP ATP III
-+ Sniderman 2019). Biomarker gate rule is `required = true` so wearable
-drift alone never fires the pattern.
+`alerts/BiomarkerConditionPatterns.kt` ships four patterns:
+`inflammation_signature` (hsCRP ≥ 1.0 mg/L + sustained RHR ↑ + HRV ↓
+over 7d; Ridker 2003 + Furman 2019), `prediabetes_signature` (HbA1c ≥
+5.7% + sustained sleep-efficiency ↓ + RHR ↑ over 7d; ADA 2024 + Hall
+2018), `dyslipidemia_signature` (LDL ≥ 160 mg/dL + at least one of HDL
+≤ 40, TG ≥ 200, ApoB ≥ 120; NCEP ATP III + Sniderman 2019), and
+`vitamin_d_deficiency_signature` (25-OH D < 20 ng/mL + at least one of
+sleep efficiency ↓, active minutes ↓, mood-drift score ↑ over 7d;
+Endocrine Society 2011 + Romano/Roy/Anglin). Biomarker gate rule is
+`required = true` so wearable drift alone never fires the pattern.
 
 **Remaining work (separate PRs):**
 
-- Bands for vit D, thyroid panel, CBC. Each batch is one region table
+- Bands for the thyroid panel and CBC. Each batch is one region table
   addition + tests.
 - More biomarker patterns built on the absolute-threshold path:
-  low-thyroid, anemia, vitamin-D-deficiency signatures.
+  low-thyroid, anemia signatures.
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 
