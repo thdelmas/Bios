@@ -1,5 +1,7 @@
 package com.bios.app.ui.biomarkers
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -37,15 +40,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.bios.app.export.FhirImportSummary
+import com.bios.app.export.FhirImporter
 import com.bios.app.model.MetricReading
 import com.bios.app.ui.AppViewModel
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,7 +72,31 @@ fun BiomarkerEntryScreen(
     var selectedDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var pickerExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
+    var importSummary by remember { mutableStateOf<FhirImportSummary?>(null) }
     val recent by viewModel.recentBiomarkers.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val fhirLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            importing = true
+            scope.launch {
+                try {
+                    importSummary = FhirImporter.importFromUri(
+                        context = context,
+                        uri = uri,
+                        repo = viewModel.biomarkerEntryRepo
+                    )
+                    viewModel.refreshRecentBiomarkers()
+                } finally {
+                    importing = false
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.refreshRecentBiomarkers() }
 
@@ -163,6 +195,29 @@ fun BiomarkerEntryScreen(
                 }
             }
 
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Import from FHIR", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Bring in lab results as a FHIR R4 JSON Bundle (Observation resources). " +
+                            "Codes outside Bios's biomarker set are skipped and reported back.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            fhirLauncher.launch(
+                                arrayOf("application/json", "application/fhir+json", "*/*")
+                            )
+                        },
+                        enabled = !importing,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (importing) "Importing…" else "Pick a FHIR file")
+                    }
+                }
+            }
+
             Text("Recent entries", style = MaterialTheme.typography.titleSmall)
             if (recent.isEmpty()) {
                 Text(
@@ -200,6 +255,57 @@ fun BiomarkerEntryScreen(
             DatePicker(state = state)
         }
     }
+
+    importSummary?.let { summary ->
+        FhirImportSummaryDialog(summary = summary, onDismiss = { importSummary = null })
+    }
+}
+
+@Composable
+private fun FhirImportSummaryDialog(summary: FhirImportSummary, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                if (summary.isFileError) "Import failed"
+                else "Imported ${summary.acceptedCount} reading" +
+                    if (summary.acceptedCount == 1) "" else "s"
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (summary.isFileError) {
+                    Text(summary.fileError!!, style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    if (summary.acceptedCount > 0) {
+                        Text(
+                            summary.accepted.joinToString("\n") { r ->
+                                val mt = r.metricType
+                                "• ${mt.readableName}: ${"%.2f".format(r.value)} ${mt.unit.symbol}"
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (summary.skippedCount > 0) {
+                        Text(
+                            "Skipped ${summary.skippedCount}:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            summary.skipped.joinToString("\n") { s ->
+                                val code = s.loincCode?.let { " [$it]" } ?: ""
+                                "• ${s.reason}$code"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
 }
 
 @Composable
