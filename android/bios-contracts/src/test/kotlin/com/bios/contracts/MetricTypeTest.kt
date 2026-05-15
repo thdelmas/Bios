@@ -53,6 +53,12 @@ class MetricTypeTest {
     }
 
     @Test
+    fun stress_score_is_cardiovascular_score() {
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.STRESS_SCORE.domain)
+        assertEquals(MetricUnit.SCORE, MetricType.STRESS_SCORE.unit)
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
