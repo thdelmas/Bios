@@ -9,6 +9,25 @@ import java.util.Locale
  */
 object RegionConfigProvider {
 
+    /**
+     * Biomarker bands that are clinically identical across all six supported
+     * regions. ADA / WHO / NICE / JSCC all use the same cut-offs for these
+     * two assays; SI ↔ US unit conversions are handled by [UnitDisplay], not
+     * here. When a future biomarker has region-divergent bands (e.g. JDS
+     * uses different HbA1c bands historically; CRP cut-offs are universal),
+     * the region-specific config can override.
+     *
+     * Declared before [configs] so the eager region-config initializers
+     * below see it as initialized (Kotlin object props init top-down).
+     */
+    private val universalBiomarkerBands: Map<MetricType, BiomarkerBands> = mapOf(
+        // hsCRP (mg/L): <1.0 low, 1.0–3.0 moderate, ≥3.0 high
+        // (Ridker 2003; Pearson AHA/CDC 2003)
+        MetricType.HSCRP to BiomarkerBands(normalCeiling = 1.0, borderlineCeiling = 3.0),
+        // HbA1c (%): <5.7 normal, 5.7–6.5 prediabetic, ≥6.5 diabetic (ADA 2024)
+        MetricType.HBA1C to BiomarkerBands(normalCeiling = 5.7, borderlineCeiling = 6.5),
+    )
+
     private val configs: Map<String, RegionConfig> = mapOf(
         "US" to usConfig(),
         "GB" to gbConfig(),
@@ -62,7 +81,8 @@ object RegionConfigProvider {
             glucoseInMmol = false,
             fastingGlucoseConcern = 100.0,  // mg/dL (ADA pre-diabetes threshold)
             hypertensionSystolic = 130,     // ACC/AHA 2017 guideline
-            hypertensionDiastolic = 80
+            hypertensionDiastolic = 80,
+            biomarkerBands = universalBiomarkerBands
         ),
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = true,   // post-Dobbs protection
@@ -90,7 +110,8 @@ object RegionConfigProvider {
             glucoseInMmol = true,
             fastingGlucoseConcern = 5.5,    // mmol/L (NICE pre-diabetes threshold)
             hypertensionSystolic = 140,     // NICE guideline (higher than US)
-            hypertensionDiastolic = 90
+            hypertensionDiastolic = 90,
+            biomarkerBands = universalBiomarkerBands
         ),
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
@@ -116,7 +137,8 @@ object RegionConfigProvider {
             glucoseInMmol = true,
             fastingGlucoseConcern = 5.6,    // mmol/L (IDF threshold)
             hypertensionSystolic = 140,     // ESC/ESH guideline
-            hypertensionDiastolic = 90
+            hypertensionDiastolic = 90,
+            biomarkerBands = universalBiomarkerBands
         ),
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
@@ -144,7 +166,8 @@ object RegionConfigProvider {
             glucoseInMmol = true,
             fastingGlucoseConcern = 5.6,    // mmol/L (Diabetes Canada)
             hypertensionSystolic = 140,     // Hypertension Canada
-            hypertensionDiastolic = 90
+            hypertensionDiastolic = 90,
+            biomarkerBands = universalBiomarkerBands
         ),
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
@@ -170,7 +193,8 @@ object RegionConfigProvider {
             glucoseInMmol = true,
             fastingGlucoseConcern = 5.5,    // mmol/L (RACGP)
             hypertensionSystolic = 140,
-            hypertensionDiastolic = 90
+            hypertensionDiastolic = 90,
+            biomarkerBands = universalBiomarkerBands
         ),
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
@@ -196,7 +220,8 @@ object RegionConfigProvider {
             glucoseInMmol = false,
             fastingGlucoseConcern = 110.0,   // mg/dL (JDS threshold)
             hypertensionSystolic = 140,      // JSH guideline
-            hypertensionDiastolic = 90
+            hypertensionDiastolic = 90,
+            biomarkerBands = universalBiomarkerBands
         ),
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,

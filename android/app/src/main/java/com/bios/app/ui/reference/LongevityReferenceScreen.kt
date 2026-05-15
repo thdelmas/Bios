@@ -14,14 +14,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.BiomarkerReference
 import com.bios.app.alerts.BiomarkerReferences
+import com.bios.app.config.BiomarkerBand
+import com.bios.app.config.RegionConfigProvider
 import com.bios.contracts.MetricType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LongevityReferenceScreen(
     trackedMetrics: Set<MetricType>,
+    latestDirectBiomarkerValues: Map<MetricType, Double> = emptyMap(),
     onBack: () -> Unit
 ) {
+    val region = remember { RegionConfigProvider.forCurrentLocale() }
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("What Longevity Science Tracks") },
@@ -59,7 +63,14 @@ fun LongevityReferenceScreen(
 
             // Biomarker reference cards
             items(BiomarkerReferences.all) { biomarker ->
-                BiomarkerCard(biomarker, trackedMetrics)
+                BiomarkerCard(
+                    biomarker = biomarker,
+                    trackedMetrics = trackedMetrics,
+                    latestDirectValue = biomarker.directMetric?.let { latestDirectBiomarkerValues[it] },
+                    biomarkerBands = biomarker.directMetric?.let {
+                        region.clinicalThresholds.biomarkerBands[it]
+                    }
+                )
             }
 
             // Sources
@@ -168,7 +179,9 @@ private fun CoverageSummaryCard(trackedMetrics: Set<MetricType>) {
 @Composable
 private fun BiomarkerCard(
     biomarker: BiomarkerReference,
-    trackedMetrics: Set<MetricType>
+    trackedMetrics: Set<MetricType>,
+    latestDirectValue: Double? = null,
+    biomarkerBands: com.bios.app.config.BiomarkerBands? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -271,6 +284,19 @@ private fun BiomarkerCard(
                                 " — enter or import labs in Settings",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (directTracked && latestDirectValue != null && biomarkerBands != null) {
+                        val band = biomarkerBands.classify(latestDirectValue)
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(24.dp))
+                            Text(
+                                "Latest: ${"%.2f".format(latestDirectValue)} ${directMetric.unit.symbol} → ${band.label}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = band.color,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -378,3 +404,17 @@ private fun BiomarkerCard(
         }
     }
 }
+
+private val BiomarkerBand.label: String
+    get() = when (this) {
+        BiomarkerBand.NORMAL -> "Normal range"
+        BiomarkerBand.BORDERLINE -> "Borderline"
+        BiomarkerBand.HIGH -> "High range"
+    }
+
+private val BiomarkerBand.color: Color
+    get() = when (this) {
+        BiomarkerBand.NORMAL -> Color(0xFF4CAF50)
+        BiomarkerBand.BORDERLINE -> Color(0xFFFFA000)
+        BiomarkerBand.HIGH -> Color(0xFFD32F2F)
+    }
