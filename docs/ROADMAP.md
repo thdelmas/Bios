@@ -316,34 +316,29 @@ literature-backed signal) and stay within the manifesto. `sleep_score`
 is parked unless a future condition pattern needs a single-number input
 that can't be expressed as a rule over the components.
 
-### 8.5 Cycle inference from BBT [PARTIAL — cycle_phase shipped, cycle_day deferred]
+### 8.5 Cycle inference from BBT [LIVE — cycle_phase active, cycle_day deferred]
 
-`basal_body_temperature` is in the schema with no consumer; `cycle_day`
-and `cycle_phase` are planned-but-unimplemented. Cycle-phase inference
-ships now; persistence routing and `cycle_day` follow when their
-prerequisites land.
-
-- `cycle_phase` (WOMENS_HEALTH, CATEGORY) — **shipped.** Implemented as
-  the classic biphasic 3-day rule (Marshall 1968; Barron & Fehring 2005)
-  in `engine/CycleInference.kt`: follicular baseline = mean of the first
-  six daily BBTs, coverline = baseline + 0.1°C, ovulation = the day
-  before three consecutive daily BBTs sit strictly above the coverline.
-  Pure function over `MetricReading` rows — unopinionated about
-  persistence, so the caller routes the derived readings to the encrypted
-  reproductive-health DB once reproductive-data consent is on. Emits
+- `cycle_phase` (WOMENS_HEALTH, CATEGORY) — **live.** Classic biphasic
+  3-day rule (Marshall 1968; Barron & Fehring 2005) in
+  `engine/CycleInference.kt`: follicular baseline = mean of the first six
+  daily BBTs, coverline = baseline + 0.1°C, ovulation = the day before
+  three consecutive daily BBTs sit strictly above the coverline. Emits
   FOLLICULAR / OVULATORY / LUTEAL via the `CyclePhase` enum.
+- **BBT writer (shipped):** `data/BbtEntryRepo.kt` + `ui/bbt/BbtEntryScreen.kt`
+  reachable from Settings → "Track BBT". Owner enters a temperature
+  (35–39 °C) and date; the repo persists the BBT row through the same
+  `SELF_REPORTED` `DataSource` the biomarker entry surface uses, then
+  re-runs `CycleInference` over the last 90 days. Derived `cycle_phase`
+  rows use a deterministic id keyed by UTC day bucket so re-derivation
+  is idempotent under `OnConflictStrategy.REPLACE`. The screen surfaces
+  the current phase as soon as enough BBTs are in (≥9 daily samples
+  with a sustained rise).
 - `cycle_day` — **deferred.** The clinical numbering convention starts
   cycle day 1 at the first day of menstruation; BBT alone cannot
-  reliably distinguish menstrual from early follicular, so we'd have to
-  fabricate an origin or invent a non-standard numbering. Ships when a
+  reliably distinguish menstrual from early follicular. Ships when a
   menstruation-onset signal exists (manual log, or a wearable that
   reports it).
 - `MENSTRUAL` is reserved on the `CyclePhase` enum for the same reason.
-
-A BBT writer is still missing (no current adapter emits
-`basal_body_temperature`); the inference is dormant until a writer
-appears, mirroring how `SleepDerivations` waited for SLEEP_STAGE writers
-to come online.
 
 ### 8.6 Lab / biomarker inbound surface [FOUNDATION SHIPPED]
 
