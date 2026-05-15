@@ -90,6 +90,53 @@ object RegionConfigProvider {
             concerningDirection = BandDirection.ABOVE,
             lowCeiling = 2.3,
         ),
+        // -- CBC panel --
+        // Hemoglobin (g/dL): WHO anemia thresholds (<13 men, <12 non-pregnant
+        // women). Single threshold uses the female floor (12) as universal
+        // CONCERNING; 12–13.5 is the sex-dependent BORDERLINE zone where a
+        // male reading is anemic but a female reading is borderline; ≥13.5
+        // is NORMAL across sexes. (WHO 2011 — Haemoglobin concentrations
+        // for the diagnosis of anaemia)
+        MetricType.HEMOGLOBIN to BiomarkerBands(
+            normalCeiling = 12.0, borderlineCeiling = 13.5,
+            concerningDirection = BandDirection.BELOW,
+        ),
+        // Hematocrit (%): <36 anemic (female threshold; male anemia floor
+        // is ~41 but using the female value as the universal CONCERNING
+        // floor mirrors the hemoglobin treatment), 36–40 borderline-low,
+        // ≥40 normal. (Williams Hematology 10th ed. — adult reference
+        // ranges; WHO 2011)
+        MetricType.HEMATOCRIT to BiomarkerBands(
+            normalCeiling = 36.0, borderlineCeiling = 40.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
+        // WBC (giga/L = ×10⁹/L): 4.5–11 normal, <4.5 leukopenia (low extreme
+        // via lowCeiling), 11–15 borderline-high leukocytosis (mild
+        // infection / stress response window), ≥15 marked leukocytosis.
+        // Bidirectional — both extremes are clinically meaningful.
+        // (Williams Hematology 10th ed.; George 2009)
+        MetricType.WBC to BiomarkerBands(
+            normalCeiling = 11.0, borderlineCeiling = 15.0,
+            concerningDirection = BandDirection.ABOVE,
+            lowCeiling = 4.5,
+        ),
+        // RBC (tera/L = ×10¹²/L): <4.0 indicates anemia (combined-sex
+        // conservative floor — female lower bound 4.2, male 4.7), 4.0–4.5
+        // borderline-low, ≥4.5 normal. (Williams Hematology 10th ed.)
+        MetricType.RBC to BiomarkerBands(
+            normalCeiling = 4.0, borderlineCeiling = 4.5,
+            concerningDirection = BandDirection.BELOW,
+        ),
+        // Platelets (giga/L = ×10⁹/L): NIH/standard hematology grades
+        // thrombocytopenia: <100 clinically significant (CONCERNING),
+        // 100–150 mild (BORDERLINE), ≥150 normal. High extreme
+        // (thrombocytosis) is less common as an initial screening concern;
+        // a single-axis BELOW direction matches the dominant clinical use.
+        // (NCI Common Terminology Criteria; Williams Hematology 10th ed.)
+        MetricType.PLATELETS to BiomarkerBands(
+            normalCeiling = 100.0, borderlineCeiling = 150.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
     )
 
     private val configs: Map<String, RegionConfig> = mapOf(
