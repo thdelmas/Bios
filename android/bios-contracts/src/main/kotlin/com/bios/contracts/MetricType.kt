@@ -46,6 +46,9 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Women's Health
     BASAL_BODY_TEMPERATURE("basal_body_temperature", MetricUnit.CELSIUS, MetricDomain.WOMENS_HEALTH),
 
+    // Environment (phone-sensor adapter)
+    AMBIENT_LIGHT("ambient_light", MetricUnit.LUX, MetricDomain.ENVIRONMENT),
+
     // Companion signals (injected by W2F via ContentProvider)
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
     CIRCADIAN_PHASE_SHIFT("circadian_phase_shift", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
@@ -94,11 +97,12 @@ enum class MetricUnit(val symbol: String) {
     KILOGRAMS("kg"),
     MG_PER_DL("mg/dL"),
     SCORE(""),
-    EVENT("")
+    EVENT(""),
+    LUX("lx")
 }
 
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
     ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, INTAKE, SAFETY
+    MENTAL_HEALTH, INTAKE, SAFETY, ENVIRONMENT
 }
