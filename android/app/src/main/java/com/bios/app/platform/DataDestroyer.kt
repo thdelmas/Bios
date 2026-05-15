@@ -114,7 +114,10 @@ object DataDestroyer {
     private fun destroyTokens(context: Context) {
         try {
             OuraTokenStore(context).clearToken()
-            // Future adapters: WHOOP, Garmin, Withings, Dexcom token stores
+            // Withings (and any future provider stored in the generic
+            // ApiTokenStore: WHOOP, Garmin, Dexcom) wipes in one call —
+            // clearAll() drops every provider key in the encrypted prefs.
+            com.bios.app.ingest.ApiTokenStore(context).clearAll()
             Log.d(TAG, "API tokens cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear API tokens", e)

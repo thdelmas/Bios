@@ -113,6 +113,36 @@ class SignalQualityFilterTest {
         assertEquals(98.0, filtered[1].value, 0.01)
     }
 
+    // -- Body composition (Withings adapter) --
+
+    @Test
+    fun `body mass within 20 to 300 kg passes`() {
+        assertTrue(SignalQualityFilter.checkReading(reading(MetricType.BODY_MASS, 70.0)))
+        assertTrue(SignalQualityFilter.checkReading(reading(MetricType.BODY_MASS, 20.0)))
+        assertTrue(SignalQualityFilter.checkReading(reading(MetricType.BODY_MASS, 300.0)))
+    }
+
+    @Test
+    fun `body mass outside 20 to 300 kg is rejected`() {
+        assertFalse(SignalQualityFilter.checkReading(reading(MetricType.BODY_MASS, 5.0)))
+        assertFalse(SignalQualityFilter.checkReading(reading(MetricType.BODY_MASS, 350.0)))
+    }
+
+    @Test
+    fun `body fat percent within 3 to 60 passes`() {
+        assertTrue(SignalQualityFilter.checkReading(reading(MetricType.BODY_FAT_PCT, 18.0)))
+        assertTrue(SignalQualityFilter.checkReading(reading(MetricType.BODY_FAT_PCT, 3.0)))
+        assertTrue(SignalQualityFilter.checkReading(reading(MetricType.BODY_FAT_PCT, 60.0)))
+    }
+
+    @Test
+    fun `body fat percent outside 3 to 60 is rejected`() {
+        // Below 3% — beyond extreme male athlete; almost certainly artifact.
+        assertFalse(SignalQualityFilter.checkReading(reading(MetricType.BODY_FAT_PCT, 1.0)))
+        // Above 60% — beyond documented severe obesity range.
+        assertFalse(SignalQualityFilter.checkReading(reading(MetricType.BODY_FAT_PCT, 70.0)))
+    }
+
     @Test
     fun `unknown metric type passes through`() {
         val r = MetricReading(
