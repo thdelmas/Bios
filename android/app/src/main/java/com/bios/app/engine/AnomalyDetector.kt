@@ -174,7 +174,19 @@ class AnomalyDetector(
             var isActive = false
             var hasBaseline = false
 
-            if (rule.direction == DeviationDirection.ABSENT) {
+            if (rule.isAbsolute) {
+                // Absolute clinical threshold — no baseline, no time window.
+                // Treat "we have a reading" as having enough data, since labs
+                // are dated and a six-month-old hsCRP is still meaningful.
+                val (value, active) = evaluateAbsoluteRule(rule)
+                hasBaseline = value != null
+                if (hasBaseline) baselinesFound++
+                isActive = active
+                if (isActive) {
+                    activeCount++
+                    totalWeightedScore += rule.weight
+                }
+            } else if (rule.direction == DeviationDirection.ABSENT) {
                 // No baseline needed — "no events in window" is the signal.
                 hasBaseline = true
                 baselinesFound++
@@ -246,6 +258,17 @@ class AnomalyDetector(
         var totalWeight = 0.0
 
         for (rule in pattern.signalRules) {
+            if (rule.isAbsolute) {
+                val (value, active) = evaluateAbsoluteRule(rule)
+                if (rule.required && !active) return null
+                totalWeight += rule.weight
+                if (active && value != null) {
+                    activeDeviations[rule.metricType] = value
+                    totalWeightedScore += rule.weight
+                }
+                continue
+            }
+
             val recentValues = fetchRecentValues(rule.metricType, rule.minDurationHours)
             val (isActive, contributedScore) = when (rule.direction) {
                 DeviationDirection.ABSENT -> {
@@ -372,6 +395,23 @@ class AnomalyDetector(
         return readingDao.fetchValues(
             metricType.key, startMillis, endMillis, readingKindFilterFor(metricType)
         )
+    }
+
+    /**
+     * Evaluates an absolute-threshold rule against the metric's latest
+     * reading (no time window, no SENSOR filter — lab biomarkers are
+     * self-reported and dated months back). Returns the latest value plus
+     * whether it crosses the rule's clinical threshold. Returns
+     * `(null, false)` when no reading exists yet.
+     */
+    private suspend fun evaluateAbsoluteRule(
+        rule: com.bios.app.alerts.SignalRule
+    ): Pair<Double?, Boolean> {
+        val latest = readingDao.fetchLatest(rule.metricType.key, 1).firstOrNull()
+            ?: return null to false
+        val above = rule.absoluteAbove?.let { latest.value >= it } == true
+        val below = rule.absoluteBelow?.let { latest.value <= it } == true
+        return latest.value to (above || below)
     }
 }
 
