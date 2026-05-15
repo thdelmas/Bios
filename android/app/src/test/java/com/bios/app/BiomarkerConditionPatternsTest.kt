@@ -193,4 +193,45 @@ class BiomarkerConditionPatternsTest {
     fun vitamin_d_signature_requires_at_least_one_corroborator() {
         assertEquals(2, BiomarkerConditionPatterns.vitaminDDeficiencySignature.minActiveSignals)
     }
+
+    // -- hypothyroid_signature --
+
+    @Test
+    fun hypothyroid_signature_gates_on_TSH_at_or_above_4_mIU_per_L() {
+        val pattern = BiomarkerConditionPatterns.hypothyroidSignature
+        val tshRule = pattern.signalRules.first { it.metricType == MetricType.TSH }
+        assertTrue(tshRule.required)
+        assertTrue(tshRule.isAbsolute)
+        assertEquals(4.0, tshRule.absoluteAbove!!, 1e-9)
+        assertNull(tshRule.absoluteBelow)
+        assertEquals(ThresholdSource.LITERATURE, tshRule.source)
+    }
+
+    @Test
+    fun hypothyroid_signature_uses_free_T4_below_0_8_as_an_overt_hypo_corroborator() {
+        val pattern = BiomarkerConditionPatterns.hypothyroidSignature
+        val ft4Rule = pattern.signalRules.first { it.metricType == MetricType.FREE_T4 }
+        assertFalse("free T4 is corroborating, not gating", ft4Rule.required)
+        assertTrue(ft4Rule.isAbsolute)
+        assertEquals(0.8, ft4Rule.absoluteBelow!!, 1e-9)
+    }
+
+    @Test
+    fun hypothyroid_signature_corroborators_match_slow_metabolism_presentation() {
+        val pattern = BiomarkerConditionPatterns.hypothyroidSignature
+        val rhrRule = pattern.signalRules.first { it.metricType == MetricType.RESTING_HEART_RATE }
+        // Bradycardia: BELOW baseline, not absolute (this is a deviation
+        // rule, not a clinical-cutoff rule like the lab gates).
+        assertFalse(rhrRule.isAbsolute)
+        assertEquals(com.bios.app.alerts.DeviationDirection.BELOW, rhrRule.direction)
+
+        val activityRule = pattern.signalRules.first { it.metricType == MetricType.ACTIVE_MINUTES }
+        assertFalse(activityRule.isAbsolute)
+        assertEquals(com.bios.app.alerts.DeviationDirection.BELOW, activityRule.direction)
+    }
+
+    @Test
+    fun hypothyroid_signature_requires_at_least_one_corroborator() {
+        assertEquals(2, BiomarkerConditionPatterns.hypothyroidSignature.minActiveSignals)
+    }
 }

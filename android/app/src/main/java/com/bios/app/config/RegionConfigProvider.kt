@@ -58,6 +58,23 @@ object RegionConfigProvider {
             normalCeiling = 20.0, borderlineCeiling = 30.0,
             concerningDirection = BandDirection.BELOW,
         ),
+        // TSH (mIU/L): <0.4 hyperthyroid, 0.4–4.0 normal, 4.0–10.0 subclinical
+        // hypothyroid, ≥10.0 overt hypothyroid. Bidirectional: both extremes
+        // are clinical concerns (AACE/ATA 2012; ATA 2014 — adult guidelines).
+        MetricType.TSH to BiomarkerBands(
+            normalCeiling = 4.0, borderlineCeiling = 10.0,
+            concerningDirection = BandDirection.ABOVE,
+            lowCeiling = 0.4,
+        ),
+        // Free T4 (ng/dL) — hypo-focused window. <0.8 overt hypothyroid,
+        // 0.8–1.0 borderline-low, ≥1.0 normal-for-hypo-screening. The
+        // bidirectional hyperthyroid case (high free T4) is covered by the
+        // TSH low-extreme; a future PR can add a dual-direction free T4
+        // band once a hyperthyroid pattern lands. (AACE 2012)
+        MetricType.FREE_T4 to BiomarkerBands(
+            normalCeiling = 0.8, borderlineCeiling = 1.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
     )
 
     private val configs: Map<String, RegionConfig> = mapOf(
