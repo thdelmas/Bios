@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.PowerManager
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
@@ -28,6 +29,9 @@ class PhoneSensorAdapter(context: Context) {
     private val sensorManager =
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
+    private val powerManager =
+        context.getSystemService(Context.POWER_SERVICE) as PowerManager
+
     private val accelerometer: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
@@ -37,9 +41,13 @@ class PhoneSensorAdapter(context: Context) {
     private val stepCounter: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
+    private val lightSensor: Sensor? =
+        sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+
     val hasAccelerometer: Boolean get() = accelerometer != null
     val hasGyroscope: Boolean get() = gyroscope != null
     val hasStepCounter: Boolean get() = stepCounter != null
+    val hasAmbientLight: Boolean get() = lightSensor != null
 
     /**
      * Collects accelerometer samples for [durationMs] and returns derived metrics.
@@ -99,6 +107,49 @@ class PhoneSensorAdapter(context: Context) {
             sourceId = sourceId,
             confidence = ConfidenceTier.LOW.level
         )
+    }
+
+    /**
+     * Samples the ambient-light sensor once. Returns null when the sensor is
+     * absent or the device is non-interactive (screen off / pocket); in those
+     * states the lux reading would not reflect the owner's actual environment.
+     */
+    suspend fun sampleAmbientLight(sourceId: String): MetricReading? {
+        val sensor = lightSensor ?: return null
+        if (!powerManager.isInteractive) return null
+        val lux = firstValue(sensor, AMBIENT_LIGHT_TIMEOUT_MS) ?: return null
+        return MetricReading(
+            metricType = MetricType.AMBIENT_LIGHT.key,
+            value = lux.toDouble(),
+            timestamp = System.currentTimeMillis(),
+            sourceId = sourceId,
+            confidence = ConfidenceTier.LOW.level
+        )
+    }
+
+    /**
+     * Registers a one-shot listener and resumes with the first event's values[0],
+     * or null if the sensor doesn't fire within [timeoutMs].
+     */
+    private suspend fun firstValue(
+        sensor: Sensor,
+        timeoutMs: Long
+    ): Float? = kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
+        suspendCancellableCoroutine<Float> { cont ->
+            val listener = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent) {
+                    sensorManager.unregisterListener(this)
+                    if (cont.isActive) cont.resume(event.values[0])
+                }
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+            }
+            sensorManager.registerListener(
+                listener, sensor, SensorManager.SENSOR_DELAY_NORMAL
+            )
+            cont.invokeOnCancellation {
+                sensorManager.unregisterListener(listener)
+            }
+        }
     }
 
     /**
@@ -162,5 +213,6 @@ class PhoneSensorAdapter(context: Context) {
         private const val GRAVITY = 9.81f
         private const val ACTIVITY_THRESHOLD = 1.5 // m/s^2 above gravity
         private const val STEP_SAMPLE_MS = 500L
+        private const val AMBIENT_LIGHT_TIMEOUT_MS = 1_000L
     }
 }
