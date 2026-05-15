@@ -98,9 +98,15 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `12 metric types have LOINC mappings`() {
+    fun `body mass maps to LOINC 29463-7`() {
+        val (code, _) = loincCode(MetricType.BODY_MASS)!!
+        assertEquals("29463-7", code)
+    }
+
+    @Test
+    fun `13 metric types have LOINC mappings`() {
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(12, mapped)
+        assertEquals(13, mapped)
     }
 
     // --- UCUM code mappings ---
@@ -189,6 +195,7 @@ class FhirExporterTest {
             MetricType.SLEEP_DURATION -> "93832-4" to "Sleep duration"
             MetricType.SKIN_TEMPERATURE -> "8310-5" to "Body temperature"
             MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
+            MetricType.BODY_MASS -> "29463-7" to "Body weight"
             else -> null
         }
     }
@@ -205,6 +212,7 @@ class FhirExporterTest {
             MetricUnit.SECONDS -> "s"
             MetricUnit.COUNT -> "{count}"
             MetricUnit.KCAL -> "kcal"
+            MetricUnit.KILOGRAMS -> "kg"
             MetricUnit.MG_PER_DL -> "mg/dL"
             MetricUnit.SCORE -> "{score}"
             MetricUnit.CATEGORY -> "{category}"

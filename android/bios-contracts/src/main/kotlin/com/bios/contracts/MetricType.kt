@@ -38,6 +38,7 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
 
     // Metabolic
     BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
+    BODY_MASS("body_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
 
     // Recovery
     RECOVERY_SCORE("recovery_score", MetricUnit.SCORE, MetricDomain.RECOVERY),
@@ -90,6 +91,7 @@ enum class MetricUnit(val symbol: String) {
     SECONDS("s"),
     COUNT(""),
     KCAL("kcal"),
+    KILOGRAMS("kg"),
     MG_PER_DL("mg/dL"),
     SCORE(""),
     EVENT("")
