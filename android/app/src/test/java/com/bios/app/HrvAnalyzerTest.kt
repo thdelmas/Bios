@@ -140,4 +140,52 @@ class HrvAnalyzerTest {
         assertEquals(0.0, result.rmssd, 0.0)
         assertEquals(0.0, result.lnRmssd, 0.0)
     }
+
+    // -- Baevsky stress index --
+
+    @Test
+    fun `stress index is zero when all IBIs are identical`() {
+        // MxDMn = 0, SI undefined → return 0.
+        val ibis = listOf(800.0, 800.0, 800.0, 800.0, 800.0)
+        assertEquals(0.0, HrvAnalyzer.computeStressIndex(ibis), 0.0)
+    }
+
+    @Test
+    fun `stress index matches Baevsky formula for known IBIs`() {
+        // 800,805,810,815,820 → all in 50ms bin 16 (covers [800, 850)).
+        // Mo bin midpoint = (16 + 0.5) * 50ms = 825ms = 0.825s.
+        // AMo = 5/5 × 100 = 100%. MxDMn = (820 - 800)/1000 = 0.020s.
+        // SI = 100 / (2 × 0.825 × 0.020) = 100 / 0.033 ≈ 3030.3.
+        val ibis = listOf(800.0, 805.0, 810.0, 815.0, 820.0)
+        val si = HrvAnalyzer.computeStressIndex(ibis)
+        assertEquals(3030.30, si, 0.1)
+    }
+
+    @Test
+    fun `stress index falls as variability rises`() {
+        // Same beat count; the spread-out tachogram has both smaller AMo and
+        // larger MxDMn, so the Baevsky SI must drop.
+        val tight = listOf(800.0, 802.0, 798.0, 805.0, 795.0, 800.0)
+        val spread = listOf(700.0, 950.0, 720.0, 880.0, 750.0, 900.0)
+        assertTrue(
+            HrvAnalyzer.computeStressIndex(tight) > HrvAnalyzer.computeStressIndex(spread)
+        )
+    }
+
+    @Test
+    fun `stress index is zero for fewer than two IBIs`() {
+        assertEquals(0.0, HrvAnalyzer.computeStressIndex(listOf(800.0)), 0.0)
+        assertEquals(0.0, HrvAnalyzer.computeStressIndex(emptyList()), 0.0)
+    }
+
+    @Test
+    fun `analyze populates stressIndex consistent with direct call`() {
+        val ibis = listOf(800.0, 815.0, 795.0, 810.0, 805.0, 820.0, 790.0)
+        val result = HrvAnalyzer.analyze(ibis)!!
+        val direct = HrvAnalyzer.computeStressIndex(
+            HrvAnalyzer.rejectArtifacts(ibis)
+        )
+        assertEquals(direct, result.stressIndex, 1e-9)
+        assertTrue(result.stressIndex > 0.0)
+    }
 }
