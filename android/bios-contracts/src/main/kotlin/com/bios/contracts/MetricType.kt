@@ -56,6 +56,13 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // Environment (phone-sensor adapter)
     AMBIENT_LIGHT("ambient_light", MetricUnit.LUX, MetricDomain.ENVIRONMENT),
 
+    // Biomarkers (lab-drawn or imported via FHIR; slow-moving, no streaming).
+    // First wave matches the clinical concepts already described in
+    // alerts/BiomarkerReference.kt — direct readings displace the wearable
+    // proxies when an owner imports labs.
+    HBA1C("hba1c", MetricUnit.PERCENT, MetricDomain.BIOMARKER),
+    HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER),
+
     // Companion signals (injected by W2F via ContentProvider)
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
     CIRCADIAN_PHASE_SHIFT("circadian_phase_shift", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
@@ -103,6 +110,7 @@ enum class MetricUnit(val symbol: String) {
     KCAL("kcal"),
     KILOGRAMS("kg"),
     MG_PER_DL("mg/dL"),
+    MG_PER_L("mg/L"),
     SCORE(""),
     EVENT(""),
     LUX("lx")
@@ -111,5 +119,5 @@ enum class MetricUnit(val symbol: String) {
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
     ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, INTAKE, SAFETY, ENVIRONMENT
+    MENTAL_HEALTH, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER
 }

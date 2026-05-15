@@ -345,7 +345,7 @@ A BBT writer is still missing (no current adapter emits
 appears, mirroring how `SleepDerivations` waited for SLEEP_STAGE writers
 to come online.
 
-### 8.6 Lab / biomarker inbound surface
+### 8.6 Lab / biomarker inbound surface [FOUNDATION SHIPPED]
 
 FHIR R4 export is shipped ([§Current State](#current-state-v020)); FHIR
 *import* is the symmetric add. Accept lab results (CBC, lipid, ApoB,
@@ -357,6 +357,30 @@ thresholds already region-config'd per the localization layer).
 No new companion required — the data is canonical multi-system body
 signal, and the import surface is a thin settings flow on top of the
 existing FHIR machinery.
+
+**Foundation (shipped):**
+
+- `BIOMARKER` domain added to `MetricDomain`; `MG_PER_L` added to
+  `MetricUnit` (UCUM "mg/L").
+- First-wave biomarker keys: `HBA1C` (PERCENT, LOINC 4548-4) and
+  `HSCRP` (MG_PER_L, LOINC 30522-7). Both already have clinical-context
+  entries in `alerts/BiomarkerReference.kt`; direct readings will
+  displace the wearable proxies in those references when an owner
+  imports labs.
+- LOINC + UCUM mappings wired in `export/FhirExporter.kt` so the
+  existing FHIR *export* round-trips the new keys today.
+
+**Remaining work (separate PRs):**
+
+- Expanded biomarker wave: CBC (WBC, RBC, hemoglobin, hematocrit,
+  platelets), full lipid panel (total cholesterol, LDL, HDL,
+  triglycerides), ApoB, vitamin D 25-OH, thyroid (TSH, free T4, free T3).
+  Each batch ships with the units it needs (NG_PER_ML, MIU_PER_L,
+  G_PER_DL, etc.) and the matching LOINC codes.
+- FHIR R4 Observation parser: file picker + LOINC → MetricType mapping.
+- Manual structured-entry form for owners without a FHIR-emitting lab.
+- Region-aware reference-range expansion in `RegionConfigProvider`'s
+  `ClinicalThresholds`.
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 
