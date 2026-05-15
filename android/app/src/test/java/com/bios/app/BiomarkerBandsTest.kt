@@ -37,8 +37,8 @@ class BiomarkerBandsTest {
     @Test
     fun classify_returns_HIGH_at_or_above_borderline_ceiling() {
         val bands = BiomarkerBands(normalCeiling = 1.0, borderlineCeiling = 3.0)
-        assertEquals(BiomarkerBand.HIGH, bands.classify(3.0))
-        assertEquals(BiomarkerBand.HIGH, bands.classify(10.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(3.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(10.0))
     }
 
     @Test
@@ -62,8 +62,8 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.NORMAL, bands!!.classify(0.5))
         assertEquals(BiomarkerBand.BORDERLINE, bands.classify(1.0))
         assertEquals(BiomarkerBand.BORDERLINE, bands.classify(2.5))
-        assertEquals(BiomarkerBand.HIGH, bands.classify(3.0))
-        assertEquals(BiomarkerBand.HIGH, bands.classify(10.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(3.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(10.0))
     }
 
     // -- HbA1c literature thresholds --
@@ -77,24 +77,105 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.NORMAL, bands!!.classify(5.0))
         assertEquals(BiomarkerBand.BORDERLINE, bands.classify(5.7))
         assertEquals(BiomarkerBand.BORDERLINE, bands.classify(6.4))
-        assertEquals(BiomarkerBand.HIGH, bands.classify(6.5))
-        assertEquals(BiomarkerBand.HIGH, bands.classify(9.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(6.5))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(9.0))
     }
 
     // -- Region coverage --
 
     @Test
     fun every_supported_region_carries_the_universal_biomarker_bands() {
+        val expected = setOf(
+            MetricType.HSCRP, MetricType.HBA1C,
+            MetricType.TOTAL_CHOLESTEROL, MetricType.LDL_CHOLESTEROL,
+            MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
+            MetricType.APO_B,
+        )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
-            assertNotNull(
-                "$regionCode should ship hsCRP bands",
-                bands[MetricType.HSCRP]
-            )
-            assertNotNull(
-                "$regionCode should ship HbA1c bands",
-                bands[MetricType.HBA1C]
-            )
+            for (key in expected) {
+                assertNotNull("$regionCode should ship ${key.key} bands", bands[key])
+            }
         }
+    }
+
+    // -- BELOW-direction classification (HDL is the inverse case) --
+
+    @Test
+    fun classify_returns_NORMAL_above_borderline_ceiling_when_direction_is_BELOW() {
+        val bands = BiomarkerBands(
+            normalCeiling = 40.0, borderlineCeiling = 60.0,
+            concerningDirection = com.bios.app.config.BandDirection.BELOW,
+        )
+        // High HDL is protective.
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(70.0))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(60.0))
+    }
+
+    @Test
+    fun classify_returns_BORDERLINE_inside_the_window_when_direction_is_BELOW() {
+        val bands = BiomarkerBands(
+            normalCeiling = 40.0, borderlineCeiling = 60.0,
+            concerningDirection = com.bios.app.config.BandDirection.BELOW,
+        )
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(40.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(50.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(59.999))
+    }
+
+    @Test
+    fun classify_returns_CONCERNING_below_normal_ceiling_when_direction_is_BELOW() {
+        val bands = BiomarkerBands(
+            normalCeiling = 40.0, borderlineCeiling = 60.0,
+            concerningDirection = com.bios.app.config.BandDirection.BELOW,
+        )
+        // Low HDL is the cardiovascular concern.
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(39.999))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(25.0))
+    }
+
+    // -- Lipid panel literature thresholds --
+
+    @Test
+    fun lipid_panel_bands_match_NCEP_ATP_III_thresholds() {
+        val bands = RegionConfigProvider.forRegion("US").clinicalThresholds.biomarkerBands
+
+        // Total cholesterol: <200 desirable, 200-239 borderline, ≥240 high.
+        val tc = bands[MetricType.TOTAL_CHOLESTEROL]!!
+        assertEquals(BiomarkerBand.NORMAL, tc.classify(180.0))
+        assertEquals(BiomarkerBand.BORDERLINE, tc.classify(200.0))
+        assertEquals(BiomarkerBand.CONCERNING, tc.classify(240.0))
+
+        // LDL: <100 optimal, 100-160 borderline, ≥160 high.
+        val ldl = bands[MetricType.LDL_CHOLESTEROL]!!
+        assertEquals(BiomarkerBand.NORMAL, ldl.classify(95.0))
+        assertEquals(BiomarkerBand.BORDERLINE, ldl.classify(100.0))
+        assertEquals(BiomarkerBand.CONCERNING, ldl.classify(160.0))
+
+        // Triglycerides: <150 normal, 150-200 borderline, ≥200 high.
+        val tg = bands[MetricType.TRIGLYCERIDES]!!
+        assertEquals(BiomarkerBand.NORMAL, tg.classify(140.0))
+        assertEquals(BiomarkerBand.BORDERLINE, tg.classify(150.0))
+        assertEquals(BiomarkerBand.CONCERNING, tg.classify(200.0))
+    }
+
+    @Test
+    fun hdl_band_inverts_so_low_values_are_concerning() {
+        val hdl = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.HDL_CHOLESTEROL]!!
+        assertEquals(BiomarkerBand.CONCERNING, hdl.classify(35.0))
+        assertEquals(BiomarkerBand.BORDERLINE, hdl.classify(40.0))
+        assertEquals(BiomarkerBand.BORDERLINE, hdl.classify(55.0))
+        assertEquals(BiomarkerBand.NORMAL, hdl.classify(60.0))
+        assertEquals(BiomarkerBand.NORMAL, hdl.classify(75.0))
+    }
+
+    @Test
+    fun apob_band_uses_Sniderman_2019_thresholds() {
+        val apob = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.APO_B]!!
+        assertEquals(BiomarkerBand.NORMAL, apob.classify(80.0))
+        assertEquals(BiomarkerBand.BORDERLINE, apob.classify(90.0))
+        assertEquals(BiomarkerBand.CONCERNING, apob.classify(120.0))
     }
 }
