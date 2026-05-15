@@ -141,7 +141,7 @@ class BiomarkerBandsTest {
             MetricType.TOTAL_CHOLESTEROL, MetricType.LDL_CHOLESTEROL,
             MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
             MetricType.APO_B, MetricType.VITAMIN_D_25OH,
-            MetricType.TSH, MetricType.FREE_T4,
+            MetricType.TSH, MetricType.FREE_T4, MetricType.FREE_T3,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
@@ -261,6 +261,26 @@ class BiomarkerBandsTest {
         // ≥1.0 normal (for hypo screening)
         assertEquals(BiomarkerBand.NORMAL, ft4.classify(1.0))
         assertEquals(BiomarkerBand.NORMAL, ft4.classify(1.5))
+    }
+
+    @Test
+    fun free_t3_band_uses_bidirectional_AACE_ATA_thresholds() {
+        val ft3 = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.FREE_T3]!!
+        // <2.3 pg/mL = hypothyroid concern (low extreme via lowCeiling)
+        assertEquals(BiomarkerBand.CONCERNING, ft3.classify(1.5))
+        assertEquals(BiomarkerBand.CONCERNING, ft3.classify(2.299))
+        // 2.3–4.2 = normal
+        assertEquals(BiomarkerBand.NORMAL, ft3.classify(2.3))
+        assertEquals(BiomarkerBand.NORMAL, ft3.classify(3.2))
+        assertEquals(BiomarkerBand.NORMAL, ft3.classify(4.199))
+        // 4.2–6.5 = borderline-high (subclinical / early thyrotoxicosis)
+        assertEquals(BiomarkerBand.BORDERLINE, ft3.classify(4.2))
+        assertEquals(BiomarkerBand.BORDERLINE, ft3.classify(5.5))
+        assertEquals(BiomarkerBand.BORDERLINE, ft3.classify(6.499))
+        // ≥6.5 = overt hyperthyroid / T3-toxicosis (CONCERNING high)
+        assertEquals(BiomarkerBand.CONCERNING, ft3.classify(6.5))
+        assertEquals(BiomarkerBand.CONCERNING, ft3.classify(10.0))
     }
 
     @Test
