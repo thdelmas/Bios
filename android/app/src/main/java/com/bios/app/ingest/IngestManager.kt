@@ -10,6 +10,7 @@ import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
 import com.bios.app.model.SensorType
 import com.bios.app.model.SourceType
+import com.bios.contracts.MetricType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -109,12 +110,29 @@ class IngestManager(
 
         updateDataAge()
 
-        // Only fetch full history on first launch; otherwise just sync recent data
-        if (_dataAgeDays.value == 0) {
+        // Backfill on first launch (no data at all) OR when a primary metric is
+        // empty — handles the case where the user installed Bios, granted HC
+        // permission later, or only just connected a watch. Without this, the
+        // 24h syncRecentData loop would never recover the missing history.
+        if (_dataAgeDays.value == 0 || hasEmptyPrimaryMetric()) {
             syncHistoricalData()
         } else {
             syncRecentData()
         }
+    }
+
+    private suspend fun hasEmptyPrimaryMetric(): Boolean {
+        // Only worth retrying the historical pull when a wearable-history
+        // source actually exists. Phone-only setups can't backfill HR no
+        // matter how many times we ask, so don't burn syncs.
+        val hasWearableHistorySource = healthConnectSourceId != null ||
+            gadgetbridgeSourceId != null ||
+            ouraSourceId != null
+        if (!hasWearableHistorySource) return false
+        for (metric in PRIMARY_METRICS_FOR_BACKFILL) {
+            if (readingDao.count(metric.key) == 0) return true
+        }
+        return false
     }
 
     // MARK: - Sync
@@ -339,5 +357,15 @@ class IngestManager(
 
     companion object {
         private const val SENSOR_SAMPLE_DURATION_MS = 10_000L // 10 seconds
+
+        // Metrics whose absence triggers a re-backfill on the next setup().
+        // Limited to wearable-sourced metrics so a phone-only run (steps from
+        // the pedometer) doesn't repeatedly attempt full historical pulls
+        // for metrics no source can provide.
+        private val PRIMARY_METRICS_FOR_BACKFILL = listOf(
+            MetricType.HEART_RATE,
+            MetricType.RESTING_HEART_RATE,
+            MetricType.SLEEP_DURATION,
+        )
     }
 }

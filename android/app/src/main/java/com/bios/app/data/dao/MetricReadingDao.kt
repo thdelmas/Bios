@@ -59,6 +59,27 @@ interface MetricReadingDao {
     @Query("SELECT COUNT(*) FROM metric_readings")
     suspend fun countAll(): Int
 
+    // Counts SENSOR-kind readings only — matches BaselineEngine's filter, so the
+    // result reflects what's actually eligible to seed a baseline.
+    @Query("""
+        SELECT COUNT(*) FROM metric_readings mr
+        INNER JOIN data_sources ds ON mr.sourceId = ds.id
+        WHERE mr.metricType = :metricType
+          AND mr.timestamp >= :startMillis
+          AND mr.timestamp <= :endMillis
+          AND mr.isPrimary = 1
+          AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
+    """)
+    suspend fun countInRange(
+        metricType: String,
+        startMillis: Long,
+        endMillis: Long,
+        readingKind: String? = null
+    ): Int
+
+    @Query("SELECT MAX(timestamp) FROM metric_readings WHERE metricType = :metricType AND isPrimary = 1")
+    suspend fun lastTimestampFor(metricType: String): Long?
+
     @Query("""
         SELECT AVG(mr.value) FROM metric_readings mr
         INNER JOIN data_sources ds ON mr.sourceId = ds.id
