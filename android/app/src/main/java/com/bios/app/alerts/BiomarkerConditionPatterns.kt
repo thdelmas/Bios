@@ -26,7 +26,7 @@ object BiomarkerConditionPatterns {
     val all by lazy {
         listOf(
             inflammationSignature, prediabetesSignature, dyslipidemiaSignature,
-            vitaminDDeficiencySignature,
+            vitaminDDeficiencySignature, hypothyroidSignature,
         )
     }
 
@@ -208,5 +208,57 @@ object BiomarkerConditionPatterns {
             "Anglin RES et al. (2013) — Vitamin D deficiency and depression in adults",
         ),
         earlyDetection = "Vitamin D deficiency develops silently over months. Pairing a measured lab value with the wearable signals lets the pattern surface a deficiency that's started affecting sleep / activity / mood before symptoms become explicit.",
+    )
+
+    /**
+     * TSH ≥ 4.0 mIU/L (AACE/ATA 2012 subclinical-hypothyroidism threshold)
+     * paired with at least one of: free T4 below 0.8 ng/dL (overt
+     * hypothyroidism), sustained resting-HR bradycardia, or reduced active
+     * minutes. Hypothyroidism is ~10× more common than hyperthyroidism in
+     * adults and presents with the classic slow-metabolism signature
+     * (bradycardia + fatigue) that wearables can corroborate.
+     *
+     * Hyperthyroidism (TSH below 0.4) is captured by the bands but doesn't
+     * have its own pattern yet — a dedicated hyperthyroid signature with
+     * tachycardia + RHR↑ + active minutes↑ corroborators is a future PR.
+     */
+    val hypothyroidSignature = ConditionPattern(
+        id = "biomarker_hypothyroid_signature",
+        title = "Elevated TSH with corroborating low-metabolism signals",
+        category = ConditionCategory.METABOLIC,
+        signalRules = listOf(
+            SignalRule(
+                MetricType.TSH, DeviationDirection.ABOVE, 0.0, 0, 1.5,
+                ThresholdSource.LITERATURE,
+                "AACE/ATA 2012 — TSH ≥4.0 mIU/L is the subclinical-hypothyroid threshold",
+                required = true,
+                absoluteAbove = 4.0,
+            ),
+            SignalRule(
+                MetricType.FREE_T4, DeviationDirection.BELOW, 0.0, 0, 1.2,
+                ThresholdSource.LITERATURE,
+                "AACE 2012 — free T4 <0.8 ng/dL alongside elevated TSH indicates overt hypothyroidism",
+                absoluteBelow = 0.8,
+            ),
+            SignalRule(
+                MetricType.RESTING_HEART_RATE, DeviationDirection.BELOW, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE,
+                "Klein & Ojamaa 2001 — hypothyroidism produces sinus bradycardia via reduced sympathetic drive",
+            ),
+            SignalRule(
+                MetricType.ACTIVE_MINUTES, DeviationDirection.BELOW, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE,
+                "Surks et al. 2004 — fatigue and reduced exercise tolerance are dominant hypothyroid symptoms",
+            ),
+        ),
+        minActiveSignals = 2,
+        explanation = "The most recent TSH reading sits at or above 4.0 mIU/L — the AACE/ATA subclinical-hypothyroidism threshold — while at least one corroborating signal of slowed metabolism has appeared: low free T4, sustained bradycardia, or reduced activity. The lab anchors the pattern; the wearable signals are individually nonspecific.",
+        suggestedAction = "Discuss the TSH and free T4 values along with the resting-HR and active-minutes trends with a healthcare provider. A repeat TSH 6–12 weeks later is the standard clinical follow-up for elevated readings.",
+        references = listOf(
+            "Garber JR et al. (2012) — Clinical practice guidelines for hypothyroidism (AACE/ATA)",
+            "Klein I, Ojamaa K (2001) — Thyroid hormone and the cardiovascular system",
+            "Surks MI et al. (2004) — Subclinical thyroid disease: scientific review and guidelines",
+        ),
+        earlyDetection = "Subclinical hypothyroidism is silent for months and the wearable signature (bradycardia + fatigue) overlaps with fitness, illness recovery, and overtraining. Pairing it with a measured TSH narrows the signal to thyroid involvement.",
     )
 }
