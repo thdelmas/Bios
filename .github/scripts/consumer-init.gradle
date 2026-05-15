@@ -1,0 +1,16 @@
+// Injects mavenLocal() into both pluginManagement and dependencyResolutionManagement
+// for any consumer build invoked with `-I consumer-init.gradle`. Lets the cross-repo
+// contracts workflow ship the bios-contracts AAR through ~/.m2 without editing each
+// companion's settings.gradle. Companions still need to declare the dependency
+// explicitly; this script only makes it resolvable.
+beforeSettings { settings ->
+    settings.pluginManagement.repositories {
+        mavenLocal()
+    }
+    settings.dependencyResolutionManagement {
+        repositoriesMode.set(org.gradle.api.initialization.resolve.RepositoriesMode.PREFER_SETTINGS)
+        repositories {
+            mavenLocal()
+        }
+    }
+}

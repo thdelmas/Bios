@@ -1,0 +1,118 @@
+name: Cross-repo contracts
+
+# Builds the bios-contracts AAR and verifies each companion consumer still
+# compiles against the freshly-published artifact. Today most companions do
+# not yet depend on bios-contracts, so this workflow doubles as a build-health
+# probe for those repos. As soon as a companion declares the dependency, this
+# workflow becomes a real contract gate.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/bios-contracts/**'
+      - '.github/workflows/cross-repo-contracts.yml'
+      - '.github/scripts/consumer-init.gradle'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/bios-contracts/**'
+      - '.github/workflows/cross-repo-contracts.yml'
+      - '.github/scripts/consumer-init.gradle'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-contracts:
+    name: Publish bios-contracts to local maven
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Publish bios-contracts to ~/.m2
+        working-directory: android
+        run: ./gradlew :bios-contracts:publishToMavenLocal
+
+      - name: Upload contracts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bios-contracts-m2
+          path: ~/.m2/repository/com/bios
+          retention-days: 1
+
+  consumer-build:
+    name: Build ${{ matrix.consumer.name }}
+    needs: publish-contracts
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        consumer:
+          - name: Smokeless
+            repo: thdelmas/Smokeless
+            gradle-dir: .
+          - name: SoulRadio
+            repo: thdelmas/SoulRadio
+            gradle-dir: .
+          - name: Virgil
+            repo: thdelmas/Virgil
+            gradle-dir: android
+          - name: Fil
+            repo: thdelmas/Fil
+            gradle-dir: android
+    steps:
+      - name: Checkout Bios (for init script)
+        uses: actions/checkout@v4
+        with:
+          path: bios
+
+      - name: Checkout ${{ matrix.consumer.name }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.consumer.repo }}
+          path: consumer
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-consumer-${{ matrix.consumer.name }}-${{ hashFiles('consumer/**/*.gradle*', 'consumer/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-consumer-${{ matrix.consumer.name }}-
+            gradle-
+
+      - name: Download contracts artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bios-contracts-m2
+          path: ~/.m2/repository/com/bios
+
+      - name: Build ${{ matrix.consumer.name }} against published contracts
+        working-directory: consumer/${{ matrix.consumer.gradle-dir }}
+        run: ./gradlew assembleDebug -I "$GITHUB_WORKSPACE/bios/.github/scripts/consumer-init.gradle" --stacktrace
