@@ -1,9 +1,11 @@
 package com.bios.app
 
+import com.bios.app.engine.BaselineEngine
 import com.bios.app.model.BaselineContext
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.TrendDirection
+import com.bios.app.ui.trends.noBaselineMessage
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -132,5 +134,68 @@ class TrendsScreenTest {
         val falling = baseline(trendSlope = -0.32)
         assertTrue(String.format("%+.2f", rising.trendSlope).startsWith("+"))
         assertTrue(String.format("%+.2f", falling.trendSlope).startsWith("-"))
+    }
+
+    // -- noBaselineMessage --
+    // The previous "Bios needs at least 7 days of data" line was misleading
+    // when the real problem was that the watch never wrote anything to Health
+    // Connect. These tests pin the message branches that replaced it.
+
+    @Test
+    fun `noBaselineMessage flags zero data with a setup hint`() {
+        val (title, body) = noBaselineMessage("Heart rate", null)
+        assertTrue(title.contains("No Heart rate data"))
+        assertTrue(body.contains("Health Connect"))
+    }
+
+    @Test
+    fun `noBaselineMessage flags zero data when coverage is empty`() {
+        val cov = BaselineEngine.Coverage(
+            sensorSamplesInWindow = 0,
+            totalSamples = 0,
+            lastTimestamp = null
+        )
+        val (title, body) = noBaselineMessage("Heart rate", cov)
+        assertTrue(title.contains("No Heart rate data"))
+        assertTrue(body.contains("hasn't received"))
+    }
+
+    @Test
+    fun `noBaselineMessage flags stale feed when last reading is days old`() {
+        val twoDaysAgo = System.currentTimeMillis() - 3L * 24 * 3600 * 1000
+        val cov = BaselineEngine.Coverage(
+            sensorSamplesInWindow = 5,
+            totalSamples = 100,
+            lastTimestamp = twoDaysAgo
+        )
+        val (title, body) = noBaselineMessage("Heart rate", cov)
+        assertTrue(title.contains("stale"))
+        assertTrue(body.contains("100"))
+    }
+
+    @Test
+    fun `noBaselineMessage reports sample shortfall when below baseline minimum`() {
+        val recent = System.currentTimeMillis() - 3600_000L
+        val cov = BaselineEngine.Coverage(
+            sensorSamplesInWindow = 4,
+            totalSamples = 4,
+            lastTimestamp = recent
+        )
+        val (title, body) = noBaselineMessage("Heart rate", cov)
+        assertTrue(title.contains("Building"))
+        assertTrue(body.contains("4 sensor reading"))
+        assertTrue(body.contains(BaselineEngine.MIN_SAMPLES_FOR_BASELINE.toString()))
+    }
+
+    @Test
+    fun `noBaselineMessage falls back to baseline pending when data is sufficient`() {
+        val recent = System.currentTimeMillis() - 3600_000L
+        val cov = BaselineEngine.Coverage(
+            sensorSamplesInWindow = 50,
+            totalSamples = 50,
+            lastTimestamp = recent
+        )
+        val (title, _) = noBaselineMessage("Heart rate", cov)
+        assertTrue(title.contains("pending"))
     }
 }
