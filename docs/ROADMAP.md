@@ -337,13 +337,24 @@ No new companion required — the data is canonical multi-system body
 signal, and the import surface is a thin settings flow on top of the
 existing FHIR machinery.
 
-### 8.7 Stress score — Bios-only autonomic derivation
+### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
+
+`stress_score` (CARDIOVASCULAR, SCORE) is computed as Baevsky's Stress
+Index (SI, "Index of Tension") over the cleaned RR tachogram:
+`SI = AMo / (2 × Mo × MxDMn)` on 50ms bins, computed in
+`HrvAnalyzer.HrvResult.stressIndex` and emitted by the PPG and
+direct-sensor adapters alongside `HEART_RATE_VARIABILITY` and
+`PARASYMPATHETIC_TONE`. Baevsky SI rises with sympathetic activation /
+parasympathetic withdrawal; typical rest range ~50–150, with >200
+indicating elevated sympathetic tone (Baevsky & Berseneva 2008). Zero
+in the degenerate constant-IBI case.
 
 Audit ownership debate resolved: `stress_score` is a *passive autonomic
-derivation* over HRV/RHR, not a behavioral score. Bios derives it; W2F
-consumes if it wants, no W2F-side write. Avoids overlap with
-`mood_drift_score` and keeps the boundary clean (W2F owns mood; Bios
-owns autonomic state). Domain: `CARDIOVASCULAR`.
+derivation* over HRV (RHR was considered; the chosen Baevsky formula
+uses the tachogram alone, so no baseline coupling is needed). Bios
+derives it; W2F consumes if it wants, no W2F-side write. Avoids overlap
+with `mood_drift_score` and keeps the boundary clean (W2F owns mood;
+Bios owns autonomic state).
 
 ### 8.8 Acceptance for Phase 8
 

@@ -48,6 +48,7 @@ object HrvAnalyzer {
             sdnn = sdnn,
             pnn50 = pnn50,
             lnRmssd = if (rmssd > 0.0) ln(rmssd) else 0.0,
+            stressIndex = computeStressIndex(clean),
             meanIbiMs = meanIbi,
             meanHrBpm = meanHr,
             cleanIbiCount = clean.size,
@@ -115,6 +116,44 @@ object HrvAnalyzer {
         return (nn50.toDouble() / diffs.size) * 100.0
     }
 
+    /** RR histogram bin width for Baevsky stress index. 50ms is the standard. */
+    private const val STRESS_BIN_MS = 50.0
+
+    /**
+     * Baevsky's Stress Index (SI, "Index of Tension") — a geometric autonomic
+     * derivation over the RR tachogram. Rises with sympathetic activation and
+     * parasympathetic withdrawal.
+     *
+     *   SI = AMo / (2 × Mo × MxDMn)
+     *
+     * with Mo and MxDMn in seconds and AMo in percent. Bins are 50ms wide
+     * (the canonical width in Baevsky's work).
+     *
+     * Typical resting values are ~50–150; >200 indicates elevated sympathetic
+     * tone. References: Baevsky & Berseneva 2008; Kobelev et al. 2024 review.
+     *
+     * Returns 0.0 when MxDMn is zero (constant-IBI degenerate case — no
+     * variability, SI undefined).
+     */
+    internal fun computeStressIndex(ibis: List<Double>): Double {
+        if (ibis.size < 2) return 0.0
+        val maxMs = ibis.max()
+        val minMs = ibis.min()
+        val mxDMnSec = (maxMs - minMs) / 1000.0
+        if (mxDMnSec <= 0.0) return 0.0
+
+        val bins = HashMap<Int, Int>()
+        for (ibi in ibis) {
+            val bin = (ibi / STRESS_BIN_MS).toInt()
+            bins[bin] = (bins[bin] ?: 0) + 1
+        }
+        val modeEntry = bins.maxByOrNull { it.value } ?: return 0.0
+        val moSec = ((modeEntry.key + 0.5) * STRESS_BIN_MS) / 1000.0
+        val amoPct = (modeEntry.value.toDouble() / ibis.size) * 100.0
+
+        return amoPct / (2.0 * moSec * mxDMnSec)
+    }
+
     data class HrvResult(
         /** Root Mean Square of Successive Differences (ms). Primary metric. */
         val rmssd: Double,
@@ -129,6 +168,14 @@ object HrvAnalyzer {
          * (Shaffer & Ginsberg 2017, Kleiger 2005). Zero when rmssd is zero.
          */
         val lnRmssd: Double,
+        /**
+         * Baevsky's Stress Index (SI, "Index of Tension"). Geometric autonomic
+         * derivation over the RR tachogram; rises with sympathetic activation
+         * and parasympathetic withdrawal. Typical rest range ~50–150; >200
+         * indicates elevated sympathetic tone. Zero in the degenerate
+         * constant-IBI case (Baevsky & Berseneva 2008).
+         */
+        val stressIndex: Double,
         /** Mean inter-beat interval (ms). */
         val meanIbiMs: Double,
         /** Mean heart rate derived from IBIs (bpm). */
