@@ -27,6 +27,7 @@ object BiomarkerConditionPatterns {
         listOf(
             inflammationSignature, prediabetesSignature, dyslipidemiaSignature,
             vitaminDDeficiencySignature, hypothyroidSignature, hyperthyroidSignature,
+            anemiaSignature,
         )
     }
 
@@ -309,5 +310,69 @@ object BiomarkerConditionPatterns {
             "Klein I, Ojamaa K (2001) — Thyroid hormone and the cardiovascular system",
         ),
         earlyDetection = "Subclinical hyperthyroidism is silent for months and the wearable signature (tachycardia + restlessness) overlaps with caffeine, anxiety, stimulant medication, and early infection. Pairing it with a suppressed TSH narrows the signal to thyroid involvement.",
+    )
+
+    /**
+     * Hemoglobin below 12 g/dL (WHO 2011 universal-female anemia
+     * threshold — using the female floor as the conservative universal
+     * cutoff so anemia in either sex is captured without sex-stratified
+     * config) paired with at least one of: hematocrit < 36%, RBC < 4.0
+     * tera/L, sustained resting-HR tachycardia (compensatory cardiac
+     * output for reduced oxygen-carrying capacity), or reduced active
+     * minutes (fatigue is the dominant anemia symptom).
+     *
+     * The three CBC corroborators travel together — a true anemia
+     * pattern shows multiple CBC-axis decreases, not an isolated
+     * hemoglobin drop. Wearable corroborators alone are far too
+     * nonspecific (tachycardia + fatigue overlaps with infection,
+     * dehydration, deconditioning, stress); the hemoglobin gate is what
+     * narrows the signal to anemia specifically.
+     */
+    val anemiaSignature = ConditionPattern(
+        id = "biomarker_anemia_signature",
+        title = "Low hemoglobin with corroborating CBC and effort signals",
+        category = ConditionCategory.CARDIOVASCULAR,
+        signalRules = listOf(
+            SignalRule(
+                MetricType.HEMOGLOBIN, DeviationDirection.BELOW, 0.0, 0, 1.5,
+                ThresholdSource.LITERATURE,
+                "WHO 2011 — hemoglobin <12 g/dL is the anemia threshold (non-pregnant women); the male threshold is 13 g/dL, so 12 is a conservative universal floor",
+                required = true,
+                absoluteBelow = 12.0,
+            ),
+            SignalRule(
+                MetricType.HEMATOCRIT, DeviationDirection.BELOW, 0.0, 0, 1.2,
+                ThresholdSource.LITERATURE,
+                "Williams Hematology 10th ed. — hematocrit <36% corroborates a low hemoglobin reading and rules out spurious dilution artifacts",
+                absoluteBelow = 36.0,
+            ),
+            SignalRule(
+                MetricType.RBC, DeviationDirection.BELOW, 0.0, 0, 1.2,
+                ThresholdSource.LITERATURE,
+                "Williams Hematology 10th ed. — RBC <4.0 tera/L narrows the etiology toward reduced production or chronic loss vs. acute bleed",
+                absoluteBelow = 4.0,
+            ),
+            SignalRule(
+                MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE,
+                "Duke & Abelmann 1969 — anemia raises resting heart rate as compensatory cardiac output offsets reduced oxygen-carrying capacity",
+            ),
+            SignalRule(
+                MetricType.ACTIVE_MINUTES, DeviationDirection.BELOW, 1.0, 168, 0.8,
+                ThresholdSource.LITERATURE,
+                "Patel KV 2008 — fatigue and reduced exercise tolerance are the dominant clinical symptoms of anemia in adults",
+            ),
+        ),
+        minActiveSignals = 2,
+        explanation = "The most recent hemoglobin reading sits below 12 g/dL — the WHO anemia threshold — while at least one corroborating signal has appeared: a matching drop in hematocrit or RBC, sustained tachycardia, or reduced activity. The hemoglobin lab anchors the pattern; the wearable signals on their own overlap with too many other causes (infection, deconditioning, stress) to be diagnostic alone.",
+        suggestedAction = "Discuss the CBC values along with the resting-HR and active-minutes trends with a healthcare provider. Anemia has many causes (iron deficiency, B12/folate, chronic disease, occult bleed) and the workup is straightforward; a repeat CBC plus ferritin / iron studies / B12 is the standard initial follow-up.",
+        references = listOf(
+            "WHO (2011) — Haemoglobin concentrations for the diagnosis of anaemia and assessment of severity",
+            "Beutler E, Waalen J (2006) — The definition of anemia: what is the lower limit of normal of the blood hemoglobin concentration?",
+            "Williams Hematology, 10th ed. — adult CBC reference ranges",
+            "Patel KV (2008) — Epidemiology of anemia in older adults",
+            "Duke M, Abelmann WH (1969) — The hemodynamic response to chronic anemia",
+        ),
+        earlyDetection = "Chronic anemia develops slowly and the wearable signature (rising resting HR, declining activity) is nonspecific in isolation. Pairing it with a measured hemoglobin narrows the signal to the population where these proxies plausibly track oxygen-delivery shortfall.",
     )
 }
