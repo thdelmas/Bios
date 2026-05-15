@@ -370,13 +370,22 @@ existing FHIR machinery.
 - LOINC + UCUM mappings wired in `export/FhirExporter.kt` so the
   existing FHIR *export* round-trips the new keys today.
 
+**Lipid panel + ApoB (shipped):**
+
+- `TOTAL_CHOLESTEROL` (LOINC 2093-3), `LDL_CHOLESTEROL` (LOINC 2089-1),
+  `HDL_CHOLESTEROL` (LOINC 2085-9), `TRIGLYCERIDES` (LOINC 2571-8),
+  `APO_B` (LOINC 1884-6) — all `MG_PER_DL`, all in the BIOMARKER domain.
+  No new units; the existing `MG_PER_DL` covers the entire panel under
+  US conventions. SI-unit (mmol/L) conversion is a localization concern,
+  not a contract change, and is owned by `RegionConfigProvider`.
+
 **Remaining work (separate PRs):**
 
-- Expanded biomarker wave: CBC (WBC, RBC, hemoglobin, hematocrit,
-  platelets), full lipid panel (total cholesterol, LDL, HDL,
-  triglycerides), ApoB, vitamin D 25-OH, thyroid (TSH, free T4, free T3).
-  Each batch ships with the units it needs (NG_PER_ML, MIU_PER_L,
-  G_PER_DL, etc.) and the matching LOINC codes.
+- Vitamin D 25-OH (needs `NG_PER_ML`) and thyroid panel (TSH needs
+  `MIU_PER_L`; free T4 / free T3 each have their own unit conventions).
+- CBC: hemoglobin (`G_PER_DL`), hematocrit (`PERCENT`, exists), WBC /
+  RBC / platelet counts (cell-count unit needs deciding — `10*9/L` is
+  the UCUM-blessed form).
 - FHIR R4 Observation parser: file picker + LOINC → MetricType mapping.
 - Manual structured-entry form for owners without a FHIR-emitting lab.
 - Region-aware reference-range expansion in `RegionConfigProvider`'s

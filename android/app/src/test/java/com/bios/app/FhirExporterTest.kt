@@ -104,9 +104,9 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `15 metric types have LOINC mappings`() {
+    fun `20 metric types have LOINC mappings`() {
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(15, mapped)
+        assertEquals(20, mapped)
     }
 
     @Test
@@ -119,6 +119,15 @@ class FhirExporterTest {
     fun `hsCRP maps to LOINC 30522-7`() {
         val (code, _) = loincCode(MetricType.HSCRP)!!
         assertEquals("30522-7", code)
+    }
+
+    @Test
+    fun `lipid panel and ApoB map to canonical LOINC codes`() {
+        assertEquals("2093-3", loincCode(MetricType.TOTAL_CHOLESTEROL)!!.first)
+        assertEquals("2089-1", loincCode(MetricType.LDL_CHOLESTEROL)!!.first)
+        assertEquals("2085-9", loincCode(MetricType.HDL_CHOLESTEROL)!!.first)
+        assertEquals("2571-8", loincCode(MetricType.TRIGLYCERIDES)!!.first)
+        assertEquals("1884-6", loincCode(MetricType.APO_B)!!.first)
     }
 
     @Test
@@ -215,6 +224,11 @@ class FhirExporterTest {
             MetricType.BODY_MASS -> "29463-7" to "Body weight"
             MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
             MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
+            MetricType.TOTAL_CHOLESTEROL -> "2093-3" to "Cholesterol [Mass/volume] in Serum or Plasma"
+            MetricType.LDL_CHOLESTEROL -> "2089-1" to "Cholesterol in LDL [Mass/volume] in Serum or Plasma"
+            MetricType.HDL_CHOLESTEROL -> "2085-9" to "Cholesterol in HDL [Mass/volume] in Serum or Plasma"
+            MetricType.TRIGLYCERIDES -> "2571-8" to "Triglyceride [Mass/volume] in Serum or Plasma"
+            MetricType.APO_B -> "1884-6" to "Apolipoprotein B [Mass/volume] in Serum or Plasma"
             else -> null
         }
     }
