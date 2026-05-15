@@ -370,7 +370,17 @@ class AnomalyDetector(
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - hours.toLong() * 3600 * 1000
         return readingDao.fetchValues(
-            metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
+            metricType.key, startMillis, endMillis, readingKindFilterFor(metricType)
         )
     }
 }
+
+// EVENT-unit metrics (tobacco_use, fall_event, …) are intentionally
+// companion-written — SELF_REPORTED or DERIVED. CompanionConditionPatterns
+// rules explicitly want those rows. PR #25 over-applied the SENSOR-only
+// filter to every fetch and broke the cessation / fall-rate patterns; this
+// branches the filter by unit so SENSOR-typed metrics still resolve against
+// sensor sources (the decision 3 reason — z-scores vs a sensor baseline)
+// while EVENT-typed metrics see the data they're meant to see.
+internal fun readingKindFilterFor(metricType: MetricType): String? =
+    if (metricType.unit == MetricUnit.EVENT) null else ReadingKind.SENSOR.name
