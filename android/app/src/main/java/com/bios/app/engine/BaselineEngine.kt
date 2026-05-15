@@ -40,7 +40,8 @@ class BaselineEngine(
                 MetricType.STEPS,
                 MetricType.ACTIVE_MINUTES,
                 MetricType.SLEEP_STAGE,
-                MetricType.SLEEP_DURATION
+                MetricType.SLEEP_DURATION,
+                MetricType.AMBIENT_LIGHT,
             )
 
             for (metricType in metricsToBaseline) {

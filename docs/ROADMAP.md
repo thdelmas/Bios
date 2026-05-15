@@ -260,24 +260,28 @@ See also: [Smokeless/docs/ECOSYSTEM.md](../../Smokeless/docs/ECOSYSTEM.md).
 > Companion-owned gaps (substance ledger expansion, Virgil wire-up) are
 > tracked in the paired companion ROADMAPs.
 
-### 8.1 Ambient light writer (Phone Sensors adapter)
+### 8.1 Ambient light writer (Phone Sensors adapter) [LIVE]
 
-Cheapest-win in the audit. Phone's ambient-light sensor is already a
-declared adapter source in [ARCHITECTURE.md](ARCHITECTURE.md); the
-`ambient_light` key is in the planned-but-unimplemented set. Wire the
-adapter to emit lux samples on a duty cycle that doesn't burn battery
-(default: 1 sample / 5 min during waking hours, gated by screen-on).
+`PhoneSensorAdapter.sampleAmbientLight()` emits `AMBIENT_LIGHT` (LUX,
+ENVIRONMENT). Duty cycle: `SyncWorker`'s 15-min periodic job (more
+battery-conservative than the original 5-min target, well above Nyquist
+for circadian detection); screen-on gate via `PowerManager.isInteractive`
+keeps pocket / overnight samples out. Added to the BaselineEngine
+allow-list so 14-day personal baselines back the IRREGULAR z-score gate.
 
-Unlocks circadian-alignment baselines, which pair with W2F's
-`circadian_phase_shift` and SoulRadio's 24-hour loop without violating
-SoulRadio's manifesto (Bios derives, SoulRadio does not consume).
+**Cross-correlation consumer (§8.8):** `circadianDisruption` in
+`alerts/ConditionPatterns.kt` — `AMBIENT_LIGHT IRREGULAR` (required,
+168h) + `SLEEP_STAGE BELOW` + `SLEEP_DURATION IRREGULAR`. Citations:
+Wright 2013 (light = dominant zeitgeber), Chang 2015 (evening light
+suppresses melatonin), Roenneberg 2007 (social-jetlag tracks light
+irregularity). Pairs cleanly with W2F's `circadian_phase_shift` without
+violating SoulRadio's manifesto (Bios derives, SoulRadio doesn't consume).
 
 ### 8.2 Body composition via Withings adapter
 
-Withings is already an active adapter ([§Current State](#current-state-v020)),
-but `body_mass` and `body_fat_pct` are not yet in `MetricType`. Add the
-keys (domain: `METABOLIC` or new `BODY_COMPOSITION`), wire the Withings
-adapter to write them, and baseline like any other metric.
+Withings is an active adapter ([§Current State](#current-state-v020));
+`body_mass` and `body_fat_pct` aren't yet in `MetricType`. Add the keys
+(domain: `METABOLIC` or new `BODY_COMPOSITION`), wire the adapter, baseline.
 
 ### 8.3 HRV decomposition (autonomic-tone derivations) [PARTIAL — parasympathetic shipped, LF/HF deferred]
 
@@ -433,10 +437,8 @@ active minutes ↓ over 7d; WHO 2011 + Williams Hematology + Patel 2008
 + Duke/Abelmann 1969). Biomarker gate rule is `required = true` so
 wearable drift alone never fires the pattern.
 
-**§8.6 complete.** Phase 8.6 closes out the biomarker inbound surface
-across foundation, lipid panel, vitamin D, full thyroid axis, and CBC.
-Any future biomarker waves (e.g. fasting insulin, sex hormones,
-homocysteine) are new scope, not §8.6 follow-on.
+**§8.6 complete.** Future biomarker waves (fasting insulin, sex
+hormones, homocysteine, etc.) are new scope, not §8.6 follow-on.
 
 ### 8.7 Stress score — Bios-only autonomic derivation [SHIPPED]
 
