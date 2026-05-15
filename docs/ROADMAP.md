@@ -404,10 +404,26 @@ uses tera-per-litre. UCUM symbols `10*9/L` and `10*12/L` are the
 canonical exponential forms — naming the enum entries semantically
 (`GIGA_PER_L`, `TERA_PER_L`) keeps Kotlin call sites readable.
 
+**Manual structured-entry form (shipped):**
+
+- `BiomarkerEntryScreen` (`ui/biomarkers/`) reachable from
+  Settings → "Add Lab Values". Owner picks a biomarker (the 16 keys
+  shipped in waves 1–4), enters a numeric value, picks the draw date,
+  saves. Recent entries list at the bottom shows what's been logged.
+- Persistence routes through `BiomarkerEntryRepo` (`data/`): a single
+  `SELF_REPORTED` `DataSource` (new `SourceType.SELF_REPORTED`, sensor
+  type `DERIVED`, `ReadingKind.SELF_REPORTED`) owns every manually
+  entered row. The baseline engine and anomaly detector already filter
+  `kind != SENSOR` (decision 3 in `docs/SELF_REPORTED_DATA_HOME.md`), so
+  lab values show up in trends and FHIR export but never corrupt
+  sensor-derived baselines.
+
 **Remaining work (separate PRs):**
 
 - FHIR R4 Observation parser: file picker + LOINC → MetricType mapping.
-- Manual structured-entry form for owners without a FHIR-emitting lab.
+  The manual-entry path proves the write-side of the import flow; the
+  parser inherits the same `BiomarkerEntryRepo` write path so it only
+  has to do the FHIR-side decoding.
 - Region-aware reference-range expansion in `RegionConfigProvider`'s
   `ClinicalThresholds`.
 

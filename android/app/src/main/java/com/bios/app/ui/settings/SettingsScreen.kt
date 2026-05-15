@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     viewModel: AppViewModel,
     onNavigateToPrivacy: () -> Unit = {},
-    onNavigateToCompanions: () -> Unit = {}
+    onNavigateToCompanions: () -> Unit = {},
+    onNavigateToBiomarkerEntry: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -109,6 +110,14 @@ fun SettingsScreen(
                     approvedCount = approvedCompanionCount,
                     onClick = onNavigateToCompanions
                 )
+
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onNavigateToBiomarkerEntry,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Add Lab Values")
+                }
             }
         }
 
@@ -442,40 +451,13 @@ fun SettingsScreen(
     }
 
     if (showOuraDialog) {
-        var tokenInput by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showOuraDialog = false },
-            title = { Text("Connect Oura Ring") },
-            text = {
-                Column {
-                    Text(
-                        "Enter your Oura personal access token. You can create one at cloud.ouraring.com/personal-access-tokens.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = tokenInput,
-                        onValueChange = { tokenInput = it },
-                        label = { Text("Access Token") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+        OuraConnectDialog(
+            onConnect = { token ->
+                viewModel.ouraTokenStore.saveToken(token)
+                isOuraConnected = true
+                showOuraDialog = false
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (tokenInput.isNotBlank()) {
-                            viewModel.ouraTokenStore.saveToken(tokenInput.trim())
-                            isOuraConnected = true
-                            showOuraDialog = false
-                        }
-                    }
-                ) { Text("Connect") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOuraDialog = false }) { Text("Cancel") }
-            }
+            onDismiss = { showOuraDialog = false }
         )
     }
 }
