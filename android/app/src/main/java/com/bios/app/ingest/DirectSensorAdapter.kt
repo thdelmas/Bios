@@ -102,6 +102,14 @@ class DirectSensorAdapter(context: Context) {
                 durationSec = duration,
                 sourceId = sourceId,
                 confidence = ConfidenceTier.LOW.level
+            ),
+            MetricReading(
+                metricType = MetricType.PARASYMPATHETIC_TONE.key,
+                value = hrv.lnRmssd,
+                timestamp = now,
+                durationSec = duration,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.LOW.level
             )
         )
     }

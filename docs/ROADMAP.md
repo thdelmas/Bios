@@ -279,13 +279,23 @@ but `body_mass` and `body_fat_pct` are not yet in `MetricType`. Add the
 keys (domain: `METABOLIC` or new `BODY_COMPOSITION`), wire the Withings
 adapter to write them, and baseline like any other metric.
 
-### 8.3 HRV decomposition (autonomic-tone derivations)
+### 8.3 HRV decomposition (autonomic-tone derivations) [PARTIAL — parasympathetic shipped, LF/HF deferred]
 
 Raw HRV is canonical but the clinically useful numbers (LF/HF ratio,
-parasympathetic tone) aren't. Derive over the existing HRV time-series
-in the baseline engine. New keys: `lf_hf_ratio`, `parasympathetic_tone`
-(domain: `CARDIOVASCULAR`, unit derived). Resolves the "raw HRV present,
-no autonomic surface" finding from the audit.
+parasympathetic tone) aren't. Resolves the "raw HRV present, no
+autonomic surface" finding from the audit.
+
+- `parasympathetic_tone` (CARDIOVASCULAR, SCORE) — **shipped.** Computed
+  as `ln(RMSSD)` in `HrvAnalyzer.HrvResult.lnRmssd` and emitted by both
+  PPG and direct-sensor adapters alongside `HEART_RATE_VARIABILITY`.
+  `ln(RMSSD)` is the standard time-domain proxy for HF spectral power
+  (Shaffer & Ginsberg 2017, Kleiger 2005) — correlates ~0.9 with `ln(HF)`
+  in healthy adults and is approximately normally distributed across
+  individuals.
+- `lf_hf_ratio` (CARDIOVASCULAR) — **deferred.** Requires real spectral
+  analysis (FFT or Lomb-Scargle over the IBI tachogram); no time-domain
+  proxy is clinically defensible. Worth its own PR with a vetted FFT
+  implementation and synthetic-signal test coverage.
 
 ### 8.4 Sleep derivations: latency + components [LATENCY + COMPONENTS SHIPPED]
 
