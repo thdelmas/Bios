@@ -79,6 +79,7 @@ object ConditionPatterns {
         listOf(
             infectionOnset, sleepDisruption, cardiovascularStress, overtraining,
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit,
+            respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
             circadianDisruption,
         ) + CompanionConditionPatterns.all + BiomarkerConditionPatterns.all
     }

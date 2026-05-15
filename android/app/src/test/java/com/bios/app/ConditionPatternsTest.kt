@@ -120,6 +120,29 @@ class ConditionPatternsTest {
     }
 
     @Test
+    fun `every ConditionPattern val on the object is registered in the all list`() {
+        // Guard against the Phase 4 regression: four patterns (respiratoryInfection,
+        // atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly)
+        // were defined as `val`s on ConditionPatterns for ~6 weeks without being
+        // added to `all`, so the AnomalyDetector silently never ran them. This
+        // test makes any future drop visible at build time.
+        val registeredIds = ConditionPatterns.all.map { it.id }.toSet()
+        val declaredPatterns = ConditionPatterns::class.java.declaredFields
+            .filter { it.type == com.bios.app.alerts.ConditionPattern::class.java }
+            .map {
+                it.isAccessible = true
+                it.get(ConditionPatterns) as com.bios.app.alerts.ConditionPattern
+            }
+        val missing = declaredPatterns
+            .map { it.id }
+            .filter { it !in registeredIds }
+        assertTrue(
+            "ConditionPattern(s) defined on the object but missing from ConditionPatterns.all: $missing",
+            missing.isEmpty()
+        )
+    }
+
+    @Test
     fun `circadian disruption pattern is registered in the global all list`() {
         assertTrue(ConditionPatterns.circadianDisruption in ConditionPatterns.all)
     }
