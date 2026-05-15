@@ -35,6 +35,7 @@ class CameraPpgAdapterTest {
             rmssd = 18.5,
             sdnn = 24.0,
             pnn50 = 10.0,
+            lnRmssd = kotlin.math.ln(18.5),
             meanIbiMs = 815.0,
             meanHrBpm = 73.6,
             cleanIbiCount = 5,
@@ -44,7 +45,7 @@ class CameraPpgAdapterTest {
         val result = CameraPpgAdapter.toResult(ppg, hrv, sourceId, now)
 
         assertTrue(result.accepted)
-        assertEquals(2, result.readings.size)
+        assertEquals(3, result.readings.size)
 
         val hr = result.readings.single { it.metricType == MetricType.HEART_RATE.key }
         assertEquals(73.6, hr.value, 0.01)
@@ -56,6 +57,10 @@ class CameraPpgAdapterTest {
         val hrvR = result.readings.single { it.metricType == MetricType.HEART_RATE_VARIABILITY.key }
         assertEquals(18.5, hrvR.value, 0.01)
         assertEquals(ConfidenceTier.LOW.level, hrvR.confidence)
+
+        val parR = result.readings.single { it.metricType == MetricType.PARASYMPATHETIC_TONE.key }
+        assertEquals(kotlin.math.ln(18.5), parR.value, 1e-9)
+        assertEquals(ConfidenceTier.LOW.level, parR.confidence)
     }
 
     @Test
@@ -104,6 +109,7 @@ class CameraPpgAdapterTest {
         )
         val hrv = HrvAnalyzer.HrvResult(
             rmssd = 15.0, sdnn = 22.0, pnn50 = 5.0,
+            lnRmssd = kotlin.math.ln(15.0),
             meanIbiMs = 805.0, meanHrBpm = 74.5,
             cleanIbiCount = 5, artifactsRejected = 0
         )

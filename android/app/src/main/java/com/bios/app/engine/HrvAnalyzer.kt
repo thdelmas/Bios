@@ -1,6 +1,7 @@
 package com.bios.app.engine
 
 import kotlin.math.abs
+import kotlin.math.ln
 import kotlin.math.sqrt
 
 /**
@@ -46,6 +47,7 @@ object HrvAnalyzer {
             rmssd = rmssd,
             sdnn = sdnn,
             pnn50 = pnn50,
+            lnRmssd = if (rmssd > 0.0) ln(rmssd) else 0.0,
             meanIbiMs = meanIbi,
             meanHrBpm = meanHr,
             cleanIbiCount = clean.size,
@@ -120,6 +122,13 @@ object HrvAnalyzer {
         val sdnn: Double,
         /** Percentage of successive diffs > 50ms. Parasympathetic marker. */
         val pnn50: Double,
+        /**
+         * Natural log of RMSSD — the standard time-domain proxy for HF spectral
+         * power (parasympathetic tone). Correlates ~0.9 with ln(HF) in healthy
+         * adults, and is approximately normally distributed across individuals
+         * (Shaffer & Ginsberg 2017, Kleiger 2005). Zero when rmssd is zero.
+         */
+        val lnRmssd: Double,
         /** Mean inter-beat interval (ms). */
         val meanIbiMs: Double,
         /** Mean heart rate derived from IBIs (bpm). */
