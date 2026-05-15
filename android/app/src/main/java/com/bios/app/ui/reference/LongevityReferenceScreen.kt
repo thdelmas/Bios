@@ -409,12 +409,12 @@ private val BiomarkerBand.label: String
     get() = when (this) {
         BiomarkerBand.NORMAL -> "Normal range"
         BiomarkerBand.BORDERLINE -> "Borderline"
-        BiomarkerBand.HIGH -> "High range"
+        BiomarkerBand.CONCERNING -> "Concerning"
     }
 
 private val BiomarkerBand.color: Color
     get() = when (this) {
         BiomarkerBand.NORMAL -> Color(0xFF4CAF50)
         BiomarkerBand.BORDERLINE -> Color(0xFFFFA000)
-        BiomarkerBand.HIGH -> Color(0xFFD32F2F)
+        BiomarkerBand.CONCERNING -> Color(0xFFD32F2F)
     }
