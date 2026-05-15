@@ -77,8 +77,8 @@ tremor_amplitude            -- mm/s2                         [planned — neurol
 // Metabolic
 blood_glucose               -- mg/dL                         [implemented]
 glucose_variability         -- coefficient of variation %    [planned — derived from CGM data]
-body_fat_percentage         -- %                             [planned — Withings scale]
-body_mass                   -- kg                            [planned — Withings scale]
+body_fat_pct                -- %                             [implemented — Withings scale]
+body_mass                   -- kg                            [implemented — Withings scale]
 
 // Stress & Recovery
 eda_level                   -- microsiemens                  [planned — EDA-capable wearables]

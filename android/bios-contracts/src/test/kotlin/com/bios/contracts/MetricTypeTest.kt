@@ -47,6 +47,12 @@ class MetricTypeTest {
     }
 
     @Test
+    fun body_fat_pct_is_metabolic_percent() {
+        assertEquals(MetricDomain.METABOLIC, MetricType.BODY_FAT_PCT.domain)
+        assertEquals(MetricUnit.PERCENT, MetricType.BODY_FAT_PCT.unit)
+    }
+
+    @Test
     fun ambient_light_is_environment_lux() {
         assertEquals(MetricDomain.ENVIRONMENT, MetricType.AMBIENT_LIGHT.domain)
         assertEquals(MetricUnit.LUX, MetricType.AMBIENT_LIGHT.unit)

@@ -82,7 +82,7 @@ class WithingsApiAdapter(
 
                 val (metricType, confidence) = when (type) {
                     1 -> Pair(MetricType.BODY_MASS, ConfidenceTier.HIGH) // weight in kg
-                    6 -> Pair(null, ConfidenceTier.MEDIUM) // Fat % - no MetricType yet
+                    6 -> Pair(MetricType.BODY_FAT_PCT, ConfidenceTier.HIGH) // fat % (impedance scale)
                     9 -> Pair(MetricType.BLOOD_PRESSURE_DIASTOLIC, ConfidenceTier.HIGH)
                     10 -> Pair(MetricType.BLOOD_PRESSURE_SYSTOLIC, ConfidenceTier.HIGH)
                     71 -> Pair(MetricType.SKIN_TEMPERATURE, ConfidenceTier.MEDIUM)
