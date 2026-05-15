@@ -78,6 +78,19 @@ class MetricTypeTest {
     }
 
     @Test
+    fun lipid_panel_and_apob_are_biomarker_mg_per_dl() {
+        val lipids = setOf(
+            MetricType.TOTAL_CHOLESTEROL, MetricType.LDL_CHOLESTEROL,
+            MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
+            MetricType.APO_B,
+        )
+        for (t in lipids) {
+            assertEquals(MetricDomain.BIOMARKER, t.domain)
+            assertEquals(MetricUnit.MG_PER_DL, t.unit)
+        }
+    }
+
+    @Test
     fun sleep_latency_is_sleep_seconds() {
         assertEquals(MetricDomain.SLEEP, MetricType.SLEEP_LATENCY.domain)
         assertEquals(MetricUnit.SECONDS, MetricType.SLEEP_LATENCY.unit)
