@@ -1,0 +1,65 @@
+package com.bios.app
+
+import com.bios.app.model.SourceType
+import com.bios.contracts.MetricDomain
+import com.bios.contracts.MetricType
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Guards the selectors that the biomarker entry surface depends on:
+ *  - the SELF_REPORTED source key string is what gets persisted into the
+ *    data_sources row that owns every manual lab value;
+ *  - filtering MetricType by MetricDomain.BIOMARKER is the canonical way the
+ *    entry screen builds its picker list.
+ *
+ * If either of these silently changes, manually entered lab values get
+ * orphaned or the picker drops biomarkers, and a unit test is the cheapest
+ * place to catch it.
+ */
+class BiomarkerEntrySelectorsTest {
+
+    @Test
+    fun self_reported_source_key_is_stable() {
+        // The key is persisted into data_sources.sourceType for every
+        // manually entered lab; renaming it would orphan existing rows.
+        assertEquals("self_reported", SourceType.SELF_REPORTED.key)
+    }
+
+    @Test
+    fun biomarker_domain_filter_includes_every_shipped_biomarker_key() {
+        val expected = setOf(
+            MetricType.HBA1C, MetricType.HSCRP,
+            MetricType.TOTAL_CHOLESTEROL, MetricType.LDL_CHOLESTEROL,
+            MetricType.HDL_CHOLESTEROL, MetricType.TRIGLYCERIDES,
+            MetricType.APO_B,
+            MetricType.VITAMIN_D_25OH,
+            MetricType.TSH, MetricType.FREE_T4, MetricType.FREE_T3,
+            MetricType.HEMOGLOBIN, MetricType.HEMATOCRIT,
+            MetricType.WBC, MetricType.RBC, MetricType.PLATELETS,
+        )
+        val actual = MetricType.entries.filter { it.domain == MetricDomain.BIOMARKER }.toSet()
+        assertEquals(expected, actual)
+    }
+
+    @Test
+    fun biomarker_domain_contains_no_streaming_sensor_keys() {
+        // Spot-check: keys with continuous sensor writers (HR, HRV, sleep, etc.)
+        // must NOT land in BIOMARKER — the entry surface and the
+        // baseline/anomaly engines key off the domain split.
+        val streaming = listOf(
+            MetricType.HEART_RATE,
+            MetricType.HEART_RATE_VARIABILITY,
+            MetricType.BLOOD_GLUCOSE,
+            MetricType.SLEEP_STAGE,
+            MetricType.BODY_MASS,
+        )
+        for (t in streaming) {
+            assertTrue(
+                "${t.key} should not be in BIOMARKER domain",
+                t.domain != MetricDomain.BIOMARKER
+            )
+        }
+    }
+}

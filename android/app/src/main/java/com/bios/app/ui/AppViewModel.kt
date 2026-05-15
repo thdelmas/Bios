@@ -18,12 +18,14 @@ import com.bios.app.ingest.IngestManager
 import com.bios.app.ingest.OuraApiAdapter
 import com.bios.app.ingest.OuraTokenStore
 import com.bios.app.ingest.PhoneSensorAdapter
+import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.model.ActionItem
 import com.bios.app.model.Anomaly
 import com.bios.app.model.HealthEvent
 import com.bios.app.model.HealthEventStatus
 import com.bios.app.model.HealthEventType
 import com.bios.app.model.MetricReading
+import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.ProfessionalReview
@@ -465,6 +467,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun submitFeedback(feedback: com.bios.app.model.UserFeedback) {
         viewModelScope.launch {
             db.userFeedbackDao().insert(feedback)
+        }
+    }
+
+    // MARK: - Manual biomarker entry
+
+    val biomarkerEntryRepo = BiomarkerEntryRepo(db)
+
+    private val _recentBiomarkers = MutableStateFlow<List<MetricReading>>(emptyList())
+    val recentBiomarkers: StateFlow<List<MetricReading>> = _recentBiomarkers
+
+    fun refreshRecentBiomarkers(limit: Int = 20) {
+        viewModelScope.launch {
+            _recentBiomarkers.value = biomarkerEntryRepo.fetchRecent(limit)
+        }
+    }
+
+    fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long) {
+        if (metricType.domain != MetricDomain.BIOMARKER) {
+            _error.value = "Manual entry is only supported for biomarker metrics."
+            return
+        }
+        viewModelScope.launch {
+            biomarkerEntryRepo.add(metricType, value, timestamp)
+            _recentBiomarkers.value = biomarkerEntryRepo.fetchRecent(20)
         }
     }
 

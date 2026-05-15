@@ -293,7 +293,14 @@ fun BiosApp(viewModel: AppViewModel) {
                 SettingsScreen(
                     viewModel = viewModel,
                     onNavigateToPrivacy = { navController.navigate("privacy") },
-                    onNavigateToCompanions = { navController.navigate("companions") }
+                    onNavigateToCompanions = { navController.navigate("companions") },
+                    onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") }
+                )
+            }
+            composable("biomarker_entry") {
+                com.bios.app.ui.biomarkers.BiomarkerEntryScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("privacy") {
