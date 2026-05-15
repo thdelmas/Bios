@@ -110,6 +110,14 @@ class DirectSensorAdapter(context: Context) {
                 durationSec = duration,
                 sourceId = sourceId,
                 confidence = ConfidenceTier.LOW.level
+            ),
+            MetricReading(
+                metricType = MetricType.STRESS_SCORE.key,
+                value = hrv.stressIndex,
+                timestamp = now,
+                durationSec = duration,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.LOW.level
             )
         )
     }
