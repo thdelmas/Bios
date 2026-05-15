@@ -24,7 +24,10 @@ import com.bios.contracts.MetricType
 object BiomarkerConditionPatterns {
 
     val all by lazy {
-        listOf(inflammationSignature, prediabetesSignature, dyslipidemiaSignature)
+        listOf(
+            inflammationSignature, prediabetesSignature, dyslipidemiaSignature,
+            vitaminDDeficiencySignature,
+        )
     }
 
     /**
@@ -153,5 +156,57 @@ object BiomarkerConditionPatterns {
             "Sniderman AD et al. (2019) — Apolipoprotein B particles and cardiovascular disease",
         ),
         earlyDetection = "An isolated LDL elevation can have transient causes (diet, weight cycling). Multi-marker confirmation across the lipid panel narrows the signal to durable dyslipidemia worth investigating.",
+    )
+
+    /**
+     * 25-OH vitamin D below 20 ng/mL (Endocrine Society 2011 deficiency
+     * threshold) paired with at least one wearable signal consistent with
+     * the symptomatic profile: sleep efficiency below baseline (Romano
+     * 2019), reduced activity (Roy 2014), or elevated mood-drift score
+     * (Anglin 2013) when W2F is connected.
+     *
+     * Vit D deficiency is silent for months and the wearable corroborators
+     * are individually noisy — each has many possible causes. The lab gate
+     * narrows the signal to the population where these proxies plausibly
+     * track the deficiency itself.
+     */
+    val vitaminDDeficiencySignature = ConditionPattern(
+        id = "biomarker_vitamin_d_deficiency_signature",
+        title = "Low vitamin D with corroborating recovery signals",
+        category = ConditionCategory.METABOLIC,
+        signalRules = listOf(
+            SignalRule(
+                MetricType.VITAMIN_D_25OH, DeviationDirection.BELOW, 0.0, 0, 1.5,
+                ThresholdSource.LITERATURE,
+                "Endocrine Society 2011 — 25(OH)D <20 ng/mL is the deficiency threshold",
+                required = true,
+                absoluteBelow = 20.0,
+            ),
+            SignalRule(
+                MetricType.SLEEP_EFFICIENCY, DeviationDirection.BELOW, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE,
+                "Romano F et al. 2019 — vitamin D status correlates with sleep regulation",
+            ),
+            SignalRule(
+                MetricType.ACTIVE_MINUTES, DeviationDirection.BELOW, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE,
+                "Roy S et al. 2014 — vitamin D deficiency associated with fatigue and reduced activity tolerance",
+            ),
+            SignalRule(
+                MetricType.MOOD_DRIFT_SCORE, DeviationDirection.ABOVE, 1.0, 168, 0.8,
+                ThresholdSource.LITERATURE,
+                "Anglin RES et al. 2013 — vitamin D status associated with mood; W2F mood-drift score rises during low-D periods",
+            ),
+        ),
+        minActiveSignals = 2,
+        explanation = "The most recent 25-OH vitamin D reading sits below 20 ng/mL — the Endocrine Society deficiency threshold — while at least one corroborating recovery signal has trended in the symptomatic direction over the past seven days. The lab anchors the pattern; the wearable signals on their own have many possible causes.",
+        suggestedAction = "Discuss the vitamin D value and the recovery-signal trend with a healthcare provider. The 25-OH D reading, sleep efficiency trend, and active-minutes trend from Bios are useful to share.",
+        references = listOf(
+            "Holick MF et al. (2011) — Evaluation, treatment, and prevention of vitamin D deficiency",
+            "Romano F et al. (2019) — Vitamin D and sleep regulation",
+            "Roy S et al. (2014) — Correction of low vitamin D improves fatigue in otherwise healthy women",
+            "Anglin RES et al. (2013) — Vitamin D deficiency and depression in adults",
+        ),
+        earlyDetection = "Vitamin D deficiency develops silently over months. Pairing a measured lab value with the wearable signals lets the pattern surface a deficiency that's started affecting sleep / activity / mood before symptoms become explicit.",
     )
 }
