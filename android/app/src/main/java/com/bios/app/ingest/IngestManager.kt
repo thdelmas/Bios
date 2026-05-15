@@ -98,7 +98,8 @@ class IngestManager(
 
         // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
-            phoneSensorAdapter?.hasStepCounter == true
+            phoneSensorAdapter?.hasStepCounter == true ||
+            phoneSensorAdapter?.hasAmbientLight == true
         ) {
             phoneSensorSourceId = getOrCreateSource(
                 SourceType.PHONE_SENSOR, "Phone Sensors", SensorType.ACCELEROMETER
@@ -291,6 +292,8 @@ class IngestManager(
             readings += adapter.sampleAccelerometer(SENSOR_SAMPLE_DURATION_MS, sourceId)
             val stepReading = adapter.readStepCounter(sourceId)
             if (stepReading != null) readings += stepReading
+            val lightReading = adapter.sampleAmbientLight(sourceId)
+            if (lightReading != null) readings += lightReading
             readings
         } catch (_: Exception) {
             emptyList()
