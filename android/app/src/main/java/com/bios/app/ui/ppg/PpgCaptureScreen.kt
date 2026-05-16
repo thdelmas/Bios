@@ -4,11 +4,15 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -46,12 +51,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bios.app.engine.CaptureQuality
 import com.bios.app.engine.RejectionReason
 import com.bios.app.ingest.CaptureResult
 import com.bios.contracts.MetricType
@@ -104,15 +113,21 @@ fun PpgCaptureScreen(
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
+            val quality by viewModel.quality.collectAsState()
             when {
                 !hasCameraPermission -> PermissionPrompt(
                     onRequest = { permissionLauncher.launch(Manifest.permission.CAMERA) }
                 )
                 uiState is PpgUiState.Idle -> IdleView(
-                    onStart = { viewModel.startCapture(lifecycleOwner) }
+                    onStart = { viewModel.requestCapture() }
                 )
                 uiState is PpgUiState.Capturing -> CapturingView(
-                    totalSec = (uiState as PpgUiState.Capturing).totalSec
+                    totalSec = (uiState as PpgUiState.Capturing).totalSec,
+                    quality = quality,
+                    lifecycleOwner = lifecycleOwner,
+                    onPreviewReady = { surfaceProvider ->
+                        viewModel.bindCamera(lifecycleOwner, surfaceProvider)
+                    }
                 )
                 uiState is PpgUiState.Complete -> ResultView(
                     result = (uiState as PpgUiState.Complete).result,
@@ -199,7 +214,12 @@ private fun InstructionRow(marker: String, text: String) {
 }
 
 @Composable
-private fun CapturingView(totalSec: Int) {
+private fun CapturingView(
+    totalSec: Int,
+    quality: CaptureQuality,
+    lifecycleOwner: LifecycleOwner,
+    onPreviewReady: (androidx.camera.core.Preview.SurfaceProvider) -> Unit
+) {
     var elapsed by remember { mutableIntStateOf(0) }
     LaunchedEffect(totalSec) {
         elapsed = 0
@@ -211,32 +231,101 @@ private fun CapturingView(totalSec: Int) {
     val remaining = (totalSec - elapsed).coerceAtLeast(0)
     val progress = elapsed.toFloat() / totalSec.coerceAtLeast(1)
 
+    val previewReady = remember { mutableStateOf(false) }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
+        // Live camera preview — mostly dark red when the finger is on the
+        // lens; useful for confirming placement, not for showing biometric
+        // values. Borders flip colour with the steadiness classification.
         Box(
-            modifier = Modifier.size(160.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.55f)
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .border(3.dp, quality.borderColor(), RoundedCornerShape(16.dp))
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    PreviewView(ctx).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    }.also { view ->
+                        if (!previewReady.value) {
+                            previewReady.value = true
+                            onPreviewReady(view.surfaceProvider)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Steadiness coaching: colour matches the preview border so the
+        // signal is double-coded (border + chip + text).
+        SteadinessChip(quality)
+
+        Box(
+            modifier = Modifier.size(120.dp),
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxSize(),
-                strokeWidth = 8.dp
+                strokeWidth = 6.dp
             )
             Text(
                 text = "$remaining",
-                style = MaterialTheme.typography.displayMedium,
+                style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Light
             )
         }
-        Text("Keep your fingertip still", style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun SteadinessChip(quality: CaptureQuality) {
+    val container = quality.containerColor()
+    val onContainer = quality.onContainerColor()
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(container)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
         Text(
-            "The flash is on. Don't move your hand until the countdown ends.",
+            text = quality.message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = FontWeight.Medium,
+            color = onContainer
         )
     }
+}
+
+@Composable
+private fun CaptureQuality.borderColor(): Color = when (this) {
+    CaptureQuality.STEADY -> MaterialTheme.colorScheme.primary
+    CaptureQuality.WAITING -> MaterialTheme.colorScheme.outline
+    CaptureQuality.FINGER_OFF, CaptureQuality.MOTION -> MaterialTheme.colorScheme.error
+}
+
+@Composable
+private fun CaptureQuality.containerColor(): Color = when (this) {
+    CaptureQuality.STEADY -> MaterialTheme.colorScheme.primaryContainer
+    CaptureQuality.WAITING -> MaterialTheme.colorScheme.surfaceVariant
+    CaptureQuality.FINGER_OFF, CaptureQuality.MOTION -> MaterialTheme.colorScheme.errorContainer
+}
+
+@Composable
+private fun CaptureQuality.onContainerColor(): Color = when (this) {
+    CaptureQuality.STEADY -> MaterialTheme.colorScheme.onPrimaryContainer
+    CaptureQuality.WAITING -> MaterialTheme.colorScheme.onSurfaceVariant
+    CaptureQuality.FINGER_OFF, CaptureQuality.MOTION -> MaterialTheme.colorScheme.onErrorContainer
 }
 
 @Composable
