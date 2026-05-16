@@ -36,6 +36,12 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     SLEEP_LATENCY("sleep_latency", MetricUnit.SECONDS, MetricDomain.SLEEP),
     SLEEP_EFFICIENCY("sleep_efficiency", MetricUnit.PERCENT, MetricDomain.SLEEP),
     SLEEP_FRAGMENTATION_INDEX("sleep_fragmentation_index", MetricUnit.COUNT, MetricDomain.SLEEP),
+    // Bios-produced from sleep-onset times via cosinor/DLMO math. Universal
+    // chronobiology metric — not mood-specific despite W2F being the primary
+    // consumer. See docs/ECOSYSTEM_BOUNDARIES.md producer-by-capture-surface
+    // rule. (Transition state: W2F currently still writes this until the
+    // Bios-side engine ships.)
+    CIRCADIAN_PHASE_SHIFT("circadian_phase_shift", MetricUnit.SCORE, MetricDomain.SLEEP),
 
     // Activity
     STEPS("steps", MetricUnit.COUNT, MetricDomain.ACTIVITY),
@@ -80,9 +86,11 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     RBC("rbc", MetricUnit.TERA_PER_L, MetricDomain.BIOMARKER),
     PLATELETS("platelets", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
 
-    // Companion signals (injected by W2F via ContentProvider)
+    // Companion signals (injected by W2F via ContentProvider).
+    // typing_cadence requires the AccessibilityService capture surface;
+    // mood_drift_score is a domain-specific ADA-1/HDA-1 composite. Both
+    // pass the producer-by-capture-surface rule.
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
-    CIRCADIAN_PHASE_SHIFT("circadian_phase_shift", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
     MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
 
     // Substance-use events (injected by Smokeless via ContentProvider)
