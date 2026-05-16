@@ -301,6 +301,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") },
                     onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
                     onNavigateToPeriodEntry = { navController.navigate("period_entry") },
+                    onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
                     onNavigateToDataCoverage = { navController.navigate("data_coverage") }
                 )
             }
@@ -328,6 +329,12 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("period_entry") {
                 com.bios.app.ui.period.PeriodEntryScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("sleep_entry") {
+                com.bios.app.ui.sleep.SleepEntryScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )
