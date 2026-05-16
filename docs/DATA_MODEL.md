@@ -269,3 +269,31 @@ Well within the 100 MB budget, leaving ample room for raw payloads and baselines
 | ConditionPattern | Library (definition) |
 
 Export produces a FHIR Bundle that any EHR system can import.
+
+---
+
+## Relation to HPI (audit 2026-05-16)
+
+[karlicoss/HPI](https://github.com/karlicoss/HPI) (Human Programming Interface) is the most architecturally similar project in the personal-data ecosystem. The data model here is deliberately divergent on one dimension and aligned on the others.
+
+**Aligned principles:**
+
+- **Local-first / offline** — both work against data on-device, no cloud dependency
+- **Hide source-specific gore** — each Bios adapter and each HPI module encapsulates the messy parsing/locating/caching for one data source
+- **Typed outputs** — Bios uses `MetricReading` (Kotlin dataclass); HPI uses per-module `NamedTuple`s
+- **Defensive parsing** — Bios keeps `raw_payload` for debugging; HPI uses mypy-assisted error handling to surface partial failures without crashing
+- **Extensible without forking** — Bios via new adapter, HPI via namespace packages
+
+**Intentional divergence — source-agnostic vs. source-typed:**
+
+HPI surfaces each source as its own typed function (`my.reddit.all.saved()` returns `Iterator[Saved]` specific to Reddit). The caller — a Python programmer — handles cross-source merging.
+
+Bios is the opposite: **every source maps to the same `MetricReading` schema at ingest time**, with `DataSource` and `ConfidenceTier` carrying the attribution. End users (not programmers) need a single coherent view, normalization happens once, and FHIR export requires uniform units anyway. This is the right call for a consumer app on a battery-constrained device.
+
+**Borrow from HPI:**
+
+1. **Explicit per-metric merge layer.** HPI's `all.py` pattern (combine `google_takeout` + `gpslogger` + `via_ip` into `my.location`) is currently implicit in Bios via `ConfidenceTier` dedup. Consider an explicit per-`MetricType` merge specification so it's debuggable.
+2. **Per-adapter failure isolation.** HPI's `@import_source` decorator catches per-source failures with a warning rather than crashing the whole package. Verify `IngestManager` has equivalent isolation per adapter (Oura down ≠ Health Connect broken).
+3. **Directory-by-default for adapters.** HPI's lesson: convert `module.py` → `module/parser.py` *before* you need to add subfiles, because retrofit is painful. New ingest adapters should ship as `ingest/oura/` not `ingest/OuraAdapter.kt` if there's any chance they'll grow auth/sync/mapping subfiles.
+
+**Future interop:** A Python HPI overlay module `my.bios` that reads Bios's exported data could expose the Bios corpus through HPI's entire ecosystem — `my.bios.heart_rate()` plugs into the same notebooks that work with Fitbit/Oura. Earmarked, not committed.

@@ -153,6 +153,23 @@ Each third-party API (Oura, WHOOP, Garmin, Withings, Dexcom, Polar) uses OAuth 2
 
 ---
 
+## Future: Raw Biosensor Boards (EEG / BCI / dry-ECG)
+
+Current ingest covers consumer wearables (Oura/WHOOP/Garmin/etc.) and Health Connect. When Bios adds direct support for raw biosensor boards (OpenBCI Ganglion/Cyton, Muse, dry-ECG rigs), the path is **brainflow** ([brainflow-dev/brainflow](https://github.com/brainflow-dev/brainflow)) via its Java binding, not a custom protocol implementation.
+
+**Why:**
+- MIT-licensed, actively maintained, uniform SDK across boards
+- Already has Android NDK CI + a reference [BrainFlowAndroidTest](https://github.com/brainflow-dev/BrainFlowAndroidTest) app
+- OpenBCI partnership; covers the boards most likely to land first
+- Java binding can be consumed from Kotlin with minimal wrapping; new boards arrive without our code changes
+
+**Caveats:**
+- Author's own disclaimer: the Android reference app is "test quality, not production"
+- NDK wiring needed for the C/C++ core
+- Not needed for current camera-PPG + Health Connect phase — earmarked for the EEG/BCI roadmap milestone
+
+---
+
 ## Testing
 
 | Layer | Tool |
