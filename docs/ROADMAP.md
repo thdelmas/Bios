@@ -281,23 +281,23 @@ violating SoulRadio's manifesto (Bios derives, SoulRadio doesn't consume).
 
 `BODY_MASS` + `BODY_FAT_PCT` (`METABOLIC` domain) emit from `WithingsApiAdapter.fetchMeasures` (types 1, 6); wired into `IngestManager` alongside Oura. Settings → Withings pastes an OAuth access token (full OAuth dance is a future PR — needs a registered Withings dev app). Both keys baseline (14-day) + bounded (mass 20–300 kg; fat 3–60 %). `DataDestroyer` wipes via `ApiTokenStore.clearAll()`; LOINC 41982-0 ships in `FhirExporter`.
 
-### 8.3 HRV decomposition (autonomic-tone derivations) [PARTIAL — parasympathetic shipped, LF/HF deferred]
+### 8.3 HRV decomposition (autonomic-tone derivations) [COMPLETE]
 
-Raw HRV is canonical but the clinically useful numbers (LF/HF ratio,
-parasympathetic tone) aren't. Resolves the "raw HRV present, no
-autonomic surface" finding from the audit.
+Raw HRV was canonical but the clinically useful numbers (LF/HF ratio,
+parasympathetic tone) weren't — closes the "raw HRV, no autonomic surface" audit finding.
 
-- `parasympathetic_tone` (CARDIOVASCULAR, SCORE) — **shipped.** Computed
-  as `ln(RMSSD)` in `HrvAnalyzer.HrvResult.lnRmssd` and emitted by both
-  PPG and direct-sensor adapters alongside `HEART_RATE_VARIABILITY`.
-  `ln(RMSSD)` is the standard time-domain proxy for HF spectral power
-  (Shaffer & Ginsberg 2017, Kleiger 2005) — correlates ~0.9 with `ln(HF)`
-  in healthy adults and is approximately normally distributed across
-  individuals.
-- `lf_hf_ratio` (CARDIOVASCULAR) — **deferred.** Requires real spectral
-  analysis (FFT or Lomb-Scargle over the IBI tachogram); no time-domain
-  proxy is clinically defensible. Worth its own PR with a vetted FFT
-  implementation and synthetic-signal test coverage.
+- `parasympathetic_tone` (CARDIOVASCULAR, SCORE) — **shipped.** `ln(RMSSD)`
+  in `HrvAnalyzer.HrvResult.lnRmssd`, emitted by both PPG and direct-
+  sensor adapters alongside `HEART_RATE_VARIABILITY`. The standard time-
+  domain proxy for HF spectral power (Shaffer & Ginsberg 2017, Kleiger
+  2005) — correlates ~0.9 with `ln(HF)` and is approximately normally
+  distributed across individuals.
+- `lf_hf_ratio` (CARDIOVASCULAR, SCORE) — **shipped.** `engine/Spectral.kt`
+  resamples the IBI tachogram to 4 Hz, detrends, Hann-windows, runs a
+  radix-2 FFT, then integrates one-sided PSD over LF (0.04–0.15 Hz) and
+  HF (0.15–0.40 Hz) (Task Force 1996; Shaffer & Ginsberg 2017). Returns
+  0.0 under 60 s, on constant-IBI series, and on zero-HF-power. Emitted
+  by both adapters alongside the other HRV derivations and baselined.
 
 ### 8.4 Sleep derivations: latency + components [LATENCY + COMPONENTS SHIPPED]
 

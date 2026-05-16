@@ -49,6 +49,7 @@ object HrvAnalyzer {
             pnn50 = pnn50,
             lnRmssd = if (rmssd > 0.0) ln(rmssd) else 0.0,
             stressIndex = computeStressIndex(clean),
+            lfHfRatio = Spectral.lfHfRatio(clean),
             meanIbiMs = meanIbi,
             meanHrBpm = meanHr,
             cleanIbiCount = clean.size,
@@ -176,6 +177,17 @@ object HrvAnalyzer {
          * constant-IBI case (Baevsky & Berseneva 2008).
          */
         val stressIndex: Double,
+        /**
+         * LF/HF ratio — power in the low-frequency band (0.04–0.15 Hz)
+         * divided by power in the high-frequency band (0.15–0.40 Hz),
+         * computed via FFT on the IBI tachogram resampled at 4 Hz with
+         * a Hann window (Task Force 1996, Shaffer & Ginsberg 2017).
+         * Reflects sympathovagal balance: typical resting range 0.5–2.0,
+         * values >5 indicate sympathetic dominance. Zero when the
+         * recording is shorter than 60 seconds, the series is
+         * degenerate, or the HF band carries no power.
+         */
+        val lfHfRatio: Double,
         /** Mean inter-beat interval (ms). */
         val meanIbiMs: Double,
         /** Mean heart rate derived from IBIs (bpm). */
