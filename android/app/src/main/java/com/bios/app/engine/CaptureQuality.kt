@@ -39,8 +39,11 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
     STEADY("Signal looks good. Keep holding.", true);
 
     companion object {
-        /** Below this we say WAITING — not enough frames to classify. */
-        const val MIN_FRAMES_FOR_CLASSIFICATION = 8
+        /** Below this we say WAITING — not enough frames to classify. Set
+         *  to ~1.5 seconds at 20 fps so the camera's auto-exposure has time
+         *  to settle on the flash + finger combination; otherwise the first
+         *  big AE step gets misread as motion. */
+        const val MIN_FRAMES_FOR_CLASSIFICATION = 30
 
         /** Mean Y above this means room light is reaching the sensor. */
         const val FINGER_OFF_BRIGHT_MEAN = 200.0
@@ -48,11 +51,18 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
         /** Variance below this means there's no PPG modulation at all. */
         const val FINGER_OFF_MIN_VARIANCE = 0.5
 
-        /** Max frame-to-frame Y jump above which we flag motion. */
-        const val MOTION_MAX_JUMP_Y = 25.0
+        /**
+         * Motion threshold on the *median* frame-to-frame Y jump over the
+         * recent window. Heart-beats produce a few large diffs per second
+         * (systolic peaks) on top of mostly small diffs, so a single max
+         * value is a poor discriminator — devices with strong PPG amplitude
+         * would always classify as MOTION. Median-of-diffs is robust to
+         * those spikes: sustained motion lifts the whole distribution.
+         */
+        const val MOTION_MEDIAN_JUMP_Y = 6.0
 
         /** Window for the motion check (seconds). */
-        const val MOTION_WINDOW_SEC = 0.5
+        const val MOTION_WINDOW_SEC = 1.0
 
         /**
          * Classify the most recent frames. [window] is mean-Y values oldest
@@ -68,12 +78,14 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
             if (variance < FINGER_OFF_MIN_VARIANCE) return FINGER_OFF
 
             val recentSpan =
-                (samplingRateHz * MOTION_WINDOW_SEC).toInt().coerceAtLeast(3)
+                (samplingRateHz * MOTION_WINDOW_SEC).toInt().coerceAtLeast(5)
             val recentDiffs = window
                 .takeLast(recentSpan + 1)
                 .zipWithNext { a, b -> abs(b - a) }
-            val maxJump = recentDiffs.maxOrNull() ?: 0.0
-            if (maxJump > MOTION_MAX_JUMP_Y) return MOTION
+                .sorted()
+            if (recentDiffs.isEmpty()) return STEADY
+            val median = recentDiffs[recentDiffs.size / 2]
+            if (median > MOTION_MEDIAN_JUMP_Y) return MOTION
 
             return STEADY
         }
