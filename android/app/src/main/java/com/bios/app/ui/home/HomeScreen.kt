@@ -7,6 +7,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -213,10 +216,10 @@ fun HomeScreen(
 
         val metrics = listOf(
             Triple(MetricType.HEART_RATE, "Heart Rate", Icons.Default.Favorite),
-            Triple(MetricType.HEART_RATE_VARIABILITY, "HRV", Icons.Default.ShowChart),
+            Triple(MetricType.HEART_RATE_VARIABILITY, "HRV", Icons.AutoMirrored.Filled.ShowChart),
             Triple(MetricType.BLOOD_OXYGEN, "SpO2", Icons.Default.Air),
             Triple(MetricType.RESPIRATORY_RATE, "Resp. Rate", Icons.Default.Air),
-            Triple(MetricType.STEPS, "Steps", Icons.Default.DirectionsWalk),
+            Triple(MetricType.STEPS, "Steps", Icons.AutoMirrored.Filled.DirectionsWalk),
             Triple(MetricType.SKIN_TEMPERATURE_DEVIATION, "Skin Temp", Icons.Default.Thermostat),
             Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
         )
@@ -391,7 +394,7 @@ fun QuickSymptomCard(onLogSymptom: (String) -> Unit) {
                         enabled = text.isNotBlank()
                     ) {
                         Icon(
-                            Icons.Default.Send,
+                            Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Log symptom",
                             modifier = Modifier.size(16.dp)
                         )

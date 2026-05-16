@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.HourglassBottom
-import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +39,7 @@ fun DiagnosticsScreen(
             title = { Text("Health Diagnostics") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
             actions = {
@@ -47,7 +47,7 @@ fun DiagnosticsScreen(
                     Icon(Icons.Default.Speed, contentDescription = "Pipeline health")
                 }
                 IconButton(onClick = onNavigateToReference) {
-                    Icon(Icons.Default.LibraryBooks, contentDescription = "Longevity reference")
+                    Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = "Longevity reference")
                 }
             }
         )
