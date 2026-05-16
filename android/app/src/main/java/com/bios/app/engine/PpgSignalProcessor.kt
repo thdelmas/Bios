@@ -48,7 +48,22 @@ object PpgSignalProcessor {
     /** SQI sub-scores below which we reject outright with a reason. */
     private const val MIN_LUMINANCE_VARIANCE = 1.0      // < 1 = no finger
     private const val MAX_SATURATION_RATIO = 0.30       // >30% saturated = overexposed
-    private const val MAX_PEAK_AMPLITUDE_COV = 0.60     // higher = motion
+    /**
+     * Coefficient-of-variation cap on peak amplitudes after trimming the
+     * lowest-amplitude quartile (those are dichrotic notches and noise the
+     * adaptive-threshold detector lets through). 0.80 is consistent with the
+     * amplitude variability seen in clean fingertip PPG due to respiratory
+     * modulation and vasomotor activity; tighter than that rejected real
+     * recordings in on-device testing.
+     */
+    private const val MAX_PEAK_AMPLITUDE_COV = 0.80     // higher = motion
+    /**
+     * Fraction of the smallest-amplitude peaks dropped before computing the
+     * amplitude CoV — the adaptive-threshold detector picks up dichrotic
+     * notches and small noise peaks that inflate the CoV without indicating
+     * motion.
+     */
+    private const val PEAK_AMPLITUDE_TRIM_FRACTION = 0.25
     private const val MAX_RR_COV = 0.30                 // higher = irregular
 
     /**
@@ -102,7 +117,10 @@ object PpgSignalProcessor {
             )
         }
 
-        val peakAmpCov = coefficientOfVariation(peakIndices.map { smoothed[it] })
+        val peakAmpCov = trimmedAmplitudeCov(
+            peakIndices.map { smoothed[it] },
+            PEAK_AMPLITUDE_TRIM_FRACTION
+        )
         if (peakAmpCov > MAX_PEAK_AMPLITUDE_COV) {
             return PpgResult.rejected(
                 RejectionReason.MOTION_ARTIFACT,
@@ -214,6 +232,18 @@ object PpgSignalProcessor {
         if (mean == 0.0) return Double.POSITIVE_INFINITY
         val sd = sqrt(values.sumOf { (it - mean) * (it - mean) } / values.size)
         return abs(sd / mean)
+    }
+
+    /**
+     * CoV computed after dropping the lowest-[trimFraction] of [values].
+     * Used on peak amplitudes so dichrotic notches and noise peaks the
+     * detector picks up don't inflate the motion-judgement metric.
+     */
+    internal fun trimmedAmplitudeCov(values: List<Double>, trimFraction: Double): Double {
+        if (values.size < 4) return coefficientOfVariation(values)
+        val sorted = values.sorted()
+        val dropCount = (sorted.size * trimFraction).toInt().coerceAtLeast(1)
+        return coefficientOfVariation(sorted.drop(dropCount))
     }
 
     /** Composite 0–100 quality score. Higher is better. */
