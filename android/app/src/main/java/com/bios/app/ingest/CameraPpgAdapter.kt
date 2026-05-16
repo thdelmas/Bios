@@ -138,8 +138,10 @@ class CameraPpgAdapter(private val context: Context) {
         /** Push a quality update every N frames (~2 Hz at 20 fps). */
         private const val QUALITY_UPDATE_EVERY_N_FRAMES = 10
 
-        /** Window of recent frames the classifier inspects (~1 sec). */
-        private const val QUALITY_WINDOW_FRAMES = 24
+        /** Window of recent frames the classifier inspects (~2 sec). Sized
+         *  above [CaptureQuality.MIN_FRAMES_FOR_CLASSIFICATION] with margin
+         *  so the median-diff motion check has enough samples to stabilise. */
+        private const val QUALITY_WINDOW_FRAMES = 40
 
         /**
          * Pure mapping from processor + HRV output to a [CaptureResult]. On
