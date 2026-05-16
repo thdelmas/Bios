@@ -285,8 +285,54 @@ Sorted by expected signal. ✓ = explored in pass 2.
 
 ---
 
+## Deep reads — decisions
+
+Verdicts after reading READMEs + structure of the top three candidates from pass 2's reading queue.
+
+### Surfer-Org/Protocol — **REJECT**
+
+**What it actually is:** Electron desktop app + Python SDK that **scrapes UI** of platforms (opens Twitter/Notion/Gmail in an Electron window, waits for sign-in, scrapes the rendered DOM). Output is shape-less JSON blobs (`{"content": ["Post 1", "Post 2", ...]}`). No typed schema. Currently supports iMessages, Twitter Bookmarks, Notion, ChatGPT History, Gmail, LinkedIn. **MIT, last pushed 2024-12-25 (>1y stale).**
+
+**What it isn't:** A protocol, despite the name. No Android. No biosignal model. No schema layer.
+
+**Verdict:** Not a fit for Bios. Different stack, different problem, stale. The "build vs adopt" question for `CONSUMER_API.md` resolves to **build** — no convergence opportunity here. Cross it off the reading queue.
+
+### karlicoss/HPI — **ADOPT THE PATTERN, NOT THE CODE**
+
+**What it actually is:** Python package (`my`) that gives `import my.reddit.all`, `import my.health.sleep` etc. — one module per data source, each hiding "gory details of locating data, parsing, error handling and caching" and producing **typed Python objects**. Active (pushed 2026-05-10), MIT, topics: `data-liberation`, `extended-mind`, `lifelogging`, `personal-api`, `quantified-self`.
+
+**What it isn't:** Portable to Android. Python-only.
+
+**Verdict:** Bios already follows HPI's architecture (one ContentProvider, per-metric coverage registry, normalized 34-metric schema). HPI doesn't *change* the design — it **validates it**. Two concrete actions:
+- Read [`HPI/doc/DESIGN.org`](https://github.com/karlicoss/HPI/blob/master/doc/DESIGN.org) and [`MODULE_DESIGN.org`](https://github.com/karlicoss/HPI/blob/master/doc/MODULE_DESIGN.org) for naming conventions / module boundary heuristics
+- Future interop: a small HPI module (`my.bios`) that reads Bios's exported data on desktop → makes the Bios corpus queryable via HPI's full Python ecosystem. **Not now, but flag as a 6–12mo follow-up**
+
+### brainflow — **EARMARK FOR EEG/BCI PHASE**
+
+**What it actually is:** C/C++ core + bindings (Python, Java, R, C#, Matlab, Julia, Rust, Node). MIT, active (pushed 2026-05-14), 1684★, OpenBCI partnership. **Android support is real but partial:** runs in CI under Android NDK, separate [`BrainFlowAndroidTest`](https://github.com/brainflow-dev/BrainFlowAndroidTest) reference repo. Supports OpenBCI Ganglion/Cyton + WIFI shield + Synthetic Board on Android today.
+
+**What it isn't:** Production-grade Android out of the box (author's own disclaimer on test repo). Not needed for camera-PPG or Health Connect signals.
+
+**Verdict:** The right choice **when** Bios adds EEG/BCI ingestion (post v1). Don't write custom EEG handling. Likely path: Java binding → Kotlin import. Update `TECH_STACK.md`:
+
+> Future biosignal acquisition (EEG/BCI): adopt brainflow Java binding rather than implement OpenBCI/Muse protocols natively. See BrainFlowAndroidTest for NDK setup.
+
+---
+
+## Net effect on Bios decisions
+
+| Question raised in pass 1/2 | Resolution after deep reads |
+|------------------------------|------------------------------|
+| Should `CONSUMER_API.md` adopt Surfer-Org/Protocol's interop layer? | **No.** Surfer is desktop UI scraping. Build CONSUMER_API as planned |
+| Should `DATA_MODEL.md` align to HPI conventions? | **Soft yes** — read HPI DESIGN.org for naming/module heuristics. No code dependency |
+| Should Bios ml/ port NeuroKit2 HRV? | Still queued (HRV pipeline) — separate read |
+| Should Bios native biosignal lib be custom or brainflow? | **brainflow when EEG/BCI lands.** Not needed for camera-PPG (current phase) |
+
+---
+
 ## Log
 
 - 2026-05-16: Pass 1 complete. Origin: gedankenstuecke. 6 tentacles (A–F), 28 discoveries.
 - 2026-05-16: Bio-hacking deepening (Mía course-correction). Added Tentacles G (neurosignal/biosignal), H (circadian/sleep), I (substance-use ledger). Tentacle E expanded. **+34 discoveries** (now 62 total). Biggest find: `eegsynth` (SoulRadio-shaped) and `NeuroKit2` (port candidate for Bios ml/).
-- 2026-05-16: Pass 2. Origins: karlicoss + brainflow-dev + NeuroTechX, plus mined awesome-quantified-self. Added Tentacles J (export protocols), K (personal search/memory), L (Android privacy-health). Tentacle G expanded. **+27 discoveries** (now 89 total). Biggest finds: `Surfer-Org/Protocol` (1.5k★ data-export framework), `karlicoss/promnesia` (1.9k★ extended-mind), `NeuroTechX/neurodoro` (W2F-shaped brain-pomodoro), `OpenTracks` (F-Droid privacy fitness — finally seeded Tentacle L).
+- 2026-05-16: Pass 2. Origins: karlicoss + brainflow-dev + NeuroTechX, plus mined awesome-quantified-self. Added Tentacles J (export protocols), K (personal search/memory), L (Android privacy-health). Tentacle G expanded. **+27 discoveries** (now 89 total). Biggest finds: `Surfer-Org/Protocol`, `karlicoss/promnesia`, `NeuroTechX/neurodoro`, `OpenTracks`.
+- 2026-05-16: Deep reads pass on top 3 (Surfer/HPI/brainflow). Surfer rejected as not-a-fit. HPI validates current Bios architecture (pattern only, Python ≠ Kotlin). brainflow earmarked for future EEG/BCI phase.
