@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.concurrent.futures.await
 import androidx.lifecycle.LifecycleOwner
+import com.bios.app.engine.CaptureQuality
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
@@ -16,6 +19,7 @@ import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.util.Collections
@@ -44,11 +48,22 @@ class CameraPpgAdapter(private val context: Context) {
      * Capture a fingertip-PPG snapshot for [durationSec] seconds. Blocks the
      * calling coroutine until capture completes. Returns a [CaptureResult]
      * with either a HR + HRV reading pair or a rejection reason.
+     *
+     * Optional real-time feedback channels:
+     *  - [surfaceProvider] — when non-null, a `Preview` use case is bound to
+     *    it so the UI can show the live lens view. This is placement-only
+     *    feedback (a finger fully on the lens looks dark red); no metric
+     *    values are streamed, per the no-streaming design rule.
+     *  - [qualityFlow] — when non-null, [CaptureQuality] classifications
+     *    are pushed during capture so the UI can coach the owner if the
+     *    finger drifts or motion is detected. Updates ~2 Hz.
      */
     suspend fun capture(
         lifecycleOwner: LifecycleOwner,
         durationSec: Int,
-        sourceId: String
+        sourceId: String,
+        surfaceProvider: Preview.SurfaceProvider? = null,
+        qualityFlow: MutableStateFlow<CaptureQuality>? = null
     ): CaptureResult = withContext(Dispatchers.Main) {
         val provider = try {
             ProcessCameraProvider.getInstance(context).await()
@@ -58,6 +73,7 @@ class CameraPpgAdapter(private val context: Context) {
 
         val luminance = Collections.synchronizedList(mutableListOf<Double>())
         val executor = Executors.newSingleThreadExecutor()
+        val frameCounter = java.util.concurrent.atomic.AtomicInteger(0)
         val analysis = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
@@ -65,14 +81,29 @@ class CameraPpgAdapter(private val context: Context) {
                 it.setAnalyzer(executor) { image ->
                     luminance.add(yPlaneMean(image))
                     image.close()
+
+                    val n = frameCounter.incrementAndGet()
+                    if (qualityFlow != null && n % QUALITY_UPDATE_EVERY_N_FRAMES == 0) {
+                        val window = synchronized(luminance) {
+                            luminance.takeLast(QUALITY_WINDOW_FRAMES)
+                        }
+                        qualityFlow.value = CaptureQuality.classify(
+                            window, ASSUMED_SAMPLING_HZ
+                        )
+                    }
                 }
             }
 
+        val preview = surfaceProvider?.let { sp ->
+            Preview.Builder().build().also { it.setSurfaceProvider(sp) }
+        }
+
         val selector = CameraSelector.DEFAULT_BACK_CAMERA
         val startMs = System.currentTimeMillis()
+        val useCases: Array<UseCase> = listOfNotNull(analysis, preview).toTypedArray()
 
         try {
-            val camera = provider.bindToLifecycle(lifecycleOwner, selector, analysis)
+            val camera = provider.bindToLifecycle(lifecycleOwner, selector, *useCases)
             if (camera.cameraInfo.hasFlashUnit()) {
                 camera.cameraControl.enableTorch(true)
             }
@@ -99,6 +130,17 @@ class CameraPpgAdapter(private val context: Context) {
     }
 
     companion object {
+        /** Approximate analyzer frame rate, used by the real-time quality
+         *  classifier. Actual rate is measured offline; this is just the
+         *  scale for the motion-window heuristic. */
+        private const val ASSUMED_SAMPLING_HZ = 20.0
+
+        /** Push a quality update every N frames (~2 Hz at 20 fps). */
+        private const val QUALITY_UPDATE_EVERY_N_FRAMES = 10
+
+        /** Window of recent frames the classifier inspects (~1 sec). */
+        private const val QUALITY_WINDOW_FRAMES = 24
+
         /**
          * Pure mapping from processor + HRV output to a [CaptureResult]. On
          * the companion so tests can exercise it without instantiating the
