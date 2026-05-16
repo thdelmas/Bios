@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -159,9 +161,9 @@ fun BiosApp(viewModel: AppViewModel) {
 
     val tabs = listOf(
         Triple("home", "Home", Icons.Default.FavoriteBorder),
-        Triple("trends", "Trends", Icons.Default.ShowChart),
+        Triple("trends", "Trends", Icons.AutoMirrored.Filled.ShowChart),
         Triple("alerts", "Alerts", Icons.Default.Notifications),
-        Triple("timeline", "Journal", Icons.Default.MenuBook),
+        Triple("timeline", "Journal", Icons.AutoMirrored.Filled.MenuBook),
         Triple("settings", "Settings", Icons.Default.Settings)
     )
 
