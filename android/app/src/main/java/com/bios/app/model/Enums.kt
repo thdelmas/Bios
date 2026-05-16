@@ -59,10 +59,12 @@ enum class SleepStage(val value: Int) {
 
 // MARK: - Cycle
 
-// MENSTRUAL is reserved for when a menstruation-onset signal exists; BBT
-// alone can't reliably distinguish it from the early follicular phase, so
-// the BBT-driven CycleInference currently emits only FOLLICULAR / OVULATORY
-// / LUTEAL. Numeric values are stable once written; do not renumber.
+// MENSTRUAL is emitted when an owner-logged menstruation onset
+// (MetricType.MENSTRUATION_ONSET) anchors the cycle — BBT alone can't
+// distinguish menstrual from early-follicular thermoregulation, so the
+// BBT-only path still emits FOLLICULAR / OVULATORY / LUTEAL. See
+// CycleInference.deriveCyclePhases for the overlay rule. Numeric values
+// are stable once written; do not renumber.
 enum class CyclePhase(val value: Int) {
     MENSTRUAL(0), FOLLICULAR(1), OVULATORY(2), LUTEAL(3)
 }

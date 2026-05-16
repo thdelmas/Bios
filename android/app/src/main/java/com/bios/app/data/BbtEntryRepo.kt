@@ -1,7 +1,6 @@
 package com.bios.app.data
 
 import android.content.Context
-import com.bios.app.engine.CycleInference
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
@@ -55,14 +54,11 @@ class BbtEntryRepo(context: Context) {
     private val minTempC = 35.0
     private val maxTempC = 39.0
 
-    /** How far back cycle inference looks each time a BBT is saved. */
-    private val rederivationWindowMs = 90L * 86_400_000L
-
     suspend fun addBbt(temperatureC: Double, timestamp: Long) {
         require(temperatureC in minTempC..maxTempC) {
             "BBT $temperatureC°C is outside the $minTempC–$maxTempC range"
         }
-        val sourceId = getOrCreateSelfReportedSource()
+        val sourceId = SelfReportedSource.getOrCreate(db)
         db.readingDao().insert(
             MetricReading(
                 metricType = MetricType.BASAL_BODY_TEMPERATURE.key,
@@ -72,7 +68,7 @@ class BbtEntryRepo(context: Context) {
                 confidence = ConfidenceTier.HIGH.level
             )
         )
-        rederiveCyclePhases(sourceId)
+        CycleDerivation.rederive(db, sourceId)
     }
 
     suspend fun fetchRecentBbts(limit: Int = 30): List<MetricReading> =
@@ -81,20 +77,24 @@ class BbtEntryRepo(context: Context) {
     suspend fun fetchLatestCyclePhase(): MetricReading? =
         db.readingDao().fetchLatest(MetricType.CYCLE_PHASE.key, limit = 1).firstOrNull()
 
-    private suspend fun rederiveCyclePhases(sourceId: String) {
-        val windowStart = System.currentTimeMillis() - rederivationWindowMs
-        val bbts = db.readingDao().fetch(
-            MetricType.BASAL_BODY_TEMPERATURE.key,
-            windowStart,
-            Long.MAX_VALUE
-        )
-        val phases = CycleInference.deriveCyclePhases(bbts, sourceId)
-        if (phases.isEmpty()) return
-        val withStableIds = phases.map { it.copy(id = stableCyclePhaseId(it.timestamp)) }
-        db.readingDao().insertAll(withStableIds)
+    companion object {
+        /**
+         * Deterministic primary key for a derived CYCLE_PHASE row. Kept as
+         * a forwarding alias for callers that pinned to this name before
+         * the helper was extracted into [CycleDerivation].
+         */
+        fun stableCyclePhaseId(timestamp: Long): String =
+            CycleDerivation.stableCyclePhaseId(timestamp)
     }
+}
 
-    private suspend fun getOrCreateSelfReportedSource(): String {
+/**
+ * Shared resolver for the SELF_REPORTED [DataSource] row in the isolated
+ * reproductive DB. Both [BbtEntryRepo] and [PeriodEntryRepo] write through
+ * this single row so manual entries appear under one provenance tag.
+ */
+internal object SelfReportedSource {
+    suspend fun getOrCreate(db: ReproductiveDatabase): String {
         val dao = db.dataSourceDao()
         dao.findByType(SourceType.SELF_REPORTED.key)?.let { return it.id }
         val source = DataSource(
@@ -105,18 +105,5 @@ class BbtEntryRepo(context: Context) {
         )
         dao.insert(source)
         return source.id
-    }
-
-    companion object {
-        /**
-         * Deterministic primary key for a derived CYCLE_PHASE row. Keyed by
-         * the UTC day bucket so re-running [CycleInference] over a growing
-         * BBT series produces stable row ids — `OnConflictStrategy.REPLACE`
-         * on `MetricReadingDao.insertAll` handles dedupe.
-         */
-        fun stableCyclePhaseId(timestamp: Long): String {
-            val day = timestamp / 86_400_000L
-            return "cycle_phase_self_reported_$day"
-        }
     }
 }

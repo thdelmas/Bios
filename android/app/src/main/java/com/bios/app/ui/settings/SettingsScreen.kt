@@ -32,7 +32,8 @@ fun SettingsScreen(
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
     onNavigateToBiomarkerEntry: () -> Unit = {},
-    onNavigateToBbtEntry: () -> Unit = {}
+    onNavigateToBbtEntry: () -> Unit = {},
+    onNavigateToPeriodEntry: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -129,6 +130,13 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Track BBT")
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = onNavigateToPeriodEntry,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Log period start")
                 }
             }
         }
@@ -487,7 +495,5 @@ fun SettingsScreen(
 
 private fun saveTier(context: Context, tier: PrivacyTier) {
     context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
-        .edit()
-        .putString("privacy_tier", tier.name)
-        .apply()
+        .edit().putString("privacy_tier", tier.name).apply()
 }

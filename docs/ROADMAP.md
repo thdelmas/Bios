@@ -318,30 +318,32 @@ literature-backed signal) and stay within the manifesto. `sleep_score`
 is parked unless a future condition pattern needs a single-number input
 that can't be expressed as a rule over the components.
 
-### 8.5 Cycle inference from BBT [LIVE — cycle_phase active, cycle_day deferred]
+### 8.5 Cycle inference from BBT [LIVE]
 
 - `cycle_phase` (WOMENS_HEALTH, CATEGORY) — **live.** Classic biphasic
   3-day rule (Marshall 1968; Barron & Fehring 2005) in
   `engine/CycleInference.kt`: follicular baseline = mean of the first six
   daily BBTs, coverline = baseline + 0.1°C, ovulation = the day before
   three consecutive daily BBTs sit strictly above the coverline. Emits
-  FOLLICULAR / OVULATORY / LUTEAL via the `CyclePhase` enum.
-- **BBT writer (shipped):** `data/BbtEntryRepo.kt` + `ui/bbt/BbtEntryScreen.kt`
-  reachable from Settings → "Track BBT". BBT and derived `cycle_phase`
-  rows persist into `ReproductiveDatabase` (separate SQLCipher file,
+  FOLLICULAR / OVULATORY / LUTEAL, plus MENSTRUAL on the five days from
+  each owner-logged onset (FIGO/Munro 2018 median; overrides any
+  colliding BBT-derived classification — owner-asserted ground truth wins).
+- `cycle_day` (WOMENS_HEALTH, COUNT) — **live.** Anchored on
+  `menstruation_onset` (WOMENS_HEALTH, EVENT) — cycle day 1 = first day
+  of menstruation per clinical convention. The most recent onset on or
+  before each day sets the anchor, so a new onset cleanly resets the
+  counter to 1. Days before any logged onset receive no emission.
+- **Writers (shipped):** `data/BbtEntryRepo.kt` + `ui/bbt/BbtEntryScreen.kt`
+  ("Track BBT") and `data/PeriodEntryRepo.kt` +
+  `ui/period/PeriodEntryScreen.kt` ("Log period start"), both reachable
+  from Settings. BBT, onsets, and the derived `cycle_phase` / `cycle_day`
+  rows all persist into `ReproductiveDatabase` (separate SQLCipher file,
   independent key, priority destruction on duress PIN — the post-Dobbs
-  isolation). Lazy `ReproductiveDatabase.initialize()` on first write,
-  no separate enable flow. `CycleInference` re-runs over the last 90
-  days on save; derived rows use a deterministic UTC-day id so
-  re-derivation is idempotent. FHIR exporter skips
-  `MetricDomain.WOMENS_HEALTH` by default; per-export opt-in is the
-  future path to clinician sharing.
-- `cycle_day` — **deferred.** The clinical numbering convention starts
-  cycle day 1 at the first day of menstruation; BBT alone cannot
-  reliably distinguish menstrual from early follicular. Ships when a
-  menstruation-onset signal exists (manual log, or a wearable that
-  reports it).
-- `MENSTRUAL` is reserved on the `CyclePhase` enum for the same reason.
+  isolation). Lazy initialize on first write, no separate enable flow.
+  `data/CycleDerivation.kt` re-runs both derivations on every BBT or
+  onset save with deterministic UTC-day ids so the two writers stay
+  idempotent and in sync. FHIR exporter skips `MetricDomain.WOMENS_HEALTH`
+  by default; per-export opt-in is the future path to clinician sharing.
 
 ### 8.6 Lab / biomarker inbound surface [FOUNDATION SHIPPED]
 
