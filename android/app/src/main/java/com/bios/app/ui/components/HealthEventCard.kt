@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -226,7 +227,7 @@ fun eventTypeIcon(type: HealthEventType): ImageVector {
         HealthEventType.DOCTOR_VISIT -> Icons.Default.LocalHospital
         HealthEventType.DIAGNOSIS -> Icons.Default.MedicalServices
         HealthEventType.TREATMENT -> Icons.Default.Healing
-        HealthEventType.NOTE -> Icons.Default.StickyNote2
+        HealthEventType.NOTE -> Icons.AutoMirrored.Filled.StickyNote2
     }
 }
 
