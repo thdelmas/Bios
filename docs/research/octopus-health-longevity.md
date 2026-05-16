@@ -266,11 +266,14 @@ Sorted by expected signal. ✓ = explored in pass 2.
 
 **Issues to file:**
 
-- **Bios:** "Evaluate Surfer-Org/Protocol for data-export interop before freezing CONSUMER_API"
-- **Bios:** "Evaluate HPI / open-wearables for schema alignment"
+- ~~**Bios:** "Evaluate Surfer-Org/Protocol for data-export interop before freezing CONSUMER_API"~~ — resolved (rejected)
+- ~~**Bios:** "Evaluate HPI / open-wearables for schema alignment"~~ — resolved (see DATA_MODEL.md "Relation to HPI"); follow-ups below
+- **Bios:** "Verify per-adapter failure isolation in IngestManager (HPI `@import_source` equivalent)"
+- **Bios:** "Add explicit per-MetricType merge specification (HPI `all.py` equivalent) — make ConfidenceTier dedup debuggable"
+- **Bios:** "Adopt directory-by-default for new ingest adapters (`ingest/oura/` not `OuraAdapter.kt`)"
 - **Bios:** "Adopt or port NeuroKit2 HRV pipeline before writing custom code"
 - **Bios:** "Audit AndroidAPS architecture for closed-loop UX patterns"
-- **Bios:** "Evaluate brainflow as native biosignal lib (Android confirmed via BrainFlowAndroidTest)"
+- ~~**Bios:** "Evaluate brainflow as native biosignal lib"~~ — resolved (TECH_STACK.md "Future: Raw Biosensor Boards")
 - **SoulRadio:** "Read eegsynth/eegsynth — closest existing analogue to SoulRadio architecture"
 - **W2F:** "Read NeuroTechX/neurodoro — brain-state-responsive pomodoro pattern"
 - **Smokeless:** "Compare against mindful-coffee, quantifiedbob/supplement-stack for ledger patterns"
@@ -336,3 +339,4 @@ Verdicts after reading READMEs + structure of the top three candidates from pass
 - 2026-05-16: Bio-hacking deepening (Mía course-correction). Added Tentacles G (neurosignal/biosignal), H (circadian/sleep), I (substance-use ledger). Tentacle E expanded. **+34 discoveries** (now 62 total). Biggest find: `eegsynth` (SoulRadio-shaped) and `NeuroKit2` (port candidate for Bios ml/).
 - 2026-05-16: Pass 2. Origins: karlicoss + brainflow-dev + NeuroTechX, plus mined awesome-quantified-self. Added Tentacles J (export protocols), K (personal search/memory), L (Android privacy-health). Tentacle G expanded. **+27 discoveries** (now 89 total). Biggest finds: `Surfer-Org/Protocol`, `karlicoss/promnesia`, `NeuroTechX/neurodoro`, `OpenTracks`.
 - 2026-05-16: Deep reads pass on top 3 (Surfer/HPI/brainflow). Surfer rejected as not-a-fit. HPI validates current Bios architecture (pattern only, Python ≠ Kotlin). brainflow earmarked for future EEG/BCI phase.
+- 2026-05-16: HPI design-docs audit (DESIGN.org + MODULE_DESIGN.org vs Bios DATA_MODEL.md). Findings codified into DATA_MODEL.md "Relation to HPI" section. Source-agnostic schema confirmed as intentional and correct divergence from HPI's source-typed approach. 3 concrete borrowings filed as issues: explicit per-MetricType merge spec, formalized per-adapter failure isolation, directory-by-default for new adapters.
