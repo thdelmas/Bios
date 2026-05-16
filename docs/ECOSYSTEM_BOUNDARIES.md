@@ -19,6 +19,34 @@ Ask three questions in order:
    physiology?** → **Companion** — and likely standalone, not a Bios consumer
    at all.
 
+### Producer is determined by capture surface, not by consumer
+
+When a derived metric *could* be computed by more than one party, the
+producer is whoever owns the unique capture surface that produces its
+inputs — not whoever happens to consume the score first. A signal that any
+party with Bios's canonical inputs could compute belongs to **Bios**, even
+if today only one companion consumes it. A signal that requires an
+AccessibilityService, foreground sensor service, or active test surface
+belongs to that **companion**.
+
+Applied:
+
+| Metric | Inputs | Producer | Why |
+|---|---|---|---|
+| `typing_cadence` | per-keystroke timing | **W2F** | requires AccessibilityService |
+| `gait_asymmetry` | raw phone accel at sample rate | **Fil** | requires foreground accel service |
+| `mood_drift_score` | ADA-1/HDA-1 composite, mood-specific | **W2F** | domain-specific detection model |
+| `motor_score`, `relapse_risk` | MS-specific composites | **Fil** | domain-specific detection model |
+| `tobacco_use`, `fall_event`, etc. | discrete user actions | **companion** | requires tap-to-log / fall-detection surface |
+| `reaction_time_ms` | active test result | **Fil / W2F** | requires active-test surface |
+| `circadian_phase_shift` | sleep-onset times | **Bios** | inputs are canonical (sleep timing from 9 adapters); no companion-specific surface |
+| `cognitive_speed` (planned) | TBD | **decide at landing** | if active test output → Fil; if composite over canonical inputs → Bios |
+
+The corollary: if a companion has built logic that turns canonical Bios
+inputs into a score, that logic should be hoisted to Bios when feasible.
+The companion keeps the *consumption* of the score (its domain-specific
+interpretation), not the *production* of it.
+
 Bios is intentionally silent about categories it can't measure objectively
 from wearable data alone: neurological fine-motor state, mood/mania, fall
 response, cognitive processing speed. Those live in companions, and
@@ -53,7 +81,7 @@ logic.
 | App | Domain | Owns | Reads from Bios | Writes to Bios |
 |---|---|---|---|---|
 | **Fil** | Neurological / MS | **Built:** gait analysis (phone accel), drift z-score engine, fall detection. **Planned:** keystroke analysis, active cognitive micro-tests (SDMT, tapping, contrast), MS-specific composite, fall auto-answer | HRV, sleep, steps, activity | `gait_asymmetry`, `cognitive_speed`, `motor_score`, `relapse_risk` (future keys) |
-| **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
+| **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity, `circadian_phase_shift` | `typing_cadence`, `mood_drift_score` |
 | **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | `fall_event`, `near_miss_fall`, `check_in_miss` (opt-in, future) |
 | **SoulRadio** | Ambient sound / nervous-system rest | 24-hour Solfeggio + Schumann auto-loop, dial, listener library, frequency-band catalogue | *nothing — standalone* | *nothing* |
 | **Smokeless** | Substance-use tracking / cessation | Use + craving event capture, per-substance history, widget, cessation UI | *nothing — standalone* (Phase 3 plan: RHR/HRV/sleep/SpO2 reads for recovery trajectory) | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` (shipped Phase 2.1); `caffeine_use`, `caffeine_craving`, `alcohol_use`, `alcohol_craving` (reserved — Phase 2.4, paired with W2F FuelLog hoist) |
@@ -79,8 +107,17 @@ the four reserved keys above remain future work.
 W2F's domain is mood state detection and mechanical intervention (friction
 for surge, restart for stasis). It owns the typing-cadence capture surface
 (AccessibilityService), the ADA-1/HDA-1 detection models, and the
-intervention protocols. It writes the three MENTAL_HEALTH keys already
-reserved in the Bios schema.
+intervention protocols. It writes two MENTAL_HEALTH keys
+(`typing_cadence`, `mood_drift_score`) and reads `circadian_phase_shift`
+from Bios.
+
+**Note on circadian phase shift:** W2F today computes phase shift locally
+via cosinor + DLMO algorithms from sleep-onset timing. The math is
+universal — sleep onset is canonical Bios data, and the computation is not
+mood-specific — so the producer-by-capture-surface rule says this belongs
+in Bios. Migration: Bios builds its own circadian engine; W2F reads
+`circadian_phase_shift` instead of computing it locally; W2F's write
+permission is revoked.
 
 ### Virgil — the solitary-living safety net
 
@@ -273,7 +310,19 @@ feature) and the second-consumer rule were the load-bearing principles.
 | Exercise sessions — modality / duration / avg HR / RPE (#38) | ✅ In scope for Bios — auto-derive from adapters | This is passive sensor data (HC `ExerciseSessionRecord`, Garmin/WHOOP/Oura native session entities). No companion, no manual logging UI in Bios. Add `EXERCISE_SESSION` to `MetricType`. |
 | Air quality — `AIR_PM25`, `AIR_VOC`, `AIR_CO2` (#43) | ✅ In scope for Bios — BLE adapter pattern | Sensor-grade, passive, confounds nearly every existing pattern (sleep, HRV, infection, respiratory). Fits the existing 9-adapter pattern as a 10th. No `Habitat` companion needed. |
 
-## Cross-references
+### 2026-05 — Producer-by-capture-surface audit
+
+After codifying the rule that producer is determined by the unique capture
+surface (not by the score's consumer), audited every companion-injected
+key against it. One key was found miscategorized.
+
+| Key | Before | After | Reasoning |
+|---|---|---|---|
+| `CIRCADIAN_PHASE_SHIFT` | W2F-produced | **Bios-produced** | Inputs are sleep-onset times — canonical Bios data from all 9 adapters. Cosinor/DLMO math is universal, not mood-specific. W2F's existing `CircadianCalculator` should be hoisted into Bios; W2F reads the result instead of computing locally. |
+| `typing_cadence`, `mood_drift_score` | W2F-produced | **W2F-produced** (affirmed) | Requires AccessibilityService surface / mood-specific composite. No alternative producer. |
+| `gait_asymmetry`, `motor_score`, `relapse_risk` (planned) | Fil-produced | **Fil-produced** (affirmed) | Requires foreground accel service / MS-specific composites. No alternative producer. |
+| `cognitive_speed` (planned) | Fil-produced | **Decide at landing** | If output of active SDMT/tapping test → Fil. If composite over canonical inputs (typing-cadence + reaction-time + HRV) → Bios. Do not reserve in `MetricType` until the producing surface is concrete. |
+| Substance events, fall events, reaction-time, biomarkers, etc. | as-is | **affirmed** | Each requires a surface (tap-to-log, fall service, active test, lab draw) the producer uniquely owns. |
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Bios system components
 - [CONSUMER_API.md](CONSUMER_API.md) — `BiosHealthProvider` contract

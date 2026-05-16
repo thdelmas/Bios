@@ -48,6 +48,10 @@ internal object CompanionContract {
             sourceId = "companion_w2f",
             writableMetrics = setOf(
                 "typing_cadence",
+                // Transition: W2F still writes circadian_phase_shift until
+                // Bios ships its own cosinor/DLMO engine and W2F switches
+                // to reading. See docs/ECOSYSTEM_BOUNDARIES.md
+                // producer-by-capture-surface rule.
                 "circadian_phase_shift",
                 "mood_drift_score",
             ),
