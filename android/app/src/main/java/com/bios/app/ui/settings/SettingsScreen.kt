@@ -33,7 +33,8 @@ fun SettingsScreen(
     onNavigateToCompanions: () -> Unit = {},
     onNavigateToBiomarkerEntry: () -> Unit = {},
     onNavigateToBbtEntry: () -> Unit = {},
-    onNavigateToPeriodEntry: () -> Unit = {}
+    onNavigateToPeriodEntry: () -> Unit = {},
+    onNavigateToDataCoverage: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -118,26 +119,13 @@ fun SettingsScreen(
                 )
 
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onNavigateToBiomarkerEntry,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Add Lab Values")
-                }
+                SettingsActionButton("Add Lab Values", onNavigateToBiomarkerEntry)
                 Spacer(Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = onNavigateToBbtEntry,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Track BBT")
-                }
+                SettingsActionButton("Track BBT", onNavigateToBbtEntry)
                 Spacer(Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = onNavigateToPeriodEntry,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Log period start")
-                }
+                SettingsActionButton("Log period start", onNavigateToPeriodEntry)
+                Spacer(Modifier.height(4.dp))
+                SettingsActionButton("Data coverage", onNavigateToDataCoverage)
             }
         }
 
@@ -491,6 +479,11 @@ fun SettingsScreen(
             onDismiss = { showWithingsDialog = false }
         )
     }
+}
+
+@Composable
+private fun SettingsActionButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(label) }
 }
 
 private fun saveTier(context: Context, tier: PrivacyTier) {
