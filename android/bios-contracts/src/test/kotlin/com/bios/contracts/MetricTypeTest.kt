@@ -59,6 +59,12 @@ class MetricTypeTest {
     }
 
     @Test
+    fun lf_hf_ratio_is_cardiovascular_score() {
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.LF_HF_RATIO.domain)
+        assertEquals(MetricUnit.SCORE, MetricType.LF_HF_RATIO.unit)
+    }
+
+    @Test
     fun cycle_phase_is_womens_health_category() {
         assertEquals(MetricDomain.WOMENS_HEALTH, MetricType.CYCLE_PHASE.domain)
         assertEquals(MetricUnit.CATEGORY, MetricType.CYCLE_PHASE.unit)

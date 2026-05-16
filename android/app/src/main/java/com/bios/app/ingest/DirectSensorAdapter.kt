@@ -118,6 +118,14 @@ class DirectSensorAdapter(context: Context) {
                 durationSec = duration,
                 sourceId = sourceId,
                 confidence = ConfidenceTier.LOW.level
+            ),
+            MetricReading(
+                metricType = MetricType.LF_HF_RATIO.key,
+                value = hrv.lfHfRatio,
+                timestamp = now,
+                durationSec = duration,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.LOW.level
             )
         )
     }
