@@ -300,7 +300,18 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") },
                     onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
-                    onNavigateToPeriodEntry = { navController.navigate("period_entry") }
+                    onNavigateToPeriodEntry = { navController.navigate("period_entry") },
+                    onNavigateToDataCoverage = { navController.navigate("data_coverage") }
+                )
+            }
+            composable("data_coverage") {
+                val coverageVm = remember(viewModel) {
+                    com.bios.app.ui.coverage.DataCoverageViewModel(viewModel)
+                }
+                com.bios.app.ui.coverage.DataCoverageScreen(
+                    viewModel = coverageVm,
+                    onBack = { navController.popBackStack() },
+                    onNavigate = { route -> navController.navigate(route) }
                 )
             }
             composable("biomarker_entry") {
