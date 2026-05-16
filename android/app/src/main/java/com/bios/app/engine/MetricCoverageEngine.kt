@@ -85,7 +85,7 @@ object MetricCoverageEngine {
             kind = kind,
             displayName = "Manual entry",
             isConfigured = true,  // always available
-            deepLink = "biomarker_entry"
+            deepLink = manualEntryDeepLink(metric)
         )
         CoverageRouteKind.FHIR_IMPORT -> CoverageRoute(
             kind = kind,
@@ -93,6 +93,14 @@ object MetricCoverageEngine {
             isConfigured = true,
             deepLink = "biomarker_entry"
         )
+    }
+
+    /** Route a MANUAL_ENTRY chip to the right entry screen. Sleep has its
+     *  own form; everything else lands on the biomarker entry surface (which
+     *  is also the FHIR import host). */
+    private fun manualEntryDeepLink(metric: MetricType): String = when (metric) {
+        MetricType.SLEEP_DURATION -> "sleep_entry"
+        else -> "biomarker_entry"
     }
 
     /** Pick the API adapter most likely to provide a given metric. The

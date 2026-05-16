@@ -72,9 +72,16 @@ object MetricCoverageRegistry {
         wearable(MetricType.SKIN_TEMPERATURE_DEVIATION),
 
         // -- Sleep (after waking) --
+        // SLEEP_DURATION is the only sleep metric that accepts self-reported
+        // entry — the stage-derived metrics (latency, efficiency, fragmentation)
+        // need per-minute stage data that a human can't reasonably produce.
         MetricCoverageSpec(
             MetricType.SLEEP_DURATION, 36 * H,
-            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+            listOf(
+                CoverageRouteKind.HEALTH_CONNECT,
+                CoverageRouteKind.API_ADAPTER,
+                CoverageRouteKind.MANUAL_ENTRY
+            )
         ),
         MetricCoverageSpec(
             MetricType.SLEEP_LATENCY, 36 * H,
