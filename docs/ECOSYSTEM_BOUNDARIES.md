@@ -246,6 +246,33 @@ applies to metric keys too — each key is a commitment to stability.
 > app needs to consume it, the data belongs in Bios's metric bus — not in
 > two parallel private tables.
 
+## Scope decisions log
+
+A running record of "is X in scope for Bios or a companion?" questions, with
+the verdict and the principle that drove it. Append new decisions; do not
+rewrite history.
+
+### 2026-05 — Blueprint / Don't Die audit triage
+
+Following the Blueprint and Don't Die investigations (issues #36–#43), the
+following scope calls were made. The first three of the manifesto's
+prohibitions (never evaluate the person; no behavioral nudges; silence is a
+feature) and the second-consumer rule were the load-bearing principles.
+
+| Topic | Verdict | Principle |
+|---|---|---|
+| Food / macro / calorie log (#36) | ❌ Out of scope — permanently | Inherently evaluative (deficit/surplus, "good food"). Violates "never evaluate the person" + "no behavioral nudges". |
+| Intervention log — sauna / NIR / HBOT / cold (#39) | ❌ Out of scope | Quantified-self self-experimentation framing ("did X improve my recovery?") is exactly the optimization framing the manifesto rejects. |
+| Self-exam / fertility self-report (#42) | ❌ Out of scope | Self-exam reminders are habit-tracker territory, not health-guardian. Involuntary fertility signal (BBT) already covered by #32. Privacy bar too high for marginal pattern benefit. |
+| Hydration logging (`HYDRATION_ML`) | ❌ Out of scope | Manual entry drifts into "are you drinking enough?" behavioral judgment. |
+| Water quality / TDS / mineralization | ❌ Out of scope | Blueprint-style optimization, no Bios pattern consumes it. |
+| Supplement / medication adherence (#37) | ⏸ Deferred — second-consumer rule | No Bios pattern needs adherence input today. Re-evaluate when a concrete consumer emerges (likely: future migraine / chronic-condition companion). If reserved, mirror Smokeless posture exactly (timestamp + opaque event-id, no substance names). |
+| Grip strength `GRIP_STRENGTH_KG` (#41) | ⏸ Deferred — second-consumer rule | Re-evaluate when Fil (or a physical-tests companion) ships an active grip test AND a second Bios-side consumer exists. |
+| Additional cognitive keys — `N_BACK`, `STROOP`, `DIGIT_SPAN_*`, `PROCESSING_SPEED_SCORE` (#40) | ⏸ Deferred — second-consumer rule | Unlike `REACTION_TIME_MS`, these have only Fil as a consumer. Reserve when Fil's active-test surface ships. |
+| `REACTION_TIME_MS` (#40) | ✅ Keep reserved | Two named consumers across two domains: Fil produces (active micro-tests); W2F reads as a cross-check on its passive psychomotor-acceleration signal. Documented producer + reader satisfies the second-consumer rule. |
+| Exercise sessions — modality / duration / avg HR / RPE (#38) | ✅ In scope for Bios — auto-derive from adapters | This is passive sensor data (HC `ExerciseSessionRecord`, Garmin/WHOOP/Oura native session entities). No companion, no manual logging UI in Bios. Add `EXERCISE_SESSION` to `MetricType`. |
+| Air quality — `AIR_PM25`, `AIR_VOC`, `AIR_CO2` (#43) | ✅ In scope for Bios — BLE adapter pattern | Sensor-grade, passive, confounds nearly every existing pattern (sleep, HRV, infection, respiratory). Fits the existing 9-adapter pattern as a 10th. No `Habitat` companion needed. |
+
 ## Cross-references
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Bios system components
