@@ -94,7 +94,21 @@ cycle_phase                 -- enum: menstrual | follicular | ovulatory | luteal
 // Environment
 ambient_light               -- lux                           [planned — phone sensor]
 ambient_noise               -- dB                            [planned — microphone adapter]
+
+// Epigenetic age clocks (slow-rolling, user-imported from labs like TruDiagnostic)
+epigenetic_age_dunedin_pace -- ratio (1.0 = aging at normal rate)  [implemented — manual entry]
+epigenetic_age_grim         -- years (biological age)              [implemented — manual entry]
+epigenetic_age_pheno        -- years (biological age)              [implemented — manual entry]
+epigenetic_age_horvath      -- years (biological age)              [implemented — manual entry]
 ```
+
+#### Epigenetic age clocks — manifesto guard
+
+The four clocks above are imported as standalone biomarkers and displayed
+alongside HBA1C / ApoB / etc. in the lab-value surface. Bios **does not**
+compose them into a derived "Bios biological age" or "pace of aging" score
+— evaluating the person is explicitly out of scope. Owners see each clock's
+reading on its own; interpretation is the lab's job, not Bios's.
 
 **Summary:** 17 of 34 metric types are implemented. The remaining 17 are defined for future adapter expansion.
 

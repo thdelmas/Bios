@@ -38,6 +38,11 @@ class BiomarkerEntrySelectorsTest {
             MetricType.TSH, MetricType.FREE_T4, MetricType.FREE_T3,
             MetricType.HEMOGLOBIN, MetricType.HEMATOCRIT,
             MetricType.WBC, MetricType.RBC, MetricType.PLATELETS,
+            // Epigenetic age clocks (slow-rolling, lab-imported).
+            MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
+            MetricType.EPIGENETIC_AGE_GRIM,
+            MetricType.EPIGENETIC_AGE_PHENO,
+            MetricType.EPIGENETIC_AGE_HORVATH,
         )
         val actual = MetricType.entries.filter { it.domain == MetricDomain.BIOMARKER }.toSet()
         assertEquals(expected, actual)
