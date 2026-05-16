@@ -122,6 +122,41 @@ Bios ships a `PpgValidation` utility
 for computing MAE, bias, and range from paired readings. See the unit test
 for the shape of input it expects.
 
+## Deep link
+
+Companions can open the PPG capture screen directly with the URI
+`bios://capture/ppg` — no Home detour. This is the right shape for CTAs
+fired in degraded-executive-function moments (post-stressor, post-bad-
+sleep prompts) where the cost of an extra tap is high.
+
+Behavior:
+
+- Camera permission still runs if not yet granted — the capture screen
+  owns its own permission flow.
+- Recording does **not** auto-start; the owner still confirms in Bios.
+  v1 has no qualifier parameters (no `?reason=`); plain link only.
+- Back from the capture screen finishes the activity and returns to the
+  calling companion (or the system back stack), not Bios Home. The
+  in-app back stack is cleared when entering via deep link.
+
+From Kotlin:
+
+```kotlin
+val intent = Intent(Intent.ACTION_VIEW, Uri.parse("bios://capture/ppg"))
+context.startActivity(intent)
+```
+
+From a shell (testing):
+
+```
+adb shell am start -a android.intent.action.VIEW -d bios://capture/ppg
+```
+
+The intent-filter lives on `MainActivity` in
+[AndroidManifest.xml](../android/app/src/main/AndroidManifest.xml); the
+in-app routing is in
+[MainActivity.kt](../android/app/src/main/java/com/bios/app/ui/MainActivity.kt).
+
 ## Cross-references
 
 - [ARCHITECTURE.md §1](ARCHITECTURE.md) — adapter list

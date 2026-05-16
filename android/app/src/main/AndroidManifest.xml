@@ -82,6 +82,17 @@
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
 
+            <!-- Companion deep link: bios://capture/ppg lands directly on the
+                 PPG capture screen so companions (W2F's "take a snapshot" CTA)
+                 can offer one-tap entry without a Home detour. See
+                 docs/CAMERA_PPG.md § Deep link. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bios" android:host="capture" android:path="/ppg" />
+            </intent-filter>
+
             <meta-data
                 android:name="health_permissions"
                 android:resource="@array/health_permissions" />

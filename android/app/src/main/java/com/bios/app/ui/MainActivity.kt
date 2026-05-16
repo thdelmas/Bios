@@ -148,6 +148,21 @@ fun BiosApp(viewModel: AppViewModel) {
         }
     }
 
+    // Deep-link from a companion (e.g. W2F "take a snapshot" CTA): bios://capture/ppg
+    // lands directly on the PPG capture screen. popUpTo home/inclusive empties
+    // the in-app back stack so pressing back from capture finishes the
+    // activity and returns to the calling companion, not Bios Home.
+    LaunchedEffect(Unit) {
+        val activity = context as? android.app.Activity ?: return@LaunchedEffect
+        val data = activity.intent?.data ?: return@LaunchedEffect
+        if (data.scheme == "bios" && data.host == "capture" && data.path == "/ppg") {
+            activity.intent.data = null
+            navController.navigate("ppg_capture") {
+                popUpTo("home") { inclusive = true }
+            }
+        }
+    }
+
     // Show errors as snackbar
     LaunchedEffect(error) {
         error?.let {
@@ -242,7 +257,11 @@ fun BiosApp(viewModel: AppViewModel) {
                 )
             }
             composable("ppg_capture") {
-                PpgCaptureScreen(onBack = { navController.popBackStack() })
+                PpgCaptureScreen(onBack = {
+                    if (!navController.popBackStack()) {
+                        (context as? android.app.Activity)?.finish()
+                    }
+                })
             }
             composable("diagnostics") {
                 DiagnosticsScreen(
