@@ -194,6 +194,31 @@ class MetricCoverageEngineTest {
     }
 
     @Test
+    fun `sleep duration offers manual entry routed to the sleep entry screen`() = runTest {
+        val rows = MetricCoverageEngine.compute(
+            readiness = noReadiness,
+            nowMillis = now,
+            lastTimestampFor = { null }
+        )
+        val sleep = rows.single { it.metricType == MetricType.SLEEP_DURATION }
+        val manual = sleep.routes.single { it.kind == CoverageRouteKind.MANUAL_ENTRY }
+        assertTrue(manual.isConfigured)
+        assertEquals("sleep_entry", manual.deepLink)
+    }
+
+    @Test
+    fun `biomarker manual entry still routes to the biomarker entry screen`() = runTest {
+        val rows = MetricCoverageEngine.compute(
+            readiness = noReadiness,
+            nowMillis = now,
+            lastTimestampFor = { null }
+        )
+        val hba1c = rows.single { it.metricType == MetricType.HBA1C }
+        val manual = hba1c.routes.single { it.kind == CoverageRouteKind.MANUAL_ENTRY }
+        assertEquals("biomarker_entry", manual.deepLink)
+    }
+
+    @Test
     fun `last timestamp survives onto the produced row`() = runTest {
         val ts = now - 3 * H
         val rows = MetricCoverageEngine.compute(

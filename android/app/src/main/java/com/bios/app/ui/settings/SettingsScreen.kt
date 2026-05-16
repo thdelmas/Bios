@@ -34,6 +34,7 @@ fun SettingsScreen(
     onNavigateToBiomarkerEntry: () -> Unit = {},
     onNavigateToBbtEntry: () -> Unit = {},
     onNavigateToPeriodEntry: () -> Unit = {},
+    onNavigateToSleepEntry: () -> Unit = {},
     onNavigateToDataCoverage: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -120,6 +121,8 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(8.dp))
                 SettingsActionButton("Add Lab Values", onNavigateToBiomarkerEntry)
+                Spacer(Modifier.height(4.dp))
+                SettingsActionButton("Log sleep", onNavigateToSleepEntry)
                 Spacer(Modifier.height(4.dp))
                 SettingsActionButton("Track BBT", onNavigateToBbtEntry)
                 Spacer(Modifier.height(4.dp))
