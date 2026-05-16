@@ -65,6 +65,18 @@ class MetricTypeTest {
     }
 
     @Test
+    fun menstruation_onset_is_womens_health_event() {
+        assertEquals(MetricDomain.WOMENS_HEALTH, MetricType.MENSTRUATION_ONSET.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.MENSTRUATION_ONSET.unit)
+    }
+
+    @Test
+    fun cycle_day_is_womens_health_count() {
+        assertEquals(MetricDomain.WOMENS_HEALTH, MetricType.CYCLE_DAY.domain)
+        assertEquals(MetricUnit.COUNT, MetricType.CYCLE_DAY.unit)
+    }
+
+    @Test
     fun hba1c_is_biomarker_percent() {
         assertEquals(MetricDomain.BIOMARKER, MetricType.HBA1C.domain)
         assertEquals(MetricUnit.PERCENT, MetricType.HBA1C.unit)
