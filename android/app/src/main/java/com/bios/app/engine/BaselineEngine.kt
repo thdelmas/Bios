@@ -65,6 +65,7 @@ class BaselineEngine(
     private val TRACKED_METRICS = listOf(
         MetricType.HEART_RATE,
         MetricType.HEART_RATE_VARIABILITY,
+        MetricType.LF_HF_RATIO,
         MetricType.RESTING_HEART_RATE,
         MetricType.BLOOD_OXYGEN,
         MetricType.RESPIRATORY_RATE,
@@ -80,6 +81,7 @@ class BaselineEngine(
             val metricsToBaseline = listOf(
                 MetricType.HEART_RATE,
                 MetricType.HEART_RATE_VARIABILITY,
+                MetricType.LF_HF_RATIO,
                 MetricType.RESTING_HEART_RATE,
                 MetricType.BLOOD_OXYGEN,
                 MetricType.RESPIRATORY_RATE,
