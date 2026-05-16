@@ -84,7 +84,7 @@ the-loop review, localization (6 regions), and detection latency SLOs.
 
 ---
 
-## Phase 7: Companion Ecosystem — Open the metric bus to sibling apps [IN PROGRESS]
+## Phase 7: Companion Ecosystem — Open the metric bus to sibling apps [COMPLETE EXCEPT 7.5 (DEFERRED)]
 
 > Bios is the suite hub: W2F (mood/bipolar) already reads sensors and writes
 > three MENTAL_HEALTH keys back; Virgil (solo-living safety) has discrete
@@ -249,7 +249,7 @@ See also: [Smokeless/docs/ECOSYSTEM.md](../../Smokeless/docs/ECOSYSTEM.md).
 
 ---
 
-## Phase 8: Perimeter completion — close the bio-hacking coverage gaps [PLANNED]
+## Phase 8: Perimeter completion — close the bio-hacking coverage gaps [COMPLETE]
 
 > A gap audit across the five-app suite (Bios, W2F, Smokeless, Virgil,
 > SoulRadio) surfaced canonical signals that the schema either reserves
