@@ -95,7 +95,11 @@ class CircadianEngine(
         ): List<DatedSummary> {
             val byDate = rows
                 .filter { it.durationSec != null && it.durationSec > 0 }
-                .groupBy { LocalDate.ofInstant(Instant.ofEpochMilli(it.timestamp), zoneId) }
+                .groupBy {
+                    // LocalDate.ofInstant is API 34; build the equivalent via
+                    // ZonedDateTime so we stay compatible with minSdk 28.
+                    Instant.ofEpochMilli(it.timestamp).atZone(zoneId).toLocalDate()
+                }
 
             return byDate.entries
                 .map { (date, sameDate) ->
