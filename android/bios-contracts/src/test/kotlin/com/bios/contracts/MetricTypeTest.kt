@@ -204,6 +204,16 @@ class MetricTypeTest {
     }
 
     @Test
+    fun exercise_session_is_activity_event() {
+        // Composite event: parent row is a MetricReading, structured fields
+        // (modality, start/end utc, avg HR, RPE) live in event_payloads.
+        // ACTIVITY domain alongside steps/active_calories/active_minutes;
+        // EVENT unit matches the marker semantics (value = 1.0).
+        assertEquals(MetricDomain.ACTIVITY, MetricType.EXERCISE_SESSION.domain)
+        assertEquals(MetricUnit.EVENT, MetricType.EXERCISE_SESSION.unit)
+    }
+
+    @Test
     fun health_contract_authority_is_stable() {
         assertEquals("com.bios.app.health", BiosHealthContract.AUTHORITY)
     }

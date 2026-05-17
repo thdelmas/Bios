@@ -66,6 +66,7 @@ sleep_score                 -- 0-100 (vendor-normalized)     [planned — vendor
 steps                       -- count                         [implemented]
 active_calories             -- kcal                          [implemented]
 active_minutes              -- minutes                       [implemented]
+exercise_session            -- event (composite, payload below) [implemented — Health Connect]
 distance                    -- meters                        [planned — GPS-capable adapters]
 vo2_max                     -- mL/kg/min                     [planned — exercise-mode adapters]
 
@@ -139,11 +140,11 @@ with the same stability commitment as `MetricType.key` strings.
 
 | Metric type | Field key | Typed column | Notes |
 |---|---|---|---|
-| `EXERCISE_SESSION` *(planned, #38)* | `modality` | `string_value` | enum: `CARDIO`, `STRENGTH`, `INTERVAL`, `MOBILITY`, `OTHER` |
-| `EXERCISE_SESSION` *(planned, #38)* | `start_utc` | `long_value` | epoch ms |
-| `EXERCISE_SESSION` *(planned, #38)* | `end_utc` | `long_value` | epoch ms |
-| `EXERCISE_SESSION` *(planned, #38)* | `avg_hr_bpm` | `double_value` | nullable — not every source reports it |
-| `EXERCISE_SESSION` *(planned, #38)* | `rpe` | `long_value` | 1–10, nullable — only populated if the source captured it |
+| `EXERCISE_SESSION` | `modality` | `string_value` | enum: `CARDIO`, `STRENGTH`, `INTERVAL`, `MOBILITY`, `OTHER` |
+| `EXERCISE_SESSION` | `start_utc` | `long_value` | epoch ms |
+| `EXERCISE_SESSION` | `end_utc` | `long_value` | epoch ms |
+| `EXERCISE_SESSION` | `avg_hr_bpm` | `double_value` | nullable — not every source reports it |
+| `EXERCISE_SESSION` | `rpe` | `long_value` | 1–10, nullable — only populated if the source captured it |
 
 #### When to use the payload table
 
