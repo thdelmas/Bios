@@ -343,6 +343,7 @@ class FhirExporterTest {
             MetricUnit.CATEGORY -> "{category}"
             MetricUnit.EVENT -> "{event}"
             MetricUnit.LUX -> "lx"
+            MetricUnit.YEARS -> "a"
         }
     }
 }

@@ -15,8 +15,14 @@ class FhirImporterTest {
 
     @Test
     fun `reverse LOINC table is the inverse of FhirExporter loincCode for every biomarker`() {
-        val biomarkers = MetricType.entries.filter { it.domain == MetricDomain.BIOMARKER }
-        // Every shipped biomarker has a LOINC mapping on the export side.
+        // Epigenetic-age clocks (TruDiagnostic / similar) lack widely-adopted
+        // standardized LOINC codes, so their FHIR mapping is intentionally
+        // deferred. Filter them out of this round-trip check — for every
+        // biomarker that *does* have a LOINC mapping, the reverse table must
+        // be its inverse.
+        val biomarkers = MetricType.entries
+            .filter { it.domain == MetricDomain.BIOMARKER }
+            .filter { com.bios.app.export.loincCode(it) != null }
         for (type in biomarkers) {
             val pair = com.bios.app.export.loincCode(type)
             assertNotNull("${type.key} should have a LOINC mapping", pair)

@@ -183,6 +183,27 @@ class MetricTypeTest {
     }
 
     @Test
+    fun epigenetic_age_clocks_are_biomarkers() {
+        // GrimAge, PhenoAge, Horvath report biological age in years.
+        for (t in setOf(
+            MetricType.EPIGENETIC_AGE_GRIM,
+            MetricType.EPIGENETIC_AGE_PHENO,
+            MetricType.EPIGENETIC_AGE_HORVATH,
+        )) {
+            assertEquals(MetricDomain.BIOMARKER, t.domain)
+            assertEquals(MetricUnit.YEARS, t.unit)
+        }
+        // DunedinPACE is years-of-aging-per-year, a dimensionless ratio.
+        assertEquals(MetricDomain.BIOMARKER, MetricType.EPIGENETIC_AGE_DUNEDIN_PACE.domain)
+        assertEquals(MetricUnit.SCORE, MetricType.EPIGENETIC_AGE_DUNEDIN_PACE.unit)
+    }
+
+    @Test
+    fun years_unit_symbol_is_yr() {
+        assertEquals("yr", MetricUnit.YEARS.symbol)
+    }
+
+    @Test
     fun health_contract_authority_is_stable() {
         assertEquals("com.bios.app.health", BiosHealthContract.AUTHORITY)
     }

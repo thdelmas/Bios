@@ -86,6 +86,15 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     RBC("rbc", MetricUnit.TERA_PER_L, MetricDomain.BIOMARKER),
     PLATELETS("platelets", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
 
+    // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
+    // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
+    // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
+    // score" from these (manifesto: never evaluate the person).
+    EPIGENETIC_AGE_DUNEDIN_PACE("epigenetic_age_dunedin_pace", MetricUnit.SCORE, MetricDomain.BIOMARKER),
+    EPIGENETIC_AGE_GRIM("epigenetic_age_grim", MetricUnit.YEARS, MetricDomain.BIOMARKER),
+    EPIGENETIC_AGE_PHENO("epigenetic_age_pheno", MetricUnit.YEARS, MetricDomain.BIOMARKER),
+    EPIGENETIC_AGE_HORVATH("epigenetic_age_horvath", MetricUnit.YEARS, MetricDomain.BIOMARKER),
+
     // Companion signals (injected by W2F via ContentProvider).
     // typing_cadence requires the AccessibilityService capture surface;
     // mood_drift_score is a domain-specific ADA-1/HDA-1 composite. Both
@@ -145,7 +154,8 @@ enum class MetricUnit(val symbol: String) {
     TERA_PER_L("10¹²/L"),
     SCORE(""),
     EVENT(""),
-    LUX("lx")
+    LUX("lx"),
+    YEARS("yr")
 }
 
 enum class MetricDomain {

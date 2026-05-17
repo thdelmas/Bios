@@ -283,6 +283,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.CATEGORY -> "{category}"
     MetricUnit.EVENT -> "{event}"
     MetricUnit.LUX -> "lx"
+    MetricUnit.YEARS -> "a"
 }
 
 internal fun formatInstant(instant: Instant): String =
