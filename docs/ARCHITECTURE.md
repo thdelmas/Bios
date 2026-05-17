@@ -119,8 +119,13 @@ Responsible for pulling data from all supported sources and normalizing it into 
 - Buffer and batch-write to local store
 
 **Deduplication strategy:**
-- When multiple sources report the same metric type for overlapping time windows, prefer the source with the highest sensor confidence tier (ECG > optical chest > optical wrist > phone camera)
-- Store all raw readings but flag the "primary" reading used for analysis
+
+Two passes in `ingest/Deduplicator.kt`:
+
+1. **Exact-match (every metric).** Readings with identical `(metricType, timestamp)` collapse to the highest-confidence one. This is the only safe rule for point-in-time metrics (HR, HRV, RHR, SpO2, sleep stages, biomarkers) — a 1-second skew between two adapters sampling HR is legitimate sampling, not a duplicate.
+2. **Window-overlap (time-window-aggregate metrics only).** Bucketed counts — `STEPS`, `ACTIVE_CALORIES`, `ACTIVE_MINUTES` — from *different sources* within a 5-minute window collapse to the highest-confidence one. Same-source readings inside the window are preserved (consecutive buckets from one adapter are sequential data). Cross-source skew of milliseconds-to-seconds is real (Health Connect's near-realtime stream vs. Gadgetbridge's on-watch-sync writes), so exact-ms dedup alone double-counts step buckets covering the same activity.
+
+Confidence tier ordering: ECG > optical chest > optical wrist > phone camera. Add new window-aggregate metrics to `Deduplicator.WINDOW_MS`.
 
 ### 2. Local Data Store
 
