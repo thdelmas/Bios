@@ -120,6 +120,64 @@ Current allocations:
 - `value` (Double) — required
 - `timestamp` (Long, epoch ms) — optional, defaults to `now`
 
+### Signing-cert pin (standalone flavor)
+
+On the standalone flavor, package-name equality is not enough — any sideloaded
+APK can declare `<application android:packageName="com.w2f.app">`. Each
+companion's release signing cert SHA-256 is pinned alongside its package name
+in `provider.CompanionContract.PACKAGES.signingCertSha256`. Writes from a
+matching package name with a non-matching cert are rejected with
+`SecurityException`.
+
+On the LETHE flavor the pin is bypassed: companions are pre-installed system
+apps signed by the platform key, which is the trust anchor.
+
+**Migration window.** Until a companion publishes a stable release-signing
+key, its `signingCertSha256` is `emptySet()`. In that state the package-name
+check stands alone (current behavior). Once populated, impersonators are
+rejected at insert time.
+
+#### Cert-rotation procedure
+
+When a companion ships its first signed release, or rotates its key, the new
+SHA-256 must be added to its `Companion` entry in `CompanionContract.kt`:
+
+1. **Compute the SHA-256.** From the signed release APK:
+   ```sh
+   apksigner verify --print-certs companion-release.apk \
+     | grep "SHA-256 digest" \
+     | head -1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z'
+   ```
+   Or from a keystore:
+   ```sh
+   keytool -list -keystore release.keystore -alias <alias> \
+     | grep "SHA256" | awk '{print $2}' | tr -d ':' | tr 'A-Z' 'a-z'
+   ```
+
+2. **Add to the pinned set.** Edit the companion's `signingCertSha256` in
+   `CompanionContract.kt`:
+   ```kotlin
+   signingCertSha256 = setOf(
+       "abc123...new-release-key-sha-here...",
+   )
+   ```
+
+3. **Key rotation.** When a companion rotates its release key, keep the *old*
+   SHA in the set for one Bios release cycle. The set tolerates multiple SHAs
+   so users running an older companion version don't lose write access while
+   they update:
+   ```kotlin
+   signingCertSha256 = setOf(
+       "old-key-sha-256",  // remove in Bios N+2
+       "new-key-sha-256",
+   )
+   ```
+
+4. **Ship Bios, then ship companion.** A Bios release with the new SHA must
+   reach users before the companion release signed with the new key, otherwise
+   the companion's writes will start failing on devices that haven't updated
+   Bios yet.
+
 ## First-connection notification
 
 The first time any unknown package calls the provider, Bios fires a

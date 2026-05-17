@@ -11,6 +11,7 @@ import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
 import com.bios.app.model.SensorType
+import com.bios.app.platform.PlatformDetector
 import com.bios.contracts.BiosHealthContract
 import com.bios.contracts.MetricType
 import kotlinx.coroutines.runBlocking
@@ -75,6 +76,8 @@ class BiosHealthProvider : ContentProvider() {
 
     private lateinit var db: BiosDatabase
     private lateinit var gate: CompanionGate
+    private lateinit var certResolver: CallerCertResolver
+    private var bypassCertPin: Boolean = false
     private val ensuredSources = mutableSetOf<String>()
 
     override fun onCreate(): Boolean {
@@ -85,6 +88,11 @@ class BiosHealthProvider : ContentProvider() {
             dao = db.companionGrantDao(),
             onFirstPending = { pkg -> notifier.notifyPending(pkg) }
         )
+        certResolver = PackageManagerCertResolver(ctx.packageManager)
+        // On LETHE the platform key is the trust anchor — companions are
+        // pre-installed system apps signed by the OS. Standalone has no such
+        // anchor, so the SHA-256 pin in CompanionContract becomes load-bearing.
+        bypassCertPin = PlatformDetector.isLethe(ctx)
         return true
     }
 
@@ -157,6 +165,14 @@ class BiosHealthProvider : ContentProvider() {
         val companion = CompanionContract.sourceFor(caller)
         if (companion == null || metricType !in companion.writableMetrics) {
             throw SecurityException("'$caller' may not write '$metricType'")
+        }
+        if (!bypassCertPin && companion.signingCertSha256.isNotEmpty()) {
+            val actualSha = caller?.let { certResolver.signingCertSha256(it) }
+            if (!CompanionContract.verifySigningCert(caller, actualSha)) {
+                throw SecurityException(
+                    "'$caller' presented a signing cert that does not match the pin for ${companion.displayName}"
+                )
+            }
         }
         val cv = values ?: throw IllegalArgumentException("ContentValues required")
         val value = cv.getAsDouble(BiosHealthContract.CompanionInsert.VALUE)

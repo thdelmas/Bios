@@ -20,6 +20,16 @@ import com.bios.app.model.ReadingKind
  * owner can trace exactly which app wrote any given reading. Without this,
  * everything routes through one source and provenance is lost.
  *
+ * Signing-cert pin: on the standalone flavor, package-name equality is not enough
+ * — any sideloaded APK can declare `<application android:packageName="com.w2f.app">`.
+ * [signingCertSha256] pins the trust to the SHA-256 of the companion's release
+ * signing certificate. An empty set means "no pin published yet" (migration
+ * window) and the package-name check stands alone; once the companion ships a
+ * stable release-signing key, its SHA is added here and impersonators are
+ * rejected at insert time. The check is bypassed on the LETHE flavor where the
+ * platform itself is the trust anchor (companions are pre-installed system apps
+ * signed by the platform key).
+ *
  * Membership rules:
  * - W2F (com.w2f.app) writes MENTAL_HEALTH signals
  * - Smokeless (com.smokless.smokeless) writes INTAKE events (tobacco + cannabis,
@@ -33,13 +43,31 @@ internal object CompanionContract {
     // SELF_REPORTED mood) must split into multiple sourceIds when that
     // ambiguity actually bites — tracked as an open question in
     // docs/SELF_REPORTED_DATA_HOME.md.
+    //
+    // `signingCertSha256`: hex (lowercase) SHA-256 of the companion's release
+    // signing cert(s). Multiple values support a rotation window. Empty set =
+    // not yet pinned — see the migration-window note on the surrounding object.
     data class Companion(
         val packageName: String,
         val displayName: String,
         val sourceId: String,
         val writableMetrics: Set<String>,
         val defaultReadingKind: ReadingKind,
-    )
+        val signingCertSha256: Set<String> = emptySet(),
+    ) {
+        /**
+         * Whether [actualCertSha256] (lowercase hex) matches this companion's pin.
+         * Empty pin → true (migration window, falls back to package-name trust).
+         * Non-empty pin → true iff the actual SHA is in the pinned set, case-
+         * insensitively. A null actual SHA against a non-empty pin reads as
+         * impersonation and returns false.
+         */
+        fun verifySigningCert(actualCertSha256: String?): Boolean {
+            if (signingCertSha256.isEmpty()) return true
+            val actual = actualCertSha256?.lowercase() ?: return false
+            return signingCertSha256.any { it.lowercase() == actual }
+        }
+    }
 
     val PACKAGES: Map<String, Companion> = listOf(
         Companion(
@@ -56,6 +84,11 @@ internal object CompanionContract {
                 "mood_drift_score",
             ),
             defaultReadingKind = ReadingKind.DERIVED,
+            // TODO populate with W2F's release-signing cert SHA-256 before the
+            // first standalone-flavor release. See docs/CONSUMER_API.md cert-
+            // rotation procedure. Until then, the package-name check stands
+            // alone.
+            signingCertSha256 = emptySet(),
         ),
         Companion(
             packageName = "com.smokless.smokeless",
@@ -68,6 +101,7 @@ internal object CompanionContract {
                 "cannabis_craving",
             ),
             defaultReadingKind = ReadingKind.SELF_REPORTED,
+            signingCertSha256 = emptySet(),
         ),
         Companion(
             packageName = "com.virgil.app",
@@ -79,6 +113,7 @@ internal object CompanionContract {
                 "check_in_miss",
             ),
             defaultReadingKind = ReadingKind.DERIVED,
+            signingCertSha256 = emptySet(),
         ),
     ).associateBy { it.packageName }
 
@@ -95,4 +130,17 @@ internal object CompanionContract {
 
     /** Source metadata for a known companion package, or `null` if unknown. */
     fun sourceFor(pkg: String?): Companion? = pkg?.let { PACKAGES[it] }
+
+    /**
+     * Decides whether to accept a write from [pkg] given the calling APK's
+     * actual signing-cert SHA-256 ([actualCertSha256], lowercase hex).
+     *
+     * Unknown package → false. Known package → delegates to the per-companion
+     * [Companion.verifySigningCert]. Callers running on the LETHE flavor should
+     * skip this and trust the platform key instead.
+     */
+    fun verifySigningCert(pkg: String?, actualCertSha256: String?): Boolean {
+        val companion = sourceFor(pkg) ?: return false
+        return companion.verifySigningCert(actualCertSha256)
+    }
 }
