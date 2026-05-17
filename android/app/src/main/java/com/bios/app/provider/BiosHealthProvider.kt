@@ -24,6 +24,7 @@ import kotlinx.coroutines.runBlocking
  *   content://com.bios.app.health/baselines/{metricType}
  *   content://com.bios.app.health/status                  — one row per known metricType
  *   content://com.bios.app.health/status/{metricType}     — one row for that metricType
+ *   content://com.bios.app.health/payload/{readingId}     — composite-event fields
  *
  * Write URI (companion signals only):
  *   content://com.bios.app.health/companion/{metricType}
@@ -52,6 +53,7 @@ class BiosHealthProvider : ContentProvider() {
         private const val COMPANION_WRITE = 4
         private const val STATUS_ALL = 5
         private const val STATUS_TYPE = 6
+        private const val PAYLOAD = 7
 
         private const val DAY_MILLIS = 24L * 60L * 60L * 1000L
 
@@ -62,11 +64,13 @@ class BiosHealthProvider : ContentProvider() {
             addURI(AUTHORITY, "${BiosHealthContract.PATH_COMPANION}/*", COMPANION_WRITE)
             addURI(AUTHORITY, BiosHealthContract.PATH_STATUS, STATUS_ALL)
             addURI(AUTHORITY, "${BiosHealthContract.PATH_STATUS}/*", STATUS_TYPE)
+            addURI(AUTHORITY, "${BiosHealthContract.PATH_PAYLOAD}/*", PAYLOAD)
         }
 
         val READING_COLUMNS = BiosHealthContract.READING_COLUMNS
         val BASELINE_COLUMNS = BiosHealthContract.BASELINE_COLUMNS
         val STATUS_COLUMNS = BiosHealthContract.STATUS_COLUMNS
+        val PAYLOAD_COLUMNS = BiosHealthContract.PAYLOAD_COLUMNS
     }
 
     private lateinit var db: BiosDatabase
@@ -129,6 +133,7 @@ class BiosHealthProvider : ContentProvider() {
             BASELINE_TYPE -> queryBaselines(uri.lastPathSegment)
             STATUS_ALL -> queryStatus(null)
             STATUS_TYPE -> queryStatus(uri.lastPathSegment)
+            PAYLOAD -> queryPayload(uri.lastPathSegment)
             else -> null
         }
     }
@@ -244,6 +249,27 @@ class BiosHealthProvider : ContentProvider() {
                 row?.lastTimestamp ?: 0L,
                 row?.count24h ?: 0,
                 row?.countTotal ?: 0,
+            ))
+        }
+        return cursor
+    }
+
+    /**
+     * Returns the composite payload fields for a parent reading. Scalar
+     * metrics carry no payload; in that case the cursor is empty rather than
+     * null, so callers always get the same shape back.
+     */
+    private fun queryPayload(readingId: String?): Cursor {
+        val fields = if (readingId.isNullOrEmpty()) {
+            emptyList()
+        } else {
+            runBlocking { db.eventPayloadFieldDao().fetchForReading(readingId) }
+        }
+
+        val cursor = MatrixCursor(PAYLOAD_COLUMNS, fields.size)
+        for (f in fields) {
+            cursor.addRow(arrayOf(
+                f.readingId, f.fieldKey, f.stringValue, f.doubleValue, f.longValue
             ))
         }
         return cursor

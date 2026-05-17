@@ -24,9 +24,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         UserFeedback::class,
         ProfessionalReview::class,
         CompanionGrant::class,
-        LoggedEvent::class
+        LoggedEvent::class,
+        EventPayloadField::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -42,6 +43,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun professionalReviewDao(): ProfessionalReviewDao
     abstract fun companionGrantDao(): CompanionGrantDao
     abstract fun loggedEventDao(): LoggedEventDao
+    abstract fun eventPayloadFieldDao(): EventPayloadFieldDao
 
     companion object {
         @Volatile
@@ -64,7 +66,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .build()
         }
 
@@ -249,6 +251,29 @@ abstract class BiosDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_logged_events_sourceId " +
                         "ON logged_events(sourceId)"
+                )
+            }
+        }
+
+        // Sidecar table for composite event payloads. Each row is one field
+        // of a structured event attached to a parent MetricReading row.
+        // See docs/DATA_MODEL.md for the field-key vocabulary.
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS event_payloads (
+                        readingId TEXT NOT NULL,
+                        fieldKey TEXT NOT NULL,
+                        stringValue TEXT,
+                        doubleValue REAL,
+                        longValue INTEGER,
+                        PRIMARY KEY (readingId, fieldKey),
+                        FOREIGN KEY (readingId) REFERENCES metric_readings(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_event_payloads_readingId " +
+                        "ON event_payloads(readingId)"
                 )
             }
         }
