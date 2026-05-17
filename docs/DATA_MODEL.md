@@ -143,7 +143,7 @@ with the same stability commitment as `MetricType.key` strings.
 | `EXERCISE_SESSION` | `modality` | `string_value` | enum: `CARDIO`, `STRENGTH`, `INTERVAL`, `MOBILITY`, `OTHER` |
 | `EXERCISE_SESSION` | `start_utc` | `long_value` | epoch ms |
 | `EXERCISE_SESSION` | `end_utc` | `long_value` | epoch ms |
-| `EXERCISE_SESSION` | `avg_hr_bpm` | `double_value` | nullable — not every source reports it |
+| `EXERCISE_SESSION` | `avg_hr_bpm` | `double_value` | nullable — mean of HR samples that fall inside the session window; omitted entirely when no samples land in window (null ≠ 0) |
 | `EXERCISE_SESSION` | `rpe` | `long_value` | 1–10, nullable — only populated if the source captured it |
 
 #### When to use the payload table
