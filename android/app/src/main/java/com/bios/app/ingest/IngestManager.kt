@@ -275,25 +275,8 @@ class IngestManager(
 
     // MARK: - Deduplication
 
-    /**
-     * Remove duplicate readings based on metric type + timestamp.
-     * When multiple sources report the same metric at the same time,
-     * keep the highest-confidence one.
-     */
-    private fun deduplicate(readings: List<MetricReading>): List<MetricReading> {
-        val seen = mutableMapOf<String, MetricReading>()
-
-        for (reading in readings) {
-            val key = "${reading.metricType}_${reading.timestamp}"
-            val existing = seen[key]
-
-            if (existing == null || reading.confidence > existing.confidence) {
-                seen[key] = reading
-            }
-        }
-
-        return seen.values.sortedBy { it.timestamp }
-    }
+    private fun deduplicate(readings: List<MetricReading>): List<MetricReading> =
+        Deduplicator.deduplicate(readings)
 
     /**
      * Writes composite EXERCISE_SESSION readings + their payload rows.
