@@ -1,6 +1,7 @@
 package com.bios.app.ingest
 
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.CircadianEngine
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.PipelineStage
 import com.bios.app.engine.SignalQualityFilter
@@ -45,6 +46,7 @@ class IngestManager(
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
     private val payloadDao = db.eventPayloadFieldDao()
+    private val circadianEngine = CircadianEngine(readingDao)
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
     val lastSyncTime: StateFlow<Long?> = _lastSyncTime
@@ -196,6 +198,8 @@ class IngestManager(
                 ingestBlock()
             }
 
+            deriveCircadianPhaseShift()
+
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
@@ -248,12 +252,24 @@ class IngestManager(
                 _syncProgress.value = completedDays / totalDays
             }
 
+            deriveCircadianPhaseShift()
+
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
             _isSyncing.value = false
             _syncProgress.value = 1f
         }
+    }
+
+    /**
+     * Run the circadian-phase-shift derivation against the readings now in DB.
+     * Self-skips when fewer than 4 days of SLEEP_DURATION exist or when today's
+     * shift has already been emitted, so this is safe to call on every sync.
+     */
+    private suspend fun deriveCircadianPhaseShift() {
+        val reading = circadianEngine.derive() ?: return
+        readingDao.insert(reading)
     }
 
     // MARK: - Derivations
