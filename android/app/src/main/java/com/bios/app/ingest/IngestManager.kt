@@ -7,6 +7,7 @@ import com.bios.app.engine.SignalQualityFilter
 import com.bios.app.engine.SleepDerivations
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.DataSource
+import com.bios.app.model.ExerciseSession
 import com.bios.app.model.MetricReading
 import com.bios.app.model.SensorType
 import com.bios.app.model.SourceType
@@ -43,6 +44,7 @@ class IngestManager(
 ) {
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
+    private val payloadDao = db.eventPayloadFieldDao()
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
     val lastSyncTime: StateFlow<Long?> = _lastSyncTime
@@ -176,6 +178,16 @@ class IngestManager(
                 val derived = deriveAll(quality)
                 readingDao.insertAll(quality + derived)
                 updateLastReadings(quality)
+
+                // Composite events (EXERCISE_SESSION) take a parallel path —
+                // the scalar dedupe/quality filter can't keep payload rows in
+                // sync with a deduped parent today, so sessions skip it and
+                // land directly. Multi-adapter dedupe lands when a second
+                // session-emitting adapter exists.
+                healthConnectSourceId?.let { id ->
+                    val sessions = healthConnect.fetchExerciseSessions(start, end, id)
+                    persistSessions(sessions)
+                }
             }
 
             if (latencyTracker != null) {
@@ -225,6 +237,12 @@ class IngestManager(
                 val derived = deriveAll(quality)
                 readingDao.insertAll(quality + derived)
                 updateLastReadings(quality)
+
+                healthConnectSourceId?.let { id ->
+                    val sessions = healthConnect.fetchExerciseSessions(current, chunkEnd, id)
+                    persistSessions(sessions)
+                }
+
                 current = chunkEnd
                 completedDays++
                 _syncProgress.value = completedDays / totalDays
@@ -275,6 +293,19 @@ class IngestManager(
         }
 
         return seen.values.sortedBy { it.timestamp }
+    }
+
+    /**
+     * Writes composite EXERCISE_SESSION readings + their payload rows.
+     * Insert order matters — the parent reading must exist before its
+     * EventPayloadField rows reference it via FK. Skipped silently if the
+     * source list is empty (the common case when no HC sessions exist
+     * in the window).
+     */
+    private suspend fun persistSessions(sessions: List<ExerciseSession>) {
+        if (sessions.isEmpty()) return
+        readingDao.insertAll(sessions.map { it.reading })
+        payloadDao.insertAll(sessions.flatMap { it.payload })
     }
 
     // MARK: - Helpers
