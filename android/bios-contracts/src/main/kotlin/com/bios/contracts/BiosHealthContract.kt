@@ -15,6 +15,7 @@ package com.bios.contracts
  *   content://com.bios.app.health/baselines/{metricType}
  *   content://com.bios.app.health/status
  *   content://com.bios.app.health/status/{metricType}
+ *   content://com.bios.app.health/payload/{readingId}
  *
  * ### Writes (companion signals only)
  *   content://com.bios.app.health/companion/{metricType}
@@ -29,6 +30,7 @@ object BiosHealthContract {
     const val PATH_BASELINES = "baselines"
     const val PATH_STATUS = "status"
     const val PATH_COMPANION = "companion"
+    const val PATH_PAYLOAD = "payload"
 
     /** Reading-row column names returned by `/readings/{metricType}` queries. */
     val READING_COLUMNS = arrayOf(
@@ -45,6 +47,15 @@ object BiosHealthContract {
     /** Status-row column names returned by `/status[/...]` queries. */
     val STATUS_COLUMNS = arrayOf(
         "metric_type", "last_ingested_at", "reading_count_24h", "reading_count_total"
+    )
+
+    /**
+     * Payload-row column names returned by `/payload/{readingId}` queries.
+     * Exactly one of `string_value`, `double_value`, `long_value` is non-null
+     * per row. Field-key vocabulary lives in `docs/DATA_MODEL.md`.
+     */
+    val PAYLOAD_COLUMNS = arrayOf(
+        "reading_id", "field_key", "string_value", "double_value", "long_value"
     )
 
     /** ContentValues keys accepted on `/companion/{metricType}` inserts. */

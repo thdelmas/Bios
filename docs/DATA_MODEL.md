@@ -112,6 +112,54 @@ reading on its own; interpretation is the lab's job, not Bios's.
 
 **Summary:** 17 of 34 metric types are implemented. The remaining 17 are defined for future adapter expansion.
 
+### EventPayloadField
+
+Sidecar to `MetricReading` for composite events that don't fit in a single
+scalar. Each row is one named field of a structured event attached to a
+parent reading. Scalar metrics never use this table — only multi-field
+composites do.
+
+```
+EventPayloadField {
+    reading_id:     UUID                -- FK to MetricReading.id; CASCADE on delete
+    field_key:      String              -- field name within the event (e.g. "modality")
+    string_value:   String?             -- exactly one of these three is non-null
+    double_value:   Float64?
+    long_value:     Int64?
+}
+                                        -- composite PK: (reading_id, field_key)
+```
+
+#### Field-key vocabulary
+
+Field keys are part of the public contract — companions and the pattern
+engine compile against them. Renames are breaking changes. New field keys
+land in this document alongside the metric type they describe; treat them
+with the same stability commitment as `MetricType.key` strings.
+
+| Metric type | Field key | Typed column | Notes |
+|---|---|---|---|
+| `EXERCISE_SESSION` *(planned, #38)* | `modality` | `string_value` | enum: `CARDIO`, `STRENGTH`, `INTERVAL`, `MOBILITY`, `OTHER` |
+| `EXERCISE_SESSION` *(planned, #38)* | `start_utc` | `long_value` | epoch ms |
+| `EXERCISE_SESSION` *(planned, #38)* | `end_utc` | `long_value` | epoch ms |
+| `EXERCISE_SESSION` *(planned, #38)* | `avg_hr_bpm` | `double_value` | nullable — not every source reports it |
+| `EXERCISE_SESSION` *(planned, #38)* | `rpe` | `long_value` | 1–10, nullable — only populated if the source captured it |
+
+#### When to use the payload table
+
+Use a payload row when **all** of:
+1. The metric needs more than one structured value per reading.
+2. Pattern-engine code or a companion reader needs to query individual
+   fields (`WHERE modality = 'CARDIO' AND avg_hr_bpm > 140`).
+3. Stuffing the data into `MetricReading.value` + a convention would
+   require ad-hoc parsing on every read.
+
+Do **not** use it for:
+- Owner-private notes — those go in `LoggedEvent.note`.
+- Vendor-specific raw blobs — those belong in the raw-payload field on
+  `MetricReading` (debug surface, never read by the engine).
+- Re-encoding the scalar that already fits in `value`.
+
 ### DataSource
 
 Tracks where a reading came from.

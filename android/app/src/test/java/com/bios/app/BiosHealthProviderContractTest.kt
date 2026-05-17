@@ -186,4 +186,24 @@ class BiosHealthProviderContractTest {
         assertEquals(ReadingKind.DERIVED, w2f.defaultReadingKind)
         assertEquals(ReadingKind.DERIVED, virgil.defaultReadingKind)
     }
+
+    @Test
+    fun `payload path constant matches the documented URI shape`() {
+        // Companions that read composite events build URIs by appending the
+        // parent reading id to PATH_PAYLOAD. Renames break every reader.
+        assertEquals("payload", com.bios.contracts.BiosHealthContract.PATH_PAYLOAD)
+    }
+
+    @Test
+    fun `payload column projection exposes the three typed value columns`() {
+        val cols = com.bios.contracts.BiosHealthContract.PAYLOAD_COLUMNS
+        assertEquals(5, cols.size)
+        assertTrue("reading_id" in cols)
+        assertTrue("field_key" in cols)
+        // Three typed columns — readers query the one matching the field's
+        // documented type rather than parsing a stringly-typed blob.
+        assertTrue("string_value" in cols)
+        assertTrue("double_value" in cols)
+        assertTrue("long_value" in cols)
+    }
 }
