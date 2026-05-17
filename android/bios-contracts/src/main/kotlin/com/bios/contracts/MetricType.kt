@@ -47,6 +47,11 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     STEPS("steps", MetricUnit.COUNT, MetricDomain.ACTIVITY),
     ACTIVE_CALORIES("active_calories", MetricUnit.KCAL, MetricDomain.ACTIVITY),
     ACTIVE_MINUTES("active_minutes", MetricUnit.SECONDS, MetricDomain.ACTIVITY),
+    // Composite event: discrete workout/session. value = 1.0 marker,
+    // durationSec = session length. Structured fields (modality, start/end
+    // utc, avg_hr_bpm, rpe) live in event_payloads keyed by reading id —
+    // see docs/DATA_MODEL.md field-key vocabulary.
+    EXERCISE_SESSION("exercise_session", MetricUnit.EVENT, MetricDomain.ACTIVITY),
 
     // Metabolic
     BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),

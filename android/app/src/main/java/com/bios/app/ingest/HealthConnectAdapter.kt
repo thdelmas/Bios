@@ -7,6 +7,10 @@ import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.EventPayloadField
+import com.bios.app.model.ExerciseModality
+import com.bios.app.model.ExerciseSession
+import com.bios.app.model.ExerciseSessionFields
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
@@ -316,5 +320,106 @@ class HealthConnectAdapter(private val context: Context) {
                 confidence = ConfidenceTier.MEDIUM.level
             )
         }
+    }
+
+    // MARK: - Composite event: exercise sessions
+
+    /**
+     * Reads `ExerciseSessionRecord`s in the window and returns each one as
+     * a composite [ExerciseSession] — a parent EXERCISE_SESSION MetricReading
+     * plus its EventPayloadField rows. Returned separately from
+     * [fetchReadings] because the result type is structurally different
+     * (parent + payload, not a flat reading list) and the dedupe/quality
+     * pipeline doesn't yet know how to keep payload rows in sync with a
+     * deduped parent.
+     *
+     * `avg_hr_bpm` is left null today — enriching from HeartRateRecord in
+     * the same window is a follow-up. RPE isn't in Health Connect's record
+     * shape, so it stays null here.
+     */
+    suspend fun fetchExerciseSessions(
+        start: Instant, end: Instant, sourceId: String
+    ): List<ExerciseSession> {
+        val response = client.readRecords(
+            ReadRecordsRequest(
+                ExerciseSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(start, end)
+            )
+        )
+        return response.records.map { record ->
+            val startMs = record.startTime.toEpochMilli()
+            val endMs = record.endTime.toEpochMilli()
+            val durationSec = java.time.Duration.between(
+                record.startTime, record.endTime
+            ).seconds.toInt()
+
+            val reading = MetricReading(
+                id = UUID.randomUUID().toString(),
+                metricType = MetricType.EXERCISE_SESSION.key,
+                value = 1.0,
+                timestamp = startMs,
+                durationSec = durationSec,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.MEDIUM.level
+            )
+
+            val payload = listOf(
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.MODALITY,
+                    stringValue = mapExerciseTypeToModality(record.exerciseType),
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.START_UTC,
+                    longValue = startMs,
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.END_UTC,
+                    longValue = endMs,
+                ),
+            )
+
+            ExerciseSession(reading = reading, payload = payload)
+        }
+    }
+
+    companion object {
+        /**
+         * Maps a Health Connect `ExerciseSessionRecord.exerciseType` int to
+         * Bios's coarse modality bucket. Unknown / unmapped types fall to
+         * OTHER — that's the right default for the pattern engine, which
+         * cares about aerobic-vs-anaerobic-vs-mixed load buckets rather
+         * than HC's full sport taxonomy.
+         */
+        internal fun mapExerciseTypeToModality(exerciseType: Int): String =
+            when (exerciseType) {
+                ExerciseSessionRecord.EXERCISE_TYPE_RUNNING,
+                ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL,
+                ExerciseSessionRecord.EXERCISE_TYPE_WALKING,
+                ExerciseSessionRecord.EXERCISE_TYPE_HIKING,
+                ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
+                ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY,
+                ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL,
+                ExerciseSessionRecord.EXERCISE_TYPE_ROWING,
+                ExerciseSessionRecord.EXERCISE_TYPE_ROWING_MACHINE,
+                ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL,
+                ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_OPEN_WATER,
+                ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING,
+                ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE -> ExerciseModality.CARDIO
+
+                ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
+                ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING,
+                ExerciseSessionRecord.EXERCISE_TYPE_CALISTHENICS -> ExerciseModality.STRENGTH
+
+                ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING -> ExerciseModality.INTERVAL
+
+                ExerciseSessionRecord.EXERCISE_TYPE_YOGA,
+                ExerciseSessionRecord.EXERCISE_TYPE_PILATES,
+                ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING -> ExerciseModality.MOBILITY
+
+                else -> ExerciseModality.OTHER
+            }
     }
 }
