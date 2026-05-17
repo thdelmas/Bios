@@ -333,20 +333,28 @@ class HealthConnectAdapter(private val context: Context) {
      * pipeline doesn't yet know how to keep payload rows in sync with a
      * deduped parent.
      *
-     * `avg_hr_bpm` is left null today — enriching from HeartRateRecord in
-     * the same window is a follow-up. RPE isn't in Health Connect's record
-     * shape, so it stays null here.
+     * Enriches each session with `avg_hr_bpm` when HeartRateRecord samples
+     * overlap the session window. Fetches HR samples once for the whole
+     * outer window and intersects per-session — sessions are sparse but
+     * HR samples can be dense, so a single IPC beats N+1 queries.
+     *
+     * RPE isn't in Health Connect's record shape, so it stays null here.
      */
     suspend fun fetchExerciseSessions(
         start: Instant, end: Instant, sourceId: String
     ): List<ExerciseSession> {
-        val response = client.readRecords(
+        val sessionResponse = client.readRecords(
             ReadRecordsRequest(
                 ExerciseSessionRecord::class,
                 timeRangeFilter = TimeRangeFilter.between(start, end)
             )
         )
-        return response.records.map { record ->
+        if (sessionResponse.records.isEmpty()) return emptyList()
+
+        // One HR fetch for the whole window; per-session filtering is local.
+        val hrSamples = fetchHeartRateSamples(start, end)
+
+        return sessionResponse.records.map { record ->
             val startMs = record.startTime.toEpochMilli()
             val endMs = record.endTime.toEpochMilli()
             val durationSec = java.time.Duration.between(
@@ -363,7 +371,7 @@ class HealthConnectAdapter(private val context: Context) {
                 confidence = ConfidenceTier.MEDIUM.level
             )
 
-            val payload = listOf(
+            val payload = mutableListOf(
                 EventPayloadField(
                     readingId = reading.id,
                     fieldKey = ExerciseSessionFields.MODALITY,
@@ -381,9 +389,45 @@ class HealthConnectAdapter(private val context: Context) {
                 ),
             )
 
+            meanHrInWindow(hrSamples, startMs, endMs)?.let { avgHr ->
+                payload += EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.AVG_HR_BPM,
+                    doubleValue = avgHr,
+                )
+            }
+
             ExerciseSession(reading = reading, payload = payload)
         }
     }
+
+    /**
+     * Flattens HeartRateRecord -> (timestamp ms, bpm) samples for the window.
+     * Used as the input to per-session mean-HR computation. Kept private —
+     * the canonical streaming HR ingestion is [fetchHeartRate], which writes
+     * MetricReading rows; this is a denormalized read for session enrichment.
+     */
+    private suspend fun fetchHeartRateSamples(
+        start: Instant, end: Instant
+    ): List<HrSample> {
+        val response = client.readRecords(
+            ReadRecordsRequest(
+                HeartRateRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(start, end)
+            )
+        )
+        return response.records.flatMap { record ->
+            record.samples.map { sample ->
+                HrSample(
+                    timestampMs = sample.time.toEpochMilli(),
+                    bpm = sample.beatsPerMinute.toDouble(),
+                )
+            }
+        }
+    }
+
+    /** Internal time-stamped HR sample for session enrichment. */
+    internal data class HrSample(val timestampMs: Long, val bpm: Double)
 
     companion object {
         /**
@@ -421,5 +465,19 @@ class HealthConnectAdapter(private val context: Context) {
 
                 else -> ExerciseModality.OTHER
             }
+
+        /**
+         * Mean BPM across HR samples that fall in `[startMs, endMs]`,
+         * inclusive at both ends. Returns null when no samples land in
+         * the window — caller should omit the `avg_hr_bpm` payload field
+         * rather than write a misleading zero.
+         */
+        internal fun meanHrInWindow(
+            samples: List<HrSample>, startMs: Long, endMs: Long
+        ): Double? {
+            val inWindow = samples.filter { it.timestampMs in startMs..endMs }
+            if (inWindow.isEmpty()) return null
+            return inWindow.sumOf { it.bpm } / inWindow.size
+        }
     }
 }
