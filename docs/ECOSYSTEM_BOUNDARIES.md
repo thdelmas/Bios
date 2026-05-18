@@ -53,6 +53,13 @@ response, cognitive processing speed. Those live in companions, and
 companions push computed scores back into Bios's metric bus so the
 cross-correlation engine can use them.
 
+The same rule governs *capture surfaces* (not just derived scores): a
+capture surface lives wherever its produced key lives. See the "No
+domain-specific active tests in Bios" rule below for the worked
+application to camera PPG, manual sleep entry, and the Data Coverage
+screen — all of which are correctly placed in Bios because they produce
+Bios-owned keys.
+
 ## Bios owns — the sensor backbone and generic body guardian
 
 Bios owns whatever is **domain-neutral** and shared by every companion:
@@ -200,12 +207,26 @@ listener must reach for.
 - **No diagnostic verticals in Bios.** If a feature needs a
   specialized model (MS, bipolar, Parkinson's, postpartum, etc.), it belongs
   in a companion. Bios exposes the primitives; companions compose them.
-- **No active tests in Bios.** Anything that asks the user to *do* something
-  (tap, type, watch a screen) lives in a companion. Bios is passive. The
-  *results* of an active test, however, are data; once a second app
-  consumes them, the canonical key belongs in Bios's metric bus per the
-  second-consumer rule. See
-  [SELF_REPORTED_DATA_HOME.md §5](SELF_REPORTED_DATA_HOME.md).
+- **No domain-specific active tests in Bios.** Bios *may* host capture
+  surfaces for its own sensor adapters (camera PPG, phone-mic respiration),
+  import surfaces for slow-moving manual data (manual sleep duration,
+  biomarker values, epigenetic-age reports), and read-only awareness
+  surfaces (the Data Coverage screen and its "fix this" CTAs). What Bios
+  may *not* host is a domain-specific active test whose output is a
+  companion-owned metric — keystroke dynamics for mood live in W2F,
+  SDMT/tapping for MS live in Fil, grip-strength dynamometers live in a
+  physical-tests companion. The test is the producer-by-capture-surface
+  principle above: **whose canonical metric does this surface produce?**
+  Bios-owned key (camera HR via PPG, manual sleep duration, a logged
+  biomarker) → surface can live in Bios. Companion-owned key (typing
+  cadence, gait asymmetry, reaction time, SDMT score) → surface lives in
+  that companion. The *results* of an active test, wherever it runs, are
+  still data; once a second app consumes them, the canonical key belongs
+  in Bios's metric bus per the second-consumer rule. See
+  [SELF_REPORTED_DATA_HOME.md §5](SELF_REPORTED_DATA_HOME.md). Worked
+  examples already on `main`: PPG capture deep link + live preview /
+  steadiness coaching (#87, #82), manual sleep duration entry (#86), Data
+  Coverage screen with metric-fix CTAs (#83).
 - **No capture surfaces beyond sensors.** AccessibilityService, foreground
   fall-detection services, SMS/call handling, call-answering — all companion
   concerns.
@@ -323,6 +344,26 @@ key against it. One key was found miscategorized.
 | `gait_asymmetry`, `motor_score`, `relapse_risk` (planned) | Fil-produced | **Fil-produced** (affirmed) | Requires foreground accel service / MS-specific composites. No alternative producer. |
 | `cognitive_speed` (planned) | Fil-produced | **Decide at landing** | If output of active SDMT/tapping test → Fil. If composite over canonical inputs (typing-cadence + reaction-time + HRV) → Bios. Do not reserve in `MetricType` until the producing surface is concrete. |
 | Substance events, fall events, reaction-time, biomarkers, etc. | as-is | **affirmed** | Each requires a surface (tap-to-log, fall service, active test, lab draw) the producer uniquely owns. |
+
+### 2026-05 — Active-capture-surface line for Bios
+
+The "Bios is passive, no active tests" wording predated three Bios-side
+surfaces that ask the user to *do* something: camera PPG capture (live
+preview + steadiness coaching), manual sleep duration entry, and the Data
+Coverage screen's metric-fix CTAs. Each is correctly placed — but the rule
+as written would have predicted otherwise. The rule was tightened to
+"no *domain-specific* active tests in Bios" with the producer-by-capture-
+surface principle as the test: surfaces that produce Bios-owned keys are
+in scope, surfaces that produce companion-owned keys are not.
+
+| Surface | Verdict | Reasoning |
+|---|---|---|
+| Camera PPG (`bios://capture/ppg`, live preview, steadiness coach) | ✅ Bios | Produces `HEART_RATE_BPM` — a Bios-owned key. Camera is a Bios sensor adapter, not a companion-specific test. |
+| Manual sleep duration entry | ✅ Bios | Produces `SLEEP_DURATION` — Bios-owned. Slow-moving, biomarker-style manual import, not a domain-specific active test. |
+| Data Coverage screen + "fix this" CTAs | ✅ Bios | Read-only awareness over Bios's own metric inventory. No companion-owned data, no domain-specific judgment. |
+| Hypothetical SDMT / tapping / contrast micro-test | ❌ Companion (Fil) | Produces Fil-owned cognitive scores. Domain-specific active test. |
+| Hypothetical keystroke-cadence capture UI | ❌ Companion (W2F) | Produces `typing_cadence` — W2F-owned. AccessibilityService surface, mood-specific consumer. |
+| Hypothetical grip-strength dynamometer test | ❌ Companion (physical-tests) | Produces an active-test key with no canonical Bios producer. |
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Bios system components
 - [CONSUMER_API.md](CONSUMER_API.md) — `BiosHealthProvider` contract

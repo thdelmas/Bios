@@ -14,10 +14,17 @@ and per-app breakdown (Fil, W2F, Virgil).
 
 In short, Bios owns: ingestion adapters, encrypted storage, personal
 baselines, canonical metric vocabulary, and the generic multi-system
-detection engine. It does **not** own: specialized capture surfaces
-(AccessibilityService, active cognitive tests), domain-specific detection
-models (MS relapse, bipolar state), or social features (emergency contacts,
-SMS/call handling).
+detection engine. It does **not** own: domain-specific active tests
+(AccessibilityService keystroke capture, SDMT/tapping, grip dynamometers),
+domain-specific detection models (MS relapse, bipolar state), or social
+features (emergency contacts, SMS/call handling).
+
+Bios *does* host capture and import surfaces for its own sensor adapters
+and biomarker-style manual data (camera PPG, manual sleep entry, the Data
+Coverage screen). The line is producer-by-capture-surface: a surface
+lives wherever its produced metric key lives. New capture surfaces should
+cite the "No domain-specific active tests in Bios" rule in
+[ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md).
 
 ### Build Flavors
 
