@@ -245,6 +245,8 @@ fun SettingsScreen(
                 ) {
                     Text("Export as FHIR Bundle (for doctors)")
                 }
+                Spacer(Modifier.height(4.dp))
+                PdfSummaryButton(viewModel = viewModel, enabled = totalReadings > 0)
             }
         }
 
