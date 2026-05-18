@@ -206,4 +206,98 @@ class BiosHealthProviderContractTest {
         assertTrue("double_value" in cols)
         assertTrue("long_value" in cols)
     }
+
+    // ---- Cert-SHA pinning (issue #90) ----
+
+    @Test
+    fun `empty cert pin is the current migration-window default`() {
+        // Until each companion ships a release-signing key, the pin stays empty
+        // and the package-name check stands alone. Treat this as a transitional
+        // contract — populate signingCertSha256 before the first standalone
+        // public release.
+        for (c in CompanionContract.PACKAGES.values) {
+            assertTrue(
+                "${c.packageName} unexpectedly has a non-empty cert pin — update test if intentional",
+                c.signingCertSha256.isEmpty()
+            )
+        }
+    }
+
+    @Test
+    fun `empty pin accepts any cert (migration-window fallback)`() {
+        val companion = w2fWithPin(emptySet())
+        assertTrue(companion.verifySigningCert("anything"))
+        assertTrue(companion.verifySigningCert(null))
+        assertTrue(companion.verifySigningCert(""))
+    }
+
+    @Test
+    fun `non-empty pin accepts the matching SHA`() {
+        val sha = "a".repeat(64)
+        val companion = w2fWithPin(setOf(sha))
+        assertTrue(companion.verifySigningCert(sha))
+    }
+
+    @Test
+    fun `non-empty pin rejects a non-matching SHA`() {
+        val pinned = "a".repeat(64)
+        val impostor = "b".repeat(64)
+        val companion = w2fWithPin(setOf(pinned))
+        assertFalse(companion.verifySigningCert(impostor))
+    }
+
+    @Test
+    fun `non-empty pin rejects null caller cert`() {
+        // Null means we couldn't read the caller's signing info — a malicious
+        // unsigned APK is the realistic case. Reject hard.
+        val companion = w2fWithPin(setOf("a".repeat(64)))
+        assertFalse(companion.verifySigningCert(null))
+    }
+
+    @Test
+    fun `cert comparison is case-insensitive`() {
+        val mixed = "AbCdEf" + "0".repeat(58)
+        val companion = w2fWithPin(setOf(mixed))
+        assertTrue(companion.verifySigningCert(mixed.lowercase()))
+        assertTrue(companion.verifySigningCert(mixed.uppercase()))
+    }
+
+    @Test
+    fun `rotation window accepts any of the pinned SHAs`() {
+        val oldKey = "a".repeat(64)
+        val newKey = "b".repeat(64)
+        val companion = w2fWithPin(setOf(oldKey, newKey))
+        assertTrue(companion.verifySigningCert(oldKey))
+        assertTrue(companion.verifySigningCert(newKey))
+        assertFalse(companion.verifySigningCert("c".repeat(64)))
+    }
+
+    @Test
+    fun `verifySigningCert via object lookup rejects unknown packages`() {
+        // Unknown package can't be impersonating any known companion — the
+        // package-name gate already rejects it; the cert path agrees.
+        assertFalse(CompanionContract.verifySigningCert("com.unknown.app", "any"))
+        assertFalse(CompanionContract.verifySigningCert(null, "any"))
+    }
+
+    @Test
+    fun `verifySigningCert via object lookup delegates to the matching companion`() {
+        // With the current empty-pin migration default, every known package
+        // accepts any cert via the object-level entry point.
+        for (pkg in CompanionContract.PACKAGES.keys) {
+            assertTrue(
+                "$pkg should accept under migration-window fallback",
+                CompanionContract.verifySigningCert(pkg, "any")
+            )
+        }
+    }
+
+    private fun w2fWithPin(pin: Set<String>) = CompanionContract.Companion(
+        packageName = "com.w2f.app",
+        displayName = "W2F",
+        sourceId = "companion_w2f",
+        writableMetrics = setOf("typing_cadence"),
+        defaultReadingKind = ReadingKind.DERIVED,
+        signingCertSha256 = pin,
+    )
 }
