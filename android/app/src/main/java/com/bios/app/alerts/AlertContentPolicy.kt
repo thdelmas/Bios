@@ -1,18 +1,35 @@
 package com.bios.app.alerts
 
 /**
- * Enforces the "never evaluate the person" principle on alert text.
+ * Enforces the **push-side unsolicited-judgment ban** on alert text.
  *
- * All condition pattern text (title, explanation, suggestedAction, earlyDetection,
- * prevention, healing, risks) must pass this policy. Violations fail in CI tests.
+ * This is the code-level enforcement point for Manifesto Principle 7
+ * ("instrument, not coach"). Per the framing in [MANIFESTO.md] and
+ * docs/PRIVACY_ARCHITECTURE.md "Alert Content Policy," Bios distinguishes:
  *
- * Prohibited patterns:
+ *  - **Push side** — alerts and notifications Bios raises on its own,
+ *    unsolicited. This is what the policy here constrains. Unsolicited
+ *    judgment is what the manifesto prohibits, and `ConditionPattern`
+ *    text is exactly that surface: the owner didn't ask for it, Bios is
+ *    surfacing it.
+ *  - **Pull side** — screens the owner navigates into, biomarker context
+ *    they annotate themselves, comparisons they explicitly ask for. The
+ *    owner is doing the evaluation; Bios is the instrument they read.
+ *    These surfaces are **not** constrained by this policy and may use
+ *    language this policy bans.
+ *
+ * All condition pattern text (title, explanation, suggestedAction,
+ * earlyDetection, prevention, healing, risks) must pass this policy.
+ * Violations fail in CI tests. New push-side surfaces should pass
+ * through `validate()` or its sibling check in tests.
+ *
+ * Prohibited on the push side:
  * - Second-person lifestyle judgments ("you should exercise", "you need to sleep more")
  * - Wellness scores or grade language ("your health score is", "grade: B")
  * - Guilt mechanics ("you haven't", "you missed", "you failed")
  * - Gamification ("streak", "achievement", "level up", "points")
  *
- * Allowed:
+ * Allowed on the push side:
  * - Data statements ("resting HR +2σ", "sleep duration 5.2h")
  * - Questions ("have you felt unwell?")
  * - Professional referrals ("discuss with your healthcare provider")
