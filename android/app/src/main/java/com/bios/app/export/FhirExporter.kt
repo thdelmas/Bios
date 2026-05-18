@@ -379,6 +379,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.EVENT -> "{event}"
     MetricUnit.LUX -> "lx"
     MetricUnit.YEARS -> "a"
+    MetricUnit.MS_SQUARED -> "ms2"
 }
 
 internal fun formatInstant(instant: Instant): String =

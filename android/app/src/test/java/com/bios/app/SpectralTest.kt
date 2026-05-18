@@ -143,4 +143,62 @@ class SpectralTest {
         assertTrue("Peak bin should be at k0 or n-k0, got $peakBin",
             peakBin == k0 || peakBin == n - k0)
     }
+
+    // -- lfHfPowers (separate-band exposure for #29) --
+
+    @Test
+    fun `lfHfPowers pure LF concentrates power in the LF band`() {
+        // The frequency-domain decomposition #29 needs to expose both
+        // bands separately so callers can detect "both bands up" vs "HF
+        // collapsed" — the ratio alone is ambiguous between the two.
+        val ibis = ibiSeriesWithFrequency(freqHz = 0.10, durationSec = 180.0)
+        val p = Spectral.lfHfPowers(ibis)
+        assertTrue("LF power should dominate, got lf=${p.lfMs2} hf=${p.hfMs2}",
+            p.lfMs2 > p.hfMs2 * 5.0)
+        assertTrue("HF power should still be non-negative", p.hfMs2 >= 0.0)
+    }
+
+    @Test
+    fun `lfHfPowers pure HF concentrates power in the HF band`() {
+        val ibis = ibiSeriesWithFrequency(freqHz = 0.25, durationSec = 180.0)
+        val p = Spectral.lfHfPowers(ibis)
+        assertTrue("HF power should dominate, got lf=${p.lfMs2} hf=${p.hfMs2}",
+            p.hfMs2 > p.lfMs2 * 5.0)
+        assertTrue("LF power should still be non-negative", p.lfMs2 >= 0.0)
+    }
+
+    @Test
+    fun `lfHfPowers ratio matches lfHfRatio exactly (no second FFT)`() {
+        // Pinning the equivalence so a future micro-optimisation that
+        // splits the two pipelines can't silently drift their answers.
+        val ibis = ibiSeriesWithFrequency(freqHz = 0.10, durationSec = 180.0)
+        val powers = Spectral.lfHfPowers(ibis)
+        val ratio = Spectral.lfHfRatio(ibis)
+        assertEquals(powers.ratio, ratio, 0.0)
+        // And the ratio is consistent with the powers (within fp noise).
+        assertEquals(powers.lfMs2 / powers.hfMs2, ratio, 1e-9)
+    }
+
+    @Test
+    fun `lfHfPowers degenerate cases return zeros (not NaN, not infinity)`() {
+        // Same edge cases the ratio surface guards: too-short recording,
+        // constant series, near-empty inputs. Powers should be 0.0 across
+        // the board, never NaN or infinity — engines downstream multiply
+        // these values into z-scores.
+        val cases = listOf(
+            emptyList<Double>(),
+            List(3) { meanIbiMs },                     // < 4 samples
+            List(56) { meanIbiMs + (it % 2) * 5.0 },   // < 60 sec window
+            List(360) { meanIbiMs },                   // constant
+        )
+        for (ibis in cases) {
+            val p = Spectral.lfHfPowers(ibis)
+            assertTrue("lf must be finite for size ${ibis.size}", p.lfMs2.isFinite())
+            assertTrue("hf must be finite for size ${ibis.size}", p.hfMs2.isFinite())
+            assertTrue("ratio must be finite for size ${ibis.size}", p.ratio.isFinite())
+            assertEquals("lf must be 0 in degenerate case", 0.0, p.lfMs2, 0.0)
+            assertEquals("hf must be 0 in degenerate case", 0.0, p.hfMs2, 0.0)
+            assertEquals("ratio must be 0 in degenerate case", 0.0, p.ratio, 0.0)
+        }
+    }
 }
