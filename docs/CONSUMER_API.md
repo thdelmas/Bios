@@ -217,4 +217,81 @@ underscores, case-sensitive.
 **Safety (Virgil-writable)**: `fall_event`, `near_miss_fall`, `check_in_miss`
 
 The source of truth is `MetricType` in
-[`android/app/src/main/java/com/bios/app/model/Enums.kt`](../android/app/src/main/java/com/bios/app/model/Enums.kt).
+[`android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt`](../android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt).
+
+## Contracts forward/backward compatibility
+
+`MetricType`, `MetricUnit`, and `MetricDomain` ship from the `bios-contracts`
+AAR. Companions (W2F, Smokeless, Virgil, Fil) pin a version of that AAR and
+release on their own cadence, so at any given moment some companion will be
+running against an older — or newer — contracts version than the installed
+Bios. The data plane already tolerates this by accident
+(`MetricReading.metricType` is a `String` end-to-end and `MetricType.fromKey`
+is nullable), but the rules below make the contract explicit.
+
+### Stability commitments (Bios side)
+
+1. **Keys are forever.** Once a `MetricType.key` string ships in a released
+   `bios-contracts` artifact, it is never deleted and never repurposed.
+2. **Domain and unit on an existing key never change.** Renaming
+   `blood_glucose` from `MG_PER_DL` to `MMOL_PER_L`, or moving `circadian_phase_shift`
+   from `SLEEP` to `MENTAL_HEALTH`, would silently corrupt every downstream
+   chart. Add a new key instead.
+3. **Deprecation is in-place.** When a key falls out of favor, annotate the
+   enum entry with `@Deprecated` and leave the entry in the enum so
+   `fromKey()` keeps resolving it. Document the replacement in the
+   `@Deprecated` message.
+4. **Removal is a major-version break.** Actually removing a `MetricType`
+   entry forces every companion to publish a paired release. Bump the
+   `bios-contracts` major version and coordinate releases.
+
+### Companion-side rules
+
+1. **Never call `MetricType.valueOf(...)` on a string from the provider.**
+   It throws `IllegalArgumentException` on any key your contracts version
+   doesn't know about — including keys Bios shipped after your last build.
+2. **Use `MetricType.fromKey(key)` and handle `null`.** The contract is that
+   unknown keys return `null`. The correct response is "skip this row" — not
+   crash, not surface as an error to the owner. Anything that reads the
+   `metric_type` column must tolerate strings outside its enum.
+3. **Never enumerate `MetricType.entries` and assume it covers the provider's
+   output.** A newer Bios may emit keys your build has never heard of. Filter
+   on the keys you actually care about; treat the rest as inert.
+4. **Writes to unknown keys silently no-op.** `CompanionContract.canWrite`
+   rejects keys it doesn't recognize, so a companion that ships a new write
+   key before the matching Bios release will see its inserts return `null`
+   URIs with no exception. Read `/status/{key}` first and gate the write
+   path on a non-empty cursor.
+
+### Rotation flow
+
+A companion can release independently of Bios as long as it follows the
+read-before-write rule and tolerates `fromKey() == null`. Concretely:
+
+- **Reading new keys before Bios ships them.** `/status/{key}` returns an
+  empty cursor for keys Bios doesn't know. Treat that as "this signal is not
+  available on this Bios version yet" and hide the UI path.
+- **Reading new keys after Bios shipped them.** If your contracts version is
+  older than Bios, `fromKey()` returns `null` for the new strings. Same
+  handling — skip the row.
+- **Writing new keys.** Bios must ship support first (key added to
+  `MetricType` and to `CompanionContract.WHITELIST_BY_PACKAGE`), then the
+  companion may publish a release that writes that key. Reverse order leaves
+  the companion writing to a closed door.
+
+### Versioning hygiene
+
+- The `bios-contracts` AAR is published with each Bios release. Add-only
+  changes (new key, new permission constant) bump the patch version; renames
+  or removals bump the major version (see "Stability commitments").
+- Companions pin a minimum-supported `bios-contracts` version in their
+  `build.gradle.kts`. The pinned version is the *contracts the companion
+  was built against* — at runtime it may talk to a Bios that ships a newer
+  contracts version, which is fine because of the rules above.
+- The contracts module includes a snapshot test
+  (`MetricTypeKeysSnapshotTest`) that fails when a previously-published key
+  disappears from the enum, even if its enum constant was renamed. Adding
+  `@Deprecated` to an entry still leaves the key resolvable and passes the
+  test; deleting the entry fails it. Treat a snapshot-test failure as a
+  required code review with the companion maintainers, not a test to fix
+  by editing the snapshot.

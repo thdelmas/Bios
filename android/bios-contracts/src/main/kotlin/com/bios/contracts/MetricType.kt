@@ -10,6 +10,15 @@ package com.bios.contracts
  * Adding a key here does *not* automatically make it writable by companions —
  * see [com.bios.contracts.BiosHealthContract] for the companion-write surface
  * and Bios's `CompanionContract` for the per-package allowlist.
+ *
+ * **Forward/backward-compat rules** (see docs/CONSUMER_API.md →
+ * "Contracts forward/backward compatibility"):
+ *  - Never delete a `key` once it has shipped — annotate with `@Deprecated`
+ *    instead so `fromKey()` keeps resolving it.
+ *  - Never repurpose a `key` string or change the `unit`/`domain` of an
+ *    existing entry — add a new entry.
+ *  - Consumers must call `fromKey()` (not `valueOf`) and tolerate `null` for
+ *    keys their contracts version doesn't know.
  */
 enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricDomain) {
     // Cardiovascular
