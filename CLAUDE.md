@@ -3,7 +3,7 @@
 ## Project Overview
 Bios is a health guardian that detects early signs of illness using wearable sensor data. It exists to protect its owner — their health, their data, and their autonomy over both.
 
-All health data processing happens on-device. The owner decides what leaves the device — nothing does by default. Bios watches, notices patterns the owner might miss, and speaks up when something matters. It never evaluates, scores, or nudges the person — only the data.
+All health data processing happens on-device. The owner decides what leaves the device — nothing does by default. Bios watches, notices patterns the owner might miss, and speaks up when something matters. Bios is the instrument; the owner reads it. It never pushes judgments, scores, or nudges at the person — and it never withholds information the owner looks for. **Evaluation belongs to the owner.**
 
 **Primary platform:** Embedded in [LETHE](~/OSmosis/lethe/) (OSmosis privacy-hardened Android overlay based on LineageOS).
 **Portable to:** Any Android device running API 28+ (Android 9 Pie through Android 15).
@@ -14,7 +14,7 @@ Bios shares LETHE's protection philosophy:
 - **Defense only.** Health data is shielded by encryption, on-device processing, and erasure — never weaponized or monetized
 - **No hidden agendas.** No behavioral nudges, no engagement optimization, no data sold to insurers or advertisers
 - **Silence is a feature.** Bios speaks when something matters, not to fill a feed
-- **Never evaluate the person.** Report "resting HR elevated 2 sigma for 48h" — never "you're unhealthy"
+- **Instrument, not coach.** Bios reports deviations from baseline ("resting HR elevated 2 sigma for 48h"), holds what the owner annotates about themselves, answers when asked. It never pushes lifestyle judgments unsolicited. Evaluation belongs to the owner — Bios is what the owner reads to do it.
 - **Erasure by design.** On LETHE: burner mode and dead man's switch destroy health data alongside the OS. Standalone: instant key destruction on "Delete all data"
 
 ## Tech Stack

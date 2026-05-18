@@ -36,7 +36,7 @@ We **analyze** patterns over time — not just snapshots, but trends. A single e
 
 We **alert** you to anomalies that may indicate the early onset of illness, chronic stress, sleep disorders, cardiovascular irregularities, or other conditions — long before traditional symptoms appear.
 
-We **empower** you with clear, human-readable insights so you can have better conversations with your doctor, make informed lifestyle choices, and take preventive action.
+We **empower** you with clear, human-readable insights so you can have better conversations with your doctor, make informed lifestyle choices, and steer your own course over time — toward maintaining what works and improving what doesn't. Detection is one job. The day-to-day act of staying well and getting better is another, and both belong to the owner.
 
 ## Our Principles
 
@@ -57,8 +57,11 @@ If you would rather not contribute, that is your right. You can pay instead. But
 ### 5. Privacy is the default, not the price tag
 Your health data is the most intimate data that exists. We will never collect it without your explicit, informed consent. We will never sell individual data. We will never share anything that identifies you. Community tier users contribute anonymized, aggregated patterns -- never raw data, never anything traceable back to a person. Paid users contribute nothing at all. Both get the same product.
 
-### 6. Science-grounded, not fear-driven
-We do not exist to make you anxious. Every insight we surface is grounded in validated medical research. We inform, we do not diagnose. We empower, we do not alarm.
+### 6. Science-grounded, never fear-driven
+Bios does not exist to make you anxious. Every insight is grounded in validated medical research. We inform, we do not diagnose. We empower, we do not alarm.
+
+### 7. Instrument, not coach
+Bios is the instrument; the owner reads it. We never push judgments at you, score you, or nudge you toward behaviors we have decided are correct. We also never withhold information you look for. **Evaluation belongs to the owner.** Bios surfaces what is, holds what you note about yourself, and answers when you ask — and stays silent otherwise.
 
 ## The Future We Are Building
 

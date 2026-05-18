@@ -8,7 +8,7 @@ This is not a privacy policy — it is an architectural constraint. Every design
 
 - Health data stays on-device because that protects the owner from data brokers, insurers, advertisers, and legal compulsion
 - Detection runs on-device because that protects the owner from cloud outages, surveillance, and vendor lock-in
-- Alerts are factual, never judgmental, because that protects the owner's autonomy and mental health
+- Unsolicited alerts are factual, never judgmental, because that protects the owner's autonomy and mental health. Evaluation belongs to the owner — the system answers when asked and stays silent otherwise
 - The owner decides what leaves the device — nothing does by default
 
 ### Alignment with LETHE
@@ -19,7 +19,7 @@ On LETHE, Bios is not an app running on a phone — it is part of the phone's im
 |---|---|
 | The user is final | Owner controls alert thresholds, data retention, what to share, and when to delete — Bios advises, never overrides |
 | Defense by encryption and erasure | SQLCipher AES-256, hardware-backed keystore, instant key destruction, LETHE burner/dead-man's-switch integration |
-| Never evaluate the person | Report deviations from baseline ("resting HR +2σ for 48h"), never lifestyle judgments ("you're unhealthy") |
+| Instrument, not coach — evaluation belongs to the owner | Report deviations from baseline ("resting HR +2σ for 48h"), hold what the owner annotates about themselves, answer when asked. Never push lifestyle judgments ("you're unhealthy") unsolicited |
 | Silence is a feature | Bios speaks when something matters, not to fill a feed or drive engagement |
 | No hidden agendas | No behavioral nudges, no engagement metrics, no data sold to anyone, no dark patterns |
 | Each instance is sovereign | Health data belongs to this device and this owner — no cross-device aggregation without explicit opt-in |
@@ -396,11 +396,12 @@ The owner should know what they're accumulating. On a device that could be seize
 
 ## Alert Content Policy
 
-The `AlertContentPolicy` enforces the "never evaluate the person" principle at the code level:
-- Prohibited: second-person lifestyle judgments ("you should", "you need to"), guilt mechanics ("you haven't", "you missed"), gamification ("streak", "achievement", "leaderboard")
-- Allowed: data statements ("resting HR +2σ"), questions ("have you felt unwell?"), professional referrals ("discuss with your healthcare provider")
+The `AlertContentPolicy` enforces the **unsolicited-judgment ban** at the code level. It governs the push surface — alerts and notifications Bios raises on its own. Pull-side surfaces (screens the owner navigates into, biomarker context they annotate themselves, comparisons they ask for) are owner-driven and not constrained by this policy.
+
+- Prohibited (push side): second-person lifestyle judgments ("you should", "you need to"), guilt mechanics ("you haven't", "you missed"), gamification ("streak", "achievement", "leaderboard")
+- Allowed (push side): data statements ("resting HR +2σ"), questions ("have you felt unwell?"), professional referrals ("discuss with your healthcare provider")
 - All 12 condition patterns are validated against this policy
-- Future patterns must pass the same check in CI
+- Future push-side patterns must pass the same check in CI
 
 ## Coercion Resistance
 
@@ -463,7 +464,8 @@ The `SafeMode` provides protection under duress:
 |    - Health data in analytics or crash reports         |
 |    - Individual data sold to anyone                   |
 |    - Data tied to an identity shared with partners    |
-|    - Lifestyle judgments, wellness scores, or          |
-|      behavioral nudges targeting the owner             |
+|    - Unsolicited lifestyle judgments, pushed          |
+|      wellness scores, or behavioral nudges            |
+|      targeting the owner                              |
 +------------------------------------------------------+
 ```
