@@ -237,6 +237,47 @@ class FhirImporterTest {
         assertTrue(summary.fileError!!.contains("Bundle or Observation"))
     }
 
+    // -- Provenance: performer display becomes labName --
+
+    @Test
+    fun `performer display populates labName on AcceptedReading`() {
+        val json = """
+            {
+              "resourceType": "Observation",
+              "status": "final",
+              "code": {
+                "coding": [{ "system": "http://loinc.org", "code": "4548-4" }]
+              },
+              "effectiveDateTime": "2024-12-01T08:30:00Z",
+              "valueQuantity": { "value": 5.4 },
+              "performer": [
+                { "display": "Synlab Madrid" }
+              ]
+            }
+        """.trimIndent()
+        val summary = FhirImporter.parse(json)
+        assertEquals(1, summary.acceptedCount)
+        assertEquals("Synlab Madrid", summary.accepted.single().labName)
+    }
+
+    @Test
+    fun `missing performer leaves labName null`() {
+        val json = """
+            {
+              "resourceType": "Observation",
+              "status": "final",
+              "code": {
+                "coding": [{ "system": "http://loinc.org", "code": "4548-4" }]
+              },
+              "effectiveDateTime": "2024-12-01T08:30:00Z",
+              "valueQuantity": { "value": 5.4 }
+            }
+        """.trimIndent()
+        val summary = FhirImporter.parse(json)
+        assertEquals(1, summary.acceptedCount)
+        assertNull(summary.accepted.single().labName)
+    }
+
     // -- Fixture helpers --
 
     private fun observation(loinc: String, value: Double, instant: String) = """

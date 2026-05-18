@@ -145,6 +145,10 @@ with the same stability commitment as `MetricType.key` strings.
 | `EXERCISE_SESSION` | `end_utc` | `long_value` | epoch ms |
 | `EXERCISE_SESSION` | `avg_hr_bpm` | `double_value` | nullable — mean of HR samples that fall inside the session window; omitted entirely when no samples land in window (null ≠ 0) |
 | `EXERCISE_SESSION` | `rpe` | `long_value` | 1–10, nullable — only populated if the source captured it |
+| *(any `BIOMARKER`)* | `lab_name` | `string_value` | Free-text lab/facility name. Provenance only — cross-lab calibration drift on assays like HbA1c, hsCRP, ApoB makes lab identity load-bearing for trend interpretation. |
+| *(any `BIOMARKER`)* | `fasting` | `long_value` | 0 = non-fasting, 1 = fasting. Omitted entirely when unknown (null ≠ 0). Required to interpret glucose, triglycerides, insulin meaningfully. |
+| *(any `BIOMARKER`)* | `specimen` | `string_value` | enum: `SERUM`, `PLASMA`, `WHOLE_BLOOD`, `OTHER`. Some assays differ measurably across specimen types. |
+| *(any `BIOMARKER`)* | `source_uri` | `string_value` | Content URI to the original PDF/photo of the lab report — owner-attached, for retrieval; never parsed. |
 
 #### When to use the payload table
 
@@ -156,10 +160,20 @@ Use a payload row when **all** of:
    require ad-hoc parsing on every read.
 
 Do **not** use it for:
-- Owner-private notes — those go in `LoggedEvent.note`.
+- Owner-private free-text notes — those go in `LoggedEvent.note` (for
+  event-shaped data) or `MetricReading.note` (for biomarker/manual-entry
+  surfaces). The sidecar table is queryable by engines; owner-recall text
+  isn't.
 - Vendor-specific raw blobs — those belong in the raw-payload field on
   `MetricReading` (debug surface, never read by the engine).
 - Re-encoding the scalar that already fits in `value`.
+
+**Note on scalar metrics:** the "scalar metrics never use this table" rule
+applies to the *value itself* (don't denormalize `value` into the sidecar).
+A scalar metric *may* still attach structured provenance via the sidecar —
+biomarker readings are the canonical example: the value is a scalar that
+lives in `MetricReading.value`, but the lab/fasting/specimen context is
+queryable structured data that lives here.
 
 ### DataSource
 
