@@ -281,6 +281,8 @@ fun SettingsScreen(
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                DisconnectAlertToggle()
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 var pushEnabled by remember {
                     mutableStateOf(PushRegistrationManager.isEnabled(context))

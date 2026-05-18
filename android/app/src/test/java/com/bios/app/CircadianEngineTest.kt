@@ -220,6 +220,7 @@ private class FakeMetricReadingDao(
     override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List<Double> = notUsed()
     override suspend fun oldestTimestamp(): Long? = notUsed()
     override suspend fun statusSummary(since24h: Long): List<MetricReadingDao.MetricStatusRow> = notUsed()
+    override suspend fun sourceFreshness(): List<MetricReadingDao.SourceFreshnessRow> = notUsed()
     override suspend fun fetchCreatedAfter(sinceMillis: Long): List<MetricReading> = notUsed()
     override suspend fun deleteBefore(beforeMillis: Long): Int = notUsed()
     override suspend fun deleteAll(): Unit = notUsed()
