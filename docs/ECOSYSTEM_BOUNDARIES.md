@@ -319,12 +319,12 @@ feature) and the second-consumer rule were the load-bearing principles.
 
 | Topic | Verdict | Principle |
 |---|---|---|
-| Food / macro / calorie log (#36) | ❌ Out of scope — permanently | Inherently evaluative (deficit/surplus, "good food"). Violates "never evaluate the person" + "no behavioral nudges". |
-| Intervention log — sauna / NIR / HBOT / cold (#39) | ❌ Out of scope | Quantified-self self-experimentation framing ("did X improve my recovery?") is exactly the optimization framing the manifesto rejects. |
+| Food / macro / calorie log (#36) | ❌ Out of scope — permanently | Inherently evaluative (deficit/surplus, "good food"). Violates "never evaluate the person" + "no behavioral nudges". *(Reasoning revised 2026-05 manifesto-frame revisit — verdict stands, but on operational not philosophical grounds. See subsection below.)* |
+| Intervention log — sauna / NIR / HBOT / cold (#39) | ❌ Out of scope | Quantified-self self-experimentation framing ("did X improve my recovery?") is exactly the optimization framing the manifesto rejects. *(Superseded by 2026-05 manifesto-frame revisit — verdict now ✅ in scope as a pull-side event log. See subsection below.)* |
 | Self-exam / fertility self-report (#42) | ❌ Out of scope | Self-exam reminders are habit-tracker territory, not health-guardian. Involuntary fertility signal (BBT) already covered by #32. Privacy bar too high for marginal pattern benefit. |
 | Hydration logging (`HYDRATION_ML`) | ❌ Out of scope | Manual entry drifts into "are you drinking enough?" behavioral judgment. |
 | Water quality / TDS / mineralization | ❌ Out of scope | Blueprint-style optimization, no Bios pattern consumes it. |
-| Supplement / medication adherence (#37) | ⏸ Deferred — second-consumer rule | No Bios pattern needs adherence input today. Re-evaluate when a concrete consumer emerges (likely: future migraine / chronic-condition companion). If reserved, mirror Smokeless posture exactly (timestamp + opaque event-id, no substance names). |
+| Supplement / medication adherence (#37) | ⏸ Deferred — second-consumer rule | No Bios pattern needs adherence input today. Re-evaluate when a concrete consumer emerges (likely: future migraine / chronic-condition companion). If reserved, mirror Smokeless posture exactly (timestamp + opaque event-id, no substance names). *(Superseded by 2026-05 manifesto-frame revisit — verdict now ✅ in scope, pull-side only. See subsection below.)* |
 | Grip strength `GRIP_STRENGTH_KG` (#41) | ⏸ Deferred — second-consumer rule | Re-evaluate when Fil (or a physical-tests companion) ships an active grip test AND a second Bios-side consumer exists. |
 | Additional cognitive keys — `N_BACK`, `STROOP`, `DIGIT_SPAN_*`, `PROCESSING_SPEED_SCORE` (#40) | ⏸ Deferred — second-consumer rule | Unlike `REACTION_TIME_MS`, these have only Fil as a consumer. Reserve when Fil's active-test surface ships. |
 | `REACTION_TIME_MS` (#40) | ✅ Keep reserved | Two named consumers across two domains: Fil produces (active micro-tests); W2F reads as a cross-check on its passive psychomotor-acceleration signal. Documented producer + reader satisfies the second-consumer rule. |
@@ -364,6 +364,61 @@ in scope, surfaces that produce companion-owned keys are not.
 | Hypothetical SDMT / tapping / contrast micro-test | ❌ Companion (Fil) | Produces Fil-owned cognitive scores. Domain-specific active test. |
 | Hypothetical keystroke-cadence capture UI | ❌ Companion (W2F) | Produces `typing_cadence` — W2F-owned. AccessibilityService surface, mood-specific consumer. |
 | Hypothetical grip-strength dynamometer test | ❌ Companion (physical-tests) | Produces an active-test key with no canonical Bios producer. |
+
+### 2026-05 — Manifesto-frame revisit (post-PR #103)
+
+[MANIFESTO.md](../MANIFESTO.md) Principle 7 ("instrument, not coach") replaced
+the earlier "never evaluate the person" load-bearing constraint with a
+push/pull distinction: **unsolicited push-side evaluation is prohibited;
+owner-pulled / owner-driven surfaces are not.** The 2026-05 Blueprint audit
+above made two rejections on grounds that no longer hold — both cited the
+old framing's "the manifesto rejects optimization" reasoning, which the new
+manifesto explicitly authorizes ("steer your own course over time — toward
+maintaining what works and improving what doesn't").
+
+Verdict revisions:
+
+| Topic | Old verdict | New verdict | Reasoning |
+|---|---|---|---|
+| Food / macro / calorie log (#36) | ❌ "inherently evaluative" | ❌ unchanged — **reasoning rewritten** | The new frame doesn't disqualify "inherently evaluative" on its own. Real disqualifiers are operational: multi-meal-per-day capture surfaces have well-documented abandonment curves, and the sensor stack (glucose variability via Dexcom, post-meal HR/HRV) already produces the metabolic signal without owner typing. |
+| Intervention log — sauna / NIR / HBOT / cold (#39) | ❌ "optimization framing the manifesto rejects" | ✅ **in scope as a pull-side event log** | The old rejection cited a frame the manifesto no longer holds. Surface is admissible under the new principle. Constraint rides on the design rule below. |
+| Supplement / medication adherence (#37) | ⏸ deferred — second-consumer rule | ✅ **in scope, pull-side only** | The owner-pulled correlation IS the second consumer when the owner asks "did I take the magnesium on the nights I slept poorly?" The trigger fires as soon as the owner navigates into that comparison. Storage shape per the original Smokeless posture (timestamp + opaque event-id, no substance names) still right. |
+
+Decisions the frame change does **not** move (unchanged from above): #41
+Grip strength (still gated on the producer + second-consumer rule, both
+independent of push/pull); #42 self-exam (habit-tracker territory
+regardless of frame); hydration (the behavioral-judgment slippery slope is
+a push-side concern, still applies); water quality (no Bios consumer in
+either direction); the other "in scope / affirmed" rows.
+
+### Design rule for owner-driven pull-side logs
+
+When a manual logging surface is admitted under the new frame
+(intervention log, supplement/medication adherence, future analogous
+surfaces), the **firewall lives in the UI design line, not the feature
+line.** The surface must not host engagement-app DNA. Specifically:
+
+- **No streak counters, no completeness percentages, no daily-goal gauges.**
+- **No "you haven't logged today" empty states or daily-reminder UI.**
+- **No "log everything to see results" prompts.** Sparse logging is
+  expected and treated as a first-class state.
+- **Empty state reads what's true** — "no interventions logged in this
+  window" — full stop, no nudge.
+- **Correlation surfaces show what's there**, say nothing about what's
+  missing. Sparse log → sparse chart → honest insight.
+- **Bios does not ask for data.** It works with whatever the owner gives.
+
+These rules apply to pull surfaces because pull-side absolutism alone
+doesn't prevent engagement loops — empty boxes pull at people, "did X
+improve my recovery?" charts re-create the optimization pathology even
+without a single notification firing. The defence is structural: don't
+build the pieces engagement apps use to drive sessions.
+
+The rule does **not** apply to:
+- Bios-state pushes (the third push category — "Oura hasn't synced in 5
+  days") — those are about Bios's plumbing, not the owner.
+- Pull surfaces that don't host owner-typed event data (Data Coverage,
+  trends, alerts review) — these were never at risk of the loop.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Bios system components
 - [CONSUMER_API.md](CONSUMER_API.md) — `BiosHealthProvider` contract
