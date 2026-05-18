@@ -1,10 +1,13 @@
 package com.bios.app.export
 
 import android.content.Context
+import com.bios.app.data.BiomarkerContext
+import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.Anomaly
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
+import com.bios.app.model.Specimen
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
@@ -46,6 +49,7 @@ class FhirExporter(
     private val sourceDao = db.dataSourceDao()
     private val anomalyDao = db.anomalyDao()
     private val baselineDao = db.personalBaselineDao()
+    private val payloadDao = db.eventPayloadFieldDao()
 
     /**
      * Export all Bios data as a FHIR R4 Bundle (JSON).
@@ -77,9 +81,19 @@ class FhirExporter(
             // reproductive data" opt-in would query ReproductiveDatabase
             // explicitly; today's default is hard-skip.
             if (metricType.domain == MetricDomain.WOMENS_HEALTH) continue
+            val isBiomarker = metricType.domain == MetricDomain.BIOMARKER
             val readings = readingDao.fetch(metricType.key, thirtyDaysAgo, Long.MAX_VALUE)
             for (reading in readings.take(500)) {
-                entries.put(bundleEntry(buildObservationResource(reading, metricType)))
+                // Biomarker readings carry optional provenance (lab name,
+                // fasting status, specimen type) in the event-payload sidecar.
+                // The owner-recall note in MetricReading.note is intentionally
+                // *not* exported — it's owner-recall only, never shared by
+                // default. See issue #105.
+                val context = if (isBiomarker) {
+                    val rows = payloadDao.fetchForReading(reading.id)
+                    BiomarkerEntryRepo.rowsToContext(rows, note = null)
+                } else null
+                entries.put(bundleEntry(buildObservationResource(reading, metricType, context)))
             }
         }
 
@@ -138,7 +152,8 @@ internal fun buildDeviceResource(source: DataSource): JSONObject = JSONObject().
 
 internal fun buildObservationResource(
     reading: MetricReading,
-    metricType: MetricType
+    metricType: MetricType,
+    context: BiomarkerContext? = null,
 ): JSONObject = JSONObject().apply {
     put("resourceType", "Observation")
     put("id", reading.id)
@@ -170,6 +185,86 @@ internal fun buildObservationResource(
     })
     put("device", JSONObject().apply {
         put("reference", "Device/${reading.sourceId}")
+    })
+
+    // Biomarker provenance: emit when context is non-null and any of the
+    // shareable fields is populated. Owner-recall note is intentionally not
+    // emitted (BiomarkerContext.note is engine-irrelevant and stays local).
+    // Source URI is also not emitted — it's a local content://, useless to
+    // a remote reader and trades nothing for a privacy risk.
+    if (context != null) {
+        context.labName?.takeIf { it.isNotBlank() }?.let { lab ->
+            put("performer", JSONArray().put(JSONObject().apply {
+                put("display", lab)
+            }))
+        }
+        context.fasting?.let { fasting ->
+            // LOINC 49541-6 "Fasting status - Reported" on a component, with
+            // the boolean as valueBoolean — the simplest FHIR-R4 encoding that
+            // round-trips cleanly with Bios's Boolean? storage. Clinical
+            // systems that emit valueCodeableConcept with LA33-6 / LA32-8 are
+            // also parsed by FhirImporter.
+            val components = optJSONArray("component") ?: JSONArray().also { put("component", it) }
+            components.put(JSONObject().apply {
+                put("code", JSONObject().apply {
+                    put("coding", JSONArray().put(JSONObject().apply {
+                        put("system", "http://loinc.org")
+                        put("code", "49541-6")
+                        put("display", "Fasting status - Reported")
+                    }))
+                })
+                put("valueBoolean", fasting)
+            })
+        }
+        context.specimen?.let { specimen ->
+            val containedId = "specimen-${reading.id}"
+            val contained = optJSONArray("contained") ?: JSONArray().also { put("contained", it) }
+            contained.put(buildSpecimenResource(containedId, specimen))
+            put("specimen", JSONObject().apply {
+                put("reference", "#$containedId")
+            })
+        }
+    }
+}
+
+/**
+ * Builds a contained Specimen resource that names a [Specimen] enum value
+ * using SNOMED CT concept codes — what clinical systems index against.
+ * `OTHER` falls back to text-only so the receiving system at least gets the
+ * Bios label rather than nothing.
+ */
+internal fun buildSpecimenResource(id: String, specimen: Specimen): JSONObject = JSONObject().apply {
+    put("resourceType", "Specimen")
+    put("id", id)
+    put("status", "available")
+    put("type", JSONObject().apply {
+        when (specimen) {
+            Specimen.SERUM -> {
+                put("coding", JSONArray().put(JSONObject().apply {
+                    put("system", "http://snomed.info/sct")
+                    put("code", "119364003")
+                    put("display", "Serum specimen")
+                }))
+                put("text", specimen.readable)
+            }
+            Specimen.PLASMA -> {
+                put("coding", JSONArray().put(JSONObject().apply {
+                    put("system", "http://snomed.info/sct")
+                    put("code", "119361006")
+                    put("display", "Plasma specimen")
+                }))
+                put("text", specimen.readable)
+            }
+            Specimen.WHOLE_BLOOD -> {
+                put("coding", JSONArray().put(JSONObject().apply {
+                    put("system", "http://snomed.info/sct")
+                    put("code", "258580003")
+                    put("display", "Whole blood specimen")
+                }))
+                put("text", specimen.readable)
+            }
+            Specimen.OTHER -> put("text", specimen.readable)
+        }
     })
 }
 
