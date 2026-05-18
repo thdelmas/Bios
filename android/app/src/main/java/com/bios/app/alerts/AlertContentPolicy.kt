@@ -8,10 +8,20 @@ package com.bios.app.alerts
  * docs/PRIVACY_ARCHITECTURE.md "Alert Content Policy," Bios distinguishes:
  *
  *  - **Push side** — alerts and notifications Bios raises on its own,
- *    unsolicited. This is what the policy here constrains. Unsolicited
- *    judgment is what the manifesto prohibits, and `ConditionPattern`
- *    text is exactly that surface: the owner didn't ask for it, Bios is
- *    surfacing it.
+ *    unsolicited. The push side splits into three sub-categories:
+ *      1. **Person-evaluative push** — "your sleep is degrading,"
+ *         "you're unhealthy." This is what the policy here constrains.
+ *         Unsolicited judgment of the person is what the manifesto
+ *         prohibits, and `ConditionPattern` text is exactly that surface.
+ *      2. **Person-factual push** — "RHR +2σ for 48h," daily digest.
+ *         Admissible — what the existing banlist explicitly allows.
+ *      3. **Bios-state push** — "Oura hasn't synced in 5 days. Reconnect?"
+ *         Admissible. Not about the owner at all; Bios reporting on its
+ *         own plumbing. "Silence is a feature" was always about the
+ *         owner — silent system failure isn't silence, it's failure.
+ *         Bios-state pushes follow the same factual-only content rules
+ *         as category 2, but the banlist below targets person-judgment
+ *         patterns specifically and doesn't apply by construction.
  *  - **Pull side** — screens the owner navigates into, biomarker context
  *    they annotate themselves, comparisons they explicitly ask for. The
  *    owner is doing the evaluation; Bios is the instrument they read.

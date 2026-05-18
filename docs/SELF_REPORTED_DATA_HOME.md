@@ -82,15 +82,24 @@ meaningful.
 
 **Why:** A baseline of self-reported sleep is a baseline of *perception*,
 not physiology — statistically meaningless to mix. Beyond statistics,
-running anomaly detection on self-reports crosses the alignment principle:
-"your reported mood is 1.5σ below baseline" *is* evaluating the person,
-which Bios explicitly does not do.
+running anomaly detection on self-reports and pushing the result —
+"your reported mood is 1.5σ below baseline" — is **unsolicited
+push-side evaluation of the person**, which `AlertContentPolicy`
+explicitly bans (see [MANIFESTO.md](../MANIFESTO.md) Principle 7 and
+the push/pull distinction in
+[PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md) "Alert Content
+Policy"). The mechanical guarantees here (`BaselineEngine` skips
+`kind != SENSOR`; `SignalQualityFilter` same) implement that prohibition
+at the code level.
 
 Self-reports and events are: **displayable** (transparency),
 **correlatable** as context for sensor-derived alerts (HRV down + user
 reports poor sleep = stronger signal than HRV alone), and
 **pattern-detectable** with descriptive language only ("you've logged poor
-sleep 4 nights in a row" — never "your sleep is degrading").
+sleep 4 nights in a row" — never "your sleep is degrading"). Owner-pulled
+comparison surfaces — where the owner navigates in and asks "did I sleep
+better after starting magnesium?" — are not constrained by this rule;
+the firewall is push-side only.
 
 ### 4. Structured symptom taxonomy as Bios canon
 
@@ -128,11 +137,31 @@ applies to *executing* tests. *Results* are data, and data with multiple
 consumers belongs on the bus. The boundaries doc gets a sentence to that
 effect alongside this PR.
 
-### 6. Bios is a consumer, never the entry point — period.
+### 6. Bios hosts only the entry points its own canonical data needs.
 
-Codified above as the principle. Called out as a separate decision because
-future asks of "let me log sleep directly in Bios" will be plausible and
-worth refusing every time.
+Originally framed as *"Bios is a consumer, never the entry point —
+period."* That absolute is now wrong-as-written: since then, BBT manual
+entry (`BbtEntryRepo`), biomarker entry (`BiomarkerEntryRepo`), manual
+sleep duration, and lab-report attachment (PR #106) have all shipped as
+legitimate Bios-hosted entry surfaces.
+
+The corrected rule — which all four shipped surfaces already satisfy —
+is the same producer-by-capture-surface line codified in
+[ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) ("No domain-specific
+active tests in Bios"). **Bios hosts an entry point if and only if the
+data being entered is a canonical Bios-owned key with no other producer
+available.** Biomarkers are typed because no sensor draws blood; BBT is
+typed because no wearable on the owner's wrist measures basal body
+temperature; manual sleep is typed when Health Connect / Oura / Gadgetbridge
+are all silent. Bios is *not* the entry point for data a companion
+uniquely owns — typing cadence belongs in W2F, SDMT in Fil, fall-event
+in Virgil.
+
+The "future asks of 'let me log sleep directly in Bios'" line from the
+old wording was directionally right but the verdict's been wrong: the
+manual-sleep-entry surface that landed in the meantime is the right
+shape, and refusing it would have left a real gap. The rule above is
+what we apply going forward.
 
 ## Open questions (decide before implementing)
 
