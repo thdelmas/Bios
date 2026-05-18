@@ -47,9 +47,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.Row
+import com.bios.app.data.BiomarkerContext
 import com.bios.app.export.FhirImportSummary
 import com.bios.app.export.FhirImporter
 import com.bios.app.model.MetricReading
+import com.bios.app.model.Specimen
 import com.bios.app.ui.AppViewModel
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
@@ -74,6 +78,12 @@ fun BiomarkerEntryScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var importSummary by remember { mutableStateOf<FhirImportSummary?>(null) }
+    var labName by remember { mutableStateOf("") }
+    var fasting by remember { mutableStateOf<Boolean?>(null) }
+    var specimen by remember { mutableStateOf<Specimen?>(null) }
+    var specimenExpanded by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf("") }
+    var showContext by remember { mutableStateOf(false) }
     val recent by viewModel.recentBiomarkers.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -182,10 +192,104 @@ fun BiomarkerEntryScreen(
                         Text("Drawn on: ${formatDate(selectedDate)}")
                     }
 
+                    TextButton(
+                        onClick = { showContext = !showContext },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (showContext) "Hide context" else "Add context (lab, fasting, specimen, note)")
+                    }
+
+                    if (showContext) {
+                        OutlinedTextField(
+                            value = labName,
+                            onValueChange = { labName = it },
+                            label = { Text("Lab / facility") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text(
+                            "Fasting",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = fasting == true,
+                                onClick = { fasting = if (fasting == true) null else true },
+                                label = { Text("Yes") }
+                            )
+                            FilterChip(
+                                selected = fasting == false,
+                                onClick = { fasting = if (fasting == false) null else false },
+                                label = { Text("No") }
+                            )
+                            FilterChip(
+                                selected = fasting == null,
+                                onClick = { fasting = null },
+                                label = { Text("Unknown") }
+                            )
+                        }
+
+                        ExposedDropdownMenuBox(
+                            expanded = specimenExpanded,
+                            onExpandedChange = { specimenExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = specimen?.readable ?: "—",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Specimen") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = specimenExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = specimenExpanded,
+                                onDismissRequest = { specimenExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("—") },
+                                    onClick = {
+                                        specimen = null
+                                        specimenExpanded = false
+                                    }
+                                )
+                                Specimen.entries.forEach { s ->
+                                    DropdownMenuItem(
+                                        text = { Text(s.readable) },
+                                        onClick = {
+                                            specimen = s
+                                            specimenExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = note,
+                            onValueChange = { note = it },
+                            label = { Text("Note (for your recall)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     OutlinedButton(
                         onClick = {
-                            viewModel.addManualBiomarker(selected, parsed!!, selectedDate)
+                            val bioContext = BiomarkerContext(
+                                labName = labName.ifBlank { null },
+                                fasting = fasting,
+                                specimen = specimen,
+                                note = note.ifBlank { null }
+                            )
+                            viewModel.addManualBiomarker(selected, parsed!!, selectedDate, bioContext)
                             valueText = ""
+                            labName = ""
+                            fasting = null
+                            specimen = null
+                            note = ""
                         },
                         enabled = isValid,
                         modifier = Modifier.fillMaxWidth()
@@ -327,6 +431,14 @@ private fun RecentBiomarkerRow(reading: MetricReading) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            reading.note?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "“$it”",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

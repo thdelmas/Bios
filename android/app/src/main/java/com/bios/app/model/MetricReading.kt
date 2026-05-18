@@ -31,5 +31,10 @@ data class MetricReading(
     val sourceId: String,
     val confidence: Int,        // ConfidenceTier.level
     val isPrimary: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    // Owner-recall free text, never read by any engine. Reserved for surfaces
+    // where the owner annotates their own reading (biomarker entry, manual
+    // sleep duration). Engines must not query this column; the manifesto's
+    // "instrument, not coach" stance scopes evaluation to the owner.
+    val note: String? = null
 )
