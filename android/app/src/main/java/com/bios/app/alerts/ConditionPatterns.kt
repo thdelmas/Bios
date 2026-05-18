@@ -400,13 +400,14 @@ object ConditionPatterns {
      *
      * BBT and `CYCLE_PHASE` readings live in `ReproductiveDatabase` (separate
      * SQLCipher file, independent key, independent wipe). The AnomalyDetector
-     * queries only the main `BiosDatabase`, so the BBT rule will currently
-     * find no data and won't activate; the HRV + sleep corroborators are in
-     * the main DB and can still fire the pattern via `minActiveSignals = 2`
-     * (a less specific cycle signal — autonomic + sleep variability without
-     * the temperature anchor). Wiring AnomalyDetector to optionally consult
-     * the reproductive DB is the path to restoring full BBT-anchored
-     * detection; tracked as a follow-up.
+     * routes WOMENS_HEALTH metric fetches to that isolated DB when the owner
+     * has enabled BBT tracking (via the manual entry surface), and the
+     * BaselineEngine computes a BBT baseline from the same source — its
+     * statistical summary lives in the main DB, no raw values escape. The
+     * BBT signal anchors the pattern when the owner is tracking; HRV + sleep
+     * corroborators still carry the pattern at `minActiveSignals = 2` when
+     * no reproductive DB is available, so non-tracking owners still get a
+     * less-specific autonomic-and-sleep cycle signal.
      */
     val menstrualCycleAnomaly = ConditionPattern(
         id = "menstrual_cycle_anomaly",
