@@ -53,6 +53,8 @@ object MetricCoverageRegistry {
         derived(MetricType.PARASYMPATHETIC_TONE),
         derived(MetricType.STRESS_SCORE),
         derived(MetricType.LF_HF_RATIO),
+        derived(MetricType.HRV_LF_POWER),
+        derived(MetricType.HRV_HF_POWER),
 
         // -- Blood pressure (cuff measurement, slower-moving) --
         MetricCoverageSpec(

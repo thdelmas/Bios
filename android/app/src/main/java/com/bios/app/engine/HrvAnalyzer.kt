@@ -42,6 +42,7 @@ object HrvAnalyzer {
         val pnn50 = computePnn50(clean)
         val meanIbi = clean.average()
         val meanHr = 60_000.0 / meanIbi
+        val powers = Spectral.lfHfPowers(clean)
 
         return HrvResult(
             rmssd = rmssd,
@@ -49,7 +50,9 @@ object HrvAnalyzer {
             pnn50 = pnn50,
             lnRmssd = if (rmssd > 0.0) ln(rmssd) else 0.0,
             stressIndex = computeStressIndex(clean),
-            lfHfRatio = Spectral.lfHfRatio(clean),
+            lfHfRatio = powers.ratio,
+            lfPowerMs2 = powers.lfMs2,
+            hfPowerMs2 = powers.hfMs2,
             meanIbiMs = meanIbi,
             meanHrBpm = meanHr,
             cleanIbiCount = clean.size,
@@ -188,6 +191,21 @@ object HrvAnalyzer {
          * degenerate, or the HF band carries no power.
          */
         val lfHfRatio: Double,
+        /**
+         * Absolute power in the LF band (0.04–0.15 Hz), in ms². Useful as
+         * an engine input for cross-correlation patterns where the ratio
+         * alone is ambiguous (sympathetic *up* and parasympathetic *down*
+         * can produce the same ratio). Zero in the same degenerate cases
+         * as [lfHfRatio]. (Task Force 1996, Shaffer & Ginsberg 2017.)
+         */
+        val lfPowerMs2: Double,
+        /**
+         * Absolute power in the HF band (0.15–0.40 Hz), in ms². Strong
+         * vagal-tone correlate; tracks respiratory sinus arrhythmia.
+         * Zero in the same degenerate cases as [lfHfRatio]. (Task Force
+         * 1996, Shaffer & Ginsberg 2017.)
+         */
+        val hfPowerMs2: Double,
         /** Mean inter-beat interval (ms). */
         val meanIbiMs: Double,
         /** Mean heart rate derived from IBIs (bpm). */
