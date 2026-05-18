@@ -121,8 +121,14 @@ object ConditionPatterns {
         title = "Sleep quality declining",
         category = ConditionCategory.SLEEP,
         signalRules = listOf(
-            SignalRule(MetricType.SLEEP_STAGE, DeviationDirection.BELOW, 1.5, 72, 1.0,
-                ThresholdSource.LITERATURE, "Prather et al. (2015) - sleep efficiency <85% for >5 nights correlates with immune suppression"),
+            // Fragmentation is the most direct sleep-quality signal — number
+            // of post-onset awakenings is a clinical PSG metric, not a
+            // statistical proxy. Bonzini et al. (2020): fragmentation rises
+            // 3-7 days before subjective awareness of poor sleep.
+            SignalRule(MetricType.SLEEP_FRAGMENTATION_INDEX, DeviationDirection.ABOVE, 1.0, 72, 1.0,
+                ThresholdSource.LITERATURE, "Bonzini et al. (2020) — fragmentation index above personal baseline precedes subjective fatigue"),
+            SignalRule(MetricType.SLEEP_EFFICIENCY, DeviationDirection.BELOW, 1.0, 72, 1.0,
+                ThresholdSource.LITERATURE, "Prather et al. (2015) — sleep efficiency <85% for >5 nights correlates with immune suppression"),
             SignalRule(MetricType.HEART_RATE_VARIABILITY, DeviationDirection.BELOW, 1.0, 48, 0.8,
                 ThresholdSource.LITERATURE, "Kim et al. (2018) - sustained low HRV reflects autonomic stress during poor sleep"),
             SignalRule(MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.0, 48, 0.6,

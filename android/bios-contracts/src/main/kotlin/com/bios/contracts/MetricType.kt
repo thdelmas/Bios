@@ -45,6 +45,8 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     SLEEP_LATENCY("sleep_latency", MetricUnit.SECONDS, MetricDomain.SLEEP),
     SLEEP_EFFICIENCY("sleep_efficiency", MetricUnit.PERCENT, MetricDomain.SLEEP),
     SLEEP_FRAGMENTATION_INDEX("sleep_fragmentation_index", MetricUnit.COUNT, MetricDomain.SLEEP),
+    WAKE_AFTER_SLEEP_ONSET("wake_after_sleep_onset", MetricUnit.SECONDS, MetricDomain.SLEEP),
+    SLEEP_SCORE("sleep_score", MetricUnit.SCORE, MetricDomain.SLEEP),
     // Bios-produced from sleep-onset times via cosinor/DLMO math. Universal
     // chronobiology metric — not mood-specific despite W2F being the primary
     // consumer. See docs/ECOSYSTEM_BOUNDARIES.md producer-by-capture-surface

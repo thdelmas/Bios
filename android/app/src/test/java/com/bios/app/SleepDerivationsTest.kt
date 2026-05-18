@@ -7,6 +7,7 @@ import com.bios.app.model.SleepStage
 import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SleepDerivationsTest {
@@ -178,4 +179,142 @@ class SleepDerivationsTest {
         )
         assertNull(SleepDerivations.deriveSleepFragmentation(readings, "src"))
     }
+
+    // --- WASO ---
+
+    @Test
+    fun `WASO sums post-onset AWAKE durations only`() {
+        // Initial AWAKE blocks before sleep onset count toward latency, not
+        // WASO. Only awake durations *after* the first non-AWAKE stage do.
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),      // pre-onset, ignored
+            stage(SleepStage.AWAKE, 1_300_000L),      // pre-onset, ignored
+            stage(SleepStage.LIGHT, 1_900_000L),      // onset
+            stage(SleepStage.DEEP, 2_500_000L),
+            stage(SleepStage.AWAKE, 3_100_000L),      // counts: 300s
+            stage(SleepStage.LIGHT, 3_400_000L),
+            stage(SleepStage.AWAKE, 4_000_000L),      // counts: 300s
+            stage(SleepStage.REM, 4_300_000L),
+        )
+        val waso = SleepDerivations.deriveWakeAfterSleepOnset(readings, "src")!!
+        assertEquals(MetricType.WAKE_AFTER_SLEEP_ONSET.key, waso.metricType)
+        assertEquals(600.0, waso.value, 0.0)
+        assertEquals(600, waso.durationSec)
+    }
+
+    @Test
+    fun `WASO is zero (not null) when sleep is uninterrupted`() {
+        // WASO = 0 is a real, meaningful value — collapsing to null would
+        // lose the distinction between "uninterrupted night" and
+        // "couldn't measure."
+        val readings = listOf(
+            stage(SleepStage.LIGHT, 1_000_000L),
+            stage(SleepStage.DEEP, 1_300_000L),
+            stage(SleepStage.REM, 1_600_000L),
+        )
+        val waso = SleepDerivations.deriveWakeAfterSleepOnset(readings, "src")!!
+        assertEquals(0.0, waso.value, 0.0)
+    }
+
+    @Test
+    fun `WASO is null when session never reaches sleep`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),
+            stage(SleepStage.AWAKE, 1_300_000L),
+        )
+        assertNull(SleepDerivations.deriveWakeAfterSleepOnset(readings, "src"))
+    }
+
+    @Test
+    fun `WASO is null when readings list is empty`() {
+        assertNull(SleepDerivations.deriveWakeAfterSleepOnset(emptyList(), "src"))
+    }
+
+    // --- Sleep score ---
+
+    @Test
+    fun `sleep score is high for a textbook 8h session with one brief awakening`() {
+        // 8h total, ~5 min latency, 1 brief awakening — should score near
+        // the top of the scale. Test pins the rough ceiling rather than
+        // the exact value to allow sub-score weight tuning later.
+        val readings = textbookNight()
+        val score = SleepDerivations.deriveSleepScore(readings, "src")!!
+        assertEquals(MetricType.SLEEP_SCORE.key, score.metricType)
+        assertTrue("Score for textbook night should be ≥ 85, got ${score.value}", score.value >= 85.0)
+        assertTrue("Score must stay ≤ 100", score.value <= 100.0)
+    }
+
+    @Test
+    fun `sleep score penalises a 4h session vs an 8h session of equal quality`() {
+        // Same efficiency / latency / fragmentation profile, different
+        // duration. The duration sub-score must move the composite.
+        val shortNight = sessionOf(
+            durations = listOf(SleepStage.LIGHT to 3600, SleepStage.DEEP to 3600,
+                SleepStage.REM to 3600, SleepStage.LIGHT to 3600),
+            prefix = listOf(SleepStage.AWAKE to 300),
+        )
+        val fullNight = sessionOf(
+            durations = listOf(SleepStage.LIGHT to 3600, SleepStage.DEEP to 3600,
+                SleepStage.REM to 3600, SleepStage.LIGHT to 3600,
+                SleepStage.DEEP to 3600, SleepStage.REM to 3600,
+                SleepStage.LIGHT to 3600, SleepStage.LIGHT to 3600),
+            prefix = listOf(SleepStage.AWAKE to 300),
+        )
+        val short = SleepDerivations.deriveSleepScore(shortNight, "src")!!
+        val full = SleepDerivations.deriveSleepScore(fullNight, "src")!!
+        assertTrue(
+            "4h session must score lower than 8h: short=${short.value} full=${full.value}",
+            short.value < full.value,
+        )
+    }
+
+    @Test
+    fun `sleep score is null when fragmentation cannot be derived (never reached sleep)`() {
+        // The composite-or-null rule: partial scores would mis-rank
+        // nights with missing components against complete ones.
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),
+            stage(SleepStage.AWAKE, 1_300_000L),
+        )
+        assertNull(SleepDerivations.deriveSleepScore(readings, "src"))
+    }
+
+    // --- Sleep-score fixture helpers ---
+
+    private fun sessionOf(
+        durations: List<Pair<SleepStage, Int>>,
+        prefix: List<Pair<SleepStage, Int>> = emptyList(),
+        startMillis: Long = 1_000_000L,
+    ): List<MetricReading> {
+        val rows = mutableListOf<MetricReading>()
+        var t = startMillis
+        for ((s, dur) in prefix + durations) {
+            rows.add(
+                MetricReading(
+                    metricType = MetricType.SLEEP_STAGE.key,
+                    value = s.value.toDouble(),
+                    timestamp = t,
+                    durationSec = dur,
+                    sourceId = "src",
+                    confidence = ConfidenceTier.MEDIUM.level,
+                )
+            )
+            t += dur * 1000L
+        }
+        return rows
+    }
+
+    private fun textbookNight(): List<MetricReading> = sessionOf(
+        prefix = listOf(SleepStage.AWAKE to 300), // 5 min latency
+        durations = listOf(
+            SleepStage.LIGHT to 3600,
+            SleepStage.DEEP to 3600,
+            SleepStage.REM to 3600,
+            SleepStage.LIGHT to 3600,
+            SleepStage.AWAKE to 120,             // 2 min mid-night awakening
+            SleepStage.DEEP to 3600,
+            SleepStage.REM to 3600,
+            SleepStage.LIGHT to 3360,
+        ),
+    )
 }
