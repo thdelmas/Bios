@@ -38,6 +38,8 @@ class CameraPpgAdapterTest {
             lnRmssd = kotlin.math.ln(18.5),
             stressIndex = 120.0,
             lfHfRatio = 1.7,
+            lfPowerMs2 = 340.0,
+            hfPowerMs2 = 200.0,
             meanIbiMs = 815.0,
             meanHrBpm = 73.6,
             cleanIbiCount = 5,
@@ -47,7 +49,8 @@ class CameraPpgAdapterTest {
         val result = CameraPpgAdapter.toResult(ppg, hrv, sourceId, now)
 
         assertTrue(result.accepted)
-        assertEquals(5, result.readings.size)
+        // 5 original + HRV_LF_POWER + HRV_HF_POWER (#29).
+        assertEquals(7, result.readings.size)
 
         val hr = result.readings.single { it.metricType == MetricType.HEART_RATE.key }
         assertEquals(73.6, hr.value, 0.01)
@@ -71,6 +74,11 @@ class CameraPpgAdapterTest {
         val lfHfR = result.readings.single { it.metricType == MetricType.LF_HF_RATIO.key }
         assertEquals(1.7, lfHfR.value, 1e-9)
         assertEquals(ConfidenceTier.LOW.level, lfHfR.confidence)
+
+        val lfP = result.readings.single { it.metricType == MetricType.HRV_LF_POWER.key }
+        assertEquals(340.0, lfP.value, 1e-9)
+        val hfP = result.readings.single { it.metricType == MetricType.HRV_HF_POWER.key }
+        assertEquals(200.0, hfP.value, 1e-9)
     }
 
     @Test
@@ -122,6 +130,8 @@ class CameraPpgAdapterTest {
             lnRmssd = kotlin.math.ln(15.0),
             stressIndex = 95.0,
             lfHfRatio = 1.2,
+            lfPowerMs2 = 280.0,
+            hfPowerMs2 = 230.0,
             meanIbiMs = 805.0, meanHrBpm = 74.5,
             cleanIbiCount = 5, artifactsRejected = 0
         )

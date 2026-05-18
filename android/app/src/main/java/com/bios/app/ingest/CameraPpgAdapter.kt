@@ -216,6 +216,22 @@ class CameraPpgAdapter(private val context: Context) {
                     durationSec = durSec,
                     sourceId = sourceId,
                     confidence = ConfidenceTier.LOW.level
+                ),
+                MetricReading(
+                    metricType = MetricType.HRV_LF_POWER.key,
+                    value = hrv.lfPowerMs2,
+                    timestamp = timestamp,
+                    durationSec = durSec,
+                    sourceId = sourceId,
+                    confidence = ConfidenceTier.LOW.level
+                ),
+                MetricReading(
+                    metricType = MetricType.HRV_HF_POWER.key,
+                    value = hrv.hfPowerMs2,
+                    timestamp = timestamp,
+                    durationSec = durSec,
+                    sourceId = sourceId,
+                    confidence = ConfidenceTier.LOW.level
                 )
             )
             return CaptureResult(

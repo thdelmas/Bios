@@ -50,17 +50,31 @@ internal object Spectral {
     const val MIN_DURATION_SEC = 60.0
 
     /**
-     * Compute the LF/HF ratio from a list of inter-beat intervals (ms).
-     * Returns 0.0 when the recording is too short for spectral analysis,
-     * when the series is degenerate (constant or near-constant IBIs), or
-     * when the HF band contains no power.
+     * Band powers (ms²) over the LF and HF bands plus the LF/HF ratio,
+     * computed in a single pass over the FFT spectrum. Returning the
+     * three together makes the relationship lf / hf = ratio observable in
+     * tests, and saves callers a second FFT for the powers.
+     *
+     * Every field falls to 0.0 in the same degenerate cases [lfHfRatio]
+     * does: recording shorter than [MIN_DURATION_SEC], near-constant IBI
+     * series, or an HF band with no power (which would otherwise divide
+     * by zero in the ratio).
      */
-    fun lfHfRatio(ibisMs: List<Double>): Double {
-        if (ibisMs.size < 4) return 0.0
+    data class LfHfPowers(val lfMs2: Double, val hfMs2: Double, val ratio: Double) {
+        companion object {
+            val ZERO = LfHfPowers(0.0, 0.0, 0.0)
+        }
+    }
 
-        // Build beat-time axis in seconds. The first sample lives at the
-        // end of the first interval; the canonical convention places it
-        // at t = IBI_1 (Task Force 1996 Fig. 3).
+    /**
+     * Compute LF and HF band powers (ms²) and their ratio from a list of
+     * inter-beat intervals (ms). Same pipeline as [lfHfRatio]; preserved
+     * separately so callers needing only the ratio don't pay for the
+     * extra fields. See [lfHfRatio] KDoc for the full algorithm.
+     */
+    fun lfHfPowers(ibisMs: List<Double>): LfHfPowers {
+        if (ibisMs.size < 4) return LfHfPowers.ZERO
+
         val timesSec = DoubleArray(ibisMs.size)
         var cumulative = 0.0
         for (i in ibisMs.indices) {
@@ -68,11 +82,10 @@ internal object Spectral {
             timesSec[i] = cumulative
         }
         val durationSec = timesSec.last() - timesSec.first()
-        if (durationSec < MIN_DURATION_SEC) return 0.0
+        if (durationSec < MIN_DURATION_SEC) return LfHfPowers.ZERO
 
-        // Resample uniformly at RESAMPLE_HZ via linear interpolation.
         val sampleCount = (durationSec * RESAMPLE_HZ).toInt()
-        if (sampleCount < 8) return 0.0
+        if (sampleCount < 8) return LfHfPowers.ZERO
         val nfft = nextPowerOfTwo(sampleCount)
         val signal = DoubleArray(nfft)
         val tStart = timesSec.first()
@@ -80,28 +93,23 @@ internal object Spectral {
             val t = tStart + i / RESAMPLE_HZ
             signal[i] = interpolateLinear(timesSec, ibisMs, t)
         }
-        // Tail samples (sampleCount..nfft-1) stay at zero — zero-padding.
 
-        // Detrend by subtracting the mean of the populated region.
         var sum = 0.0
         for (i in 0 until sampleCount) sum += signal[i]
         val mean = sum / sampleCount
         for (i in 0 until sampleCount) signal[i] -= mean
 
-        // Hann window over the populated region.
         var windowEnergy = 0.0
         for (i in 0 until sampleCount) {
             val w = 0.5 - 0.5 * cos(2.0 * PI * i / (sampleCount - 1).coerceAtLeast(1))
             signal[i] *= w
             windowEnergy += w * w
         }
-        if (windowEnergy <= 0.0) return 0.0
+        if (windowEnergy <= 0.0) return LfHfPowers.ZERO
 
-        // Radix-2 FFT in place.
         val imag = DoubleArray(nfft)
         fftInPlace(signal, imag)
 
-        // One-sided PSD (Welch-style normalization for a single segment).
         val psdScale = 1.0 / (RESAMPLE_HZ * windowEnergy)
         val df = RESAMPLE_HZ / nfft
         var lfPower = 0.0
@@ -109,7 +117,6 @@ internal object Spectral {
         val halfN = nfft / 2
         for (k in 0..halfN) {
             val mag2 = signal[k] * signal[k] + imag[k] * imag[k]
-            // Double everything except DC and Nyquist for the one-sided PSD.
             val onesidedScale = if (k == 0 || k == halfN) 1.0 else 2.0
             val psd = mag2 * psdScale * onesidedScale
             val f = k * df
@@ -118,9 +125,20 @@ internal object Spectral {
                 f >= LF_HIGH_HZ && f <= HF_HIGH_HZ -> hfPower += psd * df
             }
         }
-        if (hfPower <= 0.0) return 0.0
-        return lfPower / hfPower
+        if (hfPower <= 0.0) return LfHfPowers(lfPower, hfPower, 0.0)
+        return LfHfPowers(lfPower, hfPower, lfPower / hfPower)
     }
+
+    /**
+     * Compute the LF/HF ratio from a list of inter-beat intervals (ms).
+     * Returns 0.0 when the recording is too short for spectral analysis,
+     * when the series is degenerate (constant or near-constant IBIs), or
+     * when the HF band contains no power.
+     *
+     * Equivalent to `lfHfPowers(ibisMs).ratio`; preserved as a public
+     * surface for callers that don't need the individual band powers.
+     */
+    fun lfHfRatio(ibisMs: List<Double>): Double = lfHfPowers(ibisMs).ratio
 
     private fun nextPowerOfTwo(n: Int): Int {
         var p = 1
