@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.bios.app.data.BiomarkerContext
 import com.bios.app.data.BiomarkerEntryRepo
+import com.bios.app.model.Specimen
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +57,11 @@ object FhirImporter {
                 metricType = reading.metricType,
                 value = reading.value,
                 timestamp = reading.timestamp,
-                context = BiomarkerContext(labName = reading.labName)
+                context = BiomarkerContext(
+                    labName = reading.labName,
+                    fasting = reading.fasting,
+                    specimen = reading.specimen,
+                )
             )
         }
         summary
@@ -71,9 +76,9 @@ object FhirImporter {
         }
 
         val resourceType = root.optString("resourceType")
-        val observations = when (resourceType) {
-            "Bundle" -> extractBundleObservations(root)
-            "Observation" -> listOf(root)
+        val (observations, bundleSpecimens) = when (resourceType) {
+            "Bundle" -> extractBundleObservations(root) to extractBundleSpecimens(root)
+            "Observation" -> listOf(root) to emptyMap()
             else -> return FhirImportSummary.fileError(
                 "Unsupported resourceType \"$resourceType\" — expected Bundle or Observation"
             )
@@ -82,7 +87,7 @@ object FhirImporter {
         val accepted = mutableListOf<AcceptedReading>()
         val skipped = mutableListOf<SkippedObservation>()
         for (obs in observations) {
-            when (val outcome = parseObservation(obs)) {
+            when (val outcome = parseObservation(obs, bundleSpecimens)) {
                 is ParseOutcome.Accepted -> accepted += outcome.reading
                 is ParseOutcome.Skipped -> skipped += outcome.skipped
             }
@@ -100,7 +105,28 @@ object FhirImporter {
         return out
     }
 
-    private fun parseObservation(obs: JSONObject): ParseOutcome {
+    /**
+     * Index any `Specimen` resources in the Bundle by id so an Observation's
+     * `specimen.reference = "Specimen/<id>"` can resolve back to the type
+     * coding. Contained specimens on the Observation itself are handled
+     * inline in [parseObservation] and do not need to live here.
+     */
+    private fun extractBundleSpecimens(bundle: JSONObject): Map<String, JSONObject> {
+        val entries = bundle.optJSONArray("entry") ?: return emptyMap()
+        val out = mutableMapOf<String, JSONObject>()
+        for (i in 0 until entries.length()) {
+            val resource = entries.optJSONObject(i)?.optJSONObject("resource") ?: continue
+            if (resource.optString("resourceType") != "Specimen") continue
+            val id = resource.optString("id").takeIf { it.isNotBlank() } ?: continue
+            out[id] = resource
+        }
+        return out
+    }
+
+    private fun parseObservation(
+        obs: JSONObject,
+        bundleSpecimens: Map<String, JSONObject>,
+    ): ParseOutcome {
         val loinc = findLoincCode(obs.optJSONObject("code")?.optJSONArray("coding"))
             ?: return ParseOutcome.Skipped(
                 SkippedObservation("No LOINC coding on Observation", loincCode = null)
@@ -144,7 +170,116 @@ object FhirImporter {
             )
 
         val labName = readPerformerDisplay(obs)
-        return ParseOutcome.Accepted(AcceptedReading(metric, value, timestamp, labName))
+        val fasting = readFastingComponent(obs)
+        val specimen = readSpecimen(obs, bundleSpecimens)
+        return ParseOutcome.Accepted(
+            AcceptedReading(metric, value, timestamp, labName, fasting, specimen)
+        )
+    }
+
+    /**
+     * Reads a fasting-status component on the Observation. LOINC `49541-6`
+     * "Fasting status - Reported" is what clinical systems emit. We accept
+     * three encodings of the answer:
+     *   - `valueBoolean` (FHIR-simple, what Bios's own exporter writes)
+     *   - `valueCodeableConcept.coding[].code` matching LOINC answer list
+     *     `LL1815-1`: `LA33-6` = Yes / `LA32-8` = No (clinical-systems form)
+     *   - `valueCodeableConcept.text` matching "yes" / "no" (text fallback)
+     * Returns `null` (i.e., "unknown") when the component is absent or
+     * encodes an unrecognised answer. Doesn't trip on `LA46-7` (Don't know).
+     */
+    private fun readFastingComponent(obs: JSONObject): Boolean? {
+        val components = obs.optJSONArray("component") ?: return null
+        for (i in 0 until components.length()) {
+            val component = components.optJSONObject(i) ?: continue
+            val coding = component.optJSONObject("code")?.optJSONArray("coding") ?: continue
+            if (findLoincCode(coding) != "49541-6") continue
+            if (component.has("valueBoolean")) {
+                return component.optBoolean("valueBoolean")
+            }
+            val cc = component.optJSONObject("valueCodeableConcept")
+            cc?.optJSONArray("coding")?.let { codings ->
+                for (j in 0 until codings.length()) {
+                    val c = codings.optJSONObject(j)?.optString("code")
+                    when (c) {
+                        "LA33-6" -> return true
+                        "LA32-8" -> return false
+                    }
+                }
+            }
+            cc?.optString("text")?.lowercase()?.let { text ->
+                when {
+                    text.startsWith("yes") || text == "fasting" -> return true
+                    text.startsWith("no") || text == "non-fasting" -> return false
+                }
+            }
+            return null
+        }
+        return null
+    }
+
+    /**
+     * Resolves the Observation's `specimen.reference` to a [Specimen] enum.
+     * Tries, in order: `contained` resources on the Observation itself, then
+     * the Bundle-level Specimen index. Returns `null` when the reference is
+     * absent, the target can't be found, or its type doesn't match a Bios
+     * specimen enum.
+     */
+    private fun readSpecimen(
+        obs: JSONObject,
+        bundleSpecimens: Map<String, JSONObject>,
+    ): Specimen? {
+        val reference = obs.optJSONObject("specimen")?.optString("reference") ?: return null
+        if (reference.isBlank()) return null
+
+        val specimenResource = if (reference.startsWith("#")) {
+            findContainedSpecimen(obs, reference.removePrefix("#"))
+        } else {
+            val id = reference.substringAfter("Specimen/").substringAfter("/")
+            bundleSpecimens[id]
+        } ?: return null
+
+        return mapSpecimenType(specimenResource.optJSONObject("type"))
+    }
+
+    private fun findContainedSpecimen(obs: JSONObject, id: String): JSONObject? {
+        val contained = obs.optJSONArray("contained") ?: return null
+        for (i in 0 until contained.length()) {
+            val r = contained.optJSONObject(i) ?: continue
+            if (r.optString("resourceType") == "Specimen" && r.optString("id") == id) return r
+        }
+        return null
+    }
+
+    /**
+     * Maps a FHIR `Specimen.type` CodeableConcept to our enum. Prefers SCT
+     * coding (the standard); falls back to free-text matching so labs that
+     * skip the codings — common in EU public-system exports — still resolve.
+     */
+    private fun mapSpecimenType(type: JSONObject?): Specimen? {
+        if (type == null) return null
+        type.optJSONArray("coding")?.let { codings ->
+            for (i in 0 until codings.length()) {
+                val c = codings.optJSONObject(i) ?: continue
+                val system = c.optString("system")
+                val code = c.optString("code")
+                if (system == "http://snomed.info/sct") {
+                    when (code) {
+                        "119364003" -> return Specimen.SERUM
+                        "119361006" -> return Specimen.PLASMA
+                        "258580003" -> return Specimen.WHOLE_BLOOD
+                    }
+                }
+            }
+        }
+        val text = type.optString("text").lowercase()
+        return when {
+            "serum" in text -> Specimen.SERUM
+            "plasma" in text -> Specimen.PLASMA
+            "whole blood" in text -> Specimen.WHOLE_BLOOD
+            text.isNotBlank() -> Specimen.OTHER
+            else -> null
+        }
     }
 
     private fun readPerformerDisplay(obs: JSONObject): String? {
@@ -202,7 +337,9 @@ data class AcceptedReading(
     val metricType: MetricType,
     val value: Double,
     val timestamp: Long,
-    val labName: String? = null
+    val labName: String? = null,
+    val fasting: Boolean? = null,
+    val specimen: Specimen? = null,
 )
 
 data class SkippedObservation(
