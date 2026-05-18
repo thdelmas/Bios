@@ -4,6 +4,7 @@ import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.*
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
@@ -16,11 +17,21 @@ import kotlin.math.min
 /**
  * Detects anomalies by scoring deviations from personal baselines
  * and cross-correlating multiple signals.
+ *
+ * `reproductiveReadingDao` is the optional reading DAO for the isolated
+ * [com.bios.app.data.ReproductiveDatabase]. When non-null, reproductive
+ * metrics (BBT, CYCLE_PHASE, CYCLE_DAY, MENSTRUATION_ONSET) are evaluated
+ * against rows in the reproductive DB instead of the main DB — raw
+ * reproductive readings never live in [BiosDatabase] by design. Baselines
+ * for those metrics still resolve via `personalBaselineDao` on the main
+ * DB (statistical summaries only, no raw values), per
+ * [com.bios.app.data.ReproductiveDatabase]'s documented contract.
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
     private val mlModel: TFLiteAnomalyModel? = null,
-    private val latencyTracker: DetectionLatencyTracker? = null
+    private val latencyTracker: DetectionLatencyTracker? = null,
+    private val reproductiveReadingDao: MetricReadingDao? = null
 ) {
 
     private val readingDao = db.metricReadingDao()
@@ -392,10 +403,18 @@ class AnomalyDetector(
     private suspend fun fetchRecentValues(metricType: MetricType, hours: Int): List<Double> {
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - hours.toLong() * 3600 * 1000
-        return readingDao.fetchValues(
+        val dao = daoFor(metricType)
+        return dao.fetchValues(
             metricType.key, startMillis, endMillis, readingKindFilterFor(metricType)
         )
     }
+
+    private fun daoFor(metricType: MetricType): MetricReadingDao =
+        if (isReproductiveMetric(metricType) && reproductiveReadingDao != null) {
+            reproductiveReadingDao
+        } else {
+            readingDao
+        }
 
     /**
      * Evaluates an absolute-threshold rule against the metric's latest
@@ -422,5 +441,26 @@ class AnomalyDetector(
 // branches the filter by unit so SENSOR-typed metrics still resolve against
 // sensor sources (the decision 3 reason — z-scores vs a sensor baseline)
 // while EVENT-typed metrics see the data they're meant to see.
-internal fun readingKindFilterFor(metricType: MetricType): String? =
-    if (metricType.unit == MetricUnit.EVENT) null else ReadingKind.SENSOR.name
+//
+// WOMENS_HEALTH metrics (BBT, CYCLE_PHASE, CYCLE_DAY, MENSTRUATION_ONSET) are
+// also exempted: those readings live in the isolated ReproductiveDatabase
+// and are SELF_REPORTED by design (no sensor adapter writes BBT — would
+// break the privacy isolation). The decision-3 SENSOR filter exists to keep
+// self-reports out of *physiological* baselines; for a metric whose
+// canonical source IS self-report, the filter would just zero the rows.
+internal fun readingKindFilterFor(metricType: MetricType): String? = when {
+    metricType.unit == MetricUnit.EVENT -> null
+    isReproductiveMetric(metricType) -> null
+    else -> ReadingKind.SENSOR.name
+}
+
+/**
+ * Reproductive metrics whose raw readings live in
+ * [com.bios.app.data.ReproductiveDatabase] rather than the main
+ * [BiosDatabase]. Anomaly evaluation must route value fetches to the
+ * isolated DB; baselines for these metrics, when computed, are still
+ * stored as summary-only rows in the main DB per the documented contract
+ * on [com.bios.app.data.ReproductiveDatabase].
+ */
+internal fun isReproductiveMetric(metricType: MetricType): Boolean =
+    metricType.domain == MetricDomain.WOMENS_HEALTH

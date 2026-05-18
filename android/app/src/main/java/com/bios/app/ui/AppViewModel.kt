@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.bios.app.alerts.AlertManager
 import com.bios.app.alerts.FollowUpWorker
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.engine.AnomalyDetector
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.engine.DetectionLatencyTracker
@@ -56,9 +57,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         healthConnect, db, ouraAdapter, phoneSensorAdapter,
         gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, latencyTracker
     )
-    val baselineEngine = BaselineEngine(db, latencyTracker)
+    private val reproductiveReadingDao = ReproductiveDatabase.readingDaoOrNull(application)
+    val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)
     val mlModel = TFLiteAnomalyModel.load(application)
-    val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker)
+    val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker, reproductiveReadingDao)
     val alertManager = AlertManager(application, db, latencyTracker)
 
     private val _isInitialized = MutableStateFlow(false)
@@ -190,7 +192,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 try {
-                    withTimeout(SYNC_TIMEOUT_MS) {
+                    withTimeout(120_000L) {  // 2-minute sync timeout
                         ingestManager.setup()
                     }
                 } catch (_: TimeoutCancellationException) {
@@ -494,7 +496,4 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    companion object {
-        private const val SYNC_TIMEOUT_MS = 120_000L // 2 minutes
-    }
 }
