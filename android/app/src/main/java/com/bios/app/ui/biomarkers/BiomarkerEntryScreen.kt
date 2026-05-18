@@ -1,5 +1,7 @@
 package com.bios.app.ui.biomarkers
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -52,15 +54,11 @@ import androidx.compose.foundation.layout.Row
 import com.bios.app.data.BiomarkerContext
 import com.bios.app.export.FhirImportSummary
 import com.bios.app.export.FhirImporter
-import com.bios.app.model.MetricReading
 import com.bios.app.model.Specimen
 import com.bios.app.ui.AppViewModel
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,10 +81,34 @@ fun BiomarkerEntryScreen(
     var specimen by remember { mutableStateOf<Specimen?>(null) }
     var specimenExpanded by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
+    var sourceUri by remember { mutableStateOf<Uri?>(null) }
     var showContext by remember { mutableStateOf(false) }
     val recent by viewModel.recentBiomarkers.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val labReportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { picked ->
+        // OpenDocument returns a content:// URI. Take a persistable read
+        // permission so the URI survives reboots and the source app's
+        // lifecycle. Without this, the URI works for the current process
+        // only and is dead after the next launch.
+        if (picked != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    picked, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                sourceUri = picked
+            } catch (_: SecurityException) {
+                // Some providers (e.g. cached images) won't grant persistable
+                // permission. Keep the URI in-memory only; the entry still
+                // saves, but won't survive a reboot. Better than silently
+                // dropping the owner's pick.
+                sourceUri = picked
+            }
+        }
+    }
 
     val fhirLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -189,7 +211,7 @@ fun BiomarkerEntryScreen(
                         onClick = { showDatePicker = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Drawn on: ${formatDate(selectedDate)}")
+                        Text("Drawn on: ${formatBiomarkerDate(selectedDate)}")
                     }
 
                     TextButton(
@@ -274,6 +296,33 @@ fun BiomarkerEntryScreen(
                             label = { Text("Note (for your recall)") },
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        Text(
+                            "Lab report (PDF or photo)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { labReportLauncher.launch(LAB_REPORT_MIME_TYPES) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (sourceUri == null) "Attach…" else "Replace")
+                            }
+                            if (sourceUri != null) {
+                                TextButton(onClick = {
+                                    sourceUri?.let { releasePersistableRead(context, it) }
+                                    sourceUri = null
+                                }) { Text("Remove") }
+                            }
+                        }
+                        sourceUri?.let {
+                            Text(
+                                "Attached: ${it.lastPathSegment ?: it.toString()}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
 
                     OutlinedButton(
@@ -282,6 +331,7 @@ fun BiomarkerEntryScreen(
                                 labName = labName.ifBlank { null },
                                 fasting = fasting,
                                 specimen = specimen,
+                                sourceUri = sourceUri?.toString(),
                                 note = note.ifBlank { null }
                             )
                             viewModel.addManualBiomarker(selected, parsed!!, selectedDate, bioContext)
@@ -290,6 +340,7 @@ fun BiomarkerEntryScreen(
                             fasting = null
                             specimen = null
                             note = ""
+                            sourceUri = null
                         },
                         enabled = isValid,
                         modifier = Modifier.fillMaxWidth()
@@ -335,7 +386,7 @@ fun BiomarkerEntryScreen(
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
                     items(recent, key = { it.id }) { reading ->
-                        RecentBiomarkerRow(reading)
+                        RecentBiomarkerRow(reading, viewModel.biomarkerEntryRepo)
                     }
                 }
             }
@@ -412,40 +463,27 @@ private fun FhirImportSummaryDialog(summary: FhirImportSummary, onDismiss: () ->
     )
 }
 
-@Composable
-private fun RecentBiomarkerRow(reading: MetricReading) {
-    val metric = MetricType.fromKey(reading.metricType)
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text(
-                metric?.readableName ?: reading.metricType,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "${formatValue(reading.value)} ${metric?.unit?.symbol.orEmpty()}  ·  ${formatDate(reading.timestamp)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            reading.note?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "“$it”",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+/**
+ * MIME types the lab-report picker is restricted to. The owner's archive
+ * (Files / Drive / camera roll) typically delivers labs as one of these:
+ * scanned PDFs from a portal, JPEG/PNG photos from the device camera.
+ * Restricting the picker keeps random "PDF or photo or anything else"
+ * accidents off the entry surface.
+ */
+internal val LAB_REPORT_MIME_TYPES: Array<String> = arrayOf(
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+)
+
+private fun releasePersistableRead(context: android.content.Context, uri: Uri) {
+    try {
+        context.contentResolver.releasePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+    } catch (_: SecurityException) {
+        // Permission was never persisted (some providers don't allow it),
+        // or it has already been revoked. Either way, nothing to release.
     }
 }
 
-private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
-private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
-
-private fun formatValue(value: Double): String =
-    if (value == value.toLong().toDouble()) value.toLong().toString()
-    else "%.2f".format(value)
