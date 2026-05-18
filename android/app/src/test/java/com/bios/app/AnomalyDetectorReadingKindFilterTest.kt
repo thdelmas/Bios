@@ -1,11 +1,15 @@
 package com.bios.app
 
+import com.bios.app.engine.isReproductiveMetric
 import com.bios.app.engine.readingKindFilterFor
 import com.bios.app.model.ReadingKind
+import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -52,5 +56,48 @@ class AnomalyDetectorReadingKindFilterTest {
                 readingKindFilterFor(metric)
             )
         }
+    }
+
+    @Test
+    fun `WOMENS_HEALTH metrics are not SENSOR-filtered`() {
+        // Reproductive readings live in the isolated ReproductiveDatabase and
+        // are SELF_REPORTED by design — the manual BBT entry surface is the
+        // only writer. Filtering to SENSOR would zero every row.
+        val reproductiveMetrics =
+            MetricType.entries.filter { it.domain == MetricDomain.WOMENS_HEALTH }
+        assertTrue(
+            "MetricDomain.WOMENS_HEALTH should have at least one metric (BBT, CYCLE_PHASE, etc.)",
+            reproductiveMetrics.isNotEmpty()
+        )
+        for (metric in reproductiveMetrics) {
+            assertNull(
+                "${metric.key} is WOMENS_HEALTH — readingKindFilterFor must return null so the SELF_REPORTED BBT rows in ReproductiveDatabase resolve",
+                readingKindFilterFor(metric)
+            )
+        }
+    }
+
+    @Test
+    fun `isReproductiveMetric tracks WOMENS_HEALTH domain`() {
+        // Every WOMENS_HEALTH metric routes to the reproductive DB; nothing
+        // else does. Pinning the predicate to the domain (not a hand-rolled
+        // key allowlist) means new reproductive keys auto-route correctly.
+        for (metric in MetricType.entries) {
+            val expected = metric.domain == MetricDomain.WOMENS_HEALTH
+            assertEquals(
+                "${metric.key}: isReproductiveMetric should match WOMENS_HEALTH domain membership",
+                expected,
+                isReproductiveMetric(metric)
+            )
+        }
+
+        // Spot-check the keys that exist today so a future domain rename
+        // doesn't silently break routing.
+        assertTrue(isReproductiveMetric(MetricType.BASAL_BODY_TEMPERATURE))
+        assertTrue(isReproductiveMetric(MetricType.CYCLE_PHASE))
+        assertTrue(isReproductiveMetric(MetricType.CYCLE_DAY))
+        assertTrue(isReproductiveMetric(MetricType.MENSTRUATION_ONSET))
+        assertFalse(isReproductiveMetric(MetricType.HEART_RATE))
+        assertFalse(isReproductiveMetric(MetricType.SLEEP_DURATION))
     }
 }

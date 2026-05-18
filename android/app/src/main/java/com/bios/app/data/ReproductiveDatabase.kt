@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import android.util.Log
 import com.bios.app.data.dao.DataSourceDao
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.DataSource
@@ -102,6 +103,24 @@ abstract class ReproductiveDatabase : RoomDatabase() {
             context.getDatabasePath("$DB_NAME-wal").delete()
             context.getDatabasePath("$DB_NAME-shm").delete()
             context.getDatabasePath("$DB_NAME-journal").delete()
+        }
+
+        /**
+         * Returns the reading DAO when the reproductive DB is initialized
+         * and openable, otherwise `null`. Use this from engines (baseline,
+         * anomaly detection) that should evaluate reproductive metrics
+         * when the owner has enabled BBT tracking but cleanly degrade to
+         * "no reproductive data" when they haven't. Catches the open path
+         * so a corrupted keystore can't crash background sync.
+         */
+        fun readingDaoOrNull(context: Context): MetricReadingDao? {
+            if (!isAvailable(context)) return null
+            return try {
+                getInstance(context).readingDao()
+            } catch (e: Exception) {
+                Log.w("ReproductiveDatabase", "readingDaoOrNull: open failed", e)
+                null
+            }
         }
 
         /**

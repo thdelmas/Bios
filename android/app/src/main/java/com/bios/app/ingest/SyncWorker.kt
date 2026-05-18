@@ -58,8 +58,12 @@ class SyncWorker(
 
             // Stage 3: Run baseline + detection if enough data
             if (ingestManager.dataAgeDays.value >= MINIMUM_DATA_DAYS) {
+                val reproductiveReadingDao =
+                    com.bios.app.data.ReproductiveDatabase.readingDaoOrNull(applicationContext)
                 try {
-                    val engine = com.bios.app.engine.BaselineEngine(db)
+                    val engine = com.bios.app.engine.BaselineEngine(
+                        db, reproductiveReadingDao = reproductiveReadingDao
+                    )
                     engine.computeAllBaselines()
                     engine.computeDailyAggregates()
                 } catch (e: Exception) {
@@ -68,7 +72,9 @@ class SyncWorker(
 
                 try {
                     val mlModel = com.bios.app.engine.TFLiteAnomalyModel.load(applicationContext)
-                    val detector = com.bios.app.engine.AnomalyDetector(db, mlModel)
+                    val detector = com.bios.app.engine.AnomalyDetector(
+                        db, mlModel, reproductiveReadingDao = reproductiveReadingDao
+                    )
                     val newAnomalies = detector.runDetection()
 
                     val alertManager = com.bios.app.alerts.AlertManager(applicationContext, db)

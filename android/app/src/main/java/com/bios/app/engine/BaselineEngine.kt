@@ -1,6 +1,7 @@
 package com.bios.app.engine
 
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.*
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
@@ -10,10 +11,19 @@ import java.time.ZoneId
 
 /**
  * Computes personal baselines from historical metric readings using rolling statistics.
+ *
+ * `reproductiveReadingDao` is the optional reading DAO for the isolated
+ * [com.bios.app.data.ReproductiveDatabase]. When non-null, reproductive
+ * metrics (BBT, CYCLE_PHASE, CYCLE_DAY) get a baseline computed from rows
+ * in that DB, with the SENSOR-only filter relaxed — those readings are
+ * SELF_REPORTED by design. The resulting [PersonalBaseline] summary is
+ * still stored in the main DB (no raw values escape the reproductive DB),
+ * which is what [AnomalyDetector] reads when scoring the cycle pattern.
  */
 class BaselineEngine(
     private val db: BiosDatabase,
-    private val latencyTracker: DetectionLatencyTracker? = null
+    private val latencyTracker: DetectionLatencyTracker? = null,
+    private val reproductiveReadingDao: MetricReadingDao? = null
 ) {
 
     private val readingDao = db.metricReadingDao()
@@ -99,6 +109,13 @@ class BaselineEngine(
             for (metricType in metricsToBaseline) {
                 computeBaseline(metricType)
             }
+
+            // Reproductive baselines pull from the isolated reproductive DB
+            // when it's available; otherwise this is a no-op (the owner
+            // hasn't enabled BBT tracking yet).
+            if (reproductiveReadingDao != null) {
+                computeBaseline(MetricType.BASAL_BODY_TEMPERATURE)
+            }
         }
 
         if (latencyTracker != null) {
@@ -116,18 +133,24 @@ class BaselineEngine(
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - windowDays.toLong() * 24 * 3600 * 1000
 
-        // Baselines only meaningful on direct sensor data — self-reports are
-        // perception not physiology, and DERIVED is already smoothed.
+        val isReproductive = metricType.domain == MetricDomain.WOMENS_HEALTH
+        // Reproductive readings live in the isolated reproductive DB and are
+        // SELF_REPORTED by design (manual BBT entry — no sensor adapter
+        // writes there). Skip the SENSOR-only filter for those; for every
+        // other metric, baselines stay sensor-only per
         // docs/SELF_REPORTED_DATA_HOME.md decision 3.
-        val values = readingDao.fetchValues(
-            metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
+        val sourceDao = if (isReproductive) reproductiveReadingDao ?: return else readingDao
+        val kindFilter = if (isReproductive) null else ReadingKind.SENSOR.name
+
+        val values = sourceDao.fetchValues(
+            metricType.key, startMillis, endMillis, kindFilter
         )
         if (values.size < MIN_SAMPLES_FOR_BASELINE) return
 
         val stats = Stats.compute(values)
 
         // Compute trend via linear regression on daily means
-        val dailyMeans = computeDailyMeans(metricType, startMillis, endMillis)
+        val dailyMeans = computeDailyMeans(metricType, startMillis, endMillis, sourceDao, kindFilter)
         val (trend, slope) = computeTrend(dailyMeans)
 
         val baseline = PersonalBaseline(
@@ -195,11 +218,13 @@ class BaselineEngine(
     private suspend fun computeDailyMeans(
         metricType: MetricType,
         startMillis: Long,
-        endMillis: Long
+        endMillis: Long,
+        sourceDao: MetricReadingDao = readingDao,
+        readingKindFilter: String? = ReadingKind.SENSOR.name
     ): List<Double> {
         val dayMillis = 24L * 3600 * 1000
-        return readingDao.fetchBucketedMeans(
-            metricType.key, startMillis, endMillis, dayMillis, ReadingKind.SENSOR.name
+        return sourceDao.fetchBucketedMeans(
+            metricType.key, startMillis, endMillis, dayMillis, readingKindFilter
         )
     }
 
