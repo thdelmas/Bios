@@ -102,6 +102,22 @@ interface MetricReadingDao {
     @Query("SELECT MIN(timestamp) FROM metric_readings")
     suspend fun oldestTimestamp(): Long?
 
+    data class SourceFreshnessRow(
+        val sourceId: String,
+        val lastTimestamp: Long,
+        val readingCount: Int,
+    )
+
+    @Query("""
+        SELECT sourceId AS sourceId,
+               COALESCE(MAX(timestamp), 0) AS lastTimestamp,
+               COUNT(*) AS readingCount
+        FROM metric_readings
+        WHERE isPrimary = 1
+        GROUP BY sourceId
+    """)
+    suspend fun sourceFreshness(): List<SourceFreshnessRow>
+
     data class MetricStatusRow(
         val metricType: String,
         val lastTimestamp: Long,

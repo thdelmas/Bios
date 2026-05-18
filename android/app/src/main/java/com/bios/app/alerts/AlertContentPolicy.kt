@@ -22,6 +22,7 @@ package com.bios.app.alerts
  *         Bios-state pushes follow the same factual-only content rules
  *         as category 2, but the banlist below targets person-judgment
  *         patterns specifically and doesn't apply by construction.
+ *         Shipped surface: [DisconnectDetector] / [DisconnectNotifier].
  *  - **Pull side** — screens the owner navigates into, biomarker context
  *    they annotate themselves, comparisons they explicitly ask for. The
  *    owner is doing the evaluation; Bios is the instrument they read.
