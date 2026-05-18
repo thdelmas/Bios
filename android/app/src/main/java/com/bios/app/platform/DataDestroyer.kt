@@ -1,6 +1,7 @@
 package com.bios.app.platform
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.work.WorkManager
 import com.bios.app.data.BiosDatabase
@@ -54,6 +55,14 @@ object DataDestroyer {
 
         // 0.6. Unregister push and destroy push state
         PushRegistrationManager.destroyAll(context)
+
+        // 0.7. Release every persistable URI permission we hold (lab-report
+        // PDFs / photos attached to biomarker entries — see BiomarkerContext
+        // .sourceUri). Done *before* the DB key is destroyed so the wipe is
+        // observable from outside Bios too: source apps no longer see us in
+        // their "shared with" list. The system would garbage-collect these
+        // on next reboot anyway, but explicit release is the polite move.
+        releaseAllPersistableUriPermissions(context)
 
         // 1. Destroy encryption key (makes DB unreadable even if file survives)
         destroyEncryptionKey(context)
@@ -156,6 +165,26 @@ object DataDestroyer {
             Log.d(TAG, "Notifications cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear notifications", e)
+        }
+    }
+
+    private fun releaseAllPersistableUriPermissions(context: Context) {
+        try {
+            val resolver = context.contentResolver
+            val held = resolver.persistedUriPermissions
+            for (perm in held) {
+                val flags = (if (perm.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (perm.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                if (flags == 0) continue
+                try {
+                    resolver.releasePersistableUriPermission(perm.uri, flags)
+                } catch (_: SecurityException) {
+                    // Provider revoked the grant under us. Treat as already-released.
+                }
+            }
+            Log.d(TAG, "Released ${held.size} persistable URI permission(s)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to release persistable URI permissions", e)
         }
     }
 
