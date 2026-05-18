@@ -148,6 +148,21 @@ fun BiosApp(viewModel: AppViewModel) {
         }
     }
 
+    // Deep-link from DisconnectNotifier — opens Data Coverage so the
+    // owner can reconnect the failing source.
+    LaunchedEffect(Unit) {
+        val activity = context as? android.app.Activity ?: return@LaunchedEffect
+        val intent = activity.intent ?: return@LaunchedEffect
+        if (intent.getBooleanExtra(
+                com.bios.app.alerts.DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE,
+                false
+            )
+        ) {
+            intent.removeExtra(com.bios.app.alerts.DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE)
+            navController.navigate("data_coverage")
+        }
+    }
+
     // Deep-link from a companion (e.g. W2F "take a snapshot" CTA): bios://capture/ppg
     // lands directly on the PPG capture screen. popUpTo home/inclusive empties
     // the in-app back stack so pressing back from capture finishes the

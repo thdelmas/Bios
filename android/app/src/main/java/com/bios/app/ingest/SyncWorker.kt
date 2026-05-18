@@ -86,6 +86,24 @@ class SyncWorker(
                 }
             }
 
+            // Stage 4: System-state push — surface previously-active ingest
+            // adapters that have gone silent past the per-source-type
+            // staleness window. See alerts/DisconnectDetector.kt for the
+            // category-3-push framing.
+            try {
+                val notifier = com.bios.app.alerts.DisconnectNotifier(applicationContext)
+                val disconnectDetector = com.bios.app.alerts.DisconnectDetector(db)
+                val alerts = disconnectDetector.findSourcesToPush(
+                    lastPushedAtFor = { notifier.lastPushedAt(it) },
+                    ownerEnabled = notifier.isEnabled(),
+                )
+                for (alert in alerts) {
+                    notifier.notifyAndRecord(alert)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Disconnect-push stage failed", e)
+            }
+
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Sync failed, will retry", e)
