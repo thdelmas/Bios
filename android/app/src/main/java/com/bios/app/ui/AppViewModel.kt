@@ -21,6 +21,7 @@ import com.bios.app.ingest.OuraApiAdapter
 import com.bios.app.ingest.OuraTokenStore
 import com.bios.app.ingest.PhoneSensorAdapter
 import com.bios.app.ingest.WithingsApiAdapter
+import com.bios.app.data.BiomarkerContext
 import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.model.ActionItem
 import com.bios.app.model.Anomaly
@@ -485,13 +486,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long) {
+    fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) {
         if (metricType.domain != MetricDomain.BIOMARKER) {
             _error.value = "Manual entry is only supported for biomarker metrics."
             return
         }
         viewModelScope.launch {
-            biomarkerEntryRepo.add(metricType, value, timestamp)
+            biomarkerEntryRepo.add(metricType, value, timestamp, context)
             _recentBiomarkers.value = biomarkerEntryRepo.fetchRecent(20)
         }
     }
