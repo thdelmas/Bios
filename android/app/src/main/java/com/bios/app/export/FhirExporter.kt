@@ -334,6 +334,7 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
     MetricType.BODY_MASS -> "29463-7" to "Body weight"
     MetricType.BODY_FAT_PCT -> "41982-0" to "Percentage of body fat Measured"
+    MetricType.VO2_MAX -> "97090-9" to "Maximum oxygen consumption per unit time per unit body mass"
     MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
     MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
     MetricType.TOTAL_CHOLESTEROL -> "2093-3" to "Cholesterol [Mass/volume] in Serum or Plasma"
@@ -380,6 +381,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.LUX -> "lx"
     MetricUnit.YEARS -> "a"
     MetricUnit.MS_SQUARED -> "ms2"
+    MetricUnit.ML_PER_KG_MIN -> "mL/(kg.min)"
 }
 
 internal fun formatInstant(instant: Instant): String =

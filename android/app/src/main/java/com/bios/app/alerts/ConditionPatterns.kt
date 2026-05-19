@@ -233,7 +233,16 @@ object ConditionPatterns {
             SignalRule(MetricType.HEART_RATE_VARIABILITY, DeviationDirection.BELOW, 1.0, 336, 1.0,
                 ThresholdSource.LITERATURE, "Buchheit (2014) - HRV decline tracks fitness loss during detraining"),
             SignalRule(MetricType.ACTIVE_MINUTES, DeviationDirection.BELOW, 1.5, 336, 0.8,
-                ThresholdSource.LITERATURE, "Ross et al. (2016) - activity decline precedes measurable VO2 max loss")
+                ThresholdSource.LITERATURE, "Ross et al. (2016) - activity decline precedes measurable VO2 max loss"),
+            // Direct VO2 max signal — the clinical gold standard that the
+            // explanation paragraph below already names. The earlier
+            // SignalRules pre-dated VO2 ingestion (#26) and used resting
+            // HR + HRV + activity as a proxy triad; with VO2 on the bus
+            // we add it as a corroborator (not a required signal — most
+            // owners' wearables only update VO2 weekly, so a 7-day window
+            // captures one or two re-estimates).
+            SignalRule(MetricType.VO2_MAX, DeviationDirection.BELOW, 1.0, 168, 1.0,
+                ThresholdSource.LITERATURE, "Ross et al. (2016) — VO2 max decline is the clinical gold standard for cardiorespiratory fitness loss")
         ),
         minActiveSignals = 2,
         explanation = "Your resting heart rate and HRV have shifted over the past two weeks in a direction consistent with cardiorespiratory fitness decline, alongside reduced activity levels.",
