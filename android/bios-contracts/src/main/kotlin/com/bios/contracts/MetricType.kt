@@ -117,6 +117,32 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     RBC("rbc", MetricUnit.TERA_PER_L, MetricDomain.BIOMARKER),
     PLATELETS("platelets", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
 
+    // Glycemic-extended (#24). Fasting glucose + insulin enable HOMA-IR, the
+    // canonical insulin-resistance index — clinically meaningful before HbA1c
+    // shifts. HOMA-IR is stored as the calculated value (Matthews 1985:
+    // (fasting insulin µIU/mL × fasting glucose mg/dL) / 405).
+    FASTING_GLUCOSE("fasting_glucose", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    FASTING_INSULIN("fasting_insulin", MetricUnit.MICRO_IU_PER_ML, MetricDomain.BIOMARKER),
+    HOMA_IR("homa_ir", MetricUnit.SCORE, MetricDomain.BIOMARKER),
+
+    // Iron status (#24). Ferritin is the most-cited single marker for body
+    // iron stores; relevant to fatigue / inflammation patterns.
+    FERRITIN("ferritin", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
+
+    // Endocrine panel (#24). Sex hormones + adrenal (cortisol) + IGF-1.
+    // Reference ranges vary by sex/age — Bios stores raw values, the owner's
+    // own provider-supplied range travels with the FHIR import.
+    TESTOSTERONE_TOTAL("testosterone_total", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER),
+    ESTRADIOL("estradiol", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
+    CORTISOL("cortisol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER),
+    IGF_1("igf_1", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
+
+    // Micronutrients (#24). Common deficiency panel — methylation cofactors
+    // (B12/folate) and the electrolyte the standard CMP often omits.
+    VITAMIN_B12("vitamin_b12", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
+    FOLATE("folate", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
+    MAGNESIUM("magnesium", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
@@ -178,8 +204,10 @@ enum class MetricUnit(val symbol: String) {
     MG_PER_L("mg/L"),
     NG_PER_ML("ng/mL"),
     NG_PER_DL("ng/dL"),
+    UG_PER_DL("µg/dL"),
     PG_PER_ML("pg/mL"),
     MIU_PER_L("mIU/L"),
+    MICRO_IU_PER_ML("µIU/mL"),
     G_PER_DL("g/dL"),
     GIGA_PER_L("10⁹/L"),
     TERA_PER_L("10¹²/L"),
