@@ -1,6 +1,10 @@
 package com.bios.app.ingest
 
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.EventPayloadField
+import com.bios.app.model.ExerciseModality
+import com.bios.app.model.ExerciseSession
+import com.bios.app.model.ExerciseSessionFields
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
@@ -11,6 +15,7 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -186,6 +191,95 @@ class GarminApiAdapter(
         }
     }
 
+    /**
+     * Reads Garmin `/activities` records in the window and returns each as a
+     * composite [ExerciseSession] — parent EXERCISE_SESSION reading +
+     * `event_payloads` rows (modality, start_utc, end_utc, optional
+     * avg_hr_bpm). Mirrors the HC / Oura / WHOOP emission shape.
+     *
+     * Garmin Wellness API activity records carry `activityType` as a string
+     * (FIT SDK enum names like "RUNNING", "TREADMILL_RUNNING",
+     * "STRENGTH_TRAINING"), `startTimeInSeconds`, `durationInSeconds`, and
+     * `averageHeartRateInBeatsPerMinute`. RPE isn't in the payload, so the
+     * field is omitted.
+     */
+    suspend fun fetchExerciseSessions(
+        startTime: Instant, endTime: Instant, sourceId: String
+    ): List<ExerciseSession> {
+        val token = getToken() ?: return emptyList()
+        val records = apiGetArray(token, "activities", startTime, endTime) ?: return emptyList()
+
+        val sessions = mutableListOf<ExerciseSession>()
+        for (i in 0 until records.length()) {
+            val item = records.optJSONObject(i) ?: continue
+            val startSec = item.optLong("startTimeInSeconds", -1L)
+            val durationSec = item.optInt("durationInSeconds", 0)
+            if (startSec <= 0 || durationSec <= 0) continue
+            val startMs = startSec * 1000L
+            val endMs = startMs + durationSec * 1000L
+
+            val reading = MetricReading(
+                id = UUID.randomUUID().toString(),
+                metricType = MetricType.EXERCISE_SESSION.key,
+                value = 1.0,
+                timestamp = startMs,
+                durationSec = durationSec,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.MEDIUM.level,
+            )
+
+            val payload = mutableListOf(
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.MODALITY,
+                    stringValue = mapGarminActivityToModality(item.optString("activityType")),
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.START_UTC,
+                    longValue = startMs,
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.END_UTC,
+                    longValue = endMs,
+                ),
+            )
+
+            val avgHr = item.optDouble("averageHeartRateInBeatsPerMinute", Double.NaN)
+            if (!avgHr.isNaN() && avgHr > 0.0) {
+                payload += EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.AVG_HR_BPM,
+                    doubleValue = avgHr,
+                )
+            }
+
+            sessions += ExerciseSession(reading = reading, payload = payload)
+        }
+        return sessions
+    }
+
+    /**
+     * Variant of [apiGet] that decodes the response body as a `JSONArray`
+     * rather than an object — Garmin's `/activities` endpoint returns a
+     * top-level array of activity records (no wrapping envelope).
+     */
+    private suspend fun apiGetArray(
+        token: String, endpoint: String, start: Instant, end: Instant
+    ): JSONArray? = withContext(Dispatchers.IO) {
+        val url = "$BASE_URL/$endpoint?uploadStartTimeInSeconds=${start.epochSecond}&uploadEndTimeInSeconds=${end.epochSecond}"
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) return@withContext null
+        val body = response.body?.string() ?: return@withContext null
+        runCatching { JSONArray(body) }.getOrNull()
+    }
+
     private fun sleepStage(stage: SleepStage, durationSec: Int, timestamp: Long, sourceId: String) =
         MetricReading(
             metricType = MetricType.SLEEP_STAGE.key,
@@ -214,5 +308,34 @@ class GarminApiAdapter(
     companion object {
         internal const val BASE_URL = "https://apis.garmin.com/wellness-api/rest"
         const val PROVIDER_KEY = "garmin"
+
+        /**
+         * Maps a Garmin `activityType` string (FIT SDK enum, uppercase
+         * snake_case like "RUNNING", "STRENGTH_TRAINING") to a Bios
+         * [ExerciseModality] bucket. Unknown / blank → OTHER, matching
+         * the policy in the HC and Oura adapters.
+         */
+        internal fun mapGarminActivityToModality(activityType: String?): String {
+            if (activityType.isNullOrBlank()) return ExerciseModality.OTHER
+            return when (activityType.uppercase()) {
+                "RUNNING", "TREADMILL_RUNNING", "TRAIL_RUNNING", "INDOOR_RUNNING",
+                "WALKING", "INDOOR_WALKING", "HIKING",
+                "CYCLING", "INDOOR_CYCLING", "ROAD_BIKING", "MOUNTAIN_BIKING",
+                "ELLIPTICAL", "STAIR_CLIMBING", "INDOOR_CARDIO",
+                "ROWING", "INDOOR_ROWING",
+                "LAP_SWIMMING", "OPEN_WATER_SWIMMING", "SWIMMING",
+                "CARDIO" -> ExerciseModality.CARDIO
+
+                "STRENGTH_TRAINING", "WEIGHTLIFTING",
+                "BODY_WEIGHT", "CALISTHENICS" -> ExerciseModality.STRENGTH
+
+                "HIIT", "INTERVAL_TRAINING", "CROSS_TRAINING" -> ExerciseModality.INTERVAL
+
+                "YOGA", "PILATES", "STRETCHING", "MEDITATION",
+                "MOBILITY" -> ExerciseModality.MOBILITY
+
+                else -> ExerciseModality.OTHER
+            }
+        }
     }
 }

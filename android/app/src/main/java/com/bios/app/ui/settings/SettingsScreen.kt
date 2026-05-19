@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.export.FhirExporter
+import com.bios.app.ingest.GarminApiAdapter
 import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.model.CompanionGrant
@@ -56,6 +57,10 @@ fun SettingsScreen(
     var showWhoopDialog by remember { mutableStateOf(false) }
     var isWhoopConnected by remember {
         mutableStateOf(viewModel.apiTokenStore.hasToken(WhoopApiAdapter.PROVIDER_KEY))
+    }
+    var showGarminDialog by remember { mutableStateOf(false) }
+    var isGarminConnected by remember {
+        mutableStateOf(viewModel.apiTokenStore.hasToken(GarminApiAdapter.PROVIDER_KEY))
     }
     val companionGrants by viewModel.db.companionGrantDao()
         .observeAll()
@@ -126,6 +131,17 @@ fun SettingsScreen(
                     onDisconnect = {
                         viewModel.apiTokenStore.clearToken(WhoopApiAdapter.PROVIDER_KEY)
                         isWhoopConnected = false
+                    },
+                )
+
+                Spacer(Modifier.height(4.dp))
+                ConnectableSourceRow(
+                    name = "Garmin",
+                    isConnected = isGarminConnected,
+                    onConnect = { showGarminDialog = true },
+                    onDisconnect = {
+                        viewModel.apiTokenStore.clearToken(GarminApiAdapter.PROVIDER_KEY)
+                        isGarminConnected = false
                     },
                 )
 
@@ -418,6 +434,17 @@ fun SettingsScreen(
                 showWhoopDialog = false
             },
             onDismiss = { showWhoopDialog = false }
+        )
+    }
+
+    if (showGarminDialog) {
+        GarminConnectDialog(
+            onConnect = { token ->
+                viewModel.apiTokenStore.saveToken(GarminApiAdapter.PROVIDER_KEY, token)
+                isGarminConnected = true
+                showGarminDialog = false
+            },
+            onDismiss = { showGarminDialog = false }
         )
     }
 }

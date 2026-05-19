@@ -20,6 +20,7 @@ class MetricCoverageEngineTest {
         ouraConfigured = false,
         withingsConfigured = false,
         whoopConfigured = false,
+        garminConfigured = false,
         polarConfigured = false,
         dexcomConfigured = false,
         directSensorAvailable = false,
