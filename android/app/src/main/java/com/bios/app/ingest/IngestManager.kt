@@ -42,6 +42,7 @@ class IngestManager(
     private val gadgetbridgeAdapter: GadgetbridgeAdapter? = null,
     private val directSensorAdapter: DirectSensorAdapter? = null,
     private val withingsAdapter: WithingsApiAdapter? = null,
+    private val whoopAdapter: WhoopApiAdapter? = null,
     private val bleAirQualityAdapter: BleAirQualityAdapter? = null,
     private val latencyTracker: DetectionLatencyTracker? = null
 ) {
@@ -74,6 +75,7 @@ class IngestManager(
     private var gadgetbridgeSourceId: String? = null
     private var directSensorSourceId: String? = null
     private var withingsSourceId: String? = null
+    private var whoopSourceId: String? = null
     private var bleAirQualitySourceId: String? = null
 
     // MARK: - Setup
@@ -111,6 +113,13 @@ class IngestManager(
         if (withingsAdapter?.isConnected == true) {
             withingsSourceId = getOrCreateSource(
                 SourceType.WITHINGS_API, "Withings", SensorType.DERIVED
+            )
+        }
+
+        // WHOOP API (strap — recovery, sleep, workouts)
+        if (whoopAdapter?.isConnected == true) {
+            whoopSourceId = getOrCreateSource(
+                SourceType.WHOOP_API, "WHOOP", SensorType.OPTICAL_HR
             )
         }
 
@@ -155,7 +164,8 @@ class IngestManager(
         val hasWearableHistorySource = healthConnectSourceId != null ||
             gadgetbridgeSourceId != null ||
             ouraSourceId != null ||
-            withingsSourceId != null
+            withingsSourceId != null ||
+            whoopSourceId != null
         if (!hasWearableHistorySource) return false
         for (metric in PRIMARY_METRICS_FOR_BACKFILL) {
             if (readingDao.count(metric.key) == 0) return true
@@ -184,6 +194,7 @@ class IngestManager(
                         async { fetchDirectSensorReadings() },
                         async { fetchOuraReadings(start, end) },
                         async { fetchWithingsReadings(start, end) },
+                        async { fetchWhoopReadings(start, end) },
                         async { fetchPhoneSensorReadings() }
                     )
                     jobs.awaitAll().flatten()
@@ -201,16 +212,10 @@ class IngestManager(
                 // land directly. Multi-adapter dedupe lands when a second
                 // session-emitting adapter exists.
                 healthConnectSourceId?.let { id ->
-                    val sessions = healthConnect.fetchExerciseSessions(start, end, id)
-                    persistSessions(sessions)
+                    persistSessions(healthConnect.fetchExerciseSessions(start, end, id))
                 }
-                ouraSourceId?.let { id ->
-                    val adapter = ouraAdapter ?: return@let
-                    val sessions = runCatching {
-                        adapter.fetchExerciseSessions(start, end, id)
-                    }.getOrDefault(emptyList())
-                    persistSessions(sessions)
-                }
+                persistApiSessions(ouraSourceId, ouraAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
+                persistApiSessions(whoopSourceId, whoopAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
             }
 
             if (latencyTracker != null) {
@@ -252,7 +257,8 @@ class IngestManager(
                         },
                         async { fetchGadgetbridgeReadings(current, chunkEnd) },
                         async { fetchOuraReadings(current, chunkEnd) },
-                        async { fetchWithingsReadings(current, chunkEnd) }
+                        async { fetchWithingsReadings(current, chunkEnd) },
+                        async { fetchWhoopReadings(current, chunkEnd) }
                     )
                     jobs.awaitAll().flatten()
                 }
@@ -264,16 +270,10 @@ class IngestManager(
                 updateLastReadings(quality)
 
                 healthConnectSourceId?.let { id ->
-                    val sessions = healthConnect.fetchExerciseSessions(current, chunkEnd, id)
-                    persistSessions(sessions)
+                    persistSessions(healthConnect.fetchExerciseSessions(current, chunkEnd, id))
                 }
-                ouraSourceId?.let { id ->
-                    val adapter = ouraAdapter ?: return@let
-                    val sessions = runCatching {
-                        adapter.fetchExerciseSessions(current, chunkEnd, id)
-                    }.getOrDefault(emptyList())
-                    persistSessions(sessions)
-                }
+                persistApiSessions(ouraSourceId, ouraAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
+                persistApiSessions(whoopSourceId, whoopAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
 
                 current = chunkEnd
                 completedDays++
@@ -335,6 +335,20 @@ class IngestManager(
      * source list is empty (the common case when no HC sessions exist
      * in the window).
      */
+    /** Common path for API adapters that expose `fetchExerciseSessions`.
+     *  Skips when the source row hasn't been created or the adapter is null,
+     *  and swallows fetch failures so a transient 5xx doesn't kill the sync. */
+    private suspend fun <T> persistApiSessions(
+        sourceId: String?,
+        adapter: T?,
+        start: Instant,
+        end: Instant,
+        fetch: suspend (T, Instant, Instant, String) -> List<ExerciseSession>,
+    ) {
+        if (sourceId == null || adapter == null) return
+        persistSessions(runCatching { fetch(adapter, start, end, sourceId) }.getOrDefault(emptyList()))
+    }
+
     private suspend fun persistSessions(sessions: List<ExerciseSession>) {
         if (sessions.isEmpty()) return
         readingDao.insertAll(sessions.map { it.reading })
@@ -401,6 +415,16 @@ class IngestManager(
     private suspend fun fetchWithingsReadings(start: Instant, end: Instant): List<MetricReading> {
         val sourceId = withingsSourceId ?: return emptyList()
         val adapter = withingsAdapter ?: return emptyList()
+        return try {
+            adapter.fetchReadings(start, end, sourceId)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private suspend fun fetchWhoopReadings(start: Instant, end: Instant): List<MetricReading> {
+        val sourceId = whoopSourceId ?: return emptyList()
+        val adapter = whoopAdapter ?: return emptyList()
         return try {
             adapter.fetchReadings(start, end, sourceId)
         } catch (_: Exception) {

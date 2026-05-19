@@ -68,6 +68,7 @@ data class AdapterReadiness(
     val healthConnectGranted: Boolean,
     val ouraConfigured: Boolean,
     val withingsConfigured: Boolean,
+    val whoopConfigured: Boolean,
     val polarConfigured: Boolean,
     val dexcomConfigured: Boolean,
     val directSensorAvailable: Boolean,
