@@ -125,10 +125,14 @@ object MetricCoverageEngine {
                 listOf("Dexcom" to readiness.dexcomConfigured)
 
             MetricType.RECOVERY_SCORE ->
-                listOf("Oura" to readiness.ouraConfigured)
+                listOf(
+                    "Oura" to readiness.ouraConfigured,
+                    "WHOOP" to readiness.whoopConfigured,
+                )
 
             else -> listOf(
                 "Oura" to readiness.ouraConfigured,
+                "WHOOP" to readiness.whoopConfigured,
                 "Polar" to readiness.polarConfigured,
             )
         }

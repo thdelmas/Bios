@@ -1,6 +1,10 @@
 package com.bios.app.ingest
 
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.EventPayloadField
+import com.bios.app.model.ExerciseModality
+import com.bios.app.model.ExerciseSession
+import com.bios.app.model.ExerciseSessionFields
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
@@ -12,6 +16,7 @@ import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -194,6 +199,88 @@ class WhoopApiAdapter(
         return readings
     }
 
+    /**
+     * Reads WHOOP `/activity/workout` records in the window and returns each
+     * as a composite [ExerciseSession] — parent EXERCISE_SESSION reading +
+     * `event_payloads` rows. Mirrors the HC / Oura emission shape so the
+     * pattern engine sees one schema regardless of source.
+     *
+     * WHOOP's workout record carries:
+     *  - `start` / `end` ISO timestamps
+     *  - `sport_id` (numeric) and, on newer responses, `sport_name` (string)
+     *  - `score.average_heart_rate`
+     *
+     * Modality buckets fall back through three layers: prefer the
+     * `sport_name` string (matched the same way as Oura activity strings),
+     * else a small numeric `sport_id` map for the well-documented IDs, else
+     * `OTHER`. RPE isn't in the workout payload, so the field is omitted.
+     */
+    suspend fun fetchExerciseSessions(
+        startTime: Instant, endTime: Instant, sourceId: String
+    ): List<ExerciseSession> {
+        val token = getToken() ?: return emptyList()
+        val json = apiGet(token, "activity/workout", startTime, endTime) ?: return emptyList()
+        val records = json.optJSONArray("records") ?: return emptyList()
+
+        val sessions = mutableListOf<ExerciseSession>()
+        for (i in 0 until records.length()) {
+            val record = records.getJSONObject(i)
+            val startIso = record.optString("start").takeIf { it.isNotEmpty() } ?: continue
+            val endIso = record.optString("end").takeIf { it.isNotEmpty() } ?: continue
+            val startMs = parseTimestamp(startIso)
+            val endMs = parseTimestamp(endIso)
+            val durationSec = ((endMs - startMs) / 1000L).toInt()
+            if (durationSec <= 0) continue
+
+            val reading = MetricReading(
+                id = UUID.randomUUID().toString(),
+                metricType = MetricType.EXERCISE_SESSION.key,
+                value = 1.0,
+                timestamp = startMs,
+                durationSec = durationSec,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.MEDIUM.level,
+            )
+
+            val modality = mapWhoopSportToModality(
+                sportName = record.optString("sport_name").takeIf { it.isNotEmpty() },
+                sportId = if (record.has("sport_id") && !record.isNull("sport_id"))
+                    record.optInt("sport_id") else null,
+            )
+
+            val payload = mutableListOf(
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.MODALITY,
+                    stringValue = modality,
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.START_UTC,
+                    longValue = startMs,
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.END_UTC,
+                    longValue = endMs,
+                ),
+            )
+
+            val avgHr = record.optJSONObject("score")
+                ?.optDouble("average_heart_rate", Double.NaN) ?: Double.NaN
+            if (!avgHr.isNaN() && avgHr > 0.0) {
+                payload += EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.AVG_HR_BPM,
+                    doubleValue = avgHr,
+                )
+            }
+
+            sessions += ExerciseSession(reading = reading, payload = payload)
+        }
+        return sessions
+    }
+
     private fun sleepStageReading(
         stage: SleepStage, durationSec: Int, timestamp: Long, sourceId: String
     ) = MetricReading(
@@ -228,5 +315,50 @@ class WhoopApiAdapter(
     companion object {
         internal const val BASE_URL = "https://api.prod.whoop.com/developer/v1"
         const val PROVIDER_KEY = "whoop"
+
+        /**
+         * Maps a WHOOP workout to a Bios [ExerciseModality] bucket. Prefers
+         * the `sport_name` string (matched case-insensitively against the
+         * same normalized vocabulary the Oura adapter uses), falling back
+         * to a minimal `sport_id` map for the well-documented IDs in
+         * WHOOP's public catalog. Anything unknown — including null both
+         * sides — lands on [ExerciseModality.OTHER].
+         */
+        internal fun mapWhoopSportToModality(sportName: String?, sportId: Int?): String {
+            if (!sportName.isNullOrBlank()) {
+                val normalized = sportName.lowercase().replace('-', '_').replace(' ', '_')
+                val mapped = when (normalized) {
+                    "running", "trail_running", "walking", "hiking",
+                    "cycling", "indoor_cycling", "biking", "stationary_bike",
+                    "elliptical", "rowing", "indoor_rowing",
+                    "swimming", "open_water_swimming",
+                    "stair_climber", "stair_climbing", "stairs" -> ExerciseModality.CARDIO
+
+                    "weightlifting", "weight_lifting", "powerlifting",
+                    "strength_training", "calisthenics" -> ExerciseModality.STRENGTH
+
+                    "hiit", "crossfit", "interval_training", "tabata" -> ExerciseModality.INTERVAL
+
+                    "yoga", "pilates", "stretching", "mobility" -> ExerciseModality.MOBILITY
+
+                    else -> null
+                }
+                if (mapped != null) return mapped
+            }
+            // Numeric fallback for known WHOOP sport_ids. Conservative set —
+            // only the IDs whose modality is clearly documented in WHOOP's
+            // public catalog. Anything else falls to OTHER.
+            return when (sportId) {
+                0 -> ExerciseModality.CARDIO        // Running
+                1 -> ExerciseModality.CARDIO        // Cycling
+                18 -> ExerciseModality.CARDIO       // Rowing
+                30 -> ExerciseModality.CARDIO       // Swimming
+                35 -> ExerciseModality.STRENGTH     // Weightlifting
+                36 -> ExerciseModality.MOBILITY     // Yoga
+                39 -> ExerciseModality.INTERVAL     // HIIT
+                63 -> ExerciseModality.STRENGTH     // CrossFit-style mixed
+                else -> ExerciseModality.OTHER
+            }
+        }
     }
 }
