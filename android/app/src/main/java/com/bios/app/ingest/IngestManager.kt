@@ -41,6 +41,7 @@ class IngestManager(
     private val gadgetbridgeAdapter: GadgetbridgeAdapter? = null,
     private val directSensorAdapter: DirectSensorAdapter? = null,
     private val withingsAdapter: WithingsApiAdapter? = null,
+    private val bleAirQualityAdapter: BleAirQualityAdapter? = null,
     private val latencyTracker: DetectionLatencyTracker? = null
 ) {
     private val readingDao = db.metricReadingDao()
@@ -72,6 +73,7 @@ class IngestManager(
     private var gadgetbridgeSourceId: String? = null
     private var directSensorSourceId: String? = null
     private var withingsSourceId: String? = null
+    private var bleAirQualitySourceId: String? = null
 
     // MARK: - Setup
 
@@ -119,6 +121,17 @@ class IngestManager(
             phoneSensorSourceId = getOrCreateSource(
                 SourceType.PHONE_SENSOR, "Phone Sensors", SensorType.ACCELEROMETER
             )
+        }
+
+        // BLE air-quality peripheral (#43). When a device is paired, register
+        // its DataSource row and open the GATT connection so the streaming
+        // notifications have a sourceId to route through.
+        if (bleAirQualityAdapter?.isPaired == true) {
+            val sourceId = getOrCreateSource(
+                SourceType.BLE_PERIPHERAL, "BLE Air-Quality Sensor", SensorType.DERIVED
+            )
+            bleAirQualitySourceId = sourceId
+            bleAirQualityAdapter.connect(sourceId)
         }
 
         updateDataAge()
@@ -390,6 +403,21 @@ class IngestManager(
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    /**
+     * Called after the owner pairs a BLE air-quality peripheral from the
+     * pair screen. Lazily creates the [SourceType.BLE_PERIPHERAL] row so
+     * the adapter's incoming readings have a foreign key, then opens the
+     * GATT connection. Safe to call repeatedly — `getOrCreateSource` is
+     * idempotent and the adapter tears down any prior connection.
+     */
+    suspend fun onBleAirQualityPaired() {
+        val adapter = bleAirQualityAdapter ?: return
+        val sourceId = bleAirQualitySourceId ?: getOrCreateSource(
+            SourceType.BLE_PERIPHERAL, "BLE Air-Quality Sensor", SensorType.DERIVED
+        ).also { bleAirQualitySourceId = it }
+        adapter.connect(sourceId)
     }
 
     private suspend fun updateDataAge() {

@@ -35,7 +35,8 @@ fun SettingsScreen(
     onNavigateToBbtEntry: () -> Unit = {},
     onNavigateToPeriodEntry: () -> Unit = {},
     onNavigateToSleepEntry: () -> Unit = {},
-    onNavigateToDataCoverage: () -> Unit = {}
+    onNavigateToDataCoverage: () -> Unit = {},
+    onNavigateToBlePair: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -110,6 +111,15 @@ fun SettingsScreen(
                         )
                         isWithingsConnected = false
                     },
+                )
+
+                Spacer(Modifier.height(4.dp))
+                ConnectableSourceRow(
+                    name = "Air-quality sensor (BLE)",
+                    isConnected = viewModel.bleAirQualityAdapter.isPaired,
+                    // Both routes go to the pair screen — unpair lives there.
+                    onConnect = onNavigateToBlePair,
+                    onDisconnect = onNavigateToBlePair,
                 )
 
                 Spacer(Modifier.height(4.dp))
@@ -397,40 +407,7 @@ fun SettingsScreen(
             }
         }
 
-        // Feedback & Community
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Feedback", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Help improve Bios by reporting detection accuracy, requesting features, or flagging issues.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://github.com/thdelmas/Bios/discussions"))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Open GitHub Discussions")
-                }
-                Spacer(Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://github.com/thdelmas/Bios/issues/new"))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Report an Issue")
-                }
-            }
-        }
+        SettingsFeedbackCard()
 
         // About
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {

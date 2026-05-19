@@ -46,6 +46,7 @@ class DataCoverageViewModel(
                 directSensorAvailable = app.directSensorAdapter.hasAnySensor,
                 phoneSensorAvailable = app.phoneSensorAdapter.hasAccelerometer,
                 ppgCaptureAvailable = true,  // any phone with a rear camera + flash
+                bleAirQualityPaired = app.bleAirQualityAdapter.isPaired,
             )
             val dao = app.db.metricReadingDao()
             _coverage.value = MetricCoverageEngine.compute(

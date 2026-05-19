@@ -219,6 +219,32 @@ class MetricCoverageEngineTest {
     }
 
     @Test
+    fun `ble peripheral route deep-links to the pair screen when unpaired`() = runTest {
+        val rows = MetricCoverageEngine.compute(
+            readiness = noReadiness,
+            nowMillis = now,
+            lastTimestampFor = { null }
+        )
+        val pm25 = rows.single { it.metricType == MetricType.AIR_PM25 }
+        val ble = pm25.routes.single { it.kind == CoverageRouteKind.BLE_PERIPHERAL }
+        assertEquals(false, ble.isConfigured)
+        assertEquals("ble_pair", ble.deepLink)
+    }
+
+    @Test
+    fun `ble peripheral route flips to configured when readiness flag is true`() = runTest {
+        val paired = noReadiness.copy(bleAirQualityPaired = true)
+        val rows = MetricCoverageEngine.compute(
+            readiness = paired,
+            nowMillis = now,
+            lastTimestampFor = { null }
+        )
+        val co2 = rows.single { it.metricType == MetricType.AIR_CO2 }
+        val ble = co2.routes.single { it.kind == CoverageRouteKind.BLE_PERIPHERAL }
+        assertTrue(ble.isConfigured)
+    }
+
+    @Test
     fun `last timestamp survives onto the produced row`() = runTest {
         val ts = now - 3 * H
         val rows = MetricCoverageEngine.compute(
