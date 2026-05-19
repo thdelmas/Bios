@@ -382,6 +382,9 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.YEARS -> "a"
     MetricUnit.MS_SQUARED -> "ms2"
     MetricUnit.ML_PER_KG_MIN -> "mL/(kg.min)"
+    MetricUnit.UG_PER_M3 -> "ug/m3"
+    MetricUnit.PPM -> "[ppm]"
+    MetricUnit.PPB -> "[ppb]"
 }
 
 internal fun formatInstant(instant: Instant): String =

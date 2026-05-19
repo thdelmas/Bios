@@ -71,6 +71,9 @@ class MetricTypeKeysSnapshotTest {
         "cycle_day",
         // Environment
         "ambient_light",
+        "air_pm25",
+        "air_voc",
+        "air_co2",
         // Biomarkers
         "hba1c",
         "hscrp",

@@ -93,6 +93,13 @@ object MetricCoverageEngine {
             isConfigured = true,
             deepLink = "biomarker_entry"
         )
+        CoverageRouteKind.BLE_PERIPHERAL -> CoverageRoute(
+            kind = kind,
+            displayName = "BLE air-quality sensor",
+            isConfigured = readiness.bleAirQualityPaired,
+            // Deep-link deferred until the phase-2 pairing UI lands (#43-phase-2).
+            deepLink = null,
+        )
     }
 
     /** Route a MANUAL_ENTRY chip to the right entry screen. Sleep has its

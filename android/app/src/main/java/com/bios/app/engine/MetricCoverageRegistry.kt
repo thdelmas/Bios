@@ -157,6 +157,21 @@ object MetricCoverageRegistry {
             MetricType.AMBIENT_LIGHT, H,
             listOf(CoverageRouteKind.PHONE_SENSOR)
         ),
+        // BLE air-quality sensors typically notify every 30-60s when active;
+        // an hourly freshness budget treats one connected sensor as live and
+        // anything older as drifted-off (sensor unplugged, BLE link lost).
+        MetricCoverageSpec(
+            MetricType.AIR_PM25, H,
+            listOf(CoverageRouteKind.BLE_PERIPHERAL)
+        ),
+        MetricCoverageSpec(
+            MetricType.AIR_VOC, H,
+            listOf(CoverageRouteKind.BLE_PERIPHERAL)
+        ),
+        MetricCoverageSpec(
+            MetricType.AIR_CO2, H,
+            listOf(CoverageRouteKind.BLE_PERIPHERAL)
+        ),
 
         // -- Biomarkers (clinical re-test cadence ≈ 6 months) --
         biomarker(MetricType.HBA1C),

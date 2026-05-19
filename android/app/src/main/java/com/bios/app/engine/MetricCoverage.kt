@@ -55,6 +55,7 @@ enum class CoverageRouteKind {
     PPG_CAPTURE,
     MANUAL_ENTRY,
     FHIR_IMPORT,
+    BLE_PERIPHERAL, // Bluetooth-LE air-quality / future BLE sensors (#43).
 }
 
 /**
@@ -74,5 +75,8 @@ data class AdapterReadiness(
     /** The PPG-camera capture path is always available on a phone with a
      *  rear camera + flash — kept here so the engine doesn't have to
      *  assume the hardware exists. */
-    val ppgCaptureAvailable: Boolean
+    val ppgCaptureAvailable: Boolean,
+    /** True when at least one BLE air-quality peripheral has been paired
+     *  (#43). Default false until the phase-2 pairing UI lands. */
+    val bleAirQualityPaired: Boolean = false,
 )

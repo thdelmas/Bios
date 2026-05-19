@@ -231,6 +231,7 @@ private fun CoverageRoute.actionLabel(): String = when (kind) {
     CoverageRouteKind.PPG_CAPTURE -> "Take HRV snapshot"
     CoverageRouteKind.MANUAL_ENTRY -> "Add value manually"
     CoverageRouteKind.FHIR_IMPORT -> "Import FHIR file"
+    CoverageRouteKind.BLE_PERIPHERAL -> "Pair air-quality sensor"
 }
 
 private val dateFormat = SimpleDateFormat("MMM d, HH:mm", Locale.US)

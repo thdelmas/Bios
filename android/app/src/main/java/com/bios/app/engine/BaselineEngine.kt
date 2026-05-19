@@ -102,6 +102,9 @@ class BaselineEngine(
                 MetricType.SLEEP_STAGE,
                 MetricType.SLEEP_DURATION,
                 MetricType.AMBIENT_LIGHT,
+                MetricType.AIR_PM25,
+                MetricType.AIR_VOC,
+                MetricType.AIR_CO2,
                 MetricType.BODY_MASS,
                 MetricType.BODY_FAT_PCT,
             )
