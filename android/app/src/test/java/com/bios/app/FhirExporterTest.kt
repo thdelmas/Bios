@@ -347,6 +347,9 @@ class FhirExporterTest {
             MetricUnit.YEARS -> "a"
             MetricUnit.MS_SQUARED -> "ms2"
             MetricUnit.ML_PER_KG_MIN -> "mL/(kg.min)"
+            MetricUnit.UG_PER_M3 -> "ug/m3"
+            MetricUnit.PPM -> "[ppm]"
+            MetricUnit.PPB -> "[ppb]"
         }
     }
 }
