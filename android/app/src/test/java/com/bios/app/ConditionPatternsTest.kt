@@ -144,12 +144,12 @@ class ConditionPatternsTest {
 
     @Test
     fun `circadian disruption pattern is registered in the global all list`() {
-        assertTrue(ConditionPatterns.circadianDisruption in ConditionPatterns.all)
+        assertTrue(com.bios.app.alerts.CircadianConditionPattern.circadianDisruption in ConditionPatterns.all)
     }
 
     @Test
     fun `circadian disruption gates on AMBIENT_LIGHT irregularity as the required rule`() {
-        val pattern = ConditionPatterns.circadianDisruption
+        val pattern = com.bios.app.alerts.CircadianConditionPattern.circadianDisruption
         val lightRule = pattern.signalRules.first {
             it.metricType == com.bios.contracts.MetricType.AMBIENT_LIGHT
         }
@@ -163,7 +163,7 @@ class ConditionPatternsTest {
 
     @Test
     fun `circadian disruption corroborators cover sleep depth and timing`() {
-        val pattern = ConditionPatterns.circadianDisruption
+        val pattern = com.bios.app.alerts.CircadianConditionPattern.circadianDisruption
         val corroborators = pattern.signalRules
             .filter { !it.required }
             .map { it.metricType }
@@ -177,7 +177,7 @@ class ConditionPatternsTest {
 
     @Test
     fun `circadian disruption requires at least one corroborator alongside the light gate`() {
-        assertEquals(2, ConditionPatterns.circadianDisruption.minActiveSignals)
+        assertEquals(2, com.bios.app.alerts.CircadianConditionPattern.circadianDisruption.minActiveSignals)
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.bios.app.ingest
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.CircadianEngine
 import com.bios.app.engine.DetectionLatencyTracker
+import com.bios.app.engine.GlucoseVariability
 import com.bios.app.engine.PipelineStage
 import com.bios.app.engine.SignalQualityFilter
 import com.bios.app.engine.SleepDerivations
@@ -300,6 +301,10 @@ class IngestManager(
             SleepDerivations.deriveSleepFragmentation(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveWakeAfterSleepOnset(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepScore(rows, sourceId)?.let { derived += it }
+            GlucoseVariability.deriveCv(rows, sourceId)?.let { derived += it }
+            GlucoseVariability.deriveTimeInRange(rows, sourceId)?.let { derived += it }
+            GlucoseVariability.derivePeak(rows, sourceId)?.let { derived += it }
+            GlucoseVariability.deriveMage(rows, sourceId)?.let { derived += it }
         }
         return derived
     }
