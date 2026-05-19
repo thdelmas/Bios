@@ -69,6 +69,12 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
 
     // Metabolic
     BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
+    // CGM-derived variability keys (#28). Computed over the last 24h of
+    // BLOOD_GLUCOSE readings by GlucoseVariability; one value per 24h window.
+    GLUCOSE_CV("glucose_cv", MetricUnit.PERCENT, MetricDomain.METABOLIC),
+    GLUCOSE_MAGE("glucose_mage", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
+    GLUCOSE_TIME_IN_RANGE("glucose_time_in_range", MetricUnit.PERCENT, MetricDomain.METABOLIC),
+    GLUCOSE_PEAK_24H("glucose_peak_24h", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
     BODY_MASS("body_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
     BODY_FAT_PCT("body_fat_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC),
     LEAN_MASS("lean_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
