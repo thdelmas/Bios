@@ -2,6 +2,7 @@ package com.bios.app
 
 import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.ExerciseModality
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import org.junit.Assert.*
@@ -85,5 +86,80 @@ class PolarApiAdapterTest {
     @Test
     fun `PROVIDER_KEY is polar`() {
         assertEquals("polar", PolarApiAdapter.PROVIDER_KEY)
+    }
+
+    // -- AccessLink sport string → ExerciseModality mapping (#38) --
+
+    @Test
+    fun `mapPolarSportToModality buckets cardio types`() {
+        for (sport in listOf("RUNNING", "WALKING", "CYCLING", "INDOOR_CYCLING",
+            "ELLIPTICAL", "ROWING", "SWIMMING_POOL", "STAIR_CLIMBING", "HIKING",
+            "NORDIC_WALKING")) {
+            assertEquals(
+                "sport '$sport' should map to CARDIO",
+                ExerciseModality.CARDIO,
+                PolarApiAdapter.mapPolarSportToModality(sport)
+            )
+        }
+    }
+
+    @Test
+    fun `mapPolarSportToModality buckets strength types`() {
+        for (sport in listOf("STRENGTH_TRAINING", "WEIGHTLIFTING",
+            "CALISTHENICS", "BODYBUILDING")) {
+            assertEquals(
+                ExerciseModality.STRENGTH,
+                PolarApiAdapter.mapPolarSportToModality(sport)
+            )
+        }
+    }
+
+    @Test
+    fun `mapPolarSportToModality buckets HIIT and circuit as INTERVAL`() {
+        for (sport in listOf("HIIT", "INTERVAL_TRAINING",
+            "CROSS_TRAINING", "CIRCUIT_TRAINING")) {
+            assertEquals(
+                ExerciseModality.INTERVAL,
+                PolarApiAdapter.mapPolarSportToModality(sport)
+            )
+        }
+    }
+
+    @Test
+    fun `mapPolarSportToModality buckets yoga and pilates as MOBILITY`() {
+        for (sport in listOf("YOGA", "PILATES", "STRETCHING", "MOBILITY")) {
+            assertEquals(
+                ExerciseModality.MOBILITY,
+                PolarApiAdapter.mapPolarSportToModality(sport)
+            )
+        }
+    }
+
+    @Test
+    fun `mapPolarSportToModality is case insensitive`() {
+        assertEquals(
+            ExerciseModality.CARDIO,
+            PolarApiAdapter.mapPolarSportToModality("running")
+        )
+        assertEquals(
+            ExerciseModality.STRENGTH,
+            PolarApiAdapter.mapPolarSportToModality("Strength_Training")
+        )
+    }
+
+    @Test
+    fun `mapPolarSportToModality falls back to OTHER for blank or unknown`() {
+        assertEquals(
+            ExerciseModality.OTHER,
+            PolarApiAdapter.mapPolarSportToModality(null)
+        )
+        assertEquals(
+            ExerciseModality.OTHER,
+            PolarApiAdapter.mapPolarSportToModality("")
+        )
+        assertEquals(
+            ExerciseModality.OTHER,
+            PolarApiAdapter.mapPolarSportToModality("ALIEN_BASKETBALL")
+        )
     }
 }
