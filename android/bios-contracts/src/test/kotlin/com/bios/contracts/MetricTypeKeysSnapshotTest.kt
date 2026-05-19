@@ -62,6 +62,9 @@ class MetricTypeKeysSnapshotTest {
         "blood_glucose",
         "body_mass",
         "body_fat_pct",
+        "lean_mass",
+        "body_water_pct",
+        "bone_mass",
         // Recovery
         "recovery_score",
         // Women's Health

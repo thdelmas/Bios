@@ -111,9 +111,9 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `31 metric types have LOINC mappings`() {
+    fun `32 metric types have LOINC mappings`() {
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(31, mapped)
+        assertEquals(32, mapped)
     }
 
     @Test
@@ -265,6 +265,7 @@ class FhirExporterTest {
             MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
             MetricType.BODY_MASS -> "29463-7" to "Body weight"
             MetricType.BODY_FAT_PCT -> "41982-0" to "Percentage of body fat Measured"
+            MetricType.LEAN_MASS -> "91557-9" to "Body lean mass Measured by Bioelectrical impedance analysis"
             MetricType.VO2_MAX -> "97090-9" to "Maximum oxygen consumption per unit time per unit body mass"
             MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
             MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
