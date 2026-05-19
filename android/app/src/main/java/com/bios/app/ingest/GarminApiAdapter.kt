@@ -114,6 +114,21 @@ class GarminApiAdapter(
             )
         }
 
+        // Garmin exposes vo2Max on the dailies endpoint when the watch has
+        // a recent fitness estimate (typically refreshed weekly after an
+        // outdoor run). NaN / 0 / absent → skip silently rather than emit
+        // a meaningless reading.
+        val vo2Max = json.optDouble("vo2Max", Double.NaN)
+        if (!vo2Max.isNaN() && vo2Max > 0) {
+            readings += MetricReading(
+                metricType = MetricType.VO2_MAX.key,
+                value = vo2Max,
+                timestamp = start.toEpochMilli(),
+                sourceId = sourceId,
+                confidence = ConfidenceTier.VENDOR_DERIVED.level
+            )
+        }
+
         return readings
     }
 

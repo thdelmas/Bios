@@ -55,6 +55,14 @@ object MetricCoverageRegistry {
         derived(MetricType.LF_HF_RATIO),
         derived(MetricType.HRV_LF_POWER),
         derived(MetricType.HRV_HF_POWER),
+        // VO2 max updates roughly weekly (vendor refresh cadence is tied to
+        // the next qualifying outdoor run / fitness test). MONTH freshness
+        // is the right "stale" bar — daily-freshness would flag every
+        // sedentary week as a coverage gap.
+        MetricCoverageSpec(
+            MetricType.VO2_MAX, MONTH,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
 
         // -- Blood pressure (cuff measurement, slower-moving) --
         MetricCoverageSpec(

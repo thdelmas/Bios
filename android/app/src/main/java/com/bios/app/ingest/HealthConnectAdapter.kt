@@ -41,6 +41,7 @@ class HealthConnectAdapter(private val context: Context) {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+        HealthPermission.getReadPermission(Vo2MaxRecord::class),
         // SyncWorker runs in the background; without this the HC service returns
         // only Bios' own written records (none) instead of Google Fit / Fitbit data.
         HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND,
@@ -70,10 +71,26 @@ class HealthConnectAdapter(private val context: Context) {
             async { fetchSkinTemp(startTime, endTime, sourceId) },
             async { fetchSleep(startTime, endTime, sourceId) },
             async { fetchSteps(startTime, endTime, sourceId) },
-            async { fetchActiveCalories(startTime, endTime, sourceId) }
+            async { fetchActiveCalories(startTime, endTime, sourceId) },
+            async { fetchVo2Max(startTime, endTime, sourceId) }
         )
         jobs.awaitAll().flatten()
     }
+
+    // VO2 max from HC is vendor-derived (Garmin / Fitbit / Apple fitness
+    // models, not clinical CPET) — flagged via VENDOR_DERIVED confidence.
+    private suspend fun fetchVo2Max(start: Instant, end: Instant, sourceId: String): List<MetricReading> =
+        client.readRecords(
+            ReadRecordsRequest(Vo2MaxRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end))
+        ).records.map { record ->
+            MetricReading(
+                metricType = MetricType.VO2_MAX.key,
+                value = record.vo2MillilitersPerMinuteKilogram,
+                timestamp = record.time.toEpochMilli(),
+                sourceId = sourceId,
+                confidence = ConfidenceTier.VENDOR_DERIVED.level
+            )
+        }
 
     // MARK: - Individual record types
 
