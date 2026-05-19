@@ -83,6 +83,9 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
 
     // Environment (phone-sensor adapter)
     AMBIENT_LIGHT("ambient_light", MetricUnit.LUX, MetricDomain.ENVIRONMENT),
+    AIR_PM25("air_pm25", MetricUnit.UG_PER_M3, MetricDomain.ENVIRONMENT),
+    AIR_VOC("air_voc", MetricUnit.PPB, MetricDomain.ENVIRONMENT),
+    AIR_CO2("air_co2", MetricUnit.PPM, MetricDomain.ENVIRONMENT),
 
     // Biomarkers (lab-drawn or imported via FHIR; slow-moving, no streaming).
     // First wave matches the clinical concepts already described in
@@ -176,7 +179,10 @@ enum class MetricUnit(val symbol: String) {
     LUX("lx"),
     YEARS("yr"),
     MS_SQUARED("ms²"),
-    ML_PER_KG_MIN("mL/kg/min")
+    ML_PER_KG_MIN("mL/kg/min"),
+    UG_PER_M3("µg/m³"),
+    PPM("ppm"),
+    PPB("ppb")
 }
 
 enum class MetricDomain {

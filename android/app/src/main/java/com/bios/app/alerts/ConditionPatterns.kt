@@ -132,7 +132,11 @@ object ConditionPatterns {
             SignalRule(MetricType.HEART_RATE_VARIABILITY, DeviationDirection.BELOW, 1.0, 48, 0.8,
                 ThresholdSource.LITERATURE, "Kim et al. (2018) - sustained low HRV reflects autonomic stress during poor sleep"),
             SignalRule(MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.0, 48, 0.6,
-                ThresholdSource.ENGINEERING)
+                ThresholdSource.ENGINEERING),
+            // Bedroom CO2 above ~1000 ppm corroborates the sleep signals
+            // when an ESS-class BLE sensor (#43) is paired.
+            SignalRule(MetricType.AIR_CO2, DeviationDirection.ABOVE, 1.0, 72, 0.5,
+                ThresholdSource.LITERATURE, "Strom-Tejsen et al. (2016) — bedroom CO2 > 1000 ppm degrades sleep efficiency")
         ),
         minActiveSignals = 2,
         explanation = "Your sleep quality has been declining for several days. Reduced deep sleep combined with physiological stress markers may indicate accumulated fatigue or stress.",
