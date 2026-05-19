@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import androidx.sqlite.db.SupportSQLiteDatabase
 import android.util.Log
 import com.bios.app.data.dao.DataSourceDao
 import com.bios.app.data.dao.MetricReadingDao
@@ -29,7 +31,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
  */
 @Database(
     entities = [MetricReading::class, DataSource::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class ReproductiveDatabase : RoomDatabase() {
@@ -147,7 +149,23 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                 DB_NAME
             )
                 .openHelperFactory(factory)
+                .addMigrations(MIGRATION_1_2)
                 .build()
+        }
+
+        // Mirrors BiosDatabase.MIGRATION_9_10: MetricReading gained an
+        // owner-recall `note` column when biomarker context capture landed
+        // (#103, commit 323aa6a). The main DB got its migration; this one
+        // didn't, so on-device reproductive DBs persisted at v1 fail to open
+        // against the v2 entity schema with an identity-hash mismatch
+        // ("Expected …, found …"), silently breaking baseline + anomaly
+        // detection for reproductive metrics (BBT, CYCLE_PHASE, CYCLE_DAY).
+        // The column is owner-recall free-text only; no engine reads it, so
+        // the migration is a pure ALTER TABLE with no backfill.
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE metric_readings ADD COLUMN note TEXT")
+            }
         }
 
         private fun getPassphrase(context: Context): String? {
