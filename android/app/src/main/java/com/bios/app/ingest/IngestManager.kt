@@ -43,6 +43,7 @@ class IngestManager(
     private val directSensorAdapter: DirectSensorAdapter? = null,
     private val withingsAdapter: WithingsApiAdapter? = null,
     private val whoopAdapter: WhoopApiAdapter? = null,
+    private val garminAdapter: GarminApiAdapter? = null,
     private val bleAirQualityAdapter: BleAirQualityAdapter? = null,
     private val latencyTracker: DetectionLatencyTracker? = null
 ) {
@@ -76,6 +77,7 @@ class IngestManager(
     private var directSensorSourceId: String? = null
     private var withingsSourceId: String? = null
     private var whoopSourceId: String? = null
+    private var garminSourceId: String? = null
     private var bleAirQualitySourceId: String? = null
 
     // MARK: - Setup
@@ -123,6 +125,13 @@ class IngestManager(
             )
         }
 
+        // Garmin API (watch — HR, sleep, steps, SpO2, respiration, activities)
+        if (garminAdapter?.isConnected == true) {
+            garminSourceId = getOrCreateSource(
+                SourceType.GARMIN_API, "Garmin", SensorType.OPTICAL_HR
+            )
+        }
+
         // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
             phoneSensorAdapter?.hasStepCounter == true ||
@@ -165,7 +174,8 @@ class IngestManager(
             gadgetbridgeSourceId != null ||
             ouraSourceId != null ||
             withingsSourceId != null ||
-            whoopSourceId != null
+            whoopSourceId != null ||
+            garminSourceId != null
         if (!hasWearableHistorySource) return false
         for (metric in PRIMARY_METRICS_FOR_BACKFILL) {
             if (readingDao.count(metric.key) == 0) return true
@@ -195,6 +205,7 @@ class IngestManager(
                         async { fetchOuraReadings(start, end) },
                         async { fetchWithingsReadings(start, end) },
                         async { fetchWhoopReadings(start, end) },
+                        async { fetchGarminReadings(start, end) },
                         async { fetchPhoneSensorReadings() }
                     )
                     jobs.awaitAll().flatten()
@@ -216,6 +227,7 @@ class IngestManager(
                 }
                 persistApiSessions(ouraSourceId, ouraAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
                 persistApiSessions(whoopSourceId, whoopAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
+                persistApiSessions(garminSourceId, garminAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
             }
 
             if (latencyTracker != null) {
@@ -258,7 +270,8 @@ class IngestManager(
                         async { fetchGadgetbridgeReadings(current, chunkEnd) },
                         async { fetchOuraReadings(current, chunkEnd) },
                         async { fetchWithingsReadings(current, chunkEnd) },
-                        async { fetchWhoopReadings(current, chunkEnd) }
+                        async { fetchWhoopReadings(current, chunkEnd) },
+                        async { fetchGarminReadings(current, chunkEnd) }
                     )
                     jobs.awaitAll().flatten()
                 }
@@ -274,6 +287,7 @@ class IngestManager(
                 }
                 persistApiSessions(ouraSourceId, ouraAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
                 persistApiSessions(whoopSourceId, whoopAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
+                persistApiSessions(garminSourceId, garminAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
 
                 current = chunkEnd
                 completedDays++
@@ -374,18 +388,20 @@ class IngestManager(
         return source.id
     }
 
-    private suspend fun fetchGadgetbridgeReadings(
-        start: Instant,
-        end: Instant
+    /** Generic adapter-fetch helper. Returns empty when the source row
+     *  hasn't been registered or the adapter is null; swallows fetch
+     *  failures so a transient 5xx from one adapter doesn't kill the sync. */
+    private suspend inline fun <T> fetchApiReadings(
+        sourceId: String?,
+        adapter: T?,
+        crossinline fetch: suspend (T, String) -> List<MetricReading>,
     ): List<MetricReading> {
-        val sourceId = gadgetbridgeSourceId ?: return emptyList()
-        val adapter = gadgetbridgeAdapter ?: return emptyList()
-        return try {
-            adapter.fetchReadings(start, end, sourceId)
-        } catch (_: Exception) {
-            emptyList()
-        }
+        if (sourceId == null || adapter == null) return emptyList()
+        return runCatching { fetch(adapter, sourceId) }.getOrDefault(emptyList())
     }
+
+    private suspend fun fetchGadgetbridgeReadings(start: Instant, end: Instant) =
+        fetchApiReadings(gadgetbridgeSourceId, gadgetbridgeAdapter) { a, id -> a.fetchReadings(start, end, id) }
 
     private suspend fun fetchDirectSensorReadings(): List<MetricReading> {
         val sourceId = directSensorSourceId ?: return emptyList()
@@ -402,35 +418,17 @@ class IngestManager(
         }
     }
 
-    private suspend fun fetchOuraReadings(start: Instant, end: Instant): List<MetricReading> {
-        val sourceId = ouraSourceId ?: return emptyList()
-        val adapter = ouraAdapter ?: return emptyList()
-        return try {
-            adapter.fetchReadings(start, end, sourceId)
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
+    private suspend fun fetchOuraReadings(start: Instant, end: Instant) =
+        fetchApiReadings(ouraSourceId, ouraAdapter) { a, id -> a.fetchReadings(start, end, id) }
 
-    private suspend fun fetchWithingsReadings(start: Instant, end: Instant): List<MetricReading> {
-        val sourceId = withingsSourceId ?: return emptyList()
-        val adapter = withingsAdapter ?: return emptyList()
-        return try {
-            adapter.fetchReadings(start, end, sourceId)
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
+    private suspend fun fetchWithingsReadings(start: Instant, end: Instant) =
+        fetchApiReadings(withingsSourceId, withingsAdapter) { a, id -> a.fetchReadings(start, end, id) }
 
-    private suspend fun fetchWhoopReadings(start: Instant, end: Instant): List<MetricReading> {
-        val sourceId = whoopSourceId ?: return emptyList()
-        val adapter = whoopAdapter ?: return emptyList()
-        return try {
-            adapter.fetchReadings(start, end, sourceId)
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
+    private suspend fun fetchWhoopReadings(start: Instant, end: Instant) =
+        fetchApiReadings(whoopSourceId, whoopAdapter) { a, id -> a.fetchReadings(start, end, id) }
+
+    private suspend fun fetchGarminReadings(start: Instant, end: Instant) =
+        fetchApiReadings(garminSourceId, garminAdapter) { a, id -> a.fetchReadings(start, end, id) }
 
     private suspend fun fetchPhoneSensorReadings(): List<MetricReading> {
         val sourceId = phoneSensorSourceId ?: return emptyList()
