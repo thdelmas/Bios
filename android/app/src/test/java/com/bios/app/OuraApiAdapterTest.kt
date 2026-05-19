@@ -2,6 +2,7 @@ package com.bios.app
 
 import com.bios.app.ingest.OuraApiAdapter
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.ExerciseModality
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
@@ -192,5 +193,63 @@ class OuraApiAdapterTest {
     fun `BASE_URL points to Oura v2 API`() {
         assertTrue(OuraApiAdapter.BASE_URL.contains("ouraring.com"))
         assertTrue(OuraApiAdapter.BASE_URL.contains("v2"))
+    }
+
+    // -- Workout / EXERCISE_SESSION modality mapping (#38) --
+
+    @Test
+    fun `mapOuraActivityToModality buckets cardio variants`() {
+        for (activity in listOf("running", "walking", "cycling", "rowing", "swimming",
+            "elliptical", "stair_climbing", "hiking", "treadmill_running")) {
+            assertEquals(
+                "activity '$activity' should map to CARDIO",
+                ExerciseModality.CARDIO,
+                OuraApiAdapter.mapOuraActivityToModality(activity)
+            )
+        }
+    }
+
+    @Test
+    fun `mapOuraActivityToModality buckets strength variants`() {
+        for (activity in listOf("weight_training", "weightlifting", "strength_training",
+            "calisthenics", "resistance_training")) {
+            assertEquals(
+                ExerciseModality.STRENGTH,
+                OuraApiAdapter.mapOuraActivityToModality(activity)
+            )
+        }
+    }
+
+    @Test
+    fun `mapOuraActivityToModality buckets HIIT and crossfit as INTERVAL`() {
+        assertEquals(ExerciseModality.INTERVAL, OuraApiAdapter.mapOuraActivityToModality("hiit"))
+        assertEquals(ExerciseModality.INTERVAL, OuraApiAdapter.mapOuraActivityToModality("crossfit"))
+        assertEquals(
+            ExerciseModality.INTERVAL,
+            OuraApiAdapter.mapOuraActivityToModality("high_intensity_interval_training")
+        )
+    }
+
+    @Test
+    fun `mapOuraActivityToModality buckets yoga and pilates as MOBILITY`() {
+        for (activity in listOf("yoga", "pilates", "stretching", "tai_chi")) {
+            assertEquals(
+                ExerciseModality.MOBILITY,
+                OuraApiAdapter.mapOuraActivityToModality(activity)
+            )
+        }
+    }
+
+    @Test
+    fun `mapOuraActivityToModality falls back to OTHER for unknown or blank`() {
+        assertEquals(ExerciseModality.OTHER, OuraApiAdapter.mapOuraActivityToModality(""))
+        assertEquals(ExerciseModality.OTHER, OuraApiAdapter.mapOuraActivityToModality(null))
+        assertEquals(ExerciseModality.OTHER, OuraApiAdapter.mapOuraActivityToModality("alien_basketball"))
+    }
+
+    @Test
+    fun `mapOuraActivityToModality is case insensitive`() {
+        assertEquals(ExerciseModality.CARDIO, OuraApiAdapter.mapOuraActivityToModality("Running"))
+        assertEquals(ExerciseModality.STRENGTH, OuraApiAdapter.mapOuraActivityToModality("WEIGHT_TRAINING"))
     }
 }

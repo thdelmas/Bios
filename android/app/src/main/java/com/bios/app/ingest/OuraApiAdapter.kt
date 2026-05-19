@@ -1,6 +1,10 @@
 package com.bios.app.ingest
 
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.EventPayloadField
+import com.bios.app.model.ExerciseModality
+import com.bios.app.model.ExerciseSession
+import com.bios.app.model.ExerciseSessionFields
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
@@ -13,6 +17,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -233,6 +238,86 @@ class OuraApiAdapter(
         }
     }
 
+    // MARK: - Exercise sessions
+
+    /**
+     * Reads Oura v2 `/workout` records in the window and returns each one as
+     * a composite [ExerciseSession] — a parent EXERCISE_SESSION MetricReading
+     * plus its EventPayloadField rows. Returned separately from
+     * [fetchReadings] for the same reason the Health Connect adapter does:
+     * the result type is structurally different (parent + payload) and the
+     * dedupe/quality pipeline doesn't yet know how to keep payload rows in
+     * sync with a deduped parent.
+     *
+     * Oura's `/workout` endpoint exposes an `activity` string (e.g.
+     * "running", "weight_training"), `start_datetime` / `end_datetime`, and
+     * an `average_heart_rate`. RPE isn't on the response, so the payload
+     * omits it. Missing fields fall through gracefully — sessions still
+     * land with whatever the source provided.
+     */
+    suspend fun fetchExerciseSessions(
+        startTime: Instant, endTime: Instant, sourceId: String
+    ): List<ExerciseSession> {
+        val token = getToken() ?: return emptyList()
+        val json = apiGet(token, "workout", formatDate(startTime), formatDate(endTime))
+            ?: return emptyList()
+        val data = json.optJSONArray("data") ?: return emptyList()
+
+        val sessions = mutableListOf<ExerciseSession>()
+        for (i in 0 until data.length()) {
+            val item = data.getJSONObject(i)
+            val startIso = item.optString("start_datetime").takeIf { it.isNotEmpty() } ?: continue
+            val endIso = item.optString("end_datetime").takeIf { it.isNotEmpty() } ?: continue
+            val startMs = parseTimestamp(startIso)
+            val endMs = parseTimestamp(endIso)
+            val durationSec = ((endMs - startMs) / 1000L).toInt()
+            if (durationSec <= 0) continue
+
+            val reading = MetricReading(
+                id = UUID.randomUUID().toString(),
+                metricType = MetricType.EXERCISE_SESSION.key,
+                value = 1.0,
+                timestamp = startMs,
+                durationSec = durationSec,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.MEDIUM.level,
+            )
+
+            val payload = mutableListOf(
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.MODALITY,
+                    stringValue = mapOuraActivityToModality(item.optString("activity")),
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.START_UTC,
+                    longValue = startMs,
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.END_UTC,
+                    longValue = endMs,
+                ),
+            )
+
+            // Oura returns average_heart_rate as null for activities without
+            // wrist HR coverage (manual entries, very short walks). Treat the
+            // absence as "no avg HR" rather than writing a misleading zero.
+            val avgHr = item.optDouble("average_heart_rate", Double.NaN)
+            if (!avgHr.isNaN() && avgHr > 0.0) {
+                payload += EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.AVG_HR_BPM,
+                    doubleValue = avgHr,
+                )
+            }
+
+            sessions += ExerciseSession(reading = reading, payload = payload)
+        }
+        return sessions
+    }
+
     // MARK: - Sleep stage parsing
 
     /**
@@ -328,5 +413,35 @@ class OuraApiAdapter(
 
     companion object {
         internal const val BASE_URL = "https://api.ouraring.com/v2/usercollection"
+
+        /**
+         * Maps an Oura v2 `/workout.activity` string to Bios's coarse
+         * [ExerciseModality] bucket. Oura's catalog isn't an enum on the
+         * wire — it's free-form snake_case strings — so we normalize
+         * lowercased, underscore-stripped tokens. Unknown / empty strings
+         * fall to OTHER, matching the Health Connect adapter's policy.
+         */
+        internal fun mapOuraActivityToModality(activity: String?): String {
+            if (activity.isNullOrBlank()) return ExerciseModality.OTHER
+            return when (activity.lowercase().replace('-', '_')) {
+                "running", "treadmill_running", "walking", "hiking",
+                "cycling", "biking", "indoor_cycling", "stationary_bike",
+                "elliptical", "rowing", "indoor_rowing",
+                "swimming", "swimming_pool", "swimming_open_water",
+                "stair_climbing", "stairs", "stair_climbing_machine",
+                "cardio", "aerobics" -> ExerciseModality.CARDIO
+
+                "weight_training", "weightlifting", "strength_training",
+                "calisthenics", "resistance_training" -> ExerciseModality.STRENGTH
+
+                "hiit", "high_intensity_interval_training",
+                "crossfit", "interval_training", "tabata" -> ExerciseModality.INTERVAL
+
+                "yoga", "pilates", "stretching", "mobility",
+                "tai_chi", "qigong" -> ExerciseModality.MOBILITY
+
+                else -> ExerciseModality.OTHER
+            }
+        }
     }
 }

@@ -204,6 +204,13 @@ class IngestManager(
                     val sessions = healthConnect.fetchExerciseSessions(start, end, id)
                     persistSessions(sessions)
                 }
+                ouraSourceId?.let { id ->
+                    val adapter = ouraAdapter ?: return@let
+                    val sessions = runCatching {
+                        adapter.fetchExerciseSessions(start, end, id)
+                    }.getOrDefault(emptyList())
+                    persistSessions(sessions)
+                }
             }
 
             if (latencyTracker != null) {
@@ -258,6 +265,13 @@ class IngestManager(
 
                 healthConnectSourceId?.let { id ->
                     val sessions = healthConnect.fetchExerciseSessions(current, chunkEnd, id)
+                    persistSessions(sessions)
+                }
+                ouraSourceId?.let { id ->
+                    val adapter = ouraAdapter ?: return@let
+                    val sessions = runCatching {
+                        adapter.fetchExerciseSessions(current, chunkEnd, id)
+                    }.getOrDefault(emptyList())
                     persistSessions(sessions)
                 }
 
