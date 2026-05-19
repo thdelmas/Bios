@@ -18,43 +18,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Garmin connection dialog — paste an OAuth-issued access token for the
- * Garmin Wellness API. Same paste-the-token UX as Oura / Withings / WHOOP.
+ * Generic paste-an-OAuth-token dialog used by every API adapter that hasn't
+ * yet wired its full OAuth dance (Oura, Withings, WHOOP, Garmin, Polar at
+ * the time of writing). Each adapter was previously a 60-line file that
+ * differed only in `providerName` and the helper-text body string — those
+ * four near-identical files collapse into this one composable.
  *
- * Caveat: Garmin's Wellness API officially uses OAuth 1.0a signed
- * requests, not OAuth 2.0 bearer tokens. The current
- * [com.bios.app.ingest.GarminApiAdapter] sends `Authorization: Bearer <token>`
- * which works when the upstream accepts a session token but won't pass
- * Garmin's signed-request enforcement out of the box — a registered Bios
- * Garmin developer app and per-request HMAC-SHA1 signing is a follow-up.
- * Until that lands, this surface is useful for owners proxying through a
- * pre-signed gateway, and for getting the wiring tests green.
+ * Why this pattern. Bios doesn't ship registered OAuth client_id/secret
+ * pairs for these providers, so the owner must obtain a token out-of-band
+ * (a personal-access-token issued via the provider's developer portal, or
+ * a refresh-exchanged bearer from a CLI helper). When/if Bios registers a
+ * provider app and runs the full OAuth dance in-app, this dialog stays —
+ * the new flow drops the bearer into the same EncryptedSharedPreferences
+ * slot and the paste UI becomes the "advanced" override.
+ *
+ * The dialog never logs the entered token (`singleLine = true` + no
+ * downstream emission outside [onConnect]).
  */
 @Composable
-fun GarminConnectDialog(
+fun PasteTokenDialog(
+    providerName: String,
+    helperText: String,
     onConnect: (token: String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     var tokenInput by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Connect Garmin") },
+        title = { Text("Connect $providerName") },
         text = {
             Column {
-                Text(
-                    "Paste a Garmin Wellness API access token (or a pre-signed " +
-                        "session token from a Garmin proxy). Bios does not perform " +
-                        "the OAuth 1.0a dance itself yet — see the connection notes " +
-                        "for what works today.",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(helperText, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = tokenInput,
                     onValueChange = { tokenInput = it },
                     label = { Text("Access Token") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
