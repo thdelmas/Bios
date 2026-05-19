@@ -97,8 +97,7 @@ object MetricCoverageEngine {
             kind = kind,
             displayName = "BLE air-quality sensor",
             isConfigured = readiness.bleAirQualityPaired,
-            // Deep-link deferred until the phase-2 pairing UI lands (#43-phase-2).
-            deepLink = null,
+            deepLink = "ble_pair",
         )
     }
 
