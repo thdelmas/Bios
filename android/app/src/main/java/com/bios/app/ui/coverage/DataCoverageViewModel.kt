@@ -6,6 +6,7 @@ import com.bios.app.engine.AdapterReadiness
 import com.bios.app.engine.MetricCoverage
 import com.bios.app.engine.MetricCoverageEngine
 import com.bios.app.ingest.DexcomApiAdapter
+import com.bios.app.ingest.GarminApiAdapter
 import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
@@ -43,6 +44,7 @@ class DataCoverageViewModel(
                 ouraConfigured = app.ouraTokenStore.hasToken(),
                 withingsConfigured = app.apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY),
                 whoopConfigured = app.apiTokenStore.hasToken(WhoopApiAdapter.PROVIDER_KEY),
+                garminConfigured = app.apiTokenStore.hasToken(GarminApiAdapter.PROVIDER_KEY),
                 polarConfigured = app.apiTokenStore.hasToken(PolarApiAdapter.PROVIDER_KEY),
                 dexcomConfigured = app.apiTokenStore.hasToken(DexcomApiAdapter.PROVIDER_KEY),
                 directSensorAvailable = app.directSensorAdapter.hasAnySensor,

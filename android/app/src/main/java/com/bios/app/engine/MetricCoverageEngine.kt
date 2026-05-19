@@ -133,6 +133,7 @@ object MetricCoverageEngine {
             else -> listOf(
                 "Oura" to readiness.ouraConfigured,
                 "WHOOP" to readiness.whoopConfigured,
+                "Garmin" to readiness.garminConfigured,
                 "Polar" to readiness.polarConfigured,
             )
         }
