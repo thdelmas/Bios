@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.export.FhirExporter
+import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.model.CompanionGrant
 import com.bios.app.model.PrivacyTier
@@ -51,6 +52,10 @@ fun SettingsScreen(
     var showWithingsDialog by remember { mutableStateOf(false) }
     var isWithingsConnected by remember {
         mutableStateOf(viewModel.apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY))
+    }
+    var showWhoopDialog by remember { mutableStateOf(false) }
+    var isWhoopConnected by remember {
+        mutableStateOf(viewModel.apiTokenStore.hasToken(WhoopApiAdapter.PROVIDER_KEY))
     }
     val companionGrants by viewModel.db.companionGrantDao()
         .observeAll()
@@ -110,6 +115,17 @@ fun SettingsScreen(
                             WithingsApiAdapter.PROVIDER_KEY
                         )
                         isWithingsConnected = false
+                    },
+                )
+
+                Spacer(Modifier.height(4.dp))
+                ConnectableSourceRow(
+                    name = "WHOOP",
+                    isConnected = isWhoopConnected,
+                    onConnect = { showWhoopDialog = true },
+                    onDisconnect = {
+                        viewModel.apiTokenStore.clearToken(WhoopApiAdapter.PROVIDER_KEY)
+                        isWhoopConnected = false
                     },
                 )
 
@@ -260,77 +276,7 @@ fun SettingsScreen(
             }
         }
 
-        // Notifications
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Notifications", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-
-                var digestEnabled by remember {
-                    mutableStateOf(DailyDigestWorker.isEnabled(context))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Daily Digest", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "Morning summary of your vitals at 8 AM",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = digestEnabled,
-                        onCheckedChange = {
-                            digestEnabled = it
-                            DailyDigestWorker.setEnabled(context, it)
-                        }
-                    )
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                DisconnectAlertToggle()
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                var pushEnabled by remember {
-                    mutableStateOf(PushRegistrationManager.isEnabled(context))
-                }
-                var pushDistributor by remember {
-                    mutableStateOf(PushRegistrationManager.getDistributorName(context))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Push Notifications", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            if (pushEnabled && pushDistributor != null)
-                                "Via $pushDistributor — no Google required"
-                            else
-                                "Receive population health signals without polling. Requires a UnifiedPush distributor (e.g. ntfy).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = pushEnabled,
-                        onCheckedChange = { enabled ->
-                            pushEnabled = enabled
-                            if (enabled) {
-                                PushRegistrationManager.setEnabled(context, true)
-                                PushRegistrationManager.register(context)
-                            } else {
-                                PushRegistrationManager.unregister(context)
-                            }
-                            pushDistributor = PushRegistrationManager.getDistributorName(context)
-                        }
-                    )
-                }
-            }
-        }
+        SettingsNotificationsCard()
 
         // Privacy Tier
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -461,6 +407,17 @@ fun SettingsScreen(
                 showWithingsDialog = false
             },
             onDismiss = { showWithingsDialog = false }
+        )
+    }
+
+    if (showWhoopDialog) {
+        WhoopConnectDialog(
+            onConnect = { token ->
+                viewModel.apiTokenStore.saveToken(WhoopApiAdapter.PROVIDER_KEY, token)
+                isWhoopConnected = true
+                showWhoopDialog = false
+            },
+            onDismiss = { showWhoopDialog = false }
         )
     }
 }

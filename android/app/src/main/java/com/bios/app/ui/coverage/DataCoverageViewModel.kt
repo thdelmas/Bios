@@ -7,6 +7,7 @@ import com.bios.app.engine.MetricCoverage
 import com.bios.app.engine.MetricCoverageEngine
 import com.bios.app.ingest.DexcomApiAdapter
 import com.bios.app.ingest.PolarApiAdapter
+import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.ui.AppViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,7 @@ class DataCoverageViewModel(
                 healthConnectGranted = app.hasPermissions.value,
                 ouraConfigured = app.ouraTokenStore.hasToken(),
                 withingsConfigured = app.apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY),
+                whoopConfigured = app.apiTokenStore.hasToken(WhoopApiAdapter.PROVIDER_KEY),
                 polarConfigured = app.apiTokenStore.hasToken(PolarApiAdapter.PROVIDER_KEY),
                 dexcomConfigured = app.apiTokenStore.hasToken(DexcomApiAdapter.PROVIDER_KEY),
                 directSensorAvailable = app.directSensorAdapter.hasAnySensor,

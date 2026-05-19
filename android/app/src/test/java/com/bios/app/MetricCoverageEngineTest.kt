@@ -19,6 +19,7 @@ class MetricCoverageEngineTest {
         healthConnectGranted = false,
         ouraConfigured = false,
         withingsConfigured = false,
+        whoopConfigured = false,
         polarConfigured = false,
         dexcomConfigured = false,
         directSensorAvailable = false,
