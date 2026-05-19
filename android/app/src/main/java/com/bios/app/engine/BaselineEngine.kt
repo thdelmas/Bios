@@ -107,6 +107,9 @@ class BaselineEngine(
                 MetricType.AIR_CO2,
                 MetricType.BODY_MASS,
                 MetricType.BODY_FAT_PCT,
+                MetricType.LEAN_MASS,
+                MetricType.BODY_WATER_PCT,
+                MetricType.BONE_MASS,
             )
 
             for (metricType in metricsToBaseline) {

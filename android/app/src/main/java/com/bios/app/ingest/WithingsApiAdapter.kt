@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -62,7 +63,9 @@ class WithingsApiAdapter(
             mapOf(
                 "startdate" to start.epochSecond.toString(),
                 "enddate" to end.epochSecond.toString(),
-                "meastypes" to "1,6,9,10,71"
+                // Types: 1=weight, 5=lean (fat-free) mass, 6=fat%, 9=BP-dia,
+                // 10=BP-sys, 71=skin temp, 76=hydration (kg), 88=bone mass.
+                "meastypes" to "1,5,6,9,10,71,76,88"
             )
         ) ?: return emptyList()
 
@@ -74,31 +77,7 @@ class WithingsApiAdapter(
             val grp = measuregrps.getJSONObject(i)
             val timestamp = grp.getLong("date") * 1000
             val measures = grp.optJSONArray("measures") ?: continue
-
-            for (j in 0 until measures.length()) {
-                val m = measures.getJSONObject(j)
-                val type = m.getInt("type")
-                val value = m.getDouble("value") * Math.pow(10.0, m.getDouble("unit"))
-
-                val (metricType, confidence) = when (type) {
-                    1 -> Pair(MetricType.BODY_MASS, ConfidenceTier.HIGH) // weight in kg
-                    6 -> Pair(MetricType.BODY_FAT_PCT, ConfidenceTier.HIGH) // fat % (impedance scale)
-                    9 -> Pair(MetricType.BLOOD_PRESSURE_DIASTOLIC, ConfidenceTier.HIGH)
-                    10 -> Pair(MetricType.BLOOD_PRESSURE_SYSTOLIC, ConfidenceTier.HIGH)
-                    71 -> Pair(MetricType.SKIN_TEMPERATURE, ConfidenceTier.MEDIUM)
-                    else -> continue
-                }
-
-                if (metricType != null) {
-                    readings += MetricReading(
-                        metricType = metricType.key,
-                        value = value,
-                        timestamp = timestamp,
-                        sourceId = sourceId,
-                        confidence = confidence.level
-                    )
-                }
-            }
+            readings += parseWithingsGroupMeasures(measures, timestamp, sourceId)
         }
 
         return readings
@@ -188,4 +167,64 @@ class WithingsApiAdapter(
         internal const val BASE_URL = "https://wbsapi.withings.net/v2"
         const val PROVIDER_KEY = "withings"
     }
+}
+
+/**
+ * Walks a Withings `measuregrps[].measures[]` block twice: first pass
+ * indexes raw values by `type`, second pass emits the canonical
+ * MetricReadings — including the BODY_WATER_PCT derivation, which
+ * needs the same group's weight (type 1) as a denominator. Withings
+ * reports hydration as **mass in kg** (type 76); the clinical
+ * convention is total-body-water as a percent of body weight, so the
+ * conversion happens here at the adapter boundary.
+ *
+ * When hydration is present but weight isn't in the same group, the
+ * derivation is skipped silently. The Withings scale always emits
+ * both in the same event in practice; this is a defensive path.
+ *
+ * Top-level (no instance state needed) so the unit tests can exercise
+ * the full extraction matrix without instantiating the adapter — which
+ * requires an Android Context that the unit-test layer doesn't have.
+ */
+internal fun parseWithingsGroupMeasures(
+    measures: JSONArray,
+    timestamp: Long,
+    sourceId: String,
+): List<MetricReading> {
+    val byType = mutableMapOf<Int, Double>()
+    for (j in 0 until measures.length()) {
+        val m = measures.getJSONObject(j)
+        byType[m.getInt("type")] =
+            m.getDouble("value") * Math.pow(10.0, m.getDouble("unit"))
+    }
+
+    val out = mutableListOf<MetricReading>()
+    fun emit(metric: MetricType, value: Double, tier: ConfidenceTier = ConfidenceTier.HIGH) {
+        out += MetricReading(
+            metricType = metric.key,
+            value = value,
+            timestamp = timestamp,
+            sourceId = sourceId,
+            confidence = tier.level,
+        )
+    }
+
+    byType[1]?.let { emit(MetricType.BODY_MASS, it) }
+    byType[5]?.let { emit(MetricType.LEAN_MASS, it) }
+    byType[6]?.let { emit(MetricType.BODY_FAT_PCT, it) }
+    byType[9]?.let { emit(MetricType.BLOOD_PRESSURE_DIASTOLIC, it) }
+    byType[10]?.let { emit(MetricType.BLOOD_PRESSURE_SYSTOLIC, it) }
+    byType[71]?.let { emit(MetricType.SKIN_TEMPERATURE, it, ConfidenceTier.MEDIUM) }
+    byType[88]?.let { emit(MetricType.BONE_MASS, it) }
+
+    // BODY_WATER_PCT = hydration_kg / weight_kg × 100. Drop if either
+    // side is missing or weight is non-positive (defensive against
+    // corrupted scale uploads).
+    val hydrationKg = byType[76]
+    val weightKg = byType[1]
+    if (hydrationKg != null && weightKg != null && weightKg > 0.0) {
+        emit(MetricType.BODY_WATER_PCT, hydrationKg / weightKg * 100.0)
+    }
+
+    return out
 }

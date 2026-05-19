@@ -71,6 +71,9 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
     BODY_MASS("body_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
     BODY_FAT_PCT("body_fat_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC),
+    LEAN_MASS("lean_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
+    BODY_WATER_PCT("body_water_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC),
+    BONE_MASS("bone_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
 
     // Recovery
     RECOVERY_SCORE("recovery_score", MetricUnit.SCORE, MetricDomain.RECOVERY),
