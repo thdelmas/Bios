@@ -34,6 +34,7 @@ class MetricTypeKeysSnapshotTest {
         "lf_hf_ratio",
         "hrv_lf_power",
         "hrv_hf_power",
+        "vo2_max",
         "resting_heart_rate",
         "blood_pressure_systolic",
         "blood_pressure_diastolic",

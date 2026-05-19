@@ -109,6 +109,11 @@ class BaselineEngine(
             for (metricType in metricsToBaseline) {
                 computeBaseline(metricType)
             }
+            // VO2 max changes slowly (weeks-to-months timescale). Use a
+            // 90-day window so the baseline reflects the genuine fitness
+            // trajectory rather than the noisy weekly Garmin/Oura
+            // re-estimates the default 14-day window would amplify.
+            computeBaseline(MetricType.VO2_MAX, windowDays = 90)
 
             // Reproductive baselines pull from the isolated reproductive DB
             // when it's available; otherwise this is a no-op (the owner

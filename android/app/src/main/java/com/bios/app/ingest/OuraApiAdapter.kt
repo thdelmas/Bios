@@ -53,8 +53,37 @@ class OuraApiAdapter(
         readings += fetchSleep(token, startDate, endDate, sourceId)
         readings += fetchDailyActivity(token, startDate, endDate, sourceId)
         readings += fetchDailyReadiness(token, startDate, endDate, sourceId)
+        readings += fetchCardiovascularAge(token, startDate, endDate, sourceId)
 
         return readings
+    }
+
+    /**
+     * Oura v2 exposes a `cardio_capacity` (their proprietary VO2 max
+     * estimate) on the `/usercollection/cardiovascular_age` endpoint. The
+     * value updates roughly weekly, in mL/kg/min, derived from the user's
+     * resting HR, age, weight, and activity history. Missing endpoint
+     * (legacy Oura plan, ring not paired, no recent run) → empty list.
+     */
+    private suspend fun fetchCardiovascularAge(
+        token: String, startDate: String, endDate: String, sourceId: String
+    ): List<MetricReading> {
+        val json = apiGet(token, "cardiovascular_age", startDate, endDate) ?: return emptyList()
+        val data = json.optJSONArray("data") ?: return emptyList()
+
+        return (0 until data.length()).mapNotNull { i ->
+            val day = data.getJSONObject(i)
+            val vo2 = day.optDouble("vo2_max", Double.NaN)
+            if (vo2.isNaN() || vo2 <= 0.0) return@mapNotNull null
+
+            MetricReading(
+                metricType = MetricType.VO2_MAX.key,
+                value = vo2,
+                timestamp = parseDayTimestamp(day.getString("day")),
+                sourceId = sourceId,
+                confidence = ConfidenceTier.VENDOR_DERIVED.level
+            )
+        }
     }
 
     private suspend fun fetchHeartRate(
