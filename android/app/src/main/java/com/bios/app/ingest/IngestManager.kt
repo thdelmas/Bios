@@ -44,6 +44,7 @@ class IngestManager(
     private val withingsAdapter: WithingsApiAdapter? = null,
     private val whoopAdapter: WhoopApiAdapter? = null,
     private val garminAdapter: GarminApiAdapter? = null,
+    private val polarAdapter: PolarApiAdapter? = null,
     private val bleAirQualityAdapter: BleAirQualityAdapter? = null,
     private val latencyTracker: DetectionLatencyTracker? = null
 ) {
@@ -78,6 +79,7 @@ class IngestManager(
     private var withingsSourceId: String? = null
     private var whoopSourceId: String? = null
     private var garminSourceId: String? = null
+    private var polarSourceId: String? = null
     private var bleAirQualitySourceId: String? = null
 
     // MARK: - Setup
@@ -132,6 +134,9 @@ class IngestManager(
             )
         }
 
+        // Polar API (clinical-grade HR/HRV from H10 + Verity Sense)
+        if (polarAdapter?.isConnected == true) polarSourceId = getOrCreateSource(SourceType.POLAR_API, "Polar", SensorType.OPTICAL_HR)
+
         // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
             phoneSensorAdapter?.hasStepCounter == true ||
@@ -175,7 +180,8 @@ class IngestManager(
             ouraSourceId != null ||
             withingsSourceId != null ||
             whoopSourceId != null ||
-            garminSourceId != null
+            garminSourceId != null ||
+            polarSourceId != null
         if (!hasWearableHistorySource) return false
         for (metric in PRIMARY_METRICS_FOR_BACKFILL) {
             if (readingDao.count(metric.key) == 0) return true
@@ -206,6 +212,7 @@ class IngestManager(
                         async { fetchWithingsReadings(start, end) },
                         async { fetchWhoopReadings(start, end) },
                         async { fetchGarminReadings(start, end) },
+                        async { fetchPolarReadings(start, end) },
                         async { fetchPhoneSensorReadings() }
                     )
                     jobs.awaitAll().flatten()
@@ -228,6 +235,7 @@ class IngestManager(
                 persistApiSessions(ouraSourceId, ouraAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
                 persistApiSessions(whoopSourceId, whoopAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
                 persistApiSessions(garminSourceId, garminAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
+                persistApiSessions(polarSourceId, polarAdapter, start, end) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
             }
 
             if (latencyTracker != null) {
@@ -271,7 +279,8 @@ class IngestManager(
                         async { fetchOuraReadings(current, chunkEnd) },
                         async { fetchWithingsReadings(current, chunkEnd) },
                         async { fetchWhoopReadings(current, chunkEnd) },
-                        async { fetchGarminReadings(current, chunkEnd) }
+                        async { fetchGarminReadings(current, chunkEnd) },
+                        async { fetchPolarReadings(current, chunkEnd) }
                     )
                     jobs.awaitAll().flatten()
                 }
@@ -288,6 +297,7 @@ class IngestManager(
                 persistApiSessions(ouraSourceId, ouraAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
                 persistApiSessions(whoopSourceId, whoopAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
                 persistApiSessions(garminSourceId, garminAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
+                persistApiSessions(polarSourceId, polarAdapter, current, chunkEnd) { a, s, e, id -> a.fetchExerciseSessions(s, e, id) }
 
                 current = chunkEnd
                 completedDays++
@@ -400,8 +410,7 @@ class IngestManager(
         return runCatching { fetch(adapter, sourceId) }.getOrDefault(emptyList())
     }
 
-    private suspend fun fetchGadgetbridgeReadings(start: Instant, end: Instant) =
-        fetchApiReadings(gadgetbridgeSourceId, gadgetbridgeAdapter) { a, id -> a.fetchReadings(start, end, id) }
+    private suspend fun fetchGadgetbridgeReadings(s: Instant, e: Instant) = fetchApiReadings(gadgetbridgeSourceId, gadgetbridgeAdapter) { a, id -> a.fetchReadings(s, e, id) }
 
     private suspend fun fetchDirectSensorReadings(): List<MetricReading> {
         val sourceId = directSensorSourceId ?: return emptyList()
@@ -418,17 +427,11 @@ class IngestManager(
         }
     }
 
-    private suspend fun fetchOuraReadings(start: Instant, end: Instant) =
-        fetchApiReadings(ouraSourceId, ouraAdapter) { a, id -> a.fetchReadings(start, end, id) }
-
-    private suspend fun fetchWithingsReadings(start: Instant, end: Instant) =
-        fetchApiReadings(withingsSourceId, withingsAdapter) { a, id -> a.fetchReadings(start, end, id) }
-
-    private suspend fun fetchWhoopReadings(start: Instant, end: Instant) =
-        fetchApiReadings(whoopSourceId, whoopAdapter) { a, id -> a.fetchReadings(start, end, id) }
-
-    private suspend fun fetchGarminReadings(start: Instant, end: Instant) =
-        fetchApiReadings(garminSourceId, garminAdapter) { a, id -> a.fetchReadings(start, end, id) }
+    private suspend fun fetchOuraReadings(s: Instant, e: Instant) = fetchApiReadings(ouraSourceId, ouraAdapter) { a, id -> a.fetchReadings(s, e, id) }
+    private suspend fun fetchWithingsReadings(s: Instant, e: Instant) = fetchApiReadings(withingsSourceId, withingsAdapter) { a, id -> a.fetchReadings(s, e, id) }
+    private suspend fun fetchWhoopReadings(s: Instant, e: Instant) = fetchApiReadings(whoopSourceId, whoopAdapter) { a, id -> a.fetchReadings(s, e, id) }
+    private suspend fun fetchGarminReadings(s: Instant, e: Instant) = fetchApiReadings(garminSourceId, garminAdapter) { a, id -> a.fetchReadings(s, e, id) }
+    private suspend fun fetchPolarReadings(s: Instant, e: Instant) = fetchApiReadings(polarSourceId, polarAdapter) { a, id -> a.fetchReadings(s, e, id) }
 
     private suspend fun fetchPhoneSensorReadings(): List<MetricReading> {
         val sourceId = phoneSensorSourceId ?: return emptyList()

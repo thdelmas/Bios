@@ -18,6 +18,7 @@ import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.export.FhirExporter
 import com.bios.app.ingest.GarminApiAdapter
+import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.model.CompanionGrant
@@ -61,6 +62,10 @@ fun SettingsScreen(
     var showGarminDialog by remember { mutableStateOf(false) }
     var isGarminConnected by remember {
         mutableStateOf(viewModel.apiTokenStore.hasToken(GarminApiAdapter.PROVIDER_KEY))
+    }
+    var showPolarDialog by remember { mutableStateOf(false) }
+    var isPolarConnected by remember {
+        mutableStateOf(viewModel.apiTokenStore.hasToken(PolarApiAdapter.PROVIDER_KEY))
     }
     val companionGrants by viewModel.db.companionGrantDao()
         .observeAll()
@@ -142,6 +147,17 @@ fun SettingsScreen(
                     onDisconnect = {
                         viewModel.apiTokenStore.clearToken(GarminApiAdapter.PROVIDER_KEY)
                         isGarminConnected = false
+                    },
+                )
+
+                Spacer(Modifier.height(4.dp))
+                ConnectableSourceRow(
+                    name = "Polar",
+                    isConnected = isPolarConnected,
+                    onConnect = { showPolarDialog = true },
+                    onDisconnect = {
+                        viewModel.apiTokenStore.clearToken(PolarApiAdapter.PROVIDER_KEY)
+                        isPolarConnected = false
                     },
                 )
 
@@ -405,48 +421,65 @@ fun SettingsScreen(
     }
 
     if (showOuraDialog) {
-        OuraConnectDialog(
+        PasteTokenDialog(
+            providerName = "Oura",
+            helperText = SettingsHelperText.OURA,
             onConnect = { token ->
-                viewModel.ouraTokenStore.saveToken(token)
-                isOuraConnected = true
-                showOuraDialog = false
+                viewModel.ouraTokenStore.saveToken(token); isOuraConnected = true; showOuraDialog = false
             },
             onDismiss = { showOuraDialog = false }
         )
     }
-
     if (showWithingsDialog) {
-        WithingsConnectDialog(
+        PasteTokenDialog(
+            providerName = "Withings",
+            helperText = SettingsHelperText.WITHINGS,
             onConnect = { token ->
-                viewModel.apiTokenStore.saveToken(WithingsApiAdapter.PROVIDER_KEY, token)
-                isWithingsConnected = true
-                showWithingsDialog = false
+                viewModel.apiTokenStore.saveToken(WithingsApiAdapter.PROVIDER_KEY, token); isWithingsConnected = true; showWithingsDialog = false
             },
             onDismiss = { showWithingsDialog = false }
         )
     }
-
     if (showWhoopDialog) {
-        WhoopConnectDialog(
+        PasteTokenDialog(
+            providerName = "WHOOP",
+            helperText = SettingsHelperText.WHOOP,
             onConnect = { token ->
-                viewModel.apiTokenStore.saveToken(WhoopApiAdapter.PROVIDER_KEY, token)
-                isWhoopConnected = true
-                showWhoopDialog = false
+                viewModel.apiTokenStore.saveToken(WhoopApiAdapter.PROVIDER_KEY, token); isWhoopConnected = true; showWhoopDialog = false
             },
             onDismiss = { showWhoopDialog = false }
         )
     }
-
     if (showGarminDialog) {
-        GarminConnectDialog(
+        PasteTokenDialog(
+            providerName = "Garmin",
+            helperText = SettingsHelperText.GARMIN,
             onConnect = { token ->
-                viewModel.apiTokenStore.saveToken(GarminApiAdapter.PROVIDER_KEY, token)
-                isGarminConnected = true
-                showGarminDialog = false
+                viewModel.apiTokenStore.saveToken(GarminApiAdapter.PROVIDER_KEY, token); isGarminConnected = true; showGarminDialog = false
             },
             onDismiss = { showGarminDialog = false }
         )
     }
+    if (showPolarDialog) {
+        PasteTokenDialog(
+            providerName = "Polar",
+            helperText = SettingsHelperText.POLAR,
+            onConnect = { token ->
+                viewModel.apiTokenStore.saveToken(PolarApiAdapter.PROVIDER_KEY, token); isPolarConnected = true; showPolarDialog = false
+            },
+            onDismiss = { showPolarDialog = false }
+        )
+    }
+}
+
+/** Helper-text strings for the [PasteTokenDialog]. Extracted so the call
+ *  sites in [SettingsScreen] stay compact and the strings have one home. */
+internal object SettingsHelperText {
+    const val OURA = "Paste an Oura personal-access token from cloud.ouraring.com. Bios uses it as a bearer token; refresh-aware OAuth lands when a Bios Oura app is registered."
+    const val WITHINGS = "Paste a Withings API access token. Obtain one through a Withings developer-account OAuth exchange against developer.withings.com — Bios does not perform the OAuth dance itself yet."
+    const val WHOOP = "Paste a WHOOP API access token. Obtain one through a WHOOP developer-account OAuth exchange against developer.whoop.com — Bios does not perform the OAuth dance itself yet."
+    const val GARMIN = "Paste a Garmin Wellness API access token (or a pre-signed session token from a Garmin proxy). Bios does not perform the OAuth 1.0a dance itself yet — see the connection notes for what works today."
+    const val POLAR = "Paste a Polar AccessLink API access token from admin.polaraccesslink.com. Bios uses it as a bearer; refresh-aware OAuth lands when a Bios Polar app is registered."
 }
 
 @Composable

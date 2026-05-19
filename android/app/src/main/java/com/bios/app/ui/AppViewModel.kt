@@ -22,6 +22,7 @@ import com.bios.app.ingest.IngestManager
 import com.bios.app.ingest.OuraApiAdapter
 import com.bios.app.ingest.OuraTokenStore
 import com.bios.app.ingest.PhoneSensorAdapter
+import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.data.BiomarkerContext
@@ -55,6 +56,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val withingsAdapter = WithingsApiAdapter(apiTokenStore)
     val whoopAdapter = WhoopApiAdapter(apiTokenStore)
     val garminAdapter = GarminApiAdapter(apiTokenStore)
+    val polarAdapter = PolarApiAdapter(apiTokenStore)
     val phoneSensorAdapter = PhoneSensorAdapter(application)
     val gadgetbridgeAdapter = GadgetbridgeAdapter(application)
     val directSensorAdapter = DirectSensorAdapter(application)
@@ -63,7 +65,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val ingestManager = IngestManager(
         healthConnect, db, ouraAdapter, phoneSensorAdapter,
         gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, whoopAdapter,
-        garminAdapter, bleAirQualityAdapter, latencyTracker
+        garminAdapter, polarAdapter, bleAirQualityAdapter, latencyTracker
     )
     private val reproductiveReadingDao = ReproductiveDatabase.readingDaoOrNull(application)
     val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)

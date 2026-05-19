@@ -1,6 +1,10 @@
 package com.bios.app.ingest
 
 import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.EventPayloadField
+import com.bios.app.model.ExerciseModality
+import com.bios.app.model.ExerciseSession
+import com.bios.app.model.ExerciseSessionFields
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
@@ -13,6 +17,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -204,6 +209,80 @@ class PolarApiAdapter(
         return readings
     }
 
+    /**
+     * Reads Polar AccessLink `/users/exercise-transactions` and returns each
+     * exercise as a composite [ExerciseSession] — parent EXERCISE_SESSION
+     * reading + `event_payloads` rows (modality, start_utc, end_utc, optional
+     * avg_hr_bpm). Mirrors the HC / Oura / WHOOP / Garmin emission shape.
+     *
+     * Polar's exercise record carries `start-time` (ISO), `duration` in
+     * milliseconds, `heart-rate-average`, and `sport` as a free-form string
+     * (the AccessLink enum — "RUNNING", "CYCLING", "STRENGTH_TRAINING", etc.).
+     * RPE isn't on the payload, so the field is omitted.
+     *
+     * **Confidence**: HIGH — Polar's straps (H10, OH1, Verity Sense) are the
+     * clinical-grade segment of the wearable market. The other adapters
+     * default to MEDIUM; Polar can claim higher.
+     */
+    suspend fun fetchExerciseSessions(
+        startTime: Instant, endTime: Instant, sourceId: String
+    ): List<ExerciseSession> {
+        val token = getToken() ?: return emptyList()
+        val json = apiGet(token, "users/exercise-transactions") ?: return emptyList()
+        val exercises = json.optJSONArray("exercises") ?: return emptyList()
+
+        val sessions = mutableListOf<ExerciseSession>()
+        for (i in 0 until exercises.length()) {
+            val item = exercises.getJSONObject(i)
+            val startMs = parseTimestamp(item.optString("start-time", ""))
+            if (startMs == 0L) continue
+            val durationMs = item.optLong("duration", 0L)
+            if (durationMs <= 0L) continue
+            val durationSec = (durationMs / 1000L).toInt()
+            val endMs = startMs + durationMs
+
+            val reading = MetricReading(
+                id = UUID.randomUUID().toString(),
+                metricType = MetricType.EXERCISE_SESSION.key,
+                value = 1.0,
+                timestamp = startMs,
+                durationSec = durationSec,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.HIGH.level,
+            )
+
+            val payload = mutableListOf(
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.MODALITY,
+                    stringValue = mapPolarSportToModality(item.optString("sport")),
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.START_UTC,
+                    longValue = startMs,
+                ),
+                EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.END_UTC,
+                    longValue = endMs,
+                ),
+            )
+
+            val avgHr = item.optDouble("heart-rate-average", Double.NaN)
+            if (!avgHr.isNaN() && avgHr > 0.0) {
+                payload += EventPayloadField(
+                    readingId = reading.id,
+                    fieldKey = ExerciseSessionFields.AVG_HR_BPM,
+                    doubleValue = avgHr,
+                )
+            }
+
+            sessions += ExerciseSession(reading = reading, payload = payload)
+        }
+        return sessions
+    }
+
     private fun sleepStageReading(
         stage: SleepStage, durationSec: Int, timestamp: Long, sourceId: String
     ) = MetricReading(
@@ -242,5 +321,35 @@ class PolarApiAdapter(
         internal const val BASE_URL = "https://www.polaraccesslink.com/v3"
         const val PROVIDER_KEY = "polar"
         private val DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+        /**
+         * Maps a Polar AccessLink `sport` string (uppercase snake_case like
+         * "RUNNING", "STRENGTH_TRAINING") to a Bios [ExerciseModality] bucket.
+         * Unknown / blank → OTHER, matching the policy in the HC / Oura /
+         * WHOOP / Garmin adapters.
+         */
+        internal fun mapPolarSportToModality(sport: String?): String {
+            if (sport.isNullOrBlank()) return ExerciseModality.OTHER
+            return when (sport.uppercase()) {
+                "RUNNING", "TREADMILL_RUNNING", "TRAIL_RUNNING", "ROAD_RUNNING",
+                "WALKING", "INDOOR_WALKING", "HIKING", "NORDIC_WALKING",
+                "CYCLING", "INDOOR_CYCLING", "ROAD_BIKING", "MOUNTAIN_BIKING",
+                "ELLIPTICAL", "INDOOR_CARDIO",
+                "ROWING", "INDOOR_ROWING",
+                "SWIMMING_POOL", "OPEN_WATER_SWIMMING", "SWIMMING",
+                "STAIR_CLIMBING", "OTHER_INDOOR",
+                "FUNCTIONAL_TRAINING" -> ExerciseModality.CARDIO
+
+                "STRENGTH_TRAINING", "WEIGHTLIFTING",
+                "CALISTHENICS", "BODYBUILDING" -> ExerciseModality.STRENGTH
+
+                "HIIT", "INTERVAL_TRAINING", "CROSS_TRAINING",
+                "CIRCUIT_TRAINING" -> ExerciseModality.INTERVAL
+
+                "YOGA", "PILATES", "STRETCHING", "MOBILITY" -> ExerciseModality.MOBILITY
+
+                else -> ExerciseModality.OTHER
+            }
+        }
     }
 }
