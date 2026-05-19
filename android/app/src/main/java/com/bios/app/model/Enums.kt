@@ -18,6 +18,7 @@ enum class SourceType(val key: String) {
     POLAR_API("polar_api"),
     PHONE_SENSOR("phone_sensor"),
     CAMERA_PPG("camera_ppg"),
+    BLE_PERIPHERAL("ble_peripheral"),
     SELF_REPORTED("self_reported")
 }
 

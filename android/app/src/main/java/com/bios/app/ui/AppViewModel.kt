@@ -13,6 +13,7 @@ import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.LatencyPercentiles
 import com.bios.app.engine.TFLiteAnomalyModel
 import com.bios.app.ingest.ApiTokenStore
+import com.bios.app.ingest.BleAirQualityAdapter
 import com.bios.app.ingest.DirectSensorAdapter
 import com.bios.app.ingest.GadgetbridgeAdapter
 import com.bios.app.ingest.HealthConnectAdapter
@@ -53,10 +54,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val phoneSensorAdapter = PhoneSensorAdapter(application)
     val gadgetbridgeAdapter = GadgetbridgeAdapter(application)
     val directSensorAdapter = DirectSensorAdapter(application)
+    val bleAirQualityAdapter = BleAirQualityAdapter(application, db.metricReadingDao(), com.bios.app.ingest.BlePairedDeviceStore(application))
     val latencyTracker = DetectionLatencyTracker()
     val ingestManager = IngestManager(
         healthConnect, db, ouraAdapter, phoneSensorAdapter,
-        gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, latencyTracker
+        gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, bleAirQualityAdapter, latencyTracker
     )
     private val reproductiveReadingDao = ReproductiveDatabase.readingDaoOrNull(application)
     val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)
@@ -475,26 +477,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // MARK: - Manual biomarker entry
 
-    val biomarkerEntryRepo = BiomarkerEntryRepo(db)
-
-    private val _recentBiomarkers = MutableStateFlow<List<MetricReading>>(emptyList())
-    val recentBiomarkers: StateFlow<List<MetricReading>> = _recentBiomarkers
-
-    fun refreshRecentBiomarkers(limit: Int = 20) {
-        viewModelScope.launch {
-            _recentBiomarkers.value = biomarkerEntryRepo.fetchRecent(limit)
-        }
-    }
-
-    fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) {
-        if (metricType.domain != MetricDomain.BIOMARKER) {
-            _error.value = "Manual entry is only supported for biomarker metrics."
-            return
-        }
-        viewModelScope.launch {
-            biomarkerEntryRepo.add(metricType, value, timestamp, context)
-            _recentBiomarkers.value = biomarkerEntryRepo.fetchRecent(20)
-        }
-    }
-
+    val biomarkers = AppViewModelBiomarkers(BiomarkerEntryRepo(db), viewModelScope, _error)
+    val biomarkerEntryRepo: BiomarkerEntryRepo get() = biomarkers.repo
+    val recentBiomarkers: StateFlow<List<MetricReading>> get() = biomarkers.recent
+    fun refreshRecentBiomarkers(limit: Int = 20) = biomarkers.refreshRecent(limit)
+    fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) =
+        biomarkers.addManual(metricType, value, timestamp, context)
 }

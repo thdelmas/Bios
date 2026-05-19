@@ -336,7 +336,20 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
                     onNavigateToPeriodEntry = { navController.navigate("period_entry") },
                     onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
-                    onNavigateToDataCoverage = { navController.navigate("data_coverage") }
+                    onNavigateToDataCoverage = { navController.navigate("data_coverage") },
+                    onNavigateToBlePair = { navController.navigate("ble_pair") }
+                )
+            }
+            composable("ble_pair") {
+                val bleVm = remember(viewModel) {
+                    com.bios.app.ui.ble.BleAirQualityPairViewModel(
+                        adapter = viewModel.bleAirQualityAdapter,
+                        ingestManager = viewModel.ingestManager,
+                    )
+                }
+                com.bios.app.ui.ble.BleAirQualityPairScreen(
+                    viewModel = bleVm,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("data_coverage") {
