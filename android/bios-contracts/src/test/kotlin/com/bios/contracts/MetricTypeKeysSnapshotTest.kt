@@ -98,6 +98,18 @@ class MetricTypeKeysSnapshotTest {
         "wbc",
         "rbc",
         "platelets",
+        // Biomarker glycemic-extended / iron / endocrine / micronutrient (#24)
+        "fasting_glucose",
+        "fasting_insulin",
+        "homa_ir",
+        "ferritin",
+        "testosterone_total",
+        "estradiol",
+        "cortisol",
+        "igf_1",
+        "vitamin_b12",
+        "folate",
+        "magnesium",
         // Epigenetic age clocks
         "epigenetic_age_dunedin_pace",
         "epigenetic_age_grim",

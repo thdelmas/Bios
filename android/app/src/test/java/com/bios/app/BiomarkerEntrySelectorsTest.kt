@@ -38,6 +38,12 @@ class BiomarkerEntrySelectorsTest {
             MetricType.TSH, MetricType.FREE_T4, MetricType.FREE_T3,
             MetricType.HEMOGLOBIN, MetricType.HEMATOCRIT,
             MetricType.WBC, MetricType.RBC, MetricType.PLATELETS,
+            // Glycemic-extended / iron / endocrine / micronutrient (#24).
+            MetricType.FASTING_GLUCOSE, MetricType.FASTING_INSULIN, MetricType.HOMA_IR,
+            MetricType.FERRITIN,
+            MetricType.TESTOSTERONE_TOTAL, MetricType.ESTRADIOL,
+            MetricType.CORTISOL, MetricType.IGF_1,
+            MetricType.VITAMIN_B12, MetricType.FOLATE, MetricType.MAGNESIUM,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,

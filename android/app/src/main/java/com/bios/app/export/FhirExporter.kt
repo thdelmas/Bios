@@ -352,6 +352,21 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
     MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
     MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
+    // #24 — glycemic-extended, iron, endocrine, micronutrient.
+    // LOINC codes sourced from loinc.org's canonical lab-test catalog; each
+    // pairs the code with its official long-form display name so the FHIR
+    // round-trip is greppable in a Bundle.
+    MetricType.FASTING_GLUCOSE -> "1558-6" to "Fasting glucose [Mass/volume] in Serum or Plasma"
+    MetricType.FASTING_INSULIN -> "20448-7" to "Insulin [Units/volume] in Serum or Plasma --fasting"
+    MetricType.HOMA_IR -> "81576-7" to "Homeostatic model assessment Insulin resistance Calculated"
+    MetricType.FERRITIN -> "2276-4" to "Ferritin [Mass/volume] in Serum or Plasma"
+    MetricType.TESTOSTERONE_TOTAL -> "2986-8" to "Testosterone [Mass/volume] in Serum or Plasma"
+    MetricType.ESTRADIOL -> "2243-4" to "Estradiol (E2) [Mass/volume] in Serum or Plasma"
+    MetricType.CORTISOL -> "2143-6" to "Cortisol [Mass/volume] in Serum or Plasma"
+    MetricType.IGF_1 -> "2484-4" to "Insulin-like growth factor-I [Mass/volume] in Serum or Plasma"
+    MetricType.VITAMIN_B12 -> "2132-9" to "Cobalamins [Mass/volume] in Serum or Plasma"
+    MetricType.FOLATE -> "2284-8" to "Folate [Mass/volume] in Serum or Plasma"
+    MetricType.MAGNESIUM -> "2601-3" to "Magnesium [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -371,8 +386,10 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.MG_PER_L -> "mg/L"
     MetricUnit.NG_PER_ML -> "ng/mL"
     MetricUnit.NG_PER_DL -> "ng/dL"
+    MetricUnit.UG_PER_DL -> "ug/dL"
     MetricUnit.PG_PER_ML -> "pg/mL"
     MetricUnit.MIU_PER_L -> "m[IU]/L"
+    MetricUnit.MICRO_IU_PER_ML -> "u[IU]/mL"
     MetricUnit.G_PER_DL -> "g/dL"
     MetricUnit.GIGA_PER_L -> "10*9/L"
     MetricUnit.TERA_PER_L -> "10*12/L"
