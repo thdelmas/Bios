@@ -137,6 +137,27 @@ object MetricCoverageRegistry {
             MetricType.BLOOD_GLUCOSE, 4 * H,
             listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
         ),
+        // CGM-derived variability metrics (#28). Same staleness budget as
+        // the underlying BLOOD_GLUCOSE stream — they're recomputed on every
+        // sync, so freshness tracks the source. Routes mirror the source:
+        // no separate "configure CV" surface, the CTA still leads to the
+        // CGM connection itself.
+        MetricCoverageSpec(
+            MetricType.GLUCOSE_CV, 4 * H,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
+        MetricCoverageSpec(
+            MetricType.GLUCOSE_MAGE, 4 * H,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
+        MetricCoverageSpec(
+            MetricType.GLUCOSE_TIME_IN_RANGE, 4 * H,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
+        MetricCoverageSpec(
+            MetricType.GLUCOSE_PEAK_24H, 4 * H,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
         MetricCoverageSpec(
             MetricType.BODY_MASS, MONTH,
             listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)

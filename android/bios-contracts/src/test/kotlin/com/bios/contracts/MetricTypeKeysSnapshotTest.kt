@@ -60,6 +60,10 @@ class MetricTypeKeysSnapshotTest {
         "exercise_session",
         // Metabolic
         "blood_glucose",
+        "glucose_cv",
+        "glucose_mage",
+        "glucose_time_in_range",
+        "glucose_peak_24h",
         "body_mass",
         "body_fat_pct",
         "lean_mass",
