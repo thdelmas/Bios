@@ -143,6 +143,21 @@ object MetricCoverageRegistry {
         ),
         MetricCoverageSpec(
             MetricType.BODY_FAT_PCT, MONTH,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
+        // Impedance-scale outputs — HC delivers what its sources upstream
+        // expose; Withings is the canonical API-adapter for hydration +
+        // bone mass since HC has no records for those.
+        MetricCoverageSpec(
+            MetricType.LEAN_MASS, MONTH,
+            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
+        ),
+        MetricCoverageSpec(
+            MetricType.BODY_WATER_PCT, MONTH,
+            listOf(CoverageRouteKind.API_ADAPTER)
+        ),
+        MetricCoverageSpec(
+            MetricType.BONE_MASS, MONTH,
             listOf(CoverageRouteKind.API_ADAPTER)
         ),
 
