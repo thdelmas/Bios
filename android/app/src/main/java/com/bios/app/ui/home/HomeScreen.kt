@@ -154,7 +154,7 @@ fun HomeScreen(
         HomeEntryCard(
             icon = Icons.Default.Medication,
             title = "Active Substances",
-            subtitle = "Caffeine, alcohol — current concentration in body",
+            subtitle = "Caffeine, alcohol, tobacco, cannabis — concentration + event log",
             onClick = onNavigateToActiveSubstances,
         )
 

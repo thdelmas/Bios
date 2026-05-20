@@ -72,9 +72,14 @@ fun ActiveSubstancesScreen(
         val windowStart = now - ActiveSubstancesAggregator.DEFAULT_WINDOW_MS
         val dao = viewModel.db.metricReadingDao()
         // Read each intake key separately — the DAO indexes by
-        // metricType + timestamp, so two short scans beat one big one.
-        val intakes = listOf(MetricType.CAFFEINE_INTAKE, MetricType.ALCOHOL_INTAKE)
-            .flatMap { dao.fetch(it.key, windowStart, now) }
+        // metricType + timestamp, so several short scans beat one big
+        // table scan. Dosed keys + Smokeless event-marker keys both feed
+        // the dashboard (event-only tiles for the latter, #138).
+        val intakeKeys = listOf(
+            MetricType.CAFFEINE_INTAKE.key,
+            MetricType.ALCOHOL_INTAKE.key,
+        ) + ActiveSubstancesAggregator.EVENT_ONLY_METRIC_KEYS
+        val intakes = intakeKeys.flatMap { dao.fetch(it, windowStart, now) }
         val sources = viewModel.db.dataSourceDao().getAll()
             .associate { it.id to (it.deviceName ?: it.sourceType) }
         cards = ActiveSubstancesAggregator.compute(intakes, sources, nowMs = now)
@@ -130,8 +135,10 @@ fun ActiveSubstancesScreen(
 @Composable
 private fun Intro() {
     Text(
-        "Pull-side decay curves for substances Bios knows the " +
-            "pharmacokinetics of. Math only — you read the number.",
+        "Pull-side decay curves for substances with a dose model (caffeine, " +
+            "alcohol) plus the event log for substances that ship as " +
+            "timestamp-only markers (tobacco, cannabis). Math only — " +
+            "you read the number.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -144,59 +151,113 @@ private fun SubstanceTile(card: SubstanceCard) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    substanceLabel(card),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                if (card.hasRecentIntake) {
-                    Text(
-                        formatAmount(card.currentAmountMg, card.metricKey),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-
-            if (!card.hasRecentIntake) {
-                Text(
-                    "No recent intake logged in the last 24h. Unknown, not zero.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                return@Column
-            }
-
-            Sparkline(card)
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatCell("Last dose", lastDoseLabel(card))
-                card.thresholdMg?.let {
-                    StatCell(
-                        "Below ${formatAmount(it, card.metricKey)} at",
-                        belowThresholdLabel(card),
-                    )
-                }
-                StatCell("Kinetics", kineticsLabel(card.pk.kinetics))
-            }
-
-            if (card.recentDoses.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Recent doses",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                card.recentDoses.sortedByDescending { it.timestampMs }.forEach { dose ->
-                    DoseRow(dose, card.metricKey)
-                }
+            TileHeader(card)
+            when (card.displayMode) {
+                ActiveSubstancesAggregator.DisplayMode.DOSED -> DosedBody(card)
+                ActiveSubstancesAggregator.DisplayMode.EVENT_ONLY -> EventOnlyBody(card)
             }
         }
+    }
+}
+
+@Composable
+private fun TileHeader(card: SubstanceCard) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            substanceLabel(card),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        val amount = card.currentAmountMg
+        if (card.displayMode == ActiveSubstancesAggregator.DisplayMode.DOSED &&
+            card.hasRecentIntake && amount != null
+        ) {
+            Text(
+                formatAmount(amount, card.metricKey),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        } else if (card.displayMode == ActiveSubstancesAggregator.DisplayMode.EVENT_ONLY &&
+            card.hasRecentIntake
+        ) {
+            Text(
+                "${card.recentDoses.size} event${if (card.recentDoses.size == 1) "" else "s"}",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DosedBody(card: SubstanceCard) {
+    val pk = card.pk
+    if (!card.hasRecentIntake || pk == null) {
+        Text(
+            "No recent intake logged in the last 24h. Unknown, not zero.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    Sparkline(card)
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        StatCell("Last dose", lastDoseLabel(card))
+        card.thresholdMg?.let {
+            StatCell(
+                "Below ${formatAmount(it, card.metricKey)} at",
+                belowThresholdLabel(card),
+            )
+        }
+        StatCell("Kinetics", kineticsLabel(pk.kinetics))
+    }
+
+    if (card.recentDoses.isNotEmpty()) {
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Recent doses",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        card.recentDoses.sortedByDescending { it.timestampMs }.forEach { dose ->
+            DoseRow(dose, card.metricKey)
+        }
+    }
+}
+
+@Composable
+private fun EventOnlyBody(card: SubstanceCard) {
+    if (!card.hasRecentIntake) {
+        Text(
+            "No ${substanceLabel(card).lowercase()} events logged in the last 24h.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    Text(
+        "No dose recorded by the producer — Bios shows the event log only. " +
+            "Concentration math activates once a dose-bearing companion key ships.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        StatCell("Last event", lastDoseLabel(card))
+    }
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "Recent events",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+    )
+    card.recentDoses.sortedByDescending { it.timestampMs }.forEach { dose ->
+        DoseRow(dose, card.metricKey)
     }
 }
 
@@ -267,15 +328,17 @@ private fun StatCell(label: String, value: String) {
 
 @Composable
 private fun DoseRow(dose: DoseDisplay, metricKey: String) {
+    val left = if (dose.doseMg != null) {
+        "${formatTime(dose.timestampMs)} · ${formatAmount(dose.doseMg, metricKey)}"
+    } else {
+        formatTime(dose.timestampMs)
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            "${formatTime(dose.timestampMs)} · ${formatAmount(dose.doseMg, metricKey)}",
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Text(left, style = MaterialTheme.typography.bodySmall)
         Text(
             dose.sourceLabel,
             style = MaterialTheme.typography.labelSmall,
@@ -288,7 +351,9 @@ private fun DoseRow(dose: DoseDisplay, metricKey: String) {
 private fun substanceLabel(card: SubstanceCard): String = when (card.metricKey) {
     MetricType.CAFFEINE_INTAKE.key -> "Caffeine"
     MetricType.ALCOHOL_INTAKE.key -> "Alcohol"
-    else -> card.pk.substanceKey
+    MetricType.TOBACCO_USE.key -> "Tobacco"
+    MetricType.CANNABIS_USE.key -> "Cannabis"
+    else -> card.pk?.substanceKey ?: card.metricKey
 }
 
 private fun kineticsLabel(k: EliminationKinetics): String = when (k) {
