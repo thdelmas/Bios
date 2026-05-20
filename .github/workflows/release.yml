@@ -25,6 +25,9 @@ env:
   WORKING_DIR: android
   BUILD_TASK: assembleStandaloneRelease
   APK_GLOB: "app/build/outputs/apk/**/release/*.apk"
+  # Node 20 on runners is EOL Sept 2026. Force JS actions onto Node 24 now to
+  # silence the deprecation warning and surface compat issues before forced cutover.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
