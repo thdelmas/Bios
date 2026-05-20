@@ -14,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.engine.AnomalyModelComparison
 import com.bios.app.engine.LatencyPercentiles
 import com.bios.app.ui.AppViewModel
+import java.util.Locale
 
 /**
  * Detection pipeline health dashboard showing latency SLOs per stage.
@@ -28,9 +30,13 @@ fun PipelineHealthScreen(
     onBack: () -> Unit
 ) {
     val pipelineSummary by viewModel.pipelineSummary.collectAsState()
+    var modelComparison by remember {
+        mutableStateOf<AnomalyModelComparison.Snapshot?>(null)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.refreshPipelineSummary()
+        modelComparison = AnomalyModelComparison.snapshot()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -78,7 +84,64 @@ fun PipelineHealthScreen(
                 items(pipelineSummary) { percentiles ->
                     PipelineStageCard(percentiles)
                 }
+
+                modelComparison?.let { snapshot ->
+                    item { ModelComparisonCard(snapshot) }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun ModelComparisonCard(snapshot: AnomalyModelComparison.Snapshot) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "ML vs heuristic (issue #1 A/B)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            if (snapshot.total == 0L) {
+                Text(
+                    "No comparisons yet. Both scores get recorded once the " +
+                        "ML model runs against a synced detection window.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                return@Column
+            }
+            val disagreePct = snapshot.disagreementRate * 100.0
+            Text(
+                "${snapshot.total} comparisons · " +
+                    String.format(Locale.US, "%.1f%% disagree", disagreePct),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "agree below ${snapshot.agreeBelow} · " +
+                    "agree above ${snapshot.agreeAbove} · " +
+                    "only ML ${snapshot.onlyMlAbove} · " +
+                    "only heuristic ${snapshot.onlyHeuristicAbove}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                String.format(
+                    Locale.US,
+                    "Δ(ML − heuristic): mean %.3f · stddev %.3f",
+                    snapshot.meanDelta, snapshot.stddevDelta,
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
