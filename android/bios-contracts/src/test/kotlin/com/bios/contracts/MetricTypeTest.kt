@@ -37,6 +37,41 @@ class MetricTypeTest {
     }
 
     @Test
+    fun dosed_intake_keys_carry_dose_units() {
+        // Unlike tobacco_use / cannabis_use (EVENT marker), the #136 keys
+        // store the dose in `value` so the pharmacokinetic engine can
+        // integrate them. Each key's unit is the dose's native unit.
+        assertEquals(MetricDomain.INTAKE, MetricType.CAFFEINE_INTAKE.domain)
+        assertEquals(MetricUnit.MILLIGRAMS, MetricType.CAFFEINE_INTAKE.unit)
+        assertEquals("mg", MetricUnit.MILLIGRAMS.symbol)
+
+        assertEquals(MetricDomain.INTAKE, MetricType.ALCOHOL_INTAKE.domain)
+        assertEquals(MetricUnit.GRAMS, MetricType.ALCOHOL_INTAKE.unit)
+        assertEquals("g", MetricUnit.GRAMS.symbol)
+
+        assertEquals(MetricDomain.INTAKE, MetricType.MEDICATION_INTAKE.domain)
+        assertEquals(MetricUnit.MILLIGRAMS, MetricType.MEDICATION_INTAKE.unit)
+    }
+
+    @Test
+    fun dosed_intake_keys_do_not_allow_manual_entry() {
+        // Doses come from the producing companion (W2F FuelLog for caffeine,
+        // a future medications companion for medication_intake) — not the
+        // Bios bedside manual-reading surface. Keep the picker focused on
+        // clinical vitals.
+        for (t in setOf(
+            MetricType.CAFFEINE_INTAKE,
+            MetricType.ALCOHOL_INTAKE,
+            MetricType.MEDICATION_INTAKE,
+        )) {
+            assertEquals(
+                false, t.allowsManualEntry,
+                "${t.key} must not opt in to manual entry — companion is the producer",
+            )
+        }
+    }
+
+    @Test
     fun safety_keys_are_safety_events() {
         val safetyEvents = setOf(
             MetricType.FALL_EVENT, MetricType.NEAR_MISS_FALL, MetricType.CHECK_IN_MISS,

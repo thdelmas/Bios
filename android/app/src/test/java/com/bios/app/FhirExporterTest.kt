@@ -354,6 +354,8 @@ class FhirExporterTest {
             MetricUnit.PPM -> "[ppm]"
             MetricUnit.PPB -> "[ppb]"
             MetricUnit.LITERS_PER_MIN -> "L/min"
+            MetricUnit.MILLIGRAMS -> "mg"
+            MetricUnit.GRAMS -> "g"
         }
     }
 }

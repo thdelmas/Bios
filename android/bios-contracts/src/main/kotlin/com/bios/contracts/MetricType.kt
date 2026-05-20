@@ -200,6 +200,25 @@ enum class MetricType(
     CANNABIS_USE("cannabis_use", MetricUnit.EVENT, MetricDomain.INTAKE),
     CANNABIS_CRAVING("cannabis_craving", MetricUnit.EVENT, MetricDomain.INTAKE),
 
+    // Dosed-intake events (#136). Unlike tobacco_use / cannabis_use, these
+    // keys carry the dose in `value` so the pharmacokinetic engine can
+    // compute current concentration. Companion-write surfaces (e.g. W2F
+    // FuelLog for caffeine) populate the dose; substance identity travels
+    // with the metric_type (`caffeine_intake`, `alcohol_intake`) or, for
+    // generic medication entries, in event_payloads keyed by reading id.
+    // Manifesto-clean: math substrate only — no nudges, no adherence
+    // judgments. See engine/ConcentrationCalculator.
+    CAFFEINE_INTAKE("caffeine_intake", MetricUnit.MILLIGRAMS, MetricDomain.INTAKE),
+    // Stored as grams of pure ethanol (the canonical "standard drink" unit:
+    // ~14 g in the US, ~10 g in the EU; the value is always grams of
+    // ethanol regardless of regional convention).
+    ALCOHOL_INTAKE("alcohol_intake", MetricUnit.GRAMS, MetricDomain.INTAKE),
+    // Generic prescribed-medication dose. Specific drug identifier rides
+    // in event_payloads (`substance_key`) so a future medications
+    // companion can manage its own substance vocabulary without
+    // re-allocating MetricType keys per drug.
+    MEDICATION_INTAKE("medication_intake", MetricUnit.MILLIGRAMS, MetricDomain.INTAKE),
+
     // Safety events (injected by Virgil via ContentProvider)
     // Timestamp + opaque event-id only — no GPS, SMS contents, or contact identity.
     FALL_EVENT("fall_event", MetricUnit.EVENT, MetricDomain.SAFETY),
@@ -254,7 +273,9 @@ enum class MetricUnit(val symbol: String) {
     UG_PER_M3("µg/m³"),
     PPM("ppm"),
     PPB("ppb"),
-    LITERS_PER_MIN("L/min")
+    LITERS_PER_MIN("L/min"),
+    MILLIGRAMS("mg"),
+    GRAMS("g")
 }
 
 enum class MetricDomain {
