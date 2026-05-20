@@ -262,11 +262,17 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
                     onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToMetric = { metric ->
-                        selectedTab = tabs.indexOfFirst { it.first == "trends" }
-                        navController.navigate("trends?metric=${metric.key}") {
-                            popUpTo("home") { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        // SLEEP_DURATION has a dedicated dashboard richer
+                        // than the generic trends view.
+                        if (metric == MetricType.SLEEP_DURATION) {
+                            navController.navigate("sleep_dashboard")
+                        } else {
+                            selectedTab = tabs.indexOfFirst { it.first == "trends" }
+                            navController.navigate("trends?metric=${metric.key}") {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 )
