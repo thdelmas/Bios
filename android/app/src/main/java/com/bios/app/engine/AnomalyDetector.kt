@@ -92,8 +92,17 @@ class AnomalyDetector(
         if (zScores.isEmpty()) return null
 
         val features = TFLiteAnomalyModel.buildFeatureVector(zScores)
-        val score = mlModel?.score(features)
-            ?: TFLiteAnomalyModel.heuristicScore(features)
+        val heuristicScore = TFLiteAnomalyModel.heuristicScore(features)
+        val mlScore = mlModel?.score(features)
+        // A/B comparison signal (issue #1): when the trained model is
+        // loaded, record both scores so the pipeline-health surface can
+        // report agreement vs disagreement over time. The detection
+        // decision still uses the ML score; the heuristic is the safety
+        // net + comparison reference.
+        if (mlScore != null) {
+            AnomalyModelComparison.record(mlScore, heuristicScore)
+        }
+        val score = mlScore ?: heuristicScore
 
         if (score < TFLiteAnomalyModel.ANOMALY_THRESHOLD) return null
 
