@@ -3,6 +3,7 @@ package com.bios.contracts
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -211,6 +212,95 @@ class MetricTypeTest {
         // EVENT unit matches the marker semantics (value = 1.0).
         assertEquals(MetricDomain.ACTIVITY, MetricType.EXERCISE_SESSION.domain)
         assertEquals(MetricUnit.EVENT, MetricType.EXERCISE_SESSION.unit)
+    }
+
+    @Test
+    fun pain_score_is_neurological_score() {
+        assertEquals(MetricDomain.NEUROLOGICAL, MetricType.PAIN_SCORE.domain)
+        assertEquals(MetricUnit.SCORE, MetricType.PAIN_SCORE.unit)
+        assertTrue(
+            MetricType.PAIN_SCORE.allowsManualEntry,
+            "PAIN_SCORE must allow manual entry — it's the canonical triage vital",
+        )
+    }
+
+    @Test
+    fun consciousness_level_is_neurological_score() {
+        // GCS canonical scale, 3–15 total. AVPU input is an entry-time shortcut
+        // mapped lossless into GCS — see MetricType.kt header doc.
+        assertEquals(MetricDomain.NEUROLOGICAL, MetricType.CONSCIOUSNESS_LEVEL.domain)
+        assertEquals(MetricUnit.SCORE, MetricType.CONSCIOUSNESS_LEVEL.unit)
+        assertTrue(
+            MetricType.CONSCIOUSNESS_LEVEL.allowsManualEntry,
+            "CONSCIOUSNESS_LEVEL must allow manual entry — clinicians and " +
+                "owners both produce it from the bedside",
+        )
+    }
+
+    @Test
+    fun oxygen_flow_rate_is_respiratory_liters_per_min() {
+        assertEquals(MetricDomain.RESPIRATORY, MetricType.OXYGEN_FLOW_RATE.domain)
+        assertEquals(MetricUnit.LITERS_PER_MIN, MetricType.OXYGEN_FLOW_RATE.unit)
+        assertEquals("L/min", MetricUnit.LITERS_PER_MIN.symbol)
+        assertTrue(
+            MetricType.OXYGEN_FLOW_RATE.allowsManualEntry,
+            "OXYGEN_FLOW_RATE must allow manual entry — it's recorded at " +
+                "the bedside, not by a wearable",
+        )
+    }
+
+    @Test
+    fun allows_manual_entry_defaults_false_for_pure_sensor_keys() {
+        // Spot-check: streaming sensor / derived signals must never opt in
+        // to the manual-reading surface, or the picker fills with noise.
+        val notManual = listOf(
+            MetricType.HEART_RATE_VARIABILITY,
+            MetricType.HRV_LF_POWER, MetricType.HRV_HF_POWER,
+            MetricType.PARASYMPATHETIC_TONE, MetricType.STRESS_SCORE,
+            MetricType.LF_HF_RATIO, MetricType.VO2_MAX,
+            MetricType.SKIN_TEMPERATURE_DEVIATION,
+            MetricType.SLEEP_STAGE, MetricType.SLEEP_EFFICIENCY,
+            MetricType.STEPS, MetricType.ACTIVE_CALORIES,
+            MetricType.AMBIENT_LIGHT, MetricType.AIR_PM25,
+            MetricType.TYPING_CADENCE, MetricType.MOOD_DRIFT_SCORE,
+            MetricType.TOBACCO_USE, MetricType.FALL_EVENT,
+        )
+        for (t in notManual) {
+            assertEquals(
+                false, t.allowsManualEntry,
+                "${t.key} must not opt in to manual entry",
+            )
+        }
+    }
+
+    @Test
+    fun allows_manual_entry_true_for_clinical_vitals() {
+        val manual = listOf(
+            MetricType.HEART_RATE, MetricType.RESTING_HEART_RATE,
+            MetricType.BLOOD_PRESSURE_SYSTOLIC, MetricType.BLOOD_PRESSURE_DIASTOLIC,
+            MetricType.BLOOD_OXYGEN, MetricType.RESPIRATORY_RATE,
+            MetricType.SKIN_TEMPERATURE,
+            MetricType.PAIN_SCORE, MetricType.CONSCIOUSNESS_LEVEL,
+            MetricType.OXYGEN_FLOW_RATE,
+        )
+        for (t in manual) {
+            assertTrue(
+                t.allowsManualEntry,
+                "${t.key} must opt in to manual entry — owner can be the source",
+            )
+        }
+    }
+
+    @Test
+    fun every_biomarker_allows_manual_entry() {
+        // Biomarkers have no streaming source; manual entry is the only path
+        // for owners without a FHIR feed.
+        for (t in MetricType.entries.filter { it.domain == MetricDomain.BIOMARKER }) {
+            assertTrue(
+                t.allowsManualEntry,
+                "${t.key} (biomarker) must allow manual entry",
+            )
+        }
     }
 
     @Test

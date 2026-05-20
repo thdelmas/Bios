@@ -19,10 +19,23 @@ package com.bios.contracts
  *    existing entry — add a new entry.
  *  - Consumers must call `fromKey()` (not `valueOf`) and tolerate `null` for
  *    keys their contracts version doesn't know.
+ *
+ * [allowsManualEntry] gates the Bios-hosted manual-reading surface. The rule
+ * is *"can the owner be the source?"* — reading a device (cuff, pulse-ox,
+ * thermometer), being measured by a clinician, observing themselves. Derived
+ * keys (HRV power, glucose CV, sleep efficiency) and pure-sensor-only signals
+ * (raw accelerometer) stay false. Engine isolation still holds — manual
+ * entries flow through SELF_REPORTED and never feed BaselineEngine /
+ * AnomalyDetector. See docs/SELF_REPORTED_DATA_HOME.md decision 3.
  */
-enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricDomain) {
+enum class MetricType(
+    val key: String,
+    val unit: MetricUnit,
+    val domain: MetricDomain,
+    val allowsManualEntry: Boolean = false,
+) {
     // Cardiovascular
-    HEART_RATE("heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
+    HEART_RATE("heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     HEART_RATE_VARIABILITY("heart_rate_variability", MetricUnit.MILLISECONDS, MetricDomain.CARDIOVASCULAR),
     PARASYMPATHETIC_TONE("parasympathetic_tone", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     STRESS_SCORE("stress_score", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
@@ -30,21 +43,36 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     HRV_LF_POWER("hrv_lf_power", MetricUnit.MS_SQUARED, MetricDomain.CARDIOVASCULAR),
     HRV_HF_POWER("hrv_hf_power", MetricUnit.MS_SQUARED, MetricDomain.CARDIOVASCULAR),
     VO2_MAX("vo2_max", MetricUnit.ML_PER_KG_MIN, MetricDomain.CARDIOVASCULAR),
-    RESTING_HEART_RATE("resting_heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
-    BLOOD_PRESSURE_SYSTOLIC("blood_pressure_systolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR),
-    BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR),
-    BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+    RESTING_HEART_RATE("resting_heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
+    BLOOD_PRESSURE_SYSTOLIC("blood_pressure_systolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
+    BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
+    BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
 
     // Respiratory
-    RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY),
+    RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
+    // Administered supplemental O2 (cannula/mask). Contextualises SpO2:
+    // 96 % on room air ≠ 96 % on 4 L/min. Single-point shape; ongoing-therapy
+    // log-shape (start/end + rate over time) is deferred — see issue #107.
+    OXYGEN_FLOW_RATE("oxygen_flow_rate", MetricUnit.LITERS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
 
     // Temperature
-    SKIN_TEMPERATURE("skin_temperature", MetricUnit.CELSIUS, MetricDomain.TEMPERATURE),
+    SKIN_TEMPERATURE("skin_temperature", MetricUnit.CELSIUS, MetricDomain.TEMPERATURE, allowsManualEntry = true),
     SKIN_TEMPERATURE_DEVIATION("skin_temperature_deviation", MetricUnit.DELTA_CELSIUS, MetricDomain.TEMPERATURE),
+
+    // Neurological (manual-capture clinical signs).
+    // PAIN_SCORE: 0–10 numeric (EVA / VAS / NRS interoperable). Universal
+    // triage vital.
+    // CONSCIOUSNESS_LEVEL: GCS canonical (3–15 total). GCS encodes AVPU but
+    // not vice versa, so GCS covers neuro/ICU/post-trauma/surgery contexts
+    // over a lifetime while AVPU-only is ER-triage-only. AVPU entry is a
+    // lossless input shortcut (A→15, V→13, P→8, U→3); the original scale +
+    // value are preserved in the event_payloads sidecar for provenance.
+    PAIN_SCORE("pain_score", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    CONSCIOUSNESS_LEVEL("consciousness_level", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
 
     // Sleep
     SLEEP_STAGE("sleep_stage", MetricUnit.CATEGORY, MetricDomain.SLEEP),
-    SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP),
+    SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true),
     SLEEP_LATENCY("sleep_latency", MetricUnit.SECONDS, MetricDomain.SLEEP),
     SLEEP_EFFICIENCY("sleep_efficiency", MetricUnit.PERCENT, MetricDomain.SLEEP),
     SLEEP_FRAGMENTATION_INDEX("sleep_fragmentation_index", MetricUnit.COUNT, MetricDomain.SLEEP),
@@ -68,26 +96,26 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     EXERCISE_SESSION("exercise_session", MetricUnit.EVENT, MetricDomain.ACTIVITY),
 
     // Metabolic
-    BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
+    BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC, allowsManualEntry = true),
     // CGM-derived variability keys (#28). Computed over the last 24h of
     // BLOOD_GLUCOSE readings by GlucoseVariability; one value per 24h window.
     GLUCOSE_CV("glucose_cv", MetricUnit.PERCENT, MetricDomain.METABOLIC),
     GLUCOSE_MAGE("glucose_mage", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
     GLUCOSE_TIME_IN_RANGE("glucose_time_in_range", MetricUnit.PERCENT, MetricDomain.METABOLIC),
     GLUCOSE_PEAK_24H("glucose_peak_24h", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC),
-    BODY_MASS("body_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
-    BODY_FAT_PCT("body_fat_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC),
-    LEAN_MASS("lean_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
-    BODY_WATER_PCT("body_water_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC),
-    BONE_MASS("bone_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC),
+    BODY_MASS("body_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC, allowsManualEntry = true),
+    BODY_FAT_PCT("body_fat_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC, allowsManualEntry = true),
+    LEAN_MASS("lean_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC, allowsManualEntry = true),
+    BODY_WATER_PCT("body_water_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC, allowsManualEntry = true),
+    BONE_MASS("bone_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC, allowsManualEntry = true),
 
     // Recovery
     RECOVERY_SCORE("recovery_score", MetricUnit.SCORE, MetricDomain.RECOVERY),
 
     // Women's Health
-    BASAL_BODY_TEMPERATURE("basal_body_temperature", MetricUnit.CELSIUS, MetricDomain.WOMENS_HEALTH),
+    BASAL_BODY_TEMPERATURE("basal_body_temperature", MetricUnit.CELSIUS, MetricDomain.WOMENS_HEALTH, allowsManualEntry = true),
     CYCLE_PHASE("cycle_phase", MetricUnit.CATEGORY, MetricDomain.WOMENS_HEALTH),
-    MENSTRUATION_ONSET("menstruation_onset", MetricUnit.EVENT, MetricDomain.WOMENS_HEALTH),
+    MENSTRUATION_ONSET("menstruation_onset", MetricUnit.EVENT, MetricDomain.WOMENS_HEALTH, allowsManualEntry = true),
     CYCLE_DAY("cycle_day", MetricUnit.COUNT, MetricDomain.WOMENS_HEALTH),
 
     // Environment (phone-sensor adapter)
@@ -100,57 +128,57 @@ enum class MetricType(val key: String, val unit: MetricUnit, val domain: MetricD
     // First wave matches the clinical concepts already described in
     // alerts/BiomarkerReference.kt — direct readings displace the wearable
     // proxies when an owner imports labs.
-    HBA1C("hba1c", MetricUnit.PERCENT, MetricDomain.BIOMARKER),
-    HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER),
-    TOTAL_CHOLESTEROL("total_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
-    LDL_CHOLESTEROL("ldl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
-    HDL_CHOLESTEROL("hdl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
-    TRIGLYCERIDES("triglycerides", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
-    APO_B("apo_b", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
-    VITAMIN_D_25OH("vitamin_d_25oh", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
-    TSH("tsh", MetricUnit.MIU_PER_L, MetricDomain.BIOMARKER),
-    FREE_T4("free_t4", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER),
-    FREE_T3("free_t3", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
-    HEMOGLOBIN("hemoglobin", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER),
-    HEMATOCRIT("hematocrit", MetricUnit.PERCENT, MetricDomain.BIOMARKER),
-    WBC("wbc", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
-    RBC("rbc", MetricUnit.TERA_PER_L, MetricDomain.BIOMARKER),
-    PLATELETS("platelets", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER),
+    HBA1C("hba1c", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TOTAL_CHOLESTEROL("total_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LDL_CHOLESTEROL("ldl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    HDL_CHOLESTEROL("hdl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TRIGLYCERIDES("triglycerides", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    APO_B("apo_b", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    VITAMIN_D_25OH("vitamin_d_25oh", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TSH("tsh", MetricUnit.MIU_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    FREE_T4("free_t4", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    FREE_T3("free_t3", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    HEMOGLOBIN("hemoglobin", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    HEMATOCRIT("hematocrit", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    WBC("wbc", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    RBC("rbc", MetricUnit.TERA_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PLATELETS("platelets", MetricUnit.GIGA_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Glycemic-extended (#24). Fasting glucose + insulin enable HOMA-IR, the
     // canonical insulin-resistance index — clinically meaningful before HbA1c
     // shifts. HOMA-IR is stored as the calculated value (Matthews 1985:
     // (fasting insulin µIU/mL × fasting glucose mg/dL) / 405).
-    FASTING_GLUCOSE("fasting_glucose", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
-    FASTING_INSULIN("fasting_insulin", MetricUnit.MICRO_IU_PER_ML, MetricDomain.BIOMARKER),
-    HOMA_IR("homa_ir", MetricUnit.SCORE, MetricDomain.BIOMARKER),
+    FASTING_GLUCOSE("fasting_glucose", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    FASTING_INSULIN("fasting_insulin", MetricUnit.MICRO_IU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    HOMA_IR("homa_ir", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Iron status (#24). Ferritin is the most-cited single marker for body
     // iron stores; relevant to fatigue / inflammation patterns.
-    FERRITIN("ferritin", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
+    FERRITIN("ferritin", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Endocrine panel (#24). Sex hormones + adrenal (cortisol) + IGF-1.
     // Reference ranges vary by sex/age — Bios stores raw values, the owner's
     // own provider-supplied range travels with the FHIR import.
-    TESTOSTERONE_TOTAL("testosterone_total", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER),
-    ESTRADIOL("estradiol", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
-    CORTISOL("cortisol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER),
-    IGF_1("igf_1", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
+    TESTOSTERONE_TOTAL("testosterone_total", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ESTRADIOL("estradiol", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CORTISOL("cortisol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    IGF_1("igf_1", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Micronutrients (#24). Common deficiency panel — methylation cofactors
     // (B12/folate) and the electrolyte the standard CMP often omits.
-    VITAMIN_B12("vitamin_b12", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER),
-    FOLATE("folate", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER),
-    MAGNESIUM("magnesium", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER),
+    VITAMIN_B12("vitamin_b12", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    FOLATE("folate", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MAGNESIUM("magnesium", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
     // score" from these (manifesto: never evaluate the person).
-    EPIGENETIC_AGE_DUNEDIN_PACE("epigenetic_age_dunedin_pace", MetricUnit.SCORE, MetricDomain.BIOMARKER),
-    EPIGENETIC_AGE_GRIM("epigenetic_age_grim", MetricUnit.YEARS, MetricDomain.BIOMARKER),
-    EPIGENETIC_AGE_PHENO("epigenetic_age_pheno", MetricUnit.YEARS, MetricDomain.BIOMARKER),
-    EPIGENETIC_AGE_HORVATH("epigenetic_age_horvath", MetricUnit.YEARS, MetricDomain.BIOMARKER),
+    EPIGENETIC_AGE_DUNEDIN_PACE("epigenetic_age_dunedin_pace", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    EPIGENETIC_AGE_GRIM("epigenetic_age_grim", MetricUnit.YEARS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    EPIGENETIC_AGE_PHENO("epigenetic_age_pheno", MetricUnit.YEARS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    EPIGENETIC_AGE_HORVATH("epigenetic_age_horvath", MetricUnit.YEARS, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Companion signals (injected by W2F via ContentProvider).
     // typing_cadence requires the AccessibilityService capture surface;
@@ -219,11 +247,12 @@ enum class MetricUnit(val symbol: String) {
     ML_PER_KG_MIN("mL/kg/min"),
     UG_PER_M3("µg/m³"),
     PPM("ppm"),
-    PPB("ppb")
+    PPB("ppb"),
+    LITERS_PER_MIN("L/min")
 }
 
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
     ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER
+    MENTAL_HEALTH, NEUROLOGICAL, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER
 }

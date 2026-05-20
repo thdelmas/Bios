@@ -142,10 +142,11 @@ effect alongside this PR.
 Originally framed as *"Bios is a consumer, never the entry point —
 period."* That absolute is now wrong-as-written: since then, BBT manual
 entry (`BbtEntryRepo`), biomarker entry (`BiomarkerEntryRepo`), manual
-sleep duration, and lab-report attachment (PR #106) have all shipped as
-legitimate Bios-hosted entry surfaces.
+sleep duration, lab-report attachment (PR #106), and the general
+clinical-reading bundle surface (`ManualReadingRepo`, issue #131) have
+all shipped as legitimate Bios-hosted entry surfaces.
 
-The corrected rule — which all four shipped surfaces already satisfy —
+The corrected rule — which all five shipped surfaces already satisfy —
 is the same producer-by-capture-surface line codified in
 [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) ("No domain-specific
 active tests in Bios"). **Bios hosts an entry point if and only if the
@@ -153,9 +154,17 @@ data being entered is a canonical Bios-owned key with no other producer
 available.** Biomarkers are typed because no sensor draws blood; BBT is
 typed because no wearable on the owner's wrist measures basal body
 temperature; manual sleep is typed when Health Connect / Oura / Gadgetbridge
-are all silent. Bios is *not* the entry point for data a companion
-uniquely owns — typing cadence belongs in W2F, SDMT in Fil, fall-event
-in Virgil.
+are all silent; clinical vitals (BP cuff, pulse-ox, thermometer, triage
+chart) are typed because the LETHE-correct case is a degoogled phone
+with no Health Connect at all — the owner *is* the producer, not just
+the reader. Bios is *not* the entry point for data a companion uniquely
+owns — typing cadence belongs in W2F, SDMT in Fil, fall-event in
+Virgil.
+
+The gate is now per-metric: [MetricType.allowsManualEntry] declares
+which keys accept owner-as-source entry. Engine isolation still holds —
+manual entries flow through SELF_REPORTED and skip the baseline /
+anomaly engines per decision 3 above.
 
 The "future asks of 'let me log sleep directly in Bios'" line from the
 old wording was directionally right but the verdict's been wrong: the

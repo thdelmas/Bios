@@ -1,23 +1,23 @@
 package com.bios.app.data
 
 import com.bios.app.model.ConfidenceTier
-import com.bios.app.model.DataSource
 import com.bios.app.model.EventPayloadField
 import com.bios.app.model.MetricReading
-import com.bios.app.model.ReadingKind
-import com.bios.app.model.SensorType
-import com.bios.app.model.SourceType
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 
 /**
  * Persistence path for self-reported lab values entered through the
- * biomarker entry screen.
+ * biomarker entry screen. Sibling of [ManualReadingRepo] for clinical
+ * vital signs — both share the SELF_REPORTED write path via
+ * [resolveSelfReportedSource].
  *
- * Self-reported readings flow through a single SELF_REPORTED [DataSource]
- * tagged with [ReadingKind.SELF_REPORTED] so the baseline engine and anomaly
- * detector keep ignoring them (decision 3 in docs/SELF_REPORTED_DATA_HOME.md).
- * They still show up in trends, FHIR export, and condition-pattern displays.
+ * Self-reported readings flow through a single SELF_REPORTED
+ * [com.bios.app.model.DataSource] tagged with
+ * [com.bios.app.model.ReadingKind.SELF_REPORTED] so the baseline engine
+ * and anomaly detector keep ignoring them (decision 3 in
+ * docs/SELF_REPORTED_DATA_HOME.md). They still show up in trends, FHIR
+ * export, and condition-pattern displays.
  *
  * Optional [BiomarkerContext] carries lab provenance — engine-relevant
  * fields (lab, fasting, specimen, source URI) ride the existing
@@ -35,7 +35,7 @@ class BiomarkerEntryRepo(private val db: BiosDatabase) {
         require(metricType.domain == MetricDomain.BIOMARKER) {
             "BiomarkerEntryRepo only accepts BIOMARKER metrics; got ${metricType.key}"
         }
-        val sourceId = getOrCreateSelfReportedSource()
+        val sourceId = resolveSelfReportedSource(db)
         val reading = MetricReading(
             metricType = metricType.key,
             value = value,
@@ -81,19 +81,6 @@ class BiomarkerEntryRepo(private val db: BiosDatabase) {
         if (fields.isNotEmpty()) {
             db.eventPayloadFieldDao().insertAll(fields)
         }
-    }
-
-    private suspend fun getOrCreateSelfReportedSource(): String {
-        val dao = db.dataSourceDao()
-        dao.findByType(SourceType.SELF_REPORTED.key)?.let { return it.id }
-        val source = DataSource(
-            sourceType = SourceType.SELF_REPORTED.key,
-            deviceName = "Self-reported",
-            sensorType = SensorType.DERIVED.name,
-            readingKind = ReadingKind.SELF_REPORTED.name
-        )
-        dao.insert(source)
-        return source.id
     }
 
     companion object {

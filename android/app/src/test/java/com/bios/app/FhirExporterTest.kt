@@ -353,6 +353,7 @@ class FhirExporterTest {
             MetricUnit.UG_PER_M3 -> "ug/m3"
             MetricUnit.PPM -> "[ppm]"
             MetricUnit.PPB -> "[ppb]"
+            MetricUnit.LITERS_PER_MIN -> "L/min"
         }
     }
 }

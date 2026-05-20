@@ -333,6 +333,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPrivacy = { navController.navigate("privacy") },
                     onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") },
+                    onNavigateToClinicalEntry = { navController.navigate("clinical_entry") },
                     onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
                     onNavigateToPeriodEntry = { navController.navigate("period_entry") },
                     onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
@@ -364,6 +365,12 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("biomarker_entry") {
                 com.bios.app.ui.biomarkers.BiomarkerEntryScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("clinical_entry") {
+                com.bios.app.ui.clinical.ClinicalReadingEntryScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )

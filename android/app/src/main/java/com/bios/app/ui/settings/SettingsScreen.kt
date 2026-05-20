@@ -35,6 +35,7 @@ fun SettingsScreen(
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
     onNavigateToBiomarkerEntry: () -> Unit = {},
+    onNavigateToClinicalEntry: () -> Unit = {},
     onNavigateToBbtEntry: () -> Unit = {},
     onNavigateToPeriodEntry: () -> Unit = {},
     onNavigateToSleepEntry: () -> Unit = {},
@@ -179,6 +180,8 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(8.dp))
                 SettingsActionButton("Add Lab Values", onNavigateToBiomarkerEntry)
+                Spacer(Modifier.height(4.dp))
+                SettingsActionButton("Add clinical reading", onNavigateToClinicalEntry)
                 Spacer(Modifier.height(4.dp))
                 SettingsActionButton("Log sleep", onNavigateToSleepEntry)
                 Spacer(Modifier.height(4.dp))
