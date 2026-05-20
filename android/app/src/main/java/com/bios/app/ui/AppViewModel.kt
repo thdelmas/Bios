@@ -27,6 +27,7 @@ import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.data.BiomarkerContext
 import com.bios.app.data.BiomarkerEntryRepo
+import com.bios.app.data.ManualReadingRepo
 import com.bios.app.model.ActionItem
 import com.bios.app.model.Anomaly
 import com.bios.app.model.HealthEvent
@@ -490,4 +491,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshRecentBiomarkers(limit: Int = 20) = biomarkers.refreshRecent(limit)
     fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) =
         biomarkers.addManual(metricType, value, timestamp, context)
+
+    // MARK: - General manual-reading entry (clinical vitals)
+
+    val manualReadingRepo: ManualReadingRepo = ManualReadingRepo(db)
 }
