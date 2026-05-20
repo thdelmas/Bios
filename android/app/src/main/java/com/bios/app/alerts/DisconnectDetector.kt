@@ -197,6 +197,7 @@ internal val SourceType.label: String
         SourceType.POLAR_API -> "Polar"
         SourceType.DIRECT_SENSOR -> "Direct sensor"
         SourceType.PHONE_SENSOR -> "Phone sensor"
+        SourceType.PHONE_SENSOR_DERIVED -> "Phone sleep fusion"
         SourceType.CAMERA_PPG -> "Camera PPG"
         SourceType.BLE_PERIPHERAL -> "Air-quality sensor"
         SourceType.SELF_REPORTED -> "Self-reported"

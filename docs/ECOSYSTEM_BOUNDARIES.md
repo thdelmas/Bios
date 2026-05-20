@@ -40,6 +40,8 @@ Applied:
 | `tobacco_use`, `fall_event`, etc. | discrete user actions | **companion** | requires tap-to-log / fall-detection surface |
 | `reaction_time_ms` | active test result | **Fil / W2F** | requires active-test surface |
 | `circadian_phase_shift` | sleep-onset times | **Bios** | inputs are canonical (sleep timing from 9 adapters); no companion-specific surface |
+| `sleep_duration` from screen-off | long quiet screen-off windows | **W2F** (LOW confidence) | UsageStatsTracker / screen-off is W2F's unique surface; Bios accepts the write via companion URI |
+| `sleep_duration` from phone sensors | accel + screen-off + charging + ambient-light fusion | **Bios** (MEDIUM confidence) | universal-infrastructure: every phone has these sensors; not domain-specific |
 | `cognitive_speed` (planned) | TBD | **decide at landing** | if active test output → Fil; if composite over canonical inputs → Bios |
 
 The corollary: if a companion has built logic that turns canonical Bios
@@ -88,7 +90,7 @@ logic.
 | App | Domain | Owns | Reads from Bios | Writes to Bios |
 |---|---|---|---|---|
 | **Fil** | Neurological / MS | **Built:** gait analysis (phone accel), drift z-score engine, fall detection. **Planned:** keystroke analysis, active cognitive micro-tests (SDMT, tapping, contrast), MS-specific composite, fall auto-answer | HRV, sleep, steps, activity | `gait_asymmetry`, `cognitive_speed`, `motor_score`, `relapse_risk` (future keys) |
-| **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity, `circadian_phase_shift` | `typing_cadence`, `mood_drift_score` |
+| **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity, `circadian_phase_shift` | `typing_cadence`, `mood_drift_score`, `sleep_duration` (LOW conf., screen-off derivation) |
 | **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | `fall_event`, `near_miss_fall`, `check_in_miss` (opt-in, future) |
 | **SoulRadio** | Ambient sound / nervous-system rest | 24-hour Solfeggio + Schumann auto-loop, dial, listener library, frequency-band catalogue | *nothing — standalone* | *nothing* |
 | **Smokeless** | Substance-use tracking / cessation | Use + craving event capture, per-substance history, widget, cessation UI | *nothing — standalone* (Phase 3 plan: RHR/HRV/sleep/SpO2 reads for recovery trajectory) | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` (shipped Phase 2.1); `caffeine_use`, `caffeine_craving`, `alcohol_use`, `alcohol_craving` (reserved — Phase 2.4, paired with W2F FuelLog hoist) |
