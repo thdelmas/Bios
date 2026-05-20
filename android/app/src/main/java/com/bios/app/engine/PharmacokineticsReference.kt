@@ -51,6 +51,14 @@ data class Pharmacokinetics(
      * plasma concentration would be misleading for the substance.
      */
     val volumeOfDistributionLPerKg: Double? = null,
+    /**
+     * Default "below threshold" the dashboard surfaces use for the
+     * *"drops below X at HH:MM"* readout (#138). Owner-adjustable in the
+     * UI; this just seeds the picker so the screen renders something
+     * meaningful on first open. Null → no default published, the
+     * dashboard hides the readout instead of guessing.
+     */
+    val defaultThresholdMg: Double? = null,
     /** Short citation pinning the values to a literature source. */
     val source: String,
 )
@@ -89,6 +97,9 @@ object PharmacokineticsReference {
         absorptionHalfLifeMinutes = 7.0,
         bioavailability = 1.0,
         volumeOfDistributionLPerKg = 0.6,
+        // 50 mg ≈ half an espresso. Common reference point for the
+        // "sleep-safe" cutoff popularly cited from Drake 2013.
+        defaultThresholdMg = 50.0,
         source = "Mandel HG 2002, Statland & Demas 1980 (5h population t½, ~99 % oral bioavailability)",
     )
 
@@ -102,6 +113,9 @@ object PharmacokineticsReference {
         absorptionHalfLifeMinutes = 0.0,
         bioavailability = 1.0,
         volumeOfDistributionLPerKg = 2.6,
+        // ~5 % of a typical cigarette dose. Below this point the
+        // pharmacological effect is generally subjective-noise level.
+        defaultThresholdMg = 0.1,
         source = "Benowitz NL 2009 (t½ ~ 2 h, V_d 2.6 L/kg, inhaled bioavailability ≈ 100 % of inhaled dose)",
     )
 
@@ -115,6 +129,7 @@ object PharmacokineticsReference {
         absorptionHalfLifeMinutes = 30.0,
         bioavailability = 0.5,
         volumeOfDistributionLPerKg = 2.6,
+        defaultThresholdMg = 0.1,
         source = "Benowitz NL 2009, Choi 1988 (buccal F ~ 50 %, t½ ~ 2 h)",
     )
 
@@ -131,6 +146,9 @@ object PharmacokineticsReference {
         absorptionHalfLifeMinutes = 0.0,
         bioavailability = 0.3,
         volumeOfDistributionLPerKg = 10.0,
+        // 1 mg ≈ where acute intoxication tapers; chronic redistribution
+        // body burden persists much longer (terminal t½ ~ 30 h).
+        defaultThresholdMg = 1.0,
         source = "Huestis MA 2007 (inhaled F 10–35 %, terminal t½ ~ 30 h, V_d 10 L/kg)",
     )
 
@@ -144,6 +162,7 @@ object PharmacokineticsReference {
         absorptionHalfLifeMinutes = 90.0,
         bioavailability = 0.1,
         volumeOfDistributionLPerKg = 10.0,
+        defaultThresholdMg = 1.0,
         source = "Huestis MA 2007, Vandrey 2017 (oral F 4–12 %, peak 1–3 h post-ingestion)",
     )
 
@@ -159,6 +178,12 @@ object PharmacokineticsReference {
         absorptionHalfLifeMinutes = 15.0,
         bioavailability = 0.9,
         volumeOfDistributionLPerKg = 0.6,
+        // ~ 0.02 % BAC equivalent for a 70 kg adult (V_d 0.6 L/kg ×
+        // 70 kg × 0.0002 g/mL ≈ 8.4 g ≈ 8400 mg). Below this the
+        // pharmacological effect approaches noise; the "no measurable
+        // impairment" band varies by individual and jurisdiction so the
+        // owner picks their own number in the UI.
+        defaultThresholdMg = 8_400.0,
         source = "Widmark EMP 1932, Holford NHG 1987 (zero-order ~ 0.015 % BAC/h ≈ 7 g/h for 70 kg adult)",
     )
 

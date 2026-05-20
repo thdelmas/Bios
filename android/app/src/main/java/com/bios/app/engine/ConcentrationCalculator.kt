@@ -94,17 +94,8 @@ class ConcentrationCalculator(
         return readings.map { intakeToDoseEvent(metricKey, it) }
     }
 
-    private fun intakeToDoseEvent(metricKey: String, reading: MetricReading): ConcentrationMath.DoseEvent {
-        // ALCOHOL_INTAKE stores grams of ethanol per its MetricType unit;
-        // the math layer works in milligrams to share one mass unit across
-        // substances. Caffeine and medication keys are already in mg.
-        val doseMg = if (metricKey == MetricType.ALCOHOL_INTAKE.key) {
-            reading.value * GRAMS_TO_MG
-        } else {
-            reading.value
-        }
-        return ConcentrationMath.DoseEvent(timestampMs = reading.timestamp, doseMg = doseMg)
-    }
+    private fun intakeToDoseEvent(metricKey: String, reading: MetricReading): ConcentrationMath.DoseEvent =
+        intakeReadingToDoseEvent(metricKey, reading)
 
     companion object {
         /** How far back to read intake events. 14 days covers ≥ 5 half-lives
@@ -115,6 +106,25 @@ class ConcentrationCalculator(
         internal const val GRAMS_TO_MG = 1000.0
         internal const val DEFAULT_CURVE_STEP_MIN = 5
     }
+}
+
+/**
+ * Convert an intake [reading] to a milligram-denominated dose event for
+ * [ConcentrationMath]. Lives at top level so the dashboard aggregator
+ * (#138) can reuse the per-key unit normalisation without duplicating
+ * the alcohol grams→mg conversion. Keep this in lockstep with
+ * `MetricType.*_INTAKE` units.
+ */
+fun intakeReadingToDoseEvent(
+    metricKey: String,
+    reading: MetricReading,
+): ConcentrationMath.DoseEvent {
+    val doseMg = if (metricKey == MetricType.ALCOHOL_INTAKE.key) {
+        reading.value * ConcentrationCalculator.GRAMS_TO_MG
+    } else {
+        reading.value
+    }
+    return ConcentrationMath.DoseEvent(timestampMs = reading.timestamp, doseMg = doseMg)
 }
 
 /**

@@ -39,6 +39,7 @@ fun HomeScreen(
     onNavigateToDiagnostics: () -> Unit = {},
     onNavigateToPpgCapture: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
+    onNavigateToActiveSubstances: () -> Unit = {},
     onNavigateToMetric: (MetricType) -> Unit = {}
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
@@ -135,81 +136,26 @@ fun HomeScreen(
             }
         }
 
-        // HRV snapshot entry (camera-PPG)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
+        HomeEntryCard(
+            icon = Icons.Default.CameraAlt,
+            title = "Take HRV Snapshot",
+            subtitle = "Fingertip reading via camera — 60 seconds",
             onClick = onNavigateToPpgCapture,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Take HRV Snapshot",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Text(
-                        "Fingertip reading via camera — 60 seconds",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        )
 
-        // Diagnostics entry
-        Card(
-            modifier = Modifier.fillMaxWidth(),
+        HomeEntryCard(
+            icon = Icons.Default.MonitorHeart,
+            title = "Health Diagnostics",
+            subtitle = "View condition pattern analysis",
             onClick = onNavigateToDiagnostics,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.MonitorHeart,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Health Diagnostics",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Text(
-                        "View condition pattern analysis",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        )
+
+        HomeEntryCard(
+            icon = Icons.Default.Medication,
+            title = "Active Substances",
+            subtitle = "Caffeine, alcohol — current concentration in body",
+            onClick = onNavigateToActiveSubstances,
+        )
 
         // Today's vitals
         Text("Today's Vitals", style = MaterialTheme.typography.titleMedium)
