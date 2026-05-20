@@ -390,6 +390,13 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("sleep_entry") {
                 com.bios.app.ui.sleep.SleepEntryScreen(
                     viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenDashboard = { navController.navigate("sleep_dashboard") }
+                )
+            }
+            composable("sleep_dashboard") {
+                com.bios.app.ui.sleep.SleepDashboardScreen(
+                    viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )
             }

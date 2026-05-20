@@ -51,7 +51,8 @@ import java.util.Locale
 @Composable
 fun SleepEntryScreen(
     viewModel: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenDashboard: (() -> Unit)? = null,
 ) {
     val repo = remember(viewModel) { SleepEntryRepo(viewModel.db) }
     val scope = rememberCoroutineScope()
@@ -93,6 +94,14 @@ fun SleepEntryScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (onOpenDashboard != null) {
+                OutlinedButton(
+                    onClick = onOpenDashboard,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View sleep dashboard")
+                }
+            }
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Sleep duration", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
