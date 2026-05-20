@@ -4,6 +4,7 @@ import com.bios.app.engine.EliminationKinetics
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.app.ui.intake.ActiveSubstancesAggregator
+import com.bios.app.ui.intake.ActiveSubstancesAggregator.DisplayMode
 import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -14,11 +15,10 @@ import org.junit.Test
 /**
  * Pure-state tests for the "what's still in your body" aggregator (#138).
  *
- * Exercises empty-state semantics (no recent intake ≠ zero), source
- * provenance plumbing, threshold-crossing readout, and the curve sample
- * shape. The math itself is covered by ConcentrationMathTest; here we
- * only confirm the dashboard layer wires the right inputs and presents
- * them honestly.
+ * Exercises both display modes — DOSED tiles (caffeine, alcohol) with
+ * concentration math, and EVENT_ONLY tiles (tobacco, cannabis) with the
+ * event log only. Pins the shipping substance set so future expansions
+ * land as deliberate edits.
  */
 class ActiveSubstancesAggregatorTest {
 
@@ -32,18 +32,25 @@ class ActiveSubstancesAggregatorTest {
             sourceLabels = emptyMap(),
             nowMs = now,
         )
-        // Caffeine and alcohol are the two routed substances today; future
-        // dose-bearing keys grow this set without changing the empty-state
-        // contract.
         val keys = cards.map { it.metricKey }.toSet()
         assertTrue("caffeine card always present", MetricType.CAFFEINE_INTAKE.key in keys)
         assertTrue("alcohol card always present", MetricType.ALCOHOL_INTAKE.key in keys)
+        assertTrue("tobacco event card always present", MetricType.TOBACCO_USE.key in keys)
+        assertTrue("cannabis event card always present", MetricType.CANNABIS_USE.key in keys)
         for (c in cards) {
-            assertEquals(0.0, c.currentAmountMg, 1e-9)
             assertNull("no last dose when there are no intakes", c.lastDoseTimestampMs)
             assertNull(c.lastDoseLabel)
             assertTrue("no recent doses to display", c.recentDoses.isEmpty())
             assertEquals(false, c.hasRecentIntake)
+            when (c.displayMode) {
+                DisplayMode.DOSED -> assertEquals(0.0, c.currentAmountMg!!, 1e-9)
+                DisplayMode.EVENT_ONLY -> {
+                    assertNull("event-only cards carry no current-amount", c.currentAmountMg)
+                    assertNull("event-only cards carry no PK profile", c.pk)
+                    assertTrue("event-only cards carry no curve", c.curve.isEmpty())
+                    assertNull(c.thresholdMg)
+                }
+            }
         }
     }
 
@@ -58,12 +65,11 @@ class ActiveSubstancesAggregatorTest {
             nowMs = now,
         )
         val caffeine = cards.first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
+        assertEquals(DisplayMode.DOSED, caffeine.displayMode)
         assertEquals(true, caffeine.hasRecentIntake)
-        // 200 mg with t½ = 5 h and 2 h elapsed ⇒ 200 × 0.5^(2/5) ≈ 152 mg.
-        // Bateman absorption with 7-min half-life is fully complete by 2 h.
         assertTrue(
-            "current amount $caffeine.currentAmountMg should be near 152 mg",
-            caffeine.currentAmountMg in 145.0..158.0
+            "current amount ${caffeine.currentAmountMg} should be near 152 mg",
+            caffeine.currentAmountMg!! in 145.0..158.0
         )
         assertEquals("W2F", caffeine.lastDoseLabel)
         assertEquals(now - 2L * hour, caffeine.lastDoseTimestampMs)
@@ -71,9 +77,6 @@ class ActiveSubstancesAggregatorTest {
 
     @Test
     fun `older doses outside the window still inform current amount`() {
-        // 8 h ago: caffeine t½ 5 h ⇒ ~33 % remaining = ~66 mg from a 200mg
-        // dose. The dose itself falls outside the 24h list-recent-doses
-        // window only if it's > 24 h old; an 8 h dose is inside.
         val intakes = listOf(
             caffeineIntake(timestampMs = now - 8L * hour, doseMg = 200.0, sourceId = "src"),
         )
@@ -85,15 +88,12 @@ class ActiveSubstancesAggregatorTest {
         val caffeine = cards.first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
         assertTrue(
             "8h-old caffeine should still contribute ~60-70mg, got ${caffeine.currentAmountMg}",
-            caffeine.currentAmountMg in 55.0..75.0
+            caffeine.currentAmountMg!! in 55.0..75.0
         )
     }
 
     @Test
     fun `intakes 2 days old contribute to current concentration but not recent-doses list`() {
-        // Engine math reads the full prior history (the aggregator does
-        // not window the doseEvents list); only the recent-doses display
-        // is windowed.
         val intakes = listOf(
             caffeineIntake(timestampMs = now - 48L * hour, doseMg = 200.0, sourceId = "src"),
             caffeineIntake(timestampMs = now - 1L * hour, doseMg = 100.0, sourceId = "src"),
@@ -129,11 +129,8 @@ class ActiveSubstancesAggregatorTest {
 
     @Test
     fun `alcohol value is converted from grams to milligrams in the dose-event stream`() {
-        // 14 g of ethanol (one US standard drink) recorded as ALCOHOL_INTAKE.
-        // F = 0.9 ⇒ 12 600 mg on-board after absorption; zero-order rate
-        // ≈ 117 mg/min ⇒ after 60 min: 12600 − 7000 = 5600 mg.
         val intakes = listOf(
-            alcoholIntake(timestampMs = now - 60L * 60L * 1000L, doseG = 14.0, sourceId = "src"),
+            alcoholIntake(timestampMs = now - hour, doseG = 14.0, sourceId = "src"),
         )
         val cards = ActiveSubstancesAggregator.compute(
             intakes = intakes,
@@ -141,26 +138,21 @@ class ActiveSubstancesAggregatorTest {
             nowMs = now,
         )
         val alcohol = cards.first { it.metricKey == MetricType.ALCOHOL_INTAKE.key }
-        assertEquals(EliminationKinetics.ZERO_ORDER, alcohol.pk.kinetics)
+        assertEquals(EliminationKinetics.ZERO_ORDER, alcohol.pk!!.kinetics)
         assertTrue(
             "alcohol on-board after 1h should be ~5600 mg, got ${alcohol.currentAmountMg}",
-            alcohol.currentAmountMg in 5_400.0..5_800.0
+            alcohol.currentAmountMg!! in 5_400.0..5_800.0
         )
         // Display side: 14 g entered → 14000 mg in the dose-event stream.
-        assertEquals(14_000.0, alcohol.recentDoses.first().doseMg, 1.0)
+        assertEquals(14_000.0, alcohol.recentDoses.first().doseMg!!, 1.0)
     }
 
     @Test
     fun `threshold override beats the substance default`() {
-        // Dose at now-1h so the Bateman absorption phase is complete and
-        // current amount is well above both thresholds; otherwise both
-        // crossings land at 0 (already-below) and the comparison is
-        // meaningless.
         val intakes = listOf(caffeineIntake(timestampMs = now - hour, doseMg = 200.0, sourceId = "src"))
         val withDefault = ActiveSubstancesAggregator.compute(
             intakes = intakes, sourceLabels = emptyMap(), nowMs = now,
         ).first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
-        // Caffeine default threshold is 50 mg.
         assertEquals(50.0, withDefault.thresholdMg!!, 1e-9)
 
         val withOverride = ActiveSubstancesAggregator.compute(
@@ -170,7 +162,6 @@ class ActiveSubstancesAggregatorTest {
             thresholdOverridesMg = mapOf(MetricType.CAFFEINE_INTAKE.key to 25.0),
         ).first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
         assertEquals(25.0, withOverride.thresholdMg!!, 1e-9)
-        // Time-until-below: tighter threshold ⇒ longer wait.
         assertTrue(
             "tighter threshold should push the crossing later " +
                 "(default=${withDefault.timeUntilBelowThresholdMs}, " +
@@ -181,7 +172,7 @@ class ActiveSubstancesAggregatorTest {
     }
 
     @Test
-    fun `curve points span the configured window`() {
+    fun `curve points span the configured window for dosed substances`() {
         val intakes = listOf(caffeineIntake(timestampMs = now - hour, doseMg = 100.0, sourceId = "src"))
         val cards = ActiveSubstancesAggregator.compute(
             intakes = intakes,
@@ -189,19 +180,13 @@ class ActiveSubstancesAggregatorTest {
             nowMs = now,
         )
         val caffeine = cards.first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
-        // 24 h / 5 min step ⇒ 289 samples (inclusive of both endpoints).
         assertEquals(289, caffeine.curve.size)
-        // First point at window start, last at now.
         assertEquals(now - ActiveSubstancesAggregator.DEFAULT_WINDOW_MS, caffeine.curve.first().first)
         assertEquals(now, caffeine.curve.last().first)
     }
 
     @Test
     fun `unknown metric_type readings do not pollute substance cards`() {
-        // A glucose row landing in the intake list (e.g. caller didn't
-        // pre-filter) must be silently ignored — the aggregator routes by
-        // metric_type so it can't accidentally treat blood_glucose as a
-        // caffeine dose.
         val intakes = listOf(
             MetricReading(
                 metricType = MetricType.BLOOD_GLUCOSE.key,
@@ -217,17 +202,20 @@ class ActiveSubstancesAggregatorTest {
             nowMs = now,
         )
         for (c in cards) {
-            assertEquals(0.0, c.currentAmountMg, 1e-9)
             assertNull(c.lastDoseTimestampMs)
+            assertTrue(c.recentDoses.isEmpty())
+            if (c.displayMode == DisplayMode.DOSED) {
+                assertEquals(0.0, c.currentAmountMg!!, 1e-9)
+            }
         }
     }
 
     @Test
-    fun `card list contains the documented substances and nothing else`() {
-        // Pins the shipping surface so new substances are an opt-in
-        // dashboard expansion, not a silent UI surprise. Both directions:
-        // the two substances are present, and no others sneak in (e.g.
-        // tobacco/cannabis remain absent until dose-bearing keys ship).
+    fun `card list pins the shipping substance set`() {
+        // Adding a substance is a deliberate dashboard expansion. The test
+        // catches drift on the EVENT_ONLY side too — Smokeless event keys
+        // must keep rendering until a dose-bearing companion key replaces
+        // them.
         val cards = ActiveSubstancesAggregator.compute(
             intakes = emptyList(),
             sourceLabels = emptyMap(),
@@ -235,16 +223,20 @@ class ActiveSubstancesAggregatorTest {
         )
         val keys = cards.map { it.metricKey }.toSet()
         assertEquals(
-            setOf(MetricType.CAFFEINE_INTAKE.key, MetricType.ALCOHOL_INTAKE.key),
+            setOf(
+                MetricType.CAFFEINE_INTAKE.key,
+                MetricType.ALCOHOL_INTAKE.key,
+                MetricType.TOBACCO_USE.key,
+                MetricType.CANNABIS_USE.key,
+            ),
             keys,
         )
     }
 
     @Test
-    fun `time until below returns zero when already under threshold`() {
-        // No intake at all → current amount is zero, which is below any
-        // positive threshold. The dashboard should render "already below"
-        // (timeUntilBelow = 0), not "no crossing in 10 days".
+    fun `time until below returns zero when dosed card has no intake`() {
+        // Zero amount is below any positive threshold → the card renders
+        // "already below" instead of "no crossing".
         val cards = ActiveSubstancesAggregator.compute(
             intakes = emptyList(),
             sourceLabels = emptyMap(),
@@ -253,6 +245,93 @@ class ActiveSubstancesAggregatorTest {
         val caffeine = cards.first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
         assertNotNull(caffeine.thresholdMg)
         assertEquals(0L, caffeine.timeUntilBelowThresholdMs)
+    }
+
+    // ---- event-only tiles (tobacco / cannabis) ----
+
+    @Test
+    fun `cannabis_use event surfaces on the cannabis event-only tile`() {
+        // The user-reported bug: a Smokeless-logged cannabis_use event must
+        // appear on the dashboard. Engine math is skipped (no dose) but
+        // the event log is the whole point.
+        val intakes = listOf(
+            eventOnly(
+                metricKey = MetricType.CANNABIS_USE.key,
+                timestampMs = now - 30L * 60L * 1000L,
+                sourceId = "smokeless",
+            ),
+        )
+        val cards = ActiveSubstancesAggregator.compute(
+            intakes = intakes,
+            sourceLabels = mapOf("smokeless" to "Smokeless"),
+            nowMs = now,
+        )
+        val cannabis = cards.first { it.metricKey == MetricType.CANNABIS_USE.key }
+        assertEquals(DisplayMode.EVENT_ONLY, cannabis.displayMode)
+        assertEquals(true, cannabis.hasRecentIntake)
+        assertEquals(now - 30L * 60L * 1000L, cannabis.lastDoseTimestampMs)
+        assertEquals("Smokeless", cannabis.lastDoseLabel)
+        assertEquals(1, cannabis.recentDoses.size)
+        assertNull("event-only dose has no mg recorded", cannabis.recentDoses.first().doseMg)
+        // No concentration math because there's nothing to integrate.
+        assertNull(cannabis.currentAmountMg)
+        assertNull(cannabis.pk)
+        assertNull(cannabis.thresholdMg)
+        assertTrue(cannabis.curve.isEmpty())
+    }
+
+    @Test
+    fun `tobacco_use events accumulate as multiple recent events`() {
+        val intakes = listOf(
+            eventOnly(MetricType.TOBACCO_USE.key, now - 4L * hour, "smokeless"),
+            eventOnly(MetricType.TOBACCO_USE.key, now - 2L * hour, "smokeless"),
+            eventOnly(MetricType.TOBACCO_USE.key, now - 30L * 60L * 1000L, "smokeless"),
+        )
+        val cards = ActiveSubstancesAggregator.compute(
+            intakes = intakes,
+            sourceLabels = mapOf("smokeless" to "Smokeless"),
+            nowMs = now,
+        )
+        val tobacco = cards.first { it.metricKey == MetricType.TOBACCO_USE.key }
+        assertEquals(3, tobacco.recentDoses.size)
+        // Latest event timestamp wins for last-dose.
+        assertEquals(now - 30L * 60L * 1000L, tobacco.lastDoseTimestampMs)
+    }
+
+    @Test
+    fun `event-only intakes older than the window are excluded from recent list`() {
+        val intakes = listOf(
+            eventOnly(MetricType.CANNABIS_USE.key, now - 48L * hour, "smokeless"),
+            eventOnly(MetricType.CANNABIS_USE.key, now - hour, "smokeless"),
+        )
+        val cards = ActiveSubstancesAggregator.compute(
+            intakes = intakes,
+            sourceLabels = mapOf("smokeless" to "Smokeless"),
+            nowMs = now,
+        )
+        val cannabis = cards.first { it.metricKey == MetricType.CANNABIS_USE.key }
+        assertEquals(
+            "24h window should drop the 48h-old event from recent-doses",
+            1, cannabis.recentDoses.size,
+        )
+        // But last-dose still tracks the most recent event inside the window.
+        assertEquals(now - hour, cannabis.lastDoseTimestampMs)
+    }
+
+    @Test
+    fun `cannabis events do not pollute caffeine or alcohol tiles`() {
+        val intakes = listOf(eventOnly(MetricType.CANNABIS_USE.key, now - hour, "smokeless"))
+        val cards = ActiveSubstancesAggregator.compute(
+            intakes = intakes,
+            sourceLabels = emptyMap(),
+            nowMs = now,
+        )
+        val caffeine = cards.first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
+        val alcohol = cards.first { it.metricKey == MetricType.ALCOHOL_INTAKE.key }
+        assertEquals(0.0, caffeine.currentAmountMg!!, 1e-9)
+        assertEquals(0.0, alcohol.currentAmountMg!!, 1e-9)
+        assertTrue(caffeine.recentDoses.isEmpty())
+        assertTrue(alcohol.recentDoses.isEmpty())
     }
 
     // ---- helpers ----
@@ -270,6 +349,15 @@ class ActiveSubstancesAggregatorTest {
         MetricReading(
             metricType = MetricType.ALCOHOL_INTAKE.key,
             value = doseG,
+            timestamp = timestampMs,
+            sourceId = sourceId,
+            confidence = ConfidenceTier.HIGH.level,
+        )
+
+    private fun eventOnly(metricKey: String, timestampMs: Long, sourceId: String): MetricReading =
+        MetricReading(
+            metricType = metricKey,
+            value = 1.0, // event marker
             timestamp = timestampMs,
             sourceId = sourceId,
             confidence = ConfidenceTier.HIGH.level,
