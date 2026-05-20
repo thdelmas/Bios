@@ -88,6 +88,11 @@ internal object CompanionContract {
                 // wearable get an empty sleep bus while W2F sits on the data.
                 // Issue #133. Confidence stays LOW (proxy, not actigraphy).
                 "sleep_duration",
+                // W2F's FuelLog captures caffeine intakes locally —
+                // producer-by-capture-surface (#136). The dose flows into
+                // the pharmacokinetic concentration engine; companion-side
+                // write wiring lands in the W2F repo.
+                "caffeine_intake",
             ),
             defaultReadingKind = ReadingKind.DERIVED,
             // TODO populate with W2F's release-signing cert SHA-256 before the

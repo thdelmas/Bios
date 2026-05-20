@@ -128,6 +128,10 @@ class MetricTypeKeysSnapshotTest {
         "tobacco_craving",
         "cannabis_use",
         "cannabis_craving",
+        // Dosed-intake (#136 — pharmacokinetic engine substrate)
+        "caffeine_intake",
+        "alcohol_intake",
+        "medication_intake",
         // Companion-written (Virgil)
         "fall_event",
         "near_miss_fall",
