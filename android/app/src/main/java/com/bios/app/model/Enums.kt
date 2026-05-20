@@ -17,6 +17,11 @@ enum class SourceType(val key: String) {
     DEXCOM_API("dexcom_api"),
     POLAR_API("polar_api"),
     PHONE_SENSOR("phone_sensor"),
+    // Phone-sensor fusion that produces derived signals (not raw samples) —
+    // currently the rule-based sleep inference (issue #134). Distinct from
+    // PHONE_SENSOR so DataSource provenance separates "raw accel reading"
+    // from "sleep duration inferred from accel + screen + charge".
+    PHONE_SENSOR_DERIVED("phone_sensor_derived"),
     CAMERA_PPG("camera_ppg"),
     BLE_PERIPHERAL("ble_peripheral"),
     SELF_REPORTED("self_reported")

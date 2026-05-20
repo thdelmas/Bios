@@ -82,6 +82,12 @@ internal object CompanionContract {
                 // producer-by-capture-surface rule.
                 "circadian_phase_shift",
                 "mood_drift_score",
+                // Producer-by-capture-surface: W2F's UsageStatsTracker derives
+                // sleep from screen-off patterns — a surface no other adapter
+                // has. Without this whitelist entry, LETHE owners with no
+                // wearable get an empty sleep bus while W2F sits on the data.
+                // Issue #133. Confidence stays LOW (proxy, not actigraphy).
+                "sleep_duration",
             ),
             defaultReadingKind = ReadingKind.DERIVED,
             // TODO populate with W2F's release-signing cert SHA-256 before the
