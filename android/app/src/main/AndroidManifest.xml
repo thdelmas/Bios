@@ -12,6 +12,15 @@
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <uses-permission android:name="android.permission.health.READ_VO2_MAX" />
+    <!-- Body composition (Weight + BodyFat + LeanBodyMass) — read paths in
+         HealthConnectBodyComposition.kt. Missing-from-manifest causes the
+         HC permission contract to filter these out of the requestable set,
+         which silently turns onboarding's "Grant Permissions" button into
+         a no-op once the other perms are granted. -->
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
+    <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" />
     <!--
       Required so SyncWorker (WorkManager, runs in background) can read data
       written by other apps (Google Fit, Fitbit, etc.). Without this, Health
