@@ -40,6 +40,7 @@ fun HomeScreen(
     onNavigateToPpgCapture: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
     onNavigateToActiveSubstances: () -> Unit = {},
+    onNavigateToBodyLevels: () -> Unit = {},
     onNavigateToMetric: (MetricType) -> Unit = {}
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
@@ -155,6 +156,13 @@ fun HomeScreen(
             title = "Active Substances",
             subtitle = "Caffeine, alcohol — current concentration in body",
             onClick = onNavigateToActiveSubstances,
+        )
+
+        HomeEntryCard(
+            icon = Icons.Default.Science,
+            title = "Body Levels",
+            subtitle = "Biomarker panels — most-recent lab values",
+            onClick = onNavigateToBodyLevels,
         )
 
         // Today's vitals
