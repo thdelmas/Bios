@@ -104,6 +104,21 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
+    fun `W2F may write caffeine_intake from FuelLog (issue 136)`() {
+        // W2F's FuelLog is the unique caffeine-capture surface. Without
+        // this entry, the concentration engine has no upstream producer
+        // and the dashboard sits empty even when W2F holds the doses.
+        assertTrue(
+            "caffeine_intake must be writable to feed the concentration engine",
+            "caffeine_intake" in CompanionContract.WRITABLE_METRICS
+        )
+        assertTrue(CompanionContract.canWrite("com.w2f.app", "caffeine_intake"))
+        // Cross-package isolation — only W2F's FuelLog is the producer.
+        assertFalse(CompanionContract.canWrite("com.smokless.smokeless", "caffeine_intake"))
+        assertFalse(CompanionContract.canWrite("com.virgil.app", "caffeine_intake"))
+    }
+
+    @Test
     fun `Smokeless may only write its own intake keys`() {
         val sml = "com.smokless.smokeless"
         assertTrue(CompanionContract.canWrite(sml, "tobacco_use"))
