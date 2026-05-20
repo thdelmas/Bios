@@ -41,6 +41,10 @@ class MetricTypeKeysSnapshotTest {
         "blood_oxygen",
         // Respiratory
         "respiratory_rate",
+        "oxygen_flow_rate",
+        // Neurological (manual-capture clinical signs)
+        "pain_score",
+        "consciousness_level",
         // Temperature
         "skin_temperature",
         "skin_temperature_deviation",

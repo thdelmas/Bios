@@ -403,6 +403,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.UG_PER_M3 -> "ug/m3"
     MetricUnit.PPM -> "[ppm]"
     MetricUnit.PPB -> "[ppb]"
+    MetricUnit.LITERS_PER_MIN -> "L/min"
 }
 
 internal fun formatInstant(instant: Instant): String =
