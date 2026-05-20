@@ -23,5 +23,9 @@
         <item>android.permission.health.READ_STEPS</item>
         <item>android.permission.health.READ_ACTIVE_CALORIES_BURNED</item>
         <item>android.permission.health.READ_EXERCISE</item>
+        <item>android.permission.health.READ_VO2_MAX</item>
+        <item>android.permission.health.READ_WEIGHT</item>
+        <item>android.permission.health.READ_BODY_FAT</item>
+        <item>android.permission.health.READ_LEAN_BODY_MASS</item>
     </array>
 </resources>
