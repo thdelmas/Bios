@@ -261,6 +261,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToDiagnostics = { navController.navigate("diagnostics") },
                     onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
                     onNavigateToCompanions = { navController.navigate("companions") },
+                    onNavigateToActiveSubstances = { navController.navigate("active_substances") },
                     onNavigateToMetric = { metric ->
                         // SLEEP_DURATION has a dedicated dashboard richer
                         // than the generic trends view.
@@ -402,6 +403,12 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("sleep_dashboard") {
                 com.bios.app.ui.sleep.SleepDashboardScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("active_substances") {
+                com.bios.app.ui.intake.ActiveSubstancesScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )
