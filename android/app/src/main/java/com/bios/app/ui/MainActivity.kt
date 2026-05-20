@@ -262,6 +262,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
                     onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToActiveSubstances = { navController.navigate("active_substances") },
+                    onNavigateToBodyLevels = { navController.navigate("body_levels") },
                     onNavigateToMetric = { metric ->
                         // SLEEP_DURATION has a dedicated dashboard richer
                         // than the generic trends view.
@@ -411,6 +412,20 @@ fun BiosApp(viewModel: AppViewModel) {
                 com.bios.app.ui.intake.ActiveSubstancesScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
+                )
+            }
+            composable("body_levels") {
+                com.bios.app.ui.biomarkers.BiomarkerDashboardScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onNavigateToMetricTrend = { metric ->
+                        selectedTab = tabs.indexOfFirst { it.first == "trends" }
+                        navController.navigate("trends?metric=${metric.key}") {
+                            popUpTo("home") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                 )
             }
             composable("privacy") {
