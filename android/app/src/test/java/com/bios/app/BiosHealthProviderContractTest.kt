@@ -30,6 +30,23 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
+    fun `W2F may write sleep_duration derived from screen-off (issue 133)`() {
+        // W2F's UsageStatsTracker is the unique screen-off producer surface.
+        // Without this entry, LETHE owners without a wearable see an empty
+        // sleep bus despite W2F holding the derivation locally.
+        assertTrue(
+            "W2F screen-off sleep must be writable to keep SLEEP_DURATION canonical",
+            "sleep_duration" in CompanionContract.WRITABLE_METRICS
+        )
+        assertTrue(CompanionContract.canWrite("com.w2f.app", "sleep_duration"))
+        // Cross-package isolation — only W2F may write the screen-off
+        // estimate; other companions have no legitimate sleep producer.
+        assertFalse(CompanionContract.canWrite("com.smokless.smokeless", "sleep_duration"))
+        assertFalse(CompanionContract.canWrite("com.virgil.app", "sleep_duration"))
+        assertFalse(CompanionContract.canWrite("com.unknown.app", "sleep_duration"))
+    }
+
+    @Test
     fun `companion whitelist contains Smokeless substance-use keys`() {
         assertTrue(
             "Smokeless tobacco_use must be writable via companion URI",
@@ -75,11 +92,12 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
-    fun `W2F may only write its own mental-health keys`() {
+    fun `W2F may only write its own mental-health and sleep-derivation keys`() {
         val w2f = "com.w2f.app"
         assertTrue(CompanionContract.canWrite(w2f, "typing_cadence"))
         assertTrue(CompanionContract.canWrite(w2f, "mood_drift_score"))
         assertTrue(CompanionContract.canWrite(w2f, "circadian_phase_shift"))
+        assertTrue(CompanionContract.canWrite(w2f, "sleep_duration"))
         // Cross-package isolation — W2F must not write Smokeless keys
         assertFalse(CompanionContract.canWrite(w2f, "tobacco_use"))
         assertFalse(CompanionContract.canWrite(w2f, "tobacco_craving"))

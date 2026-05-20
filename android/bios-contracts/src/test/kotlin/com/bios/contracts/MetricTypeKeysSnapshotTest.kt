@@ -56,6 +56,7 @@ class MetricTypeKeysSnapshotTest {
         "sleep_fragmentation_index",
         "wake_after_sleep_onset",
         "sleep_score",
+        "sleep_regularity",
         "circadian_phase_shift",
         // Activity
         "steps",

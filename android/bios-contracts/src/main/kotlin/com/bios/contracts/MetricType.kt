@@ -78,6 +78,12 @@ enum class MetricType(
     SLEEP_FRAGMENTATION_INDEX("sleep_fragmentation_index", MetricUnit.COUNT, MetricDomain.SLEEP),
     WAKE_AFTER_SLEEP_ONSET("wake_after_sleep_onset", MetricUnit.SECONDS, MetricDomain.SLEEP),
     SLEEP_SCORE("sleep_score", MetricUnit.SCORE, MetricDomain.SLEEP),
+    // Sleep researchers (Roenneberg, Walker, Phyllis Zee group) consistently
+    // rank regularity above absolute duration for long-term outcomes. Sidecar
+    // fields (bedtime/wake/midpoint variance + window_days) ride on
+    // event_payloads so a future specialty companion can read components
+    // rather than just the composite. See engine/SleepRegularityCalculator.
+    SLEEP_REGULARITY("sleep_regularity", MetricUnit.SCORE, MetricDomain.SLEEP),
     // Bios-produced from sleep-onset times via cosinor/DLMO math. Universal
     // chronobiology metric — not mood-specific despite W2F being the primary
     // consumer. See docs/ECOSYSTEM_BOUNDARIES.md producer-by-capture-surface
