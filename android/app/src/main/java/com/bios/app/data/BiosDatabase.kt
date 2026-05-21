@@ -25,9 +25,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ProfessionalReview::class,
         CompanionGrant::class,
         LoggedEvent::class,
-        EventPayloadField::class
+        EventPayloadField::class,
+        PhoneSleepSample::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -44,6 +45,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun companionGrantDao(): CompanionGrantDao
     abstract fun loggedEventDao(): LoggedEventDao
     abstract fun eventPayloadFieldDao(): EventPayloadFieldDao
+    abstract fun phoneSleepSampleDao(): PhoneSleepSampleDao
 
     companion object {
         @Volatile
@@ -66,7 +68,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .build()
         }
 
@@ -262,6 +264,29 @@ abstract class BiosDatabase : RoomDatabase() {
         private val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE metric_readings ADD COLUMN note TEXT")
+            }
+        }
+
+        // Sample buffer behind PhoneSleepWorker (#134). Holds ~96 rows per
+        // night so PhoneSleepInference can run morning-trigger inference
+        // from the overnight trace. Pruned by the worker after each
+        // successful inference.
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS phone_sleep_samples (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        timestamp INTEGER NOT NULL,
+                        screenOff INTEGER NOT NULL,
+                        charging INTEGER NOT NULL,
+                        ambientLightLux REAL,
+                        accelMagnitudeVar REAL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_phone_sleep_samples_timestamp
+                    ON phone_sleep_samples (timestamp)
+                """.trimIndent())
             }
         }
 
