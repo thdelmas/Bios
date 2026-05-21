@@ -72,8 +72,11 @@ class SyncWorker(
 
                 try {
                     val mlModel = com.bios.app.engine.TFLiteAnomalyModel.load(applicationContext)
+                    val physiologyState = com.bios.app.physiology.PhysiologyStateStore(applicationContext).current()
                     val detector = com.bios.app.engine.AnomalyDetector(
-                        db, mlModel, reproductiveReadingDao = reproductiveReadingDao
+                        db, mlModel,
+                        reproductiveReadingDao = reproductiveReadingDao,
+                        physiologyState = physiologyState,
                     )
                     val newAnomalies = detector.runDetection()
 

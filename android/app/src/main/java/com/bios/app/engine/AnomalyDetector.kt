@@ -7,6 +7,7 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.data.MedicationAnnotationRepo
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.*
+import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
 import com.bios.contracts.MetricDomain
@@ -30,21 +31,27 @@ class AnomalyDetector(
     private val mlModel: TFLiteAnomalyModel? = null,
     private val latencyTracker: DetectionLatencyTracker? = null,
     private val reproductiveReadingDao: MetricReadingDao? = null,
-    private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db)
+    private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
+    /** Owner-set physiology context (#159); filters patterns by excludedStates. */
+    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD
 ) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
+    private fun applicablePatterns(): List<ConditionPattern> =
+        ConditionPatterns.all.filter { physiologyState !in it.excludedStates }
+
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()
         val newAnomalies = mutableListOf<Anomaly>()
+        val patterns = applicablePatterns()
 
         // Pattern-based detection (existing statistical approach)
         val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) {
             val results = mutableListOf<Anomaly>()
-            for (pattern in ConditionPatterns.all) {
+            for (pattern in patterns) {
                 val anomaly = evaluatePattern(pattern)
                 if (anomaly != null) {
                     anomalyDao.insert(anomaly)
@@ -54,7 +61,7 @@ class AnomalyDetector(
             results
         } ?: run {
             val results = mutableListOf<Anomaly>()
-            for (pattern in ConditionPatterns.all) {
+            for (pattern in patterns) {
                 val anomaly = evaluatePattern(pattern)
                 if (anomaly != null) {
                     anomalyDao.insert(anomaly)
@@ -149,12 +156,8 @@ class AnomalyDetector(
 
         for (metric in metrics) {
             val baseline = baselineDao.fetch(metric) ?: continue
-            // SENSOR-only: z-scores are deviations from a sensor baseline;
-            // mixing in self-reports would compare physiology to perception.
-            // docs/SELF_REPORTED_DATA_HOME.md decision 3.
-            val values = readingDao.fetchValues(
-                metric, startMillis, endMillis, ReadingKind.SENSOR.name
-            )
+            // SENSOR-only z-scores: docs/SELF_REPORTED_DATA_HOME.md decision 3.
+            val values = readingDao.fetchValues(metric, startMillis, endMillis, ReadingKind.SENSOR.name)
             if (values.isEmpty()) continue
             zScores[metric] = baseline.zScore(values.average())
         }
@@ -175,7 +178,7 @@ class AnomalyDetector(
     }
 
     suspend fun scoreAllPatterns(): List<DiagnosticResult> {
-        return ConditionPatterns.all.map { pattern -> scorePattern(pattern) }
+        return applicablePatterns().map { pattern -> scorePattern(pattern) }
             .sortedByDescending { it.probability }
     }
 
