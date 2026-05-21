@@ -38,6 +38,12 @@
     <!-- Background work -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Step counter. Android 10+ silently delivers zero events to
+         Sensor.TYPE_STEP_COUNTER without this permission, even though
+         the sensor itself reports `hasStepCounter = true`. Without this
+         declaration the phone-side step source stays empty forever. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <!-- Camera (fingertip-PPG HRV snapshots via rear camera + flash) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
