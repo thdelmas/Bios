@@ -27,9 +27,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         LoggedEvent::class,
         EventPayloadField::class,
         PhoneSleepSample::class,
-        MedicationAnnotation::class
+        MedicationAnnotation::class,
+        ImmunizationRecord::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -48,6 +49,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun eventPayloadFieldDao(): EventPayloadFieldDao
     abstract fun phoneSleepSampleDao(): PhoneSleepSampleDao
     abstract fun medicationAnnotationDao(): MedicationAnnotationDao
+    abstract fun immunizationRecordDao(): ImmunizationRecordDao
 
     companion object {
         @Volatile
@@ -70,7 +72,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -327,6 +329,35 @@ abstract class BiosDatabase : RoomDatabase() {
                 db.execSQL("""
                     CREATE INDEX IF NOT EXISTS index_medication_annotations_endDate
                     ON medication_annotations (endDate)
+                """.trimIndent())
+            }
+        }
+
+        // Owner-recorded immunisation history (#156). Vaccination status is
+        // a permanent axis with biomarkers — both the screening-cadence
+        // engine (#155) and the doctor-in-the-loop FHIR bundle read this
+        // table. Renamed from MIGRATION_11_12 → MIGRATION_12_13 on rebase
+        // because #154 (medication_annotations) took the 11→12 slot first.
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS immunization_records (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        vaccineName TEXT NOT NULL,
+                        cvxCode TEXT,
+                        occurrenceDate INTEGER NOT NULL,
+                        doseNumber INTEGER,
+                        lotNumber TEXT,
+                        note TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_immunization_records_occurrenceDate
+                    ON immunization_records (occurrenceDate)
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_immunization_records_cvxCode
+                    ON immunization_records (cvxCode)
                 """.trimIndent())
             }
         }
