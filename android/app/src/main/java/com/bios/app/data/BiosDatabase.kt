@@ -69,6 +69,18 @@ abstract class BiosDatabase : RoomDatabase() {
             )
                 .openHelperFactory(factory)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                // Downgrades happen when the owner installs a build whose
+                // DB schema is older than the one already on disk —
+                // typical when bouncing between a dev build and a tagged
+                // release. Without recovery, Room throws
+                // IllegalStateException at the first DAO call and the
+                // app is unrunnable. Recovery beats crash for a health
+                // app: wearable / Health Connect / companion sources
+                // re-populate the bus on the next sync; the local copy
+                // is a cache, not the source of truth. Encrypted-prefs
+                // passphrase survives the wipe so the rebuilt DB stays
+                // encrypted under the same key.
+                .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
         }
 
