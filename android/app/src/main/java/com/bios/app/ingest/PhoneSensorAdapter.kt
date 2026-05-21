@@ -200,7 +200,15 @@ class PhoneSensorAdapter(context: Context) {
 
                 val listener = object : SensorEventListener {
                     override fun onSensorChanged(event: SensorEvent) {
-                        samples.add(Triple(event.values[0], event.values[1], event.values[2]))
+                        // Single-axis sensors (TYPE_STEP_COUNTER) only populate
+                        // values[0]; pad missing axes with 0f so callers that
+                        // share this collector across multi- and single-axis
+                        // sensors don't crash with IOOBE.
+                        val v = event.values
+                        val x = if (v.size > 0) v[0] else 0f
+                        val y = if (v.size > 1) v[1] else 0f
+                        val z = if (v.size > 2) v[2] else 0f
+                        samples.add(Triple(x, y, z))
                         if (System.currentTimeMillis() - startTime >= durationMs) {
                             sensorManager.unregisterListener(this)
                             if (cont.isActive) cont.resume(samples)
