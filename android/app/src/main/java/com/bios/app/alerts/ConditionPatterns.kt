@@ -1,5 +1,6 @@
 package com.bios.app.alerts
 
+import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
 import com.bios.contracts.MetricType
 
@@ -15,7 +16,18 @@ data class ConditionPattern(
     val earlyDetection: String = "",
     val prevention: String = "",
     val healing: String = "",
-    val risks: String = ""
+    val risks: String = "",
+    /**
+     * Minimum severity tier this pattern produces when it fires. The
+     * baseline classifier ([com.bios.app.engine.AnomalyDetector.classifySeverity])
+     * scores severity from signal-count + combined-score, which caps at
+     * [AlertTier.ADVISORY] — appropriate for multi-day trend patterns.
+     * Emergency vital-sign patterns (SpO2 ≤85, glucose ≤54, RHR ≥130 / ≤35)
+     * declare [AlertTier.URGENT] here so a single hard-cutoff crossing is not
+     * presented at the same severity as a 7-day RHR drift. When non-null,
+     * the actual severity is `max(classifier_output, severityFloor)`.
+     */
+    val severityFloor: AlertTier? = null
 )
 
 data class SignalRule(
@@ -81,7 +93,8 @@ object ConditionPatterns {
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit,
             respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
         ) + CircadianConditionPattern.all +
-            CompanionConditionPatterns.all + BiomarkerConditionPatterns.all
+            CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
+            EmergencyVitalPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
