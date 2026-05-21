@@ -42,13 +42,13 @@ fun SettingsScreen(
     onNavigateToDataCoverage: () -> Unit = {},
     onNavigateToBlePair: () -> Unit = {},
     onNavigateToMedications: () -> Unit = {},
-    onNavigateToImmunisations: () -> Unit = {}
+    onNavigateToImmunisations: () -> Unit = {},
+    onNavigateToPreventiveCare: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val hasPermissions by viewModel.hasPermissions.collectAsState()
     val scope = rememberCoroutineScope()
-
     var totalReadings by remember { mutableIntStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
@@ -179,7 +179,6 @@ fun SettingsScreen(
                     approvedCount = approvedCompanionCount,
                     onClick = onNavigateToCompanions
                 )
-
                 Spacer(Modifier.height(8.dp))
                 listOf(
                     "Add Lab Values" to onNavigateToBiomarkerEntry,
@@ -189,6 +188,7 @@ fun SettingsScreen(
                     "Log period start" to onNavigateToPeriodEntry,
                     "Current medications" to onNavigateToMedications,
                     "Immunisation record" to onNavigateToImmunisations,
+                    "Preventive care" to onNavigateToPreventiveCare,
                     "Data coverage" to onNavigateToDataCoverage,
                 ).forEachIndexed { idx, (label, action) ->
                     if (idx > 0) Spacer(Modifier.height(4.dp))
