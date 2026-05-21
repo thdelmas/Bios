@@ -111,9 +111,13 @@ class FhirExporterTest {
     }
 
     @Test
-    fun `32 metric types have LOINC mappings`() {
+    fun `metric types with LOINC mappings include the AHI passthrough`() {
+        // 32 base + 5 wave-5 biomarkers (#158: eGFR, creatinine, ALT, AST, GGT)
+        // + AHI (#157) = 38. The count assertion is intentionally maintained
+        // alongside the loincCode() table so any unmapped new MetricType is
+        // caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(32, mapped)
+        assertEquals(38, mapped)
     }
 
     @Test
@@ -283,6 +287,14 @@ class FhirExporterTest {
             MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
             MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
             MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
+            // #158 — renal / hepatic.
+            MetricType.EGFR -> "62238-1" to "Glomerular filtration rate/1.73 sq M.predicted by Creatinine-based formula (CKD-EPI 2021)"
+            MetricType.CREATININE -> "2160-0" to "Creatinine [Mass/volume] in Serum or Plasma"
+            MetricType.ALT -> "1742-6" to "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
+            MetricType.AST -> "1920-8" to "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
+            MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
+            // #157 — apnea-hypopnea index.
+            MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
             else -> null
         }
     }
