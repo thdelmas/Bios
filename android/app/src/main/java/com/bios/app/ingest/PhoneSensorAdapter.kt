@@ -180,33 +180,45 @@ class PhoneSensorAdapter(context: Context) {
 
     /**
      * Collects sensor samples for the given duration and returns them.
+     *
+     * Wrapped in a wall-clock timeout so a sensor that never fires (most
+     * commonly: TYPE_STEP_COUNTER without ACTIVITY_RECOGNITION permission,
+     * but also any silent sensor failure) can't hang the calling sync
+     * forever. The timeout is twice the requested duration with a 5 s
+     * floor — generous enough to absorb listener-registration latency
+     * without blocking the periodic sync if the sensor is silent.
      */
     private suspend fun collectSamples(
         sensor: Sensor,
         durationMs: Long
-    ): List<Triple<Float, Float, Float>> = suspendCancellableCoroutine { cont ->
-        val samples = mutableListOf<Triple<Float, Float, Float>>()
-        val startTime = System.currentTimeMillis()
+    ): List<Triple<Float, Float, Float>> {
+        val timeoutMs = (durationMs * 2L).coerceAtLeast(SAMPLE_TIMEOUT_FLOOR_MS)
+        return kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
+            suspendCancellableCoroutine<List<Triple<Float, Float, Float>>> { cont ->
+                val samples = mutableListOf<Triple<Float, Float, Float>>()
+                val startTime = System.currentTimeMillis()
 
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                samples.add(Triple(event.values[0], event.values[1], event.values[2]))
-                if (System.currentTimeMillis() - startTime >= durationMs) {
-                    sensorManager.unregisterListener(this)
-                    if (cont.isActive) cont.resume(samples)
+                val listener = object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent) {
+                        samples.add(Triple(event.values[0], event.values[1], event.values[2]))
+                        if (System.currentTimeMillis() - startTime >= durationMs) {
+                            sensorManager.unregisterListener(this)
+                            if (cont.isActive) cont.resume(samples)
+                        }
+                    }
+
+                    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+                }
+
+                sensorManager.registerListener(
+                    listener, sensor, SensorManager.SENSOR_DELAY_NORMAL
+                )
+
+                cont.invokeOnCancellation {
+                    sensorManager.unregisterListener(listener)
                 }
             }
-
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        }
-
-        sensorManager.registerListener(
-            listener, sensor, SensorManager.SENSOR_DELAY_NORMAL
-        )
-
-        cont.invokeOnCancellation {
-            sensorManager.unregisterListener(listener)
-        }
+        } ?: emptyList()
     }
 
     companion object {
@@ -214,5 +226,9 @@ class PhoneSensorAdapter(context: Context) {
         private const val ACTIVITY_THRESHOLD = 1.5 // m/s^2 above gravity
         private const val STEP_SAMPLE_MS = 500L
         private const val AMBIENT_LIGHT_TIMEOUT_MS = 1_000L
+        /** Hard wall-clock cap for collectSamples so a silent sensor
+         *  (e.g. TYPE_STEP_COUNTER without ACTIVITY_RECOGNITION) doesn't
+         *  hang the calling sync. */
+        private const val SAMPLE_TIMEOUT_FLOOR_MS = 5_000L
     }
 }
