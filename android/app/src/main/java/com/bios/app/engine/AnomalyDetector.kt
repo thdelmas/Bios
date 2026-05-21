@@ -434,20 +434,30 @@ class AnomalyDetector(
         }
 
     /**
-     * Evaluates an absolute-threshold rule against the metric's latest
-     * reading (no time window, no SENSOR filter — lab biomarkers are
-     * self-reported and dated months back). Returns the latest value plus
-     * whether it crosses the rule's clinical threshold. Returns
-     * `(null, false)` when no reading exists yet.
+     * Evaluates an absolute-threshold rule. Default (`absoluteWindowHours = 0`)
+     * uses the latest reading — appropriate for sparse, dated labs. Multi-
+     * reading mode (`absoluteWindowHours > 0`) fetches all readings in the
+     * window, requires `absoluteMinReadings`, then compares the **median**
+     * against the cutoff — the home-BP convention (ESH 2023), robust to a
+     * single white-coat outlier. Returns `(null, false)` when there isn't
+     * enough data to evaluate.
      */
     private suspend fun evaluateAbsoluteRule(
         rule: com.bios.app.alerts.SignalRule
     ): Pair<Double?, Boolean> {
-        val latest = readingDao.fetchLatest(rule.metricType.key, 1).firstOrNull()
-            ?: return null to false
-        val above = rule.absoluteAbove?.let { latest.value >= it } == true
-        val below = rule.absoluteBelow?.let { latest.value <= it } == true
-        return latest.value to (above || below)
+        val representative: Double = if (rule.absoluteWindowHours > 0) {
+            val values = fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+            if (values.size < rule.absoluteMinReadings) return null to false
+            values.sorted().let { s ->
+                if (s.size % 2 == 0) (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0 else s[s.size / 2]
+            }
+        } else {
+            readingDao.fetchLatest(rule.metricType.key, 1).firstOrNull()?.value
+                ?: return null to false
+        }
+        val above = rule.absoluteAbove?.let { representative >= it } == true
+        val below = rule.absoluteBelow?.let { representative <= it } == true
+        return representative to (above || below)
     }
 }
 

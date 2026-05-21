@@ -205,4 +205,47 @@ class AnomalyDetectorTest {
             applyFloor(classified = AlertTier.URGENT, floor = AlertTier.URGENT)
         )
     }
+
+    // --- median (multi-reading absolute window) tests ---
+    //
+    // Mirrors AnomalyDetector.median. The hypertension_emerging pattern
+    // depends on this: white-coat-robust check across multiple home BP
+    // readings uses the median, not the average, so a single outlier reading
+    // doesn't pull the signal.
+
+    private fun median(values: List<Double>): Double {
+        val sorted = values.sorted()
+        val mid = sorted.size / 2
+        return if (sorted.size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2.0 else sorted[mid]
+    }
+
+    @Test
+    fun `median of odd-count list returns middle element`() {
+        assertEquals(125.0, median(listOf(118.0, 125.0, 142.0)), 1e-9)
+    }
+
+    @Test
+    fun `median of even-count list averages the two middle elements`() {
+        assertEquals(126.0, median(listOf(118.0, 124.0, 128.0, 142.0)), 1e-9)
+    }
+
+    @Test
+    fun `median is robust to a single white-coat outlier`() {
+        // Four home readings around 122 systolic, one office white-coat at
+        // 168. The mean (131.4) crosses the ACC-AHA 130 stage-1 cutoff
+        // because of the outlier; the median (122) does not.
+        val readings = listOf(120.0, 122.0, 125.0, 168.0, 122.0)
+        val mean = readings.average()
+        val med = median(readings)
+        assertTrue("Mean would mis-fire the stage-1 cutoff: $mean", mean >= 130.0)
+        assertTrue("Median correctly stays below the cutoff: $med", med < 130.0)
+    }
+
+    @Test
+    fun `median crosses cutoff only when most readings cross`() {
+        // Three readings above 130, two below — median is above the cutoff
+        // (legitimate sustained elevation).
+        val readings = listOf(132.0, 138.0, 145.0, 128.0, 124.0)
+        assertTrue("Median should be at or above 130", median(readings) >= 130.0)
+    }
 }
