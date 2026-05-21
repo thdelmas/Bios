@@ -191,7 +191,7 @@ fun BiosApp(viewModel: AppViewModel) {
         Triple("log", "Log", Icons.Default.EditNote),
         Triple("notice", "Notice", Icons.Default.Notifications),
         Triple("timeline", "Journal", Icons.AutoMirrored.Filled.MenuBook),
-        Triple("settings", "Settings", Icons.Default.Settings)
+        Triple("settings", "Self", Icons.Default.AccountCircle)
     )
 
     Scaffold(
