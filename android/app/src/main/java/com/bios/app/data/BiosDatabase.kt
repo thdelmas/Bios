@@ -29,9 +29,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         PhoneSleepSample::class,
         MedicationAnnotation::class,
         ImmunizationRecord::class,
-        ScreeningEntry::class
+        ScreeningEntry::class,
+        RiskProfile::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -52,6 +53,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun medicationAnnotationDao(): MedicationAnnotationDao
     abstract fun immunizationRecordDao(): ImmunizationRecordDao
     abstract fun screeningEntryDao(): ScreeningEntryDao
+    abstract fun riskProfileDao(): RiskProfileDao
 
     companion object {
         @Volatile
@@ -74,7 +76,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -359,6 +361,33 @@ abstract class BiosDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_screening_entries_screeningKey ON screening_entries (screeningKey)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_screening_entries_performedDate ON screening_entries (performedDate)")
+            }
+        }
+
+        // Owner-recorded risk profile (#160). Single-row table — the
+        // screening-cadence engine and pattern-explanation builder read
+        // this surface to compute risk-adjusted cadences and contextualise
+        // alerts. Pull-side only; never pushed.
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS risk_profile (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        firstDegreeCadEarly INTEGER NOT NULL,
+                        firstDegreeBreastOvarianCancer INTEGER NOT NULL,
+                        firstDegreeColorectalCancer INTEGER NOT NULL,
+                        firstDegreeDiabetes INTEGER NOT NULL,
+                        firstDegreeOsteoporosisHipFracture INTEGER NOT NULL,
+                        firstDegreeMelanoma INTEGER NOT NULL,
+                        personalTobaccoYears INTEGER,
+                        personalTobaccoPackYears INTEGER,
+                        personalTobaccoQuitDate INTEGER,
+                        personalCancerHistory TEXT,
+                        personalCardiacEventHistory TEXT,
+                        note TEXT,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
             }
         }
 

@@ -43,7 +43,8 @@ fun SettingsScreen(
     onNavigateToBlePair: () -> Unit = {},
     onNavigateToMedications: () -> Unit = {},
     onNavigateToImmunisations: () -> Unit = {},
-    onNavigateToPreventiveCare: () -> Unit = {}
+    onNavigateToPreventiveCare: () -> Unit = {},
+    onNavigateToRiskProfile: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -55,21 +56,13 @@ fun SettingsScreen(
     var showOuraDialog by remember { mutableStateOf(false) }
     var isOuraConnected by remember { mutableStateOf(viewModel.ouraTokenStore.hasToken()) }
     var showWithingsDialog by remember { mutableStateOf(false) }
-    var isWithingsConnected by remember {
-        mutableStateOf(viewModel.apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY))
-    }
+    var isWithingsConnected by remember { mutableStateOf(viewModel.apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY)) }
     var showWhoopDialog by remember { mutableStateOf(false) }
-    var isWhoopConnected by remember {
-        mutableStateOf(viewModel.apiTokenStore.hasToken(WhoopApiAdapter.PROVIDER_KEY))
-    }
+    var isWhoopConnected by remember { mutableStateOf(viewModel.apiTokenStore.hasToken(WhoopApiAdapter.PROVIDER_KEY)) }
     var showGarminDialog by remember { mutableStateOf(false) }
-    var isGarminConnected by remember {
-        mutableStateOf(viewModel.apiTokenStore.hasToken(GarminApiAdapter.PROVIDER_KEY))
-    }
+    var isGarminConnected by remember { mutableStateOf(viewModel.apiTokenStore.hasToken(GarminApiAdapter.PROVIDER_KEY)) }
     var showPolarDialog by remember { mutableStateOf(false) }
-    var isPolarConnected by remember {
-        mutableStateOf(viewModel.apiTokenStore.hasToken(PolarApiAdapter.PROVIDER_KEY))
-    }
+    var isPolarConnected by remember { mutableStateOf(viewModel.apiTokenStore.hasToken(PolarApiAdapter.PROVIDER_KEY)) }
     val companionGrants by viewModel.db.companionGrantDao()
         .observeAll()
         .collectAsState(initial = emptyList())
@@ -189,6 +182,7 @@ fun SettingsScreen(
                     "Current medications" to onNavigateToMedications,
                     "Immunisation record" to onNavigateToImmunisations,
                     "Preventive care" to onNavigateToPreventiveCare,
+                    "Risk profile" to onNavigateToRiskProfile,
                     "Data coverage" to onNavigateToDataCoverage,
                 ).forEachIndexed { idx, (label, action) ->
                     if (idx > 0) Spacer(Modifier.height(4.dp))
