@@ -28,7 +28,7 @@ object BiomarkerConditionPatterns {
             inflammationSignature, prediabetesSignature, dyslipidemiaSignature,
             vitaminDDeficiencySignature, hypothyroidSignature, hyperthyroidSignature,
             anemiaSignature,
-        )
+        ) + Wave5BiomarkerPatterns.all
     }
 
     /**
@@ -375,4 +375,6 @@ object BiomarkerConditionPatterns {
         ),
         earlyDetection = "Chronic anemia develops slowly and the wearable signature (rising resting HR, declining activity) is nonspecific in isolation. Pairing it with a measured hemoglobin narrows the signal to the population where these proxies plausibly track oxygen-delivery shortfall.",
     )
+    // Wave 5 (renal / hepatic / insulin-resistance) lives in
+    // Wave5BiomarkerPatterns.kt to keep this file under the 500-line cap.
 }
