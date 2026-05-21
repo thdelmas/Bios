@@ -243,16 +243,9 @@ fun BiosApp(viewModel: AppViewModel) {
                 .padding(padding)
         ) {
             if (isSyncing) {
-                LinearProgressIndicator(
-                    progress = { syncProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                LinearProgressIndicator(progress = { syncProgress }, modifier = Modifier.fillMaxWidth())
             }
-            NavHost(
-                navController = navController,
-                startDestination = "home",
-                modifier = Modifier.weight(1f)
-            ) {
+            NavHost(navController = navController, startDestination = "home", modifier = Modifier.weight(1f)) {
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
@@ -348,11 +341,15 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToMedications = { navController.navigate("medications") },
                     onNavigateToImmunisations = { navController.navigate("immunisations") },
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
-                    onNavigateToRiskProfile = { navController.navigate("risk_profile") }
+                    onNavigateToRiskProfile = { navController.navigate("risk_profile") },
+                    onNavigateToPhysiologyState = { navController.navigate("physiology_state") }
                 )
             }
             composable("risk_profile") {
                 com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
+            }
+            composable("physiology_state") {
+                com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
             }
             composable("medications") {
                 com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
