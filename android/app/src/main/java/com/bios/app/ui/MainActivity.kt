@@ -349,11 +349,17 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
                     onNavigateToDataCoverage = { navController.navigate("data_coverage") },
                     onNavigateToBlePair = { navController.navigate("ble_pair") },
-                    onNavigateToMedications = { navController.navigate("medications") }
+                    onNavigateToMedications = { navController.navigate("medications") },
+                    onNavigateToImmunisations = { navController.navigate("immunisations") }
                 )
             }
             composable("medications") {
                 com.bios.app.ui.medications.MedicationsScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("immunisations") {
+                com.bios.app.ui.immunisations.ImmunisationsScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
