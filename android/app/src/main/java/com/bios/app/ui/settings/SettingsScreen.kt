@@ -41,7 +41,8 @@ fun SettingsScreen(
     onNavigateToSleepEntry: () -> Unit = {},
     onNavigateToDataCoverage: () -> Unit = {},
     onNavigateToBlePair: () -> Unit = {},
-    onNavigateToMedications: () -> Unit = {}
+    onNavigateToMedications: () -> Unit = {},
+    onNavigateToImmunisations: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -180,19 +181,19 @@ fun SettingsScreen(
                 )
 
                 Spacer(Modifier.height(8.dp))
-                SettingsActionButton("Add Lab Values", onNavigateToBiomarkerEntry)
-                Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Add clinical reading", onNavigateToClinicalEntry)
-                Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Log sleep", onNavigateToSleepEntry)
-                Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Track BBT", onNavigateToBbtEntry)
-                Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Log period start", onNavigateToPeriodEntry)
-                Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Current medications", onNavigateToMedications)
-                Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Data coverage", onNavigateToDataCoverage)
+                listOf(
+                    "Add Lab Values" to onNavigateToBiomarkerEntry,
+                    "Add clinical reading" to onNavigateToClinicalEntry,
+                    "Log sleep" to onNavigateToSleepEntry,
+                    "Track BBT" to onNavigateToBbtEntry,
+                    "Log period start" to onNavigateToPeriodEntry,
+                    "Current medications" to onNavigateToMedications,
+                    "Immunisation record" to onNavigateToImmunisations,
+                    "Data coverage" to onNavigateToDataCoverage,
+                ).forEachIndexed { idx, (label, action) ->
+                    if (idx > 0) Spacer(Modifier.height(4.dp))
+                    SettingsActionButton(label, action)
+                }
             }
         }
 

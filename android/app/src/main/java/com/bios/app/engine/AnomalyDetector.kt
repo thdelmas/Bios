@@ -19,31 +19,18 @@ import kotlin.math.min
  * Detects anomalies by scoring deviations from personal baselines
  * and cross-correlating multiple signals.
  *
- * `reproductiveReadingDao` is the optional reading DAO for the isolated
- * [com.bios.app.data.ReproductiveDatabase]. When non-null, reproductive
- * metrics (BBT, CYCLE_PHASE, CYCLE_DAY, MENSTRUATION_ONSET) are evaluated
- * against rows in the reproductive DB instead of the main DB — raw
- * reproductive readings never live in [BiosDatabase] by design. Baselines
- * for those metrics still resolve via `personalBaselineDao` on the main
- * DB (statistical summaries only, no raw values), per
- * [com.bios.app.data.ReproductiveDatabase]'s documented contract.
+ * `reproductiveReadingDao` (#142): optional DAO for the isolated
+ * [com.bios.app.data.ReproductiveDatabase]. WOMENS_HEALTH metrics resolve
+ * there; baselines stay in the main DB as summary-only rows.
+ * `medicationRepo` (#154): appends an "Annotated current medications" line
+ * to alert explanations, snapshot frozen at anomaly creation.
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
     private val mlModel: TFLiteAnomalyModel? = null,
     private val latencyTracker: DetectionLatencyTracker? = null,
     private val reproductiveReadingDao: MetricReadingDao? = null,
-    /**
-     * When non-null, the explanation builder appends a neutral
-     * "Annotated current medications: …" line so an alert that depends on
-     * the medication backdrop (beta-blockers and bradycardia, levothyroxine
-     * and tachycardia, steroid courses and glucose variability) is read
-     * with that context. Closes audit gap §2.5. The snapshot is taken at
-     * anomaly-creation time and frozen into the stored text — past alerts
-     * reflect what was on record then, not after subsequent edits.
-     */
-    private val medicationRepo: MedicationAnnotationRepo? =
-        MedicationAnnotationRepo(db)
+    private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db)
 ) {
 
     private val readingDao = db.metricReadingDao()
