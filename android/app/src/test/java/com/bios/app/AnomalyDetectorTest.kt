@@ -156,4 +156,53 @@ class AnomalyDetectorTest {
     fun `alert tier fromLevel unknown returns observation`() {
         assertEquals(AlertTier.OBSERVATION, AlertTier.fromLevel(99))
     }
+
+    // --- severityFloor escalation tests ---
+    //
+    // Mirrors the escalation block in AnomalyDetector.evaluatePattern: when a
+    // pattern declares a severityFloor, the emitted severity is the higher of
+    // the classifier's output and the floor. This is the mechanism that makes
+    // AlertTier.URGENT reachable for emergency vital-sign patterns
+    // (EmergencyVitalPatterns) without affecting trend patterns whose floor
+    // is null.
+
+    private fun applyFloor(classified: AlertTier, floor: AlertTier?): AlertTier =
+        floor?.let { if (it.level > classified.level) it else classified } ?: classified
+
+    @Test
+    fun `severityFloor escalates classifier output when floor is higher`() {
+        // An emergency pattern that fires with a low signal-count (single rule)
+        // would otherwise be classified as OBSERVATION; URGENT floor wins.
+        assertEquals(
+            AlertTier.URGENT,
+            applyFloor(classified = AlertTier.OBSERVATION, floor = AlertTier.URGENT)
+        )
+    }
+
+    @Test
+    fun `severityFloor does not downgrade classifier output when classifier is higher`() {
+        // Hypothetical: a multi-signal pattern with a NOTICE floor that the
+        // classifier scored as ADVISORY — keep ADVISORY.
+        assertEquals(
+            AlertTier.ADVISORY,
+            applyFloor(classified = AlertTier.ADVISORY, floor = AlertTier.NOTICE)
+        )
+    }
+
+    @Test
+    fun `severityFloor null leaves classifier output untouched`() {
+        // Trend patterns (the default) leave severityFloor null.
+        assertEquals(
+            AlertTier.NOTICE,
+            applyFloor(classified = AlertTier.NOTICE, floor = null)
+        )
+    }
+
+    @Test
+    fun `severityFloor equal to classifier output is a no-op`() {
+        assertEquals(
+            AlertTier.URGENT,
+            applyFloor(classified = AlertTier.URGENT, floor = AlertTier.URGENT)
+        )
+    }
 }
