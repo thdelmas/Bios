@@ -2,6 +2,7 @@ package com.bios.app.alerts
 
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
+import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 
 data class ConditionPattern(
@@ -18,16 +19,21 @@ data class ConditionPattern(
     val healing: String = "",
     val risks: String = "",
     /**
-     * Minimum severity tier this pattern produces when it fires. The
-     * baseline classifier ([com.bios.app.engine.AnomalyDetector.classifySeverity])
-     * scores severity from signal-count + combined-score, which caps at
-     * [AlertTier.ADVISORY] — appropriate for multi-day trend patterns.
-     * Emergency vital-sign patterns (SpO2 ≤85, glucose ≤54, RHR ≥130 / ≤35)
-     * declare [AlertTier.URGENT] here so a single hard-cutoff crossing is not
-     * presented at the same severity as a 7-day RHR drift. When non-null,
-     * the actual severity is `max(classifier_output, severityFloor)`.
+     * Minimum severity tier — see [AlertTier]. Non-null lifts severity
+     * above the classifier's default cap (used by emergency vital-sign
+     * patterns).
      */
-    val severityFloor: AlertTier? = null
+    val severityFloor: AlertTier? = null,
+    /**
+     * [PhysiologyState]s this pattern should NOT fire in. Default empty =
+     * applies in every state. Patterns with normative deviations in some
+     * state (e.g. RHR rises 10–20 bpm in pregnancy → cardiovascular_stress
+     * would false-fire) list those states here. The
+     * [com.bios.app.engine.AnomalyDetector] reads
+     * [com.bios.app.physiology.PhysiologyStateStore] and filters
+     * [ConditionPatterns.all] before evaluating. Closes audit gap §2.7.
+     */
+    val excludedStates: Set<PhysiologyState> = emptySet()
 )
 
 data class SignalRule(
@@ -84,7 +90,6 @@ data class SignalRule(
 
 enum class DeviationDirection {
     ABOVE, BELOW, IRREGULAR,
-
     /**
      * No readings of this metric in the [SignalRule.minDurationHours] window.
      * Intended for EVENT-unit metrics where "no event for N hours" is the signal
@@ -155,10 +160,8 @@ object ConditionPatterns {
         title = "Sleep quality declining",
         category = ConditionCategory.SLEEP,
         signalRules = listOf(
-            // Fragmentation is the most direct sleep-quality signal — number
-            // of post-onset awakenings is a clinical PSG metric, not a
-            // statistical proxy. Bonzini et al. (2020): fragmentation rises
-            // 3-7 days before subjective awareness of poor sleep.
+            // Fragmentation is the most direct sleep-quality signal — number of
+            // post-onset awakenings is a clinical PSG metric (Bonzini 2020).
             SignalRule(MetricType.SLEEP_FRAGMENTATION_INDEX, DeviationDirection.ABOVE, 1.0, 72, 1.0,
                 ThresholdSource.LITERATURE, "Bonzini et al. (2020) — fragmentation index above personal baseline precedes subjective fatigue"),
             SignalRule(MetricType.SLEEP_EFFICIENCY, DeviationDirection.BELOW, 1.0, 72, 1.0,
@@ -199,7 +202,9 @@ object ConditionPatterns {
         earlyDetection = "Cardiovascular stress builds over days before it becomes symptomatic. Resting heart rate rising 2+ standard deviations above your baseline is the primary signal, especially when sustained over 48 hours. A simultaneous drop in HRV indicates your autonomic nervous system is under sustained load. Declining blood oxygen saturation, even mildly, adds a third corroborating signal. Bios requires at least two of these three markers to flag cardiovascular strain, reducing false positives from exercise or transient stress.",
         prevention = "Regular aerobic exercise strengthens the cardiovascular system — aim for 150 minutes of moderate or 75 minutes of vigorous activity per week. Manage chronic stress through mindfulness, therapy, or lifestyle adjustments, as sustained cortisol elevates resting heart rate and blood pressure. Limit sodium intake, avoid smoking, and moderate alcohol consumption. Monitor blood pressure periodically. Maintain a healthy weight and get adequate sleep — both directly affect cardiovascular load.",
         healing = "Reduce physical and emotional stressors immediately. Prioritize rest and sleep. Practice breathing exercises or meditation to activate the parasympathetic nervous system and lower heart rate. If stress is work-related, consider taking breaks or adjusting workload. Stay hydrated and avoid stimulants (caffeine, nicotine). If resting heart rate remains elevated for more than a week, or if you experience chest pain, palpitations, dizziness, or shortness of breath, consult a cardiologist. An ECG or stress test may be warranted to rule out underlying conditions.",
-        risks = "Sustained cardiovascular strain left unaddressed can lead to serious consequences. Chronically elevated resting heart rate is an independent risk factor for heart attack and stroke. Persistent autonomic imbalance (low HRV, high resting HR) is associated with hypertension, arrhythmias, and heart failure over time. Reduced blood oxygen may indicate respiratory or circulatory issues that worsen without intervention. Acute risks include exercise-induced cardiac events if intense training continues despite warning signs."
+        risks = "Sustained cardiovascular strain left unaddressed can lead to serious consequences. Chronically elevated resting heart rate is an independent risk factor for heart attack and stroke. Persistent autonomic imbalance (low HRV, high resting HR) is associated with hypertension, arrhythmias, and heart failure over time. Reduced blood oxygen may indicate respiratory or circulatory issues that worsen without intervention. Acute risks include exercise-induced cardiac events if intense training continues despite warning signs.",
+        // RHR elevation is normative in pregnancy / postpartum / athletes (#159).
+        excludedStates = PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM, PhysiologyState.ATHLETE_HIGH_FITNESS)
     )
 
     val overtraining = ConditionPattern(
