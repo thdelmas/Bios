@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +63,7 @@ import java.util.Locale
 fun SleepDashboardScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
+    onLogSleepManually: () -> Unit = {},
 ) {
     var windowDays by remember { mutableStateOf(7) }
     var nights by remember { mutableStateOf<List<MetricReading>>(emptyList()) }
@@ -113,18 +115,63 @@ fun SleepDashboardScreen(
                 )
             }
             if (nights.isEmpty()) {
-                item {
-                    Text(
-                        "No sleep readings in the selected window. Connect a " +
-                            "wearable, sync Health Connect, or log a night manually.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                item { EmptySleepCard(onLogSleepManually) }
             } else {
                 items(nights, key = { it.id }) { night ->
                     NightRow(night, sourceLabels)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Empty-state guidance for the sleep dashboard. Explicit about every
+ * way the bus can populate so phone-only owners aren't left guessing:
+ * a wearable / Health Connect feed, the W2F companion (screen-off
+ * inference), or a manual entry through the existing
+ * `sleep_entry` route. The CTA opens the manual-entry flow directly
+ * since that's the only path the owner can act on without leaving
+ * Bios. Phone-side auto-derivation (`PhoneSleepAdapter` from #134)
+ * lands separately — the orchestration worker is the next layer.
+ */
+@Composable
+private fun EmptySleepCard(onLogSleepManually: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "No sleep readings yet",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Bios renders sleep that lands on its bus. Any of these " +
+                    "fills the dashboard:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "• Connect a wearable (Oura, WHOOP, Garmin, Withings, Polar)" +
+                    "\n• Enable Health Connect with a sleep-tracking app" +
+                    "\n• Install W2F with the Bios integration toggled on " +
+                    "(screen-off inference)" +
+                    "\n• Log a night manually below",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            FilledTonalButton(
+                onClick = onLogSleepManually,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Log a sleep night")
             }
         }
     }
