@@ -340,11 +340,19 @@ class AnomalyDetector(
         }
         if (hasCooldown) return null
 
-        val severity = classifySeverity(
+        val classifiedSeverity = classifySeverity(
             activeSignals = activeDeviations.size,
             combinedScore = combinedScore,
             totalRules = pattern.signalRules.size
         )
+        // Emergency vital-sign patterns declare a severityFloor (URGENT) so a
+        // single hard-cutoff crossing (SpO2 ≤85, glucose ≤54, RHR extreme)
+        // isn't presented at the same tier as a 7-day RHR drift. Trend
+        // patterns leave severityFloor null and fall through to the
+        // classifier output.
+        val severity = pattern.severityFloor?.let { floor ->
+            if (floor.level > classifiedSeverity.level) floor else classifiedSeverity
+        } ?: classifiedSeverity
 
         val deviationScoresJson = buildString {
             append("{")
