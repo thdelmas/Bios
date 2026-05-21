@@ -14,6 +14,17 @@ import com.bios.app.model.PersonalBaseline
 import com.bios.app.ui.AppViewModel
 import kotlin.math.abs
 
+/**
+ * Metrics that arrive as per-window samples but represent a cumulative
+ * day count — the card should sum today's values, not show the latest.
+ * `internal` so tests can pin the set's contents directly.
+ */
+internal val cumulativeDailyMetrics = setOf(
+    MetricType.STEPS,
+    MetricType.ACTIVE_CALORIES,
+    MetricType.ACTIVE_MINUTES,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MetricCard(
@@ -28,7 +39,14 @@ fun MetricCard(
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
 
     LaunchedEffect(metricType, refreshKey) {
-        latestValue = viewModel.getLatestReading(metricType)?.value
+        latestValue = if (metricType in cumulativeDailyMetrics) {
+            // Cumulative-daily metrics emit per-sample-window: the latest
+            // reading is whatever happened in the last bucket, not today's
+            // total. Sum since local midnight instead.
+            viewModel.getTodaySum(metricType)
+        } else {
+            viewModel.getLatestReading(metricType)?.value
+        }
         baseline = viewModel.getBaseline(metricType)
     }
 
@@ -67,9 +85,15 @@ private fun MetricCardBody(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
-            baseline?.let { bl ->
-                latestValue?.let { v ->
-                    DeviationIndicator(v, bl)
+            // Suppress the deviation indicator for cumulative-daily metrics:
+            // the value shown is today's sum but the baseline is computed
+            // from per-window readings — z-score across the two is nonsense.
+            // A daily-sum baseline is a future enhancement.
+            if (metricType !in cumulativeDailyMetrics) {
+                baseline?.let { bl ->
+                    latestValue?.let { v ->
+                        DeviationIndicator(v, bl)
+                    }
                 }
             }
         }

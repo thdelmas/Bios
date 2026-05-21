@@ -77,43 +77,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized
-
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
-
     private val _initStatus = MutableStateFlow("")
     val initStatus: StateFlow<String> = _initStatus
-
     private val _initProgress = MutableStateFlow(0f)
     val initProgress: StateFlow<Float> = _initProgress
-
     private val _hasPermissions = MutableStateFlow(false)
     val hasPermissions: StateFlow<Boolean> = _hasPermissions
-
     private val _unacknowledgedAlerts = MutableStateFlow<List<Anomaly>>(emptyList())
     val unacknowledgedAlerts: StateFlow<List<Anomaly>> = _unacknowledgedAlerts
-
     private val _recentAlerts = MutableStateFlow<List<Anomaly>>(emptyList())
     val recentAlerts: StateFlow<List<Anomaly>> = _recentAlerts
-
     private val _baselines = MutableStateFlow<List<PersonalBaseline>>(emptyList())
     val baselines: StateFlow<List<PersonalBaseline>> = _baselines
-
     private val _timelineEntries = MutableStateFlow<List<Anomaly>>(emptyList())
     val timelineEntries: StateFlow<List<Anomaly>> = _timelineEntries
-
     private val _healthEvents = MutableStateFlow<List<HealthEvent>>(emptyList())
     val healthEvents: StateFlow<List<HealthEvent>> = _healthEvents
-
     private val _pendingActionItems = MutableStateFlow<List<ActionItem>>(emptyList())
     val pendingActionItems: StateFlow<List<ActionItem>> = _pendingActionItems
-
     private val _diagnosticResults = MutableStateFlow<List<DiagnosticResult>>(emptyList())
     val diagnosticResults: StateFlow<List<DiagnosticResult>> = _diagnosticResults
-
     private val _pipelineSummary = MutableStateFlow<List<LatencyPercentiles>>(emptyList())
     val pipelineSummary: StateFlow<List<LatencyPercentiles>> = _pipelineSummary
-
     private val _anomalyForReview = MutableStateFlow<Anomaly?>(null)
     val anomalyForReview: StateFlow<Anomaly?> = _anomalyForReview
 
@@ -292,6 +279,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun getLatestReading(metricType: MetricType): MetricReading? {
         return db.metricReadingDao().fetchLatest(metricType.key).firstOrNull()
+    }
+
+    /**
+     * Sums today's readings (since local midnight). Used by Home for cumulative-
+     * daily metrics — Health Connect emits one StepsRecord per sample bucket,
+     * so the latest is the last hour, not the day total. Null when no readings.
+     */
+    suspend fun getTodaySum(metricType: MetricType): Double? {
+        val startOfDay = java.time.LocalDate.now()
+            .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val values = db.metricReadingDao()
+            .fetchValues(metricType.key, startOfDay, System.currentTimeMillis())
+        return if (values.isEmpty()) null else values.sum()
     }
 
     suspend fun getBaseline(metricType: MetricType): PersonalBaseline? {
