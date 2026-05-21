@@ -48,6 +48,16 @@ class PhoneSleepWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
 
+    /** Outcome of [Companion.runImmediateInference]. Surfaced to the
+     *  dashboard so the owner gets a concrete reason when no reading
+     *  lands from a force-now request. */
+    sealed interface ImmediateResult {
+        object NoSensor : ImmediateResult
+        object NotEnoughSamples : ImmediateResult
+        object NoSleepWindow : ImmediateResult
+        data class Written(val count: Int) : ImmediateResult
+    }
+
     override suspend fun doWork(): Result {
         val context = applicationContext
         val adapter = PhoneSleepAdapter(context)
@@ -114,7 +124,7 @@ class PhoneSleepWorker(
                 return Result.success()
             }
 
-            val sourceId = ensurePhoneSleepSource(sourceDao)
+            val sourceId = ensureSource(sourceDao)
             val readings = adapter.infer(samples, sourceId)
             if (readings.isNotEmpty()) {
                 readingDao.insertAll(readings)
@@ -132,27 +142,83 @@ class PhoneSleepWorker(
         }
     }
 
-    private suspend fun ensurePhoneSleepSource(
-        dao: com.bios.app.data.dao.DataSourceDao,
-    ): String {
-        val existing = dao.findByType(SourceType.PHONE_SENSOR_DERIVED.key)
-        if (existing != null) return existing.id
-        val source = DataSource(
-            sourceType = SourceType.PHONE_SENSOR_DERIVED.key,
-            sensorType = "phone_sleep",
-            deviceName = "Phone sleep inference",
-            readingKind = ReadingKind.DERIVED.name,
-        )
-        dao.insert(source)
-        return source.id
-    }
-
     companion object {
         private const val TAG = "PhoneSleepWorker"
         const val WORK_NAME = "bios_phone_sleep"
         /** Below this many samples the inference can't honestly fit
          *  a 4 h minimum window even at the 15-min cadence. */
         internal const val MIN_SAMPLES_FOR_INFERENCE = 8
+
+        /** Wider window for the on-demand "Infer now" path: covers up
+         *  to ~1.5 days back so an owner who slept late, just installed,
+         *  or had a DB wipe has a chance of producing a reading from a
+         *  partial buffer instead of waiting until tomorrow morning. */
+        internal const val FORCE_WINDOW_MS: Long = 36L * 60L * 60L * 1000L
+
+        /**
+         * On-demand inference path for owners who don't want to wait
+         * until the periodic morning trigger fires at the next wake hour.
+         * Takes one fresh sample, then runs inference over the last
+         * [FORCE_WINDOW_MS] using whatever's in the buffer. Skips both
+         * the morning-trigger gate and the lastMidpoint dedupe — the
+         * owner asked for an inference, so produce one if the math
+         * allows. Writes results under the same PHONE_SENSOR_DERIVED
+         * source the periodic worker uses.
+         */
+        suspend fun runImmediateInference(context: Context): ImmediateResult {
+            val adapter = PhoneSleepAdapter(context)
+            if (!adapter.isAvailable) return ImmediateResult.NoSensor
+
+            val db = BiosDatabase.getInstance(context)
+            val sampleDao = db.phoneSleepSampleDao()
+            val readingDao = db.metricReadingDao()
+            val sourceDao = db.dataSourceDao()
+
+            val fresh = adapter.sample()
+            sampleDao.insert(
+                PhoneSleepSample(
+                    timestamp = fresh.timestamp,
+                    screenOff = fresh.screenOff,
+                    charging = fresh.charging,
+                    ambientLightLux = fresh.ambientLightLux,
+                    accelMagnitudeVar = fresh.accelMagnitudeVar,
+                )
+            )
+
+            val end = System.currentTimeMillis()
+            val start = end - FORCE_WINDOW_MS
+            val samples = sampleDao.fetchInRange(start, end).map {
+                PhoneSleepInference.Sample(
+                    timestamp = it.timestamp,
+                    screenOff = it.screenOff,
+                    charging = it.charging,
+                    ambientLightLux = it.ambientLightLux,
+                    accelMagnitudeVar = it.accelMagnitudeVar,
+                )
+            }
+            if (samples.size < MIN_SAMPLES_FOR_INFERENCE) {
+                return ImmediateResult.NotEnoughSamples
+            }
+
+            val sourceId = ensureSource(sourceDao)
+            val readings = adapter.infer(samples, sourceId)
+            if (readings.isEmpty()) return ImmediateResult.NoSleepWindow
+            readingDao.insertAll(readings)
+            return ImmediateResult.Written(readings.size)
+        }
+
+        private suspend fun ensureSource(dao: com.bios.app.data.dao.DataSourceDao): String {
+            val existing = dao.findByType(SourceType.PHONE_SENSOR_DERIVED.key)
+            if (existing != null) return existing.id
+            val source = DataSource(
+                sourceType = SourceType.PHONE_SENSOR_DERIVED.key,
+                sensorType = "phone_sleep",
+                deviceName = "Phone sleep inference",
+                readingKind = ReadingKind.DERIVED.name,
+            )
+            dao.insert(source)
+            return source.id
+        }
 
         fun enqueuePeriodicWork(context: Context) {
             val constraints = Constraints.Builder()
