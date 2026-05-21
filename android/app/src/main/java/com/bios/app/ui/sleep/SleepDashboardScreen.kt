@@ -14,9 +14,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,16 +32,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.SleepRegularityCalculator
+import com.bios.app.ingest.PhoneSleepWorker
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.app.ui.AppViewModel
 import com.bios.contracts.MetricType
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -63,11 +70,16 @@ fun SleepDashboardScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var windowDays by remember { mutableStateOf(7) }
+    var refreshTick by remember { mutableStateOf(0) }
     var nights by remember { mutableStateOf<List<MetricReading>>(emptyList()) }
     var sourceLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var inferring by remember { mutableStateOf(false) }
+    var inferenceMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(windowDays) {
+    LaunchedEffect(windowDays, refreshTick) {
         val end = System.currentTimeMillis()
         val start = end - windowDays.toLong() * 24L * 3600L * 1000L
         nights = viewModel.db.metricReadingDao()
@@ -75,6 +87,19 @@ fun SleepDashboardScreen(
             .sortedByDescending { it.timestamp }
         sourceLabels = viewModel.db.dataSourceDao().getAll()
             .associate { it.id to (it.deviceName ?: it.sourceType) }
+    }
+
+    val onInferNow: () -> Unit = {
+        if (!inferring) {
+            scope.launch {
+                inferring = true
+                inferenceMessage = null
+                val result = PhoneSleepWorker.runImmediateInference(context)
+                inferenceMessage = describe(result)
+                inferring = false
+                refreshTick++
+            }
+        }
     }
 
     val regularity = remember(nights, windowDays) {
@@ -91,6 +116,21 @@ fun SleepDashboardScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onInferNow, enabled = !inferring) {
+                        if (inferring) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.padding(4.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Run phone inference now"
+                            )
+                        }
+                    }
                 }
             )
         }
@@ -103,6 +143,15 @@ fun SleepDashboardScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { WindowSelector(windowDays) { windowDays = it } }
+            inferenceMessage?.let { msg ->
+                item {
+                    Text(
+                        msg,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             item { RegularityCard(regularity) }
             item { SummaryCard(nights) }
             item {
@@ -113,14 +162,7 @@ fun SleepDashboardScreen(
                 )
             }
             if (nights.isEmpty()) {
-                item {
-                    Text(
-                        "No sleep readings in the selected window. Connect a " +
-                            "wearable, sync Health Connect, or log a night manually.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                item { EmptyStateCard(inferring = inferring, onInferNow = onInferNow) }
             } else {
                 items(nights, key = { it.id }) { night ->
                     NightRow(night, sourceLabels)
@@ -295,3 +337,50 @@ private fun formatDuration(seconds: Long): String {
 
 private val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.US)
 private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
+
+@Composable
+private fun EmptyStateCard(inferring: Boolean, onInferNow: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "No sleep readings in the selected window.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Connect a wearable, sync Health Connect, log a night manually, " +
+                    "or run phone inference now against whatever samples already buffered.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            FilledTonalButton(
+                onClick = onInferNow,
+                enabled = !inferring,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (inferring) "Running inference…" else "Run phone inference now")
+            }
+        }
+    }
+}
+
+private fun describe(result: PhoneSleepWorker.ImmediateResult): String = when (result) {
+    is PhoneSleepWorker.ImmediateResult.Written ->
+        "Inferred ${result.count} reading(s) from the last 36h buffer."
+    PhoneSleepWorker.ImmediateResult.NoSensor ->
+        "No accelerometer on this device — phone-only inference can't run."
+    PhoneSleepWorker.ImmediateResult.NotEnoughSamples ->
+        "Not enough samples buffered yet (need ${PhoneSleepWorker.MIN_SAMPLES_FOR_INFERENCE}+). " +
+            "Keep the app installed through a night and try again."
+    PhoneSleepWorker.ImmediateResult.NoSleepWindow ->
+        "No 4h+ continuous screen-off stretch found in the last 36h — " +
+            "the inference needs a long quiet window."
+}
