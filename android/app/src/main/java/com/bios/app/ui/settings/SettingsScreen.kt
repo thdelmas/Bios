@@ -34,11 +34,6 @@ fun SettingsScreen(
     viewModel: AppViewModel,
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
-    onNavigateToBiomarkerEntry: () -> Unit = {},
-    onNavigateToClinicalEntry: () -> Unit = {},
-    onNavigateToBbtEntry: () -> Unit = {},
-    onNavigateToPeriodEntry: () -> Unit = {},
-    onNavigateToSleepEntry: () -> Unit = {},
     onNavigateToDataCoverage: () -> Unit = {},
     onNavigateToBlePair: () -> Unit = {},
     onNavigateToMedications: () -> Unit = {},
@@ -175,11 +170,6 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 listOf(
-                    "Add Lab Values" to onNavigateToBiomarkerEntry,
-                    "Add clinical reading" to onNavigateToClinicalEntry,
-                    "Log sleep" to onNavigateToSleepEntry,
-                    "Track BBT" to onNavigateToBbtEntry,
-                    "Log period start" to onNavigateToPeriodEntry,
                     "Current medications" to onNavigateToMedications,
                     "Immunisation record" to onNavigateToImmunisations,
                     "Preventive care" to onNavigateToPreventiveCare,
