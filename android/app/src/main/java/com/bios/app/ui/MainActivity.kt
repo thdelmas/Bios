@@ -180,13 +180,9 @@ fun BiosApp(viewModel: AppViewModel) {
         }
     }
 
-    // Show errors as snackbar
     LaunchedEffect(error) {
         error?.let {
-            snackbarHostState.showSnackbar(
-                message = it,
-                duration = SnackbarDuration.Long
-            )
+            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Long)
             viewModel.clearError()
         }
     }
@@ -351,8 +347,12 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToBlePair = { navController.navigate("ble_pair") },
                     onNavigateToMedications = { navController.navigate("medications") },
                     onNavigateToImmunisations = { navController.navigate("immunisations") },
-                    onNavigateToPreventiveCare = { navController.navigate("preventive_care") }
+                    onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
+                    onNavigateToRiskProfile = { navController.navigate("risk_profile") }
                 )
+            }
+            composable("risk_profile") {
+                com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
             }
             composable("medications") {
                 com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
