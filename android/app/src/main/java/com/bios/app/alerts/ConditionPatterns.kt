@@ -57,6 +57,26 @@ data class SignalRule(
     val absoluteAbove: Double? = null,
     /** Mirror of [absoluteAbove] for "at or below" thresholds. */
     val absoluteBelow: Double? = null,
+    /**
+     * For multi-reading absolute checks: when > 0, the rule fires only if
+     * the **median** of all readings within the last [absoluteWindowHours]
+     * crosses the cutoff *and* there are at least [absoluteMinReadings]
+     * readings in that window. Used for cuff-measured metrics like blood
+     * pressure where a single reading carries white-coat / motion noise —
+     * median across multiple home readings is the established home-BP
+     * convention (ESH 2023 ABPM guidelines).
+     *
+     * Default 0 = single-latest-reading semantics (the original biomarker
+     * shape: lab values are sparse, dated, and intentional).
+     */
+    val absoluteWindowHours: Int = 0,
+    /**
+     * Minimum readings required in the [absoluteWindowHours] window before
+     * the median check fires. Default 1 — only meaningful when
+     * [absoluteWindowHours] > 0. Three is the standard floor for cuff-based
+     * home BP averaging.
+     */
+    val absoluteMinReadings: Int = 1,
 ) {
     /** True when this rule is evaluated as an absolute clinical threshold. */
     val isAbsolute: Boolean get() = absoluteAbove != null || absoluteBelow != null
@@ -94,7 +114,7 @@ object ConditionPatterns {
             respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
         ) + CircadianConditionPattern.all +
             CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
-            EmergencyVitalPatterns.all
+            EmergencyVitalPatterns.all + HypertensionPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
