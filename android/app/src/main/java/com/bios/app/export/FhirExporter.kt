@@ -375,6 +375,10 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.ALT -> "1742-6" to "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
     MetricType.AST -> "1920-8" to "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
     MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
+    // #157 — apnea-hypopnea index. Universal sleep-medicine measure;
+    // 90562-0 is the standard PSG-derived LOINC ("Sleep apnea hypopnea
+    // index"). Wearable-derived passthrough uses the same code.
+    MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
     else -> null
 }
 

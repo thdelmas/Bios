@@ -54,6 +54,15 @@ enum class MetricType(
     // 96 % on room air ≠ 96 % on 4 L/min. Single-point shape; ongoing-therapy
     // log-shape (start/end + rate over time) is deferred — see issue #107.
     OXYGEN_FLOW_RATE("oxygen_flow_rate", MetricUnit.LITERS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
+    // Sleep apnea passthrough (#157, audit gap §2.8). SLEEP_APNEA_EVENT is a
+    // discrete event written by vendor adapters that detect apnea episodes
+    // (Apple Watch / Samsung Galaxy Watch ship FDA-cleared detection); only
+    // timestamp + opaque event-id, no breathing waveform. AHI is the
+    // apnea-hypopnea index, the canonical clinical measure (events/hour) —
+    // typically vendor-derived nightly or owner-entered from a PSG/HSAT
+    // report. AASM severity: <5 normal, 5–15 mild, 15–30 moderate, ≥30 severe.
+    SLEEP_APNEA_EVENT("sleep_apnea_event", MetricUnit.EVENT, MetricDomain.RESPIRATORY),
+    AHI("ahi", MetricUnit.COUNT, MetricDomain.RESPIRATORY, allowsManualEntry = true),
 
     // Temperature
     SKIN_TEMPERATURE("skin_temperature", MetricUnit.CELSIUS, MetricDomain.TEMPERATURE, allowsManualEntry = true),
