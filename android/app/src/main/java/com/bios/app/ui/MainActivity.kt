@@ -350,18 +350,18 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToDataCoverage = { navController.navigate("data_coverage") },
                     onNavigateToBlePair = { navController.navigate("ble_pair") },
                     onNavigateToMedications = { navController.navigate("medications") },
-                    onNavigateToImmunisations = { navController.navigate("immunisations") }
+                    onNavigateToImmunisations = { navController.navigate("immunisations") },
+                    onNavigateToPreventiveCare = { navController.navigate("preventive_care") }
                 )
             }
             composable("medications") {
-                com.bios.app.ui.medications.MedicationsScreen(
-                    onBack = { navController.popBackStack() }
-                )
+                com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
             }
             composable("immunisations") {
-                com.bios.app.ui.immunisations.ImmunisationsScreen(
-                    onBack = { navController.popBackStack() }
-                )
+                com.bios.app.ui.immunisations.ImmunisationsScreen(onBack = { navController.popBackStack() })
+            }
+            composable("preventive_care") {
+                com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
             }
             composable("ble_pair") {
                 val bleVm = remember(viewModel) {
