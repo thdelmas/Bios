@@ -34,11 +34,6 @@ fun SettingsScreen(
     viewModel: AppViewModel,
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToCompanions: () -> Unit = {},
-    onNavigateToBiomarkerEntry: () -> Unit = {},
-    onNavigateToClinicalEntry: () -> Unit = {},
-    onNavigateToBbtEntry: () -> Unit = {},
-    onNavigateToPeriodEntry: () -> Unit = {},
-    onNavigateToSleepEntry: () -> Unit = {},
     onNavigateToDataCoverage: () -> Unit = {},
     onNavigateToBlePair: () -> Unit = {},
     onNavigateToMedications: () -> Unit = {},
@@ -86,7 +81,105 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+
+        // Identity — who the owner is. Surfaces the owner annotates about
+        // themselves. Not "settings" in the configuration sense; this is
+        // the owner's medical and physiological context.
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Identity", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                listOf(
+                    "Current medications" to onNavigateToMedications,
+                    "Immunisation record" to onNavigateToImmunisations,
+                    "Preventive care" to onNavigateToPreventiveCare,
+                    "Risk profile" to onNavigateToRiskProfile,
+                    "Physiology state" to onNavigateToPhysiologyState,
+                ).forEachIndexed { idx, (label, action) ->
+                    if (idx > 0) Spacer(Modifier.height(4.dp))
+                    SettingsActionButton(label, action)
+                }
+            }
+        }
+
+        // Privacy — what can leave, and who can access. The single highest-
+        // stakes surface in the app. Companion Apps was previously buried
+        // inside Data Sources; promoted here per the audit recommendation.
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Privacy", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+
+                CompanionAppsRow(
+                    pendingCount = pendingCompanionCount,
+                    approvedCount = approvedCompanionCount,
+                    onClick = onNavigateToCompanions
+                )
+
+                Spacer(Modifier.height(12.dp))
+                Text("Tier", style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = privacyTier == PrivacyTier.PRIVATE,
+                        onClick = {
+                            privacyTier = PrivacyTier.PRIVATE
+                            saveTier(context, PrivacyTier.PRIVATE)
+                            ContributionWorker.cancel(context)
+                        },
+                        label = { Text("Private") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = privacyTier == PrivacyTier.COMMUNITY,
+                        onClick = {
+                            privacyTier = PrivacyTier.COMMUNITY
+                            saveTier(context, PrivacyTier.COMMUNITY)
+                            ContributionWorker.enqueueNextContribution(context)
+                        },
+                        label = { Text("Community") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = when (privacyTier) {
+                        PrivacyTier.PRIVATE -> "Your data never leaves this device. Zero-knowledge architecture."
+                        PrivacyTier.COMMUNITY -> "Send anonymous aggregates. Off by default. Aggregation happens on-device before transmission — raw data never leaves."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(12.dp))
+                SettingsRow("Data Location", "On-device only")
+                SettingsRow("Encryption", "AES-256 (SQLCipher)")
+
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onNavigateToPrivacy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Shield, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Privacy Dashboard")
+                }
+                Spacer(Modifier.height(4.dp))
+                Button(
+                    onClick = { showDeleteDialog = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete All Data")
+                }
+            }
+        }
 
         // Data Sources
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -167,29 +260,8 @@ fun SettingsScreen(
                     onDisconnect = onNavigateToBlePair,
                 )
 
-                Spacer(Modifier.height(4.dp))
-                CompanionAppsRow(
-                    pendingCount = pendingCompanionCount,
-                    approvedCount = approvedCompanionCount,
-                    onClick = onNavigateToCompanions
-                )
                 Spacer(Modifier.height(8.dp))
-                listOf(
-                    "Add Lab Values" to onNavigateToBiomarkerEntry,
-                    "Add clinical reading" to onNavigateToClinicalEntry,
-                    "Log sleep" to onNavigateToSleepEntry,
-                    "Track BBT" to onNavigateToBbtEntry,
-                    "Log period start" to onNavigateToPeriodEntry,
-                    "Current medications" to onNavigateToMedications,
-                    "Immunisation record" to onNavigateToImmunisations,
-                    "Preventive care" to onNavigateToPreventiveCare,
-                    "Risk profile" to onNavigateToRiskProfile,
-                    "Physiology state" to onNavigateToPhysiologyState,
-                    "Data coverage" to onNavigateToDataCoverage,
-                ).forEachIndexed { idx, (label, action) ->
-                    if (idx > 0) Spacer(Modifier.height(4.dp))
-                    SettingsActionButton(label, action)
-                }
+                SettingsActionButton("Data coverage", onNavigateToDataCoverage)
             }
         }
 
@@ -312,81 +384,6 @@ fun SettingsScreen(
         }
 
         SettingsNotificationsCard()
-
-        // Privacy Tier
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Privacy Tier", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = privacyTier == PrivacyTier.PRIVATE,
-                        onClick = {
-                            privacyTier = PrivacyTier.PRIVATE
-                            saveTier(context, PrivacyTier.PRIVATE)
-                            ContributionWorker.cancel(context)
-                        },
-                        label = { Text("Private") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = privacyTier == PrivacyTier.COMMUNITY,
-                        onClick = {
-                            privacyTier = PrivacyTier.COMMUNITY
-                            saveTier(context, PrivacyTier.COMMUNITY)
-                            ContributionWorker.enqueueNextContribution(context)
-                        },
-                        label = { Text("Community") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = when (privacyTier) {
-                        PrivacyTier.PRIVATE -> "Your data never leaves this device. Zero-knowledge architecture."
-                        PrivacyTier.COMMUNITY -> "Anonymous statistical patterns (never raw data) help improve detection for all users. Aggregation happens on-device before transmission."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Privacy
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Privacy", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-
-                SettingsRow("Data Location", "On-device only")
-                SettingsRow("Encryption", "AES-256 (SQLCipher)")
-
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onNavigateToPrivacy,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Shield, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Privacy Dashboard")
-                }
-                Spacer(Modifier.height(4.dp))
-                Button(
-                    onClick = { showDeleteDialog = true },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Delete All Data")
-                }
-            }
-        }
 
         SettingsFeedbackCard()
 
