@@ -4,6 +4,7 @@ import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.MedicationAnnotationRepo
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.*
 import com.bios.contracts.MetricType
@@ -31,7 +32,18 @@ class AnomalyDetector(
     private val db: BiosDatabase,
     private val mlModel: TFLiteAnomalyModel? = null,
     private val latencyTracker: DetectionLatencyTracker? = null,
-    private val reproductiveReadingDao: MetricReadingDao? = null
+    private val reproductiveReadingDao: MetricReadingDao? = null,
+    /**
+     * When non-null, the explanation builder appends a neutral
+     * "Annotated current medications: …" line so an alert that depends on
+     * the medication backdrop (beta-blockers and bradycardia, levothyroxine
+     * and tachycardia, steroid courses and glucose variability) is read
+     * with that context. Closes audit gap §2.5. The snapshot is taken at
+     * anomaly-creation time and frozen into the stored text — past alerts
+     * reflect what was on record then, not after subsequent edits.
+     */
+    private val medicationRepo: MedicationAnnotationRepo? =
+        MedicationAnnotationRepo(db)
 ) {
 
     private val readingDao = db.metricReadingDao()
@@ -360,7 +372,12 @@ class AnomalyDetector(
             append("]")
         }
 
-        val explanation = buildExplanation(pattern, activeDeviations)
+        val baseExplanation = buildExplanation(pattern, activeDeviations)
+        // Medication context — read at anomaly-creation time so the stored
+        // text reflects what was on record when the pattern fired (§2.5).
+        // Null when the owner has no active medications recorded.
+        val medsContext = medicationRepo?.formatActiveContext()
+        val explanation = if (medsContext != null) "$baseExplanation $medsContext" else baseExplanation
 
         return Anomaly(
             metricTypes = metricTypesJson,
