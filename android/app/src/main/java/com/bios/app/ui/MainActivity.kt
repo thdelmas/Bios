@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.bios.app.ui.alerts.AlertsScreen
 import com.bios.app.ui.home.HomeScreen
+import com.bios.app.ui.log.LogScreen
 import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
@@ -189,7 +189,7 @@ fun BiosApp(viewModel: AppViewModel) {
 
     val tabs = listOf(
         Triple("home", "Home", Icons.Default.FavoriteBorder),
-        Triple("trends", "Trends", Icons.AutoMirrored.Filled.ShowChart),
+        Triple("log", "Log", Icons.Default.EditNote),
         Triple("alerts", "Alerts", Icons.Default.Notifications),
         Triple("timeline", "Journal", Icons.AutoMirrored.Filled.MenuBook),
         Triple("settings", "Settings", Icons.Default.Settings)
@@ -260,7 +260,6 @@ fun BiosApp(viewModel: AppViewModel) {
                         if (metric == MetricType.SLEEP_DURATION) {
                             navController.navigate("sleep_dashboard")
                         } else {
-                            selectedTab = tabs.indexOfFirst { it.first == "trends" }
                             navController.navigate("trends?metric=${metric.key}") {
                                 popUpTo("home") { saveState = true }
                                 launchSingleTop = true
@@ -268,6 +267,17 @@ fun BiosApp(viewModel: AppViewModel) {
                             }
                         }
                     }
+                )
+            }
+            composable("log") {
+                LogScreen(
+                    viewModel = viewModel,
+                    onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
+                    onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") },
+                    onNavigateToClinicalEntry = { navController.navigate("clinical_entry") },
+                    onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
+                    onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
+                    onNavigateToPeriodEntry = { navController.navigate("period_entry") },
                 )
             }
             composable("ppg_capture") {
@@ -331,11 +341,6 @@ fun BiosApp(viewModel: AppViewModel) {
                     viewModel = viewModel,
                     onNavigateToPrivacy = { navController.navigate("privacy") },
                     onNavigateToCompanions = { navController.navigate("companions") },
-                    onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") },
-                    onNavigateToClinicalEntry = { navController.navigate("clinical_entry") },
-                    onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
-                    onNavigateToPeriodEntry = { navController.navigate("period_entry") },
-                    onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
                     onNavigateToDataCoverage = { navController.navigate("data_coverage") },
                     onNavigateToBlePair = { navController.navigate("ble_pair") },
                     onNavigateToMedications = { navController.navigate("medications") },
@@ -430,7 +435,6 @@ fun BiosApp(viewModel: AppViewModel) {
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
                     onNavigateToMetricTrend = { metric ->
-                        selectedTab = tabs.indexOfFirst { it.first == "trends" }
                         navController.navigate("trends?metric=${metric.key}") {
                             popUpTo("home") { saveState = true }
                             launchSingleTop = true
