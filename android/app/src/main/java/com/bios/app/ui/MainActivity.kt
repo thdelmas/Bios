@@ -22,15 +22,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.bios.app.ui.alerts.AlertsScreen
 import com.bios.app.ui.home.HomeScreen
 import com.bios.app.ui.log.LogScreen
+import com.bios.app.ui.notice.NoticeScreen
 import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
 import com.bios.app.ui.journal.HealthEventSheet
 import com.bios.app.ui.diagnostics.ConditionDetailScreen
-import com.bios.app.ui.diagnostics.DiagnosticsScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.bios.app.ui.ppg.PpgCaptureScreen
@@ -190,7 +189,7 @@ fun BiosApp(viewModel: AppViewModel) {
     val tabs = listOf(
         Triple("home", "Home", Icons.Default.FavoriteBorder),
         Triple("log", "Log", Icons.Default.EditNote),
-        Triple("alerts", "Alerts", Icons.Default.Notifications),
+        Triple("notice", "Notice", Icons.Default.Notifications),
         Triple("timeline", "Journal", Icons.AutoMirrored.Filled.MenuBook),
         Triple("settings", "Settings", Icons.Default.Settings)
     )
@@ -211,7 +210,7 @@ fun BiosApp(viewModel: AppViewModel) {
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { index, (route, label, icon) ->
-                    val alertCount = if (route == "alerts") unacknowledgedAlerts.size else 0
+                    val alertCount = if (route == "notice") unacknowledgedAlerts.size else 0
                     NavigationBarItem(
                         icon = {
                             if (alertCount > 0) {
@@ -249,9 +248,6 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
-                    onNavigateToDiagnostics = { navController.navigate("diagnostics") },
-                    onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
-                    onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToActiveSubstances = { navController.navigate("active_substances") },
                     onNavigateToBodyLevels = { navController.navigate("body_levels") },
                     onNavigateToMetric = { metric ->
@@ -287,18 +283,6 @@ fun BiosApp(viewModel: AppViewModel) {
                     }
                 })
             }
-            composable("diagnostics") {
-                DiagnosticsScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
-                    onNavigateToDetail = { patternId ->
-                        navController.navigate("condition/$patternId")
-                    },
-                    onNavigateToReference = {
-                        navController.navigate("longevity_reference")
-                    }
-                )
-            }
             composable(
                 route = "condition/{patternId}",
                 arguments = listOf(navArgument("patternId") { type = NavType.StringType })
@@ -325,7 +309,16 @@ fun BiosApp(viewModel: AppViewModel) {
                     initialMetric = metricKey?.let { com.bios.contracts.MetricType.fromKey(it) }
                 )
             }
-            composable("alerts") { AlertsScreen(viewModel) }
+            composable("notice") {
+                NoticeScreen(
+                    viewModel = viewModel,
+                    onNavigateToCondition = { patternId ->
+                        navController.navigate("condition/$patternId")
+                    },
+                    onNavigateToCompanions = { navController.navigate("companions") },
+                    onNavigateToReference = { navController.navigate("longevity_reference") },
+                )
+            }
             composable("timeline") {
                 TimelineScreen(
                     viewModel = viewModel,

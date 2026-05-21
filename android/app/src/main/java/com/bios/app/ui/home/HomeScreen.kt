@@ -26,7 +26,6 @@ import com.bios.app.model.AlertTier
 import com.bios.app.model.HealthEventType
 import com.bios.contracts.MetricType
 import com.bios.app.ui.AppViewModel
-import com.bios.app.ui.components.AlertCard
 import com.bios.app.ui.components.MetricCard
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,9 +35,6 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     viewModel: AppViewModel,
-    onNavigateToDiagnostics: () -> Unit = {},
-    onNavigateToPpgCapture: () -> Unit = {},
-    onNavigateToCompanions: () -> Unit = {},
     onNavigateToActiveSubstances: () -> Unit = {},
     onNavigateToBodyLevels: () -> Unit = {},
     onNavigateToMetric: (MetricType) -> Unit = {}
@@ -47,9 +43,6 @@ fun HomeScreen(
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
     val isSyncing by viewModel.ingestManager.isSyncing.collectAsState()
-    val pendingCompanions by viewModel.db.companionGrantDao()
-        .pendingCountFlow()
-        .collectAsState(initial = 0)
 
     PullToRefreshBox(
         isRefreshing = isSyncing,
@@ -91,13 +84,6 @@ fun HomeScreen(
             StaleDataBanner()
         }
 
-        if (pendingCompanions > 0) {
-            PendingCompanionBanner(
-                count = pendingCompanions,
-                onReview = onNavigateToCompanions
-            )
-        }
-
         // Status card
         StatusCard(
             alertCount = unacknowledged.size,
@@ -114,42 +100,6 @@ fun HomeScreen(
                 description = null
             )
         })
-
-        // Active alerts
-        if (unacknowledged.isNotEmpty()) {
-            Text("Active Alerts", style = MaterialTheme.typography.titleMedium)
-            unacknowledged.forEach { anomaly ->
-                AlertCard(
-                    anomaly = anomaly,
-                    onAcknowledge = { viewModel.acknowledgeAlert(anomaly.id) },
-                    onSaveFeedback = { input ->
-                        viewModel.saveAlertFeedback(
-                            anomalyId = anomaly.id,
-                            feltSick = input.feltSick,
-                            visitedDoctor = input.visitedDoctor,
-                            diagnosis = input.diagnosis,
-                            symptoms = input.symptoms,
-                            notes = input.notes,
-                            outcomeAccurate = input.outcomeAccurate
-                        )
-                    }
-                )
-            }
-        }
-
-        HomeEntryCard(
-            icon = Icons.Default.CameraAlt,
-            title = "Take HRV Snapshot",
-            subtitle = "Fingertip reading via camera — 60 seconds",
-            onClick = onNavigateToPpgCapture,
-        )
-
-        HomeEntryCard(
-            icon = Icons.Default.MonitorHeart,
-            title = "Health Diagnostics",
-            subtitle = "View condition pattern analysis",
-            onClick = onNavigateToDiagnostics,
-        )
 
         HomeEntryCard(
             icon = Icons.Default.Medication,
@@ -355,48 +305,6 @@ fun QuickSymptomCard(onLogSymptom: (String) -> Unit) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun PendingCompanionBanner(count: Int, onReview: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onReview,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                Icons.Default.Apps,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.size(20.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (count == 1) "1 app waiting for approval"
-                    else "$count apps waiting for approval",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Text(
-                    "Bios is blocking their access until you decide.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer
-            )
         }
     }
 }
