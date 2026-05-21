@@ -115,7 +115,7 @@ object ConditionPatterns {
         ) + CircadianConditionPattern.all +
             CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
             EmergencyVitalPatterns.all + HypertensionPatterns.all +
-            SleepApneaPattern.all
+            SleepApneaPattern.all + RespiratoryExacerbationPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
