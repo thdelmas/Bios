@@ -114,7 +114,8 @@ object ConditionPatterns {
             respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
         ) + CircadianConditionPattern.all +
             CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
-            EmergencyVitalPatterns.all + HypertensionPatterns.all
+            EmergencyVitalPatterns.all + HypertensionPatterns.all +
+            SleepApneaPattern.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
