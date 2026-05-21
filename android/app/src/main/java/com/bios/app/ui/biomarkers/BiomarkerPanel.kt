@@ -89,6 +89,25 @@ object BiomarkerPanels {
         ),
     )
 
+    val renal = BiomarkerPanel(
+        id = "renal",
+        title = "Renal",
+        metrics = listOf(
+            MetricType.EGFR,
+            MetricType.CREATININE,
+        ),
+    )
+
+    val hepatic = BiomarkerPanel(
+        id = "hepatic",
+        title = "Hepatic",
+        metrics = listOf(
+            MetricType.ALT,
+            MetricType.AST,
+            MetricType.GGT,
+        ),
+    )
+
     val endocrine = BiomarkerPanel(
         id = "endocrine",
         title = "Endocrine",
@@ -120,6 +139,8 @@ object BiomarkerPanels {
         thyroid,
         vitamins,
         hematology,
+        renal,
+        hepatic,
         endocrine,
         epigenetic,
     )

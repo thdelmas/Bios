@@ -356,6 +356,8 @@ class FhirExporterTest {
             MetricUnit.LITERS_PER_MIN -> "L/min"
             MetricUnit.MILLIGRAMS -> "mg"
             MetricUnit.GRAMS -> "g"
+            MetricUnit.U_PER_L -> "U/L"
+            MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
         }
     }
 }
