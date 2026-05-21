@@ -44,6 +44,9 @@ class BiomarkerEntrySelectorsTest {
             MetricType.TESTOSTERONE_TOTAL, MetricType.ESTRADIOL,
             MetricType.CORTISOL, MetricType.IGF_1,
             MetricType.VITAMIN_B12, MetricType.FOLATE, MetricType.MAGNESIUM,
+            // Renal / hepatic (#158).
+            MetricType.EGFR, MetricType.CREATININE,
+            MetricType.ALT, MetricType.AST, MetricType.GGT,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
