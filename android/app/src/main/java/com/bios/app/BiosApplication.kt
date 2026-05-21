@@ -64,6 +64,12 @@ class BiosApplication : Application() {
         // Schedule periodic health data sync (HTTP/IPFS)
         SyncWorker.enqueuePeriodicSync(this)
 
+        // Schedule periodic phone-sleep sampling + morning inference.
+        // Idempotent via WorkManager's unique-work policy; only does
+        // anything on devices with an accelerometer (the worker
+        // self-skips otherwise).
+        com.bios.app.ingest.PhoneSleepWorker.enqueuePeriodicWork(this)
+
         // Schedule daily digest notification (8 AM, user can disable in settings)
         if (DailyDigestWorker.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
