@@ -1,6 +1,8 @@
 package com.bios.app.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +35,8 @@ fun MetricCard(
     icon: ImageVector,
     viewModel: AppViewModel,
     refreshKey: Any? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    onInfoClick: (() -> Unit)? = null,
 ) {
     var latestValue by remember { mutableStateOf<Double?>(null) }
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
@@ -56,11 +59,11 @@ fun MetricCard(
     val modifier = Modifier.fillMaxWidth()
     if (onClick != null) {
         Card(modifier = modifier, onClick = onClick, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, baseline)
+            MetricCardBody(metricType, label, icon, latestValue, baseline, onInfoClick)
         }
     } else {
         Card(modifier = modifier, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, baseline)
+            MetricCardBody(metricType, label, icon, latestValue, baseline, onInfoClick)
         }
     }
 }
@@ -71,7 +74,8 @@ private fun MetricCardBody(
     label: String,
     icon: ImageVector,
     latestValue: Double?,
-    baseline: PersonalBaseline?
+    baseline: PersonalBaseline?,
+    onInfoClick: (() -> Unit)?,
 ) {
     Column(modifier = Modifier.padding(12.dp)) {
         Row(
@@ -85,14 +89,29 @@ private fun MetricCardBody(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
-            // Suppress the deviation indicator for cumulative-daily metrics:
-            // the value shown is today's sum but the baseline is computed
-            // from per-window readings — z-score across the two is nonsense.
-            // A daily-sum baseline is a future enhancement.
-            if (metricType !in cumulativeDailyMetrics) {
-                baseline?.let { bl ->
-                    latestValue?.let { v ->
-                        DeviationIndicator(v, bl)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Suppress the deviation indicator for cumulative-daily metrics:
+                // the value shown is today's sum but the baseline is computed
+                // from per-window readings — z-score across the two is nonsense.
+                // A daily-sum baseline is a future enhancement.
+                if (metricType !in cumulativeDailyMetrics) {
+                    baseline?.let { bl ->
+                        latestValue?.let { v ->
+                            DeviationIndicator(v, bl)
+                        }
+                    }
+                }
+                if (onInfoClick != null && MetricExplanations.forMetric(metricType) != null) {
+                    IconButton(
+                        onClick = onInfoClick,
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Info,
+                            contentDescription = "About this metric",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                 }
             }
