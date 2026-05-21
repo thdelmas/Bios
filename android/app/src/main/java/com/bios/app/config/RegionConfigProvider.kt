@@ -137,6 +137,63 @@ object RegionConfigProvider {
             normalCeiling = 100.0, borderlineCeiling = 150.0,
             concerningDirection = BandDirection.BELOW,
         ),
+        // -- Renal / hepatic / insulin-resistance panel (#158) --
+        // eGFR (mL/min/1.73m²): KDIGO 2024 staging. <60 = G3a or worse
+        // (CONCERNING), 60–90 = G2 mildly decreased (BORDERLINE — common
+        // benign finding in older adults), ≥90 = G1 normal. CKD diagnosis
+        // requires <60 sustained ≥3 months *or* markers of kidney damage.
+        // (KDIGO 2024 CKD Guideline)
+        MetricType.EGFR to BiomarkerBands(
+            normalCeiling = 60.0, borderlineCeiling = 90.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
+        // Creatinine (mg/dL): conservative single threshold using the upper
+        // bound of the female reference range (1.1) as BORDERLINE and the
+        // upper bound of the male reference range (1.3) as the CONCERNING
+        // cutoff. Sex-stratified ranges are a future enhancement; for
+        // screening, 1.3 captures both sexes without missing male anemia-
+        // adjacent renal disease. (KDIGO 2024 + Williams Hematology adult
+        // reference ranges)
+        MetricType.CREATININE to BiomarkerBands(
+            normalCeiling = 1.1, borderlineCeiling = 1.3,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // ALT (U/L): AASLD 2017 — true upper limit of normal is 25 ♀ / 33 ♂.
+        // Using the more conservative 33 as the normal ceiling so a male
+        // reading slightly above 25 doesn't false-flag. 50 is the threshold
+        // at which most clinical labs report "high" and where NAFLD / drug-
+        // induced liver injury workup is triggered.
+        MetricType.ALT to BiomarkerBands(
+            normalCeiling = 33.0, borderlineCeiling = 50.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // AST (U/L): AASLD 2017 — similar ranges to ALT. Conservative single
+        // threshold 35 normal / 50 borderline / ≥50 concerning. The AST/ALT
+        // ratio matters more than either value alone for differential
+        // (alcohol-related disease tends AST/ALT > 1), but ratio
+        // interpretation belongs in the condition pattern, not the bands.
+        MetricType.AST to BiomarkerBands(
+            normalCeiling = 35.0, borderlineCeiling = 50.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // GGT (U/L): sex-dependent reference ranges (~8–61 ♀ / 12–73 ♂);
+        // conservative universal 40 normal / 60 borderline / ≥60 concerning.
+        // GGT rises with alcohol use, NAFLD, cholestasis, and many
+        // medications — sensitive but not specific. (AASLD 2017)
+        MetricType.GGT to BiomarkerBands(
+            normalCeiling = 40.0, borderlineCeiling = 60.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // HOMA-IR (score, calculated): Matthews 1985 — <2.0 insulin-sensitive,
+        // 2.0–2.5 borderline, ≥2.5 insulin-resistant. Threshold varies by
+        // population (Tam et al. 2012 — 2.6 for some cohorts; conservative
+        // 2.5 captures clinically meaningful resistance). Lab value the
+        // owner enters directly OR computes from FASTING_INSULIN ×
+        // FASTING_GLUCOSE / 405.
+        MetricType.HOMA_IR to BiomarkerBands(
+            normalCeiling = 2.0, borderlineCeiling = 2.5,
+            concerningDirection = BandDirection.ABOVE,
+        ),
     )
 
     private val configs: Map<String, RegionConfig> = mapOf(

@@ -367,6 +367,14 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.VITAMIN_B12 -> "2132-9" to "Cobalamins [Mass/volume] in Serum or Plasma"
     MetricType.FOLATE -> "2284-8" to "Folate [Mass/volume] in Serum or Plasma"
     MetricType.MAGNESIUM -> "2601-3" to "Magnesium [Mass/volume] in Serum or Plasma"
+    // #158 — renal / hepatic. eGFR pairs with creatinine (creatinine is the
+    // raw input; eGFR is the body-surface-normalised derived value most labs
+    // report alongside it). ALT / AST / GGT are the core hepatic panel.
+    MetricType.EGFR -> "62238-1" to "Glomerular filtration rate/1.73 sq M.predicted by Creatinine-based formula (CKD-EPI 2021)"
+    MetricType.CREATININE -> "2160-0" to "Creatinine [Mass/volume] in Serum or Plasma"
+    MetricType.ALT -> "1742-6" to "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.AST -> "1920-8" to "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -406,6 +414,8 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.LITERS_PER_MIN -> "L/min"
     MetricUnit.MILLIGRAMS -> "mg"
     MetricUnit.GRAMS -> "g"
+    MetricUnit.U_PER_L -> "U/L"
+    MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
 }
 
 internal fun formatInstant(instant: Instant): String =

@@ -177,6 +177,19 @@ enum class MetricType(
     FOLATE("folate", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
     MAGNESIUM("magnesium", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    // Renal / hepatic / insulin-resistance panel (#158, audit gap §2.8). The
+    // highest-yield silent-disease detectors not yet covered: CKD develops
+    // years before symptoms (eGFR is the single most important "preventive"
+    // lab for the >50 cohort); NAFLD is high-prevalence and asymptomatic
+    // until late stage; HOMA-IR catches insulin resistance before HbA1c
+    // shifts. FASTING_INSULIN (#159) + HOMA_IR (#160) above complete the
+    // insulin-resistance pathway.
+    EGFR("egfr", MetricUnit.ML_PER_MIN_PER_173, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CREATININE("creatinine", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ALT("alt", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    AST("ast", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    GGT("ggt", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
@@ -275,7 +288,11 @@ enum class MetricUnit(val symbol: String) {
     PPB("ppb"),
     LITERS_PER_MIN("L/min"),
     MILLIGRAMS("mg"),
-    GRAMS("g")
+    GRAMS("g"),
+    /** Enzyme activity per litre — ALT, AST, GGT, etc. */
+    U_PER_L("U/L"),
+    /** eGFR normalized to body surface area — KDIGO 2024 standard. */
+    ML_PER_MIN_PER_173("mL/min/1.73m²")
 }
 
 enum class MetricDomain {
