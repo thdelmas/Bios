@@ -36,7 +36,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +48,7 @@ import com.bios.app.engine.BaselineEngine
 import com.bios.app.ingest.SyncWorker
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.MetricCard
+import com.bios.app.ui.components.MetricInfoSheet
 import com.bios.contracts.MetricType
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -72,6 +75,7 @@ fun HomeScreen(
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
     val isSyncing by viewModel.ingestManager.isSyncing.collectAsState()
+    var infoMetric by remember { mutableStateOf<MetricType?>(null) }
 
     PullToRefreshBox(
         isRefreshing = isSyncing,
@@ -143,7 +147,8 @@ fun HomeScreen(
                         icon = icon,
                         viewModel = viewModel,
                         refreshKey = lastSync,
-                        onClick = { onNavigateToMetric(metricType) }
+                        onClick = { onNavigateToMetric(metricType) },
+                        onInfoClick = { infoMetric = metricType },
                     )
                 }
             }
@@ -169,6 +174,13 @@ fun HomeScreen(
                 )
             }
         }
+    }
+
+    infoMetric?.let { metric ->
+        MetricInfoSheet(
+            metricType = metric,
+            onDismiss = { infoMetric = null },
+        )
     }
 }
 
