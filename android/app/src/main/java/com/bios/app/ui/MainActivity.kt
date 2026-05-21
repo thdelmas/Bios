@@ -187,7 +187,7 @@ fun BiosApp(viewModel: AppViewModel) {
     }
 
     val tabs = listOf(
-        Triple("home", "Home", Icons.Default.FavoriteBorder),
+        Triple("home", "Read", Icons.Default.FavoriteBorder),
         Triple("log", "Log", Icons.Default.EditNote),
         Triple("notice", "Notice", Icons.Default.Notifications),
         Triple("timeline", "Journal", Icons.AutoMirrored.Filled.MenuBook),
