@@ -40,7 +40,8 @@ fun SettingsScreen(
     onNavigateToPeriodEntry: () -> Unit = {},
     onNavigateToSleepEntry: () -> Unit = {},
     onNavigateToDataCoverage: () -> Unit = {},
-    onNavigateToBlePair: () -> Unit = {}
+    onNavigateToBlePair: () -> Unit = {},
+    onNavigateToMedications: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -188,6 +189,8 @@ fun SettingsScreen(
                 SettingsActionButton("Track BBT", onNavigateToBbtEntry)
                 Spacer(Modifier.height(4.dp))
                 SettingsActionButton("Log period start", onNavigateToPeriodEntry)
+                Spacer(Modifier.height(4.dp))
+                SettingsActionButton("Current medications", onNavigateToMedications)
                 Spacer(Modifier.height(4.dp))
                 SettingsActionButton("Data coverage", onNavigateToDataCoverage)
             }

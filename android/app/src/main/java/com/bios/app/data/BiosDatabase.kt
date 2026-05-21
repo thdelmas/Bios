@@ -26,9 +26,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         CompanionGrant::class,
         LoggedEvent::class,
         EventPayloadField::class,
-        PhoneSleepSample::class
+        PhoneSleepSample::class,
+        MedicationAnnotation::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -46,6 +47,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun loggedEventDao(): LoggedEventDao
     abstract fun eventPayloadFieldDao(): EventPayloadFieldDao
     abstract fun phoneSleepSampleDao(): PhoneSleepSampleDao
+    abstract fun medicationAnnotationDao(): MedicationAnnotationDao
 
     companion object {
         @Volatile
@@ -68,7 +70,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -298,6 +300,33 @@ abstract class BiosDatabase : RoomDatabase() {
                 db.execSQL("""
                     CREATE INDEX IF NOT EXISTS index_phone_sleep_samples_timestamp
                     ON phone_sleep_samples (timestamp)
+                """.trimIndent())
+            }
+        }
+
+        // Owner-recorded current medications (#154). Annotation only — no
+        // adherence tracking, no schedule. The alert-explanation surface
+        // reads active rows (endDate IS NULL) to append a "medications on
+        // record" line so the owner sees why a beta-blocker user's RHR
+        // drift is contextualised, not flagged as pathology.
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS medication_annotations (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        startDate INTEGER NOT NULL,
+                        endDate INTEGER,
+                        note TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_medication_annotations_startDate
+                    ON medication_annotations (startDate)
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_medication_annotations_endDate
+                    ON medication_annotations (endDate)
                 """.trimIndent())
             }
         }
