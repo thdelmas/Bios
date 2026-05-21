@@ -28,9 +28,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         EventPayloadField::class,
         PhoneSleepSample::class,
         MedicationAnnotation::class,
-        ImmunizationRecord::class
+        ImmunizationRecord::class,
+        ScreeningEntry::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -50,6 +51,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun phoneSleepSampleDao(): PhoneSleepSampleDao
     abstract fun medicationAnnotationDao(): MedicationAnnotationDao
     abstract fun immunizationRecordDao(): ImmunizationRecordDao
+    abstract fun screeningEntryDao(): ScreeningEntryDao
 
     companion object {
         @Volatile
@@ -72,7 +74,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -306,11 +308,7 @@ abstract class BiosDatabase : RoomDatabase() {
             }
         }
 
-        // Owner-recorded current medications (#154). Annotation only — no
-        // adherence tracking, no schedule. The alert-explanation surface
-        // reads active rows (endDate IS NULL) to append a "medications on
-        // record" line so the owner sees why a beta-blocker user's RHR
-        // drift is contextualised, not flagged as pathology.
+        // Owner-recorded current medications (#154).
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""
@@ -322,22 +320,12 @@ abstract class BiosDatabase : RoomDatabase() {
                         note TEXT
                     )
                 """.trimIndent())
-                db.execSQL("""
-                    CREATE INDEX IF NOT EXISTS index_medication_annotations_startDate
-                    ON medication_annotations (startDate)
-                """.trimIndent())
-                db.execSQL("""
-                    CREATE INDEX IF NOT EXISTS index_medication_annotations_endDate
-                    ON medication_annotations (endDate)
-                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_medication_annotations_startDate ON medication_annotations (startDate)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_medication_annotations_endDate ON medication_annotations (endDate)")
             }
         }
 
-        // Owner-recorded immunisation history (#156). Vaccination status is
-        // a permanent axis with biomarkers — both the screening-cadence
-        // engine (#155) and the doctor-in-the-loop FHIR bundle read this
-        // table. Renamed from MIGRATION_11_12 → MIGRATION_12_13 on rebase
-        // because #154 (medication_annotations) took the 11→12 slot first.
+        // Owner-recorded immunisation history (#156).
         private val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""
@@ -351,14 +339,26 @@ abstract class BiosDatabase : RoomDatabase() {
                         note TEXT
                     )
                 """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_immunization_records_occurrenceDate ON immunization_records (occurrenceDate)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_immunization_records_cvxCode ON immunization_records (cvxCode)")
+            }
+        }
+
+        // Owner-recorded screening history (#155). Renamed from
+        // MIGRATION_11_12 → MIGRATION_13_14 on rebase because #154 and
+        // #156 took the 11→12 and 12→13 slots first.
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""
-                    CREATE INDEX IF NOT EXISTS index_immunization_records_occurrenceDate
-                    ON immunization_records (occurrenceDate)
+                    CREATE TABLE IF NOT EXISTS screening_entries (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        screeningKey TEXT NOT NULL,
+                        performedDate INTEGER NOT NULL,
+                        note TEXT
+                    )
                 """.trimIndent())
-                db.execSQL("""
-                    CREATE INDEX IF NOT EXISTS index_immunization_records_cvxCode
-                    ON immunization_records (cvxCode)
-                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_screening_entries_screeningKey ON screening_entries (screeningKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_screening_entries_performedDate ON screening_entries (performedDate)")
             }
         }
 
