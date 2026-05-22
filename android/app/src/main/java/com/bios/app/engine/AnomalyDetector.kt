@@ -17,14 +17,15 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * Detects anomalies by scoring deviations from personal baselines
- * and cross-correlating multiple signals.
+ * Detects anomalies by scoring deviations from personal baselines and
+ * cross-correlating multiple signals.
  *
  * `reproductiveReadingDao` (#142): optional DAO for the isolated
- * [com.bios.app.data.ReproductiveDatabase]. WOMENS_HEALTH metrics resolve
+ * [com.bios.app.data.ReproductiveDatabase] — WOMENS_HEALTH metrics resolve
  * there; baselines stay in the main DB as summary-only rows.
- * `medicationRepo` (#154): appends an "Annotated current medications" line
- * to alert explanations, snapshot frozen at anomaly creation.
+ * `medicationRepo` (#154): appends "Annotated current medications" to alert
+ * explanations, frozen at anomaly creation.
+ * `physiologyState` (#159, CARDIOLOGY_POV §2.4): filters patterns via [appliesIn].
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
@@ -32,25 +33,21 @@ class AnomalyDetector(
     private val latencyTracker: DetectionLatencyTracker? = null,
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
-    /** Owner-set physiology context (#159); filters patterns by excludedStates. */
     private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
     /** Sub-window acute-event detector (#190). Null disables the acute path. */
-    private val acuteWindowDetector: AcuteWindowDetector? =
-        AcuteWindowDetector(db, physiologyState),
+    private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
 ) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
+    // Acute-window patterns (#190) fire on their own detector (rate-of-change
+    // semantics the slow engine cannot express); skip them here to avoid dupes.
+    // appliesIn honors both excludedStates and requiredStates (#200).
     private fun applicablePatterns(): List<ConditionPattern> {
-        // Acute-window patterns (#190) fire on their own detector — slow
-        // engine cannot express their rate-of-change semantics; skip here
-        // to avoid duplicate alerts.
         val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
-        return ConditionPatterns.all.filter {
-            physiologyState !in it.excludedStates && it.id !in acuteIds
-        }
+        return ConditionPatterns.all.filter { it.appliesIn(physiologyState) && it.id !in acuteIds }
     }
 
     suspend fun runDetection(): List<Anomaly> {
@@ -494,6 +491,10 @@ internal fun readingKindFilterFor(metricType: MetricType): String? = when {
     else -> ReadingKind.SENSOR.name
 }
 
-/** Reproductive metrics route raw-reading fetches to ReproductiveDatabase. */
-internal fun isReproductiveMetric(metricType: MetricType): Boolean =
-    metricType.domain == MetricDomain.WOMENS_HEALTH
+/**
+ * Reproductive metrics whose raw readings live in
+ * [com.bios.app.data.ReproductiveDatabase]; anomaly evaluation routes value
+ * fetches there. Baselines for these metrics, when computed, are still
+ * stored as summary-only rows in the main DB per the documented contract.
+ */
+internal fun isReproductiveMetric(metricType: MetricType): Boolean = metricType.domain == MetricDomain.WOMENS_HEALTH

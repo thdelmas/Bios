@@ -52,7 +52,48 @@ enum class PhysiologyState(val displayName: String) {
      * Owner-revocable instantly. No waiting period. No clinical
      * confirmation. The owner is final.
      */
-    HOSPICE_MODE("Hospice / end-of-life care");
+    HOSPICE_MODE("Hospice / end-of-life care"),
+
+    /**
+     * Owner-declared known asthma (#200, audit gap §2.9 from
+     * PAEDIATRICS_POV.md + MEDICAL_PROFESSIONAL_POV.md). Gates the
+     * acute asthma-exacerbation screening pattern via the
+     * [com.bios.app.alerts.ConditionPattern.requiredStates] axis —
+     * the pattern only fires for owners who have flagged themselves
+     * as asthmatic. Healthy-owner false positives from a strenuous
+     * hike (RR up + activity drop) or transient illness would dominate
+     * without this gate. Same shape as HOSPICE_MODE: owner-revocable,
+     * no clinical confirmation, the owner is final.
+     */
+    KNOWN_ASTHMA("Known asthma"),
+
+    /**
+     * Owner-declared known COPD (#200). Gates the acute COPD-exacerbation
+     * screening pattern. COPD owners typically have lower SpO2 baselines
+     * than the general population (88–92 % is normal for some, not hypoxia),
+     * and the personal-baseline framework handles that; the acute screen
+     * additionally fires only for this population so non-COPD owners on a
+     * high-altitude trip don't trigger it. Owner-revocable, no clinical
+     * confirmation required.
+     */
+    KNOWN_COPD("Known COPD"),
+
+    /**
+     * Owner-set: a clinician has diagnosed heart failure (HFrEF, HFpEF, or
+     * mid-range EF). Gates the HeartLogic-lite decompensation-prodrome
+     * pattern in [com.bios.app.alerts.HeartFailureDecompensationPattern].
+     *
+     * Cardiology audit §2.4 (CARDIOLOGY_POV.md): the wearable-derivable subset
+     * of the FDA-cleared HeartLogic algorithm (Boehmer 2017 MultiSENSE) —
+     * RHR trend, nocturnal RR trend, activity decline, body-weight rise —
+     * predicts decompensation 7–14 days ahead in known-HF populations.
+     * Firing the prodrome pattern on owners *without* a HF diagnosis would
+     * be clinically irrelevant noise (a 32-year-old with a viral illness
+     * would light up every signal), so the pattern only runs when the
+     * owner has affirmatively set this state. Manifesto guard: Bios never
+     * infers HF — the owner picks.
+     */
+    KNOWN_HF("Known heart failure");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
