@@ -39,16 +39,21 @@ fun MetricCard(
     onInfoClick: (() -> Unit)? = null,
 ) {
     var latestValue by remember { mutableStateOf<Double?>(null) }
+    var latestTimestamp by remember { mutableStateOf<Long?>(null) }
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
 
     LaunchedEffect(metricType, refreshKey) {
-        latestValue = if (metricType in cumulativeDailyMetrics) {
+        if (metricType in cumulativeDailyMetrics) {
             // Cumulative-daily metrics emit per-sample-window: the latest
             // reading is whatever happened in the last bucket, not today's
-            // total. Sum since local midnight instead.
-            viewModel.getTodaySum(metricType)
+            // total. Sum since local midnight instead. Age would only mean
+            // "last bucket received," not "data freshness," so suppress it.
+            latestValue = viewModel.getTodaySum(metricType)
+            latestTimestamp = null
         } else {
-            viewModel.getLatestReading(metricType)?.value
+            val reading = viewModel.getLatestReading(metricType)
+            latestValue = reading?.value
+            latestTimestamp = reading?.timestamp
         }
         baseline = viewModel.getBaseline(metricType)
     }
@@ -59,11 +64,11 @@ fun MetricCard(
     val modifier = Modifier.fillMaxWidth()
     if (onClick != null) {
         Card(modifier = modifier, onClick = onClick, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, baseline, onInfoClick)
+            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick)
         }
     } else {
         Card(modifier = modifier, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, baseline, onInfoClick)
+            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick)
         }
     }
 }
@@ -74,6 +79,7 @@ private fun MetricCardBody(
     label: String,
     icon: ImageVector,
     latestValue: Double?,
+    latestTimestamp: Long?,
     baseline: PersonalBaseline?,
     onInfoClick: (() -> Unit)?,
 ) {
@@ -119,14 +125,24 @@ private fun MetricCardBody(
 
         Spacer(Modifier.height(8.dp))
 
+        val ageMillis = latestTimestamp?.let { System.currentTimeMillis() - it }
+        val stale = ageMillis != null && isStale(metricType, ageMillis)
+
         Text(
             text = latestValue?.let { formatValue(it, metricType) } ?: "--",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            color = if (stale) MaterialTheme.colorScheme.onSurfaceVariant
+                    else Color.Unspecified
         )
 
+        val ageText = ageMillis?.let { formatRelativeTime(it) }
         Text(
-            text = label,
+            text = when {
+                stale && ageText != null -> "$label · $ageText — open your watch app to refresh"
+                ageText != null -> "$label · $ageText"
+                else -> label
+            },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -148,6 +164,46 @@ private fun DeviationIndicator(value: Double, baseline: PersonalBaseline) {
         color = color,
         fontWeight = FontWeight.Bold
     )
+}
+
+/**
+ * How old a reading can be before it stops being treated as "live" on the
+ * Read tab. Null means no staleness check — daily-rhythm metrics (sleep,
+ * skin-temp deviation) are inherently 12-36h old by design and shouldn't be
+ * dimmed for it. Returns the threshold in milliseconds.
+ *
+ * Why these specific metrics: vital signs that wearables emit continuously
+ * (HR, HRV, respiration, SpO2) should reflect the last few minutes — if
+ * they don't, the upstream companion app isn't syncing and the displayed
+ * value is misleading rather than informative.
+ */
+internal fun staleThresholdMillis(metricType: MetricType): Long? = when (metricType) {
+    MetricType.HEART_RATE,
+    MetricType.HEART_RATE_VARIABILITY,
+    MetricType.RESPIRATORY_RATE,
+    MetricType.BLOOD_OXYGEN -> 10L * 60_000L
+    else -> null
+}
+
+internal fun isStale(metricType: MetricType, ageMillis: Long): Boolean {
+    val threshold = staleThresholdMillis(metricType) ?: return false
+    return ageMillis > threshold
+}
+
+/**
+ * Reading age, in the smallest unit that's still legible.
+ * `ageMillis` may be negative if a sample's timestamp is slightly in the
+ * future (clock skew between Coros app and phone) — treat as "just now".
+ */
+internal fun formatRelativeTime(ageMillis: Long): String {
+    val seconds = ageMillis / 1000
+    if (seconds < 60) return "just now"
+    val minutes = seconds / 60
+    if (minutes < 60) return "${minutes}m ago"
+    val hours = minutes / 60
+    if (hours < 24) return "${hours}h ago"
+    val days = hours / 24
+    return "${days}d ago"
 }
 
 internal fun formatValue(value: Double, metricType: MetricType): String {
