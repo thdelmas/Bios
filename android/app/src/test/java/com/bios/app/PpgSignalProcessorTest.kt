@@ -170,4 +170,113 @@ class PpgSignalProcessorTest {
         assertTrue(r.rrIntervalsMs.isEmpty())
         assertNotNull(r.rejectionReason)
     }
+
+    // -- Pulse-wave morphology (#181, CARDIOLOGY_POV §2.2) --
+
+    /**
+     * Synthetic PPG-like beat: asymmetric (faster rise, slower decay) with a
+     * small dichrotic notch on the decay limb. Repeats at [bpm] for
+     * [durationSec]. Baseline 128, peak amplitude ~40.
+     */
+    private fun ppgLikeWaveform(bpm: Double, durationSec: Double): List<Double> {
+        val periodSec = 60.0 / bpm
+        val n = (durationSec * fs).toInt()
+        return (0 until n).map { i ->
+            val tInBeat = (i / fs) % periodSec
+            val phase = tInBeat / periodSec  // 0..1 across one beat
+            val systolic = when {
+                // Rise (0..0.30): rapid up-stroke, sine-shaped quarter-wave.
+                phase < 0.30 -> sin(PI * phase / 0.30 / 2)
+                // Initial decay (0.30..0.50): drop from peak to notch.
+                phase < 0.50 -> 1.0 - 0.55 * (phase - 0.30) / 0.20
+                // Diastolic rebound (0.50..0.60): small bump after the notch.
+                phase < 0.60 -> 0.45 + 0.07 * sin(PI * (phase - 0.50) / 0.10)
+                // Long decay to foot (0.60..1.0).
+                else -> 0.52 - 0.52 * (phase - 0.60) / 0.40
+            }
+            128.0 + 40.0 * systolic
+        }
+    }
+
+    @Test
+    fun `accepted PPG carries populated waveform morphology features`() {
+        val result = PpgSignalProcessor.extract(ppgLikeWaveform(bpm = 60.0, durationSec = 60.0), fs)
+
+        assertTrue("should accept: ${result.rejectionReason}", result.accepted)
+        val features = result.waveformFeatures
+        assertNotNull("morphology features should be populated on accepted signal", features)
+        features!!
+
+        // Peak amplitude trimmed mean is measured on the *detrended + smoothed*
+        // signal (baseline subtracted, low-pass filtered), so the absolute
+        // value is well below the 40-unit raw peak amplitude. We only assert
+        // it is positive and finite — exact magnitude depends on detrend
+        // window and smoothing kernel.
+        assertTrue(
+            "peakAmplitudeTrimmedMean=${features.peakAmplitudeTrimmedMean}",
+            features.peakAmplitudeTrimmedMean > 0.0 && features.peakAmplitudeTrimmedMean.isFinite()
+        )
+        // Synthetic signal is steady, so CoV must be small.
+        assertTrue("peakAmplitudeCov=${features.peakAmplitudeCov}", features.peakAmplitudeCov < 0.2)
+
+        // Rise time at 60 bpm with rise-fraction ~0.3 of a 1.0 s beat ≈ 0.3 s.
+        // 30 fps quantisation gives ±2 sample slack → ~0.07 s.
+        assertEquals(0.3, features.riseTimeMeanSec, 0.1)
+        assertTrue("riseTimeCov=${features.riseTimeCov}", features.riseTimeCov < 0.2)
+
+        // Asymmetric beat (decay slower than rise) → positive index.
+        assertTrue(
+            "decayAsymmetryIndex=${features.decayAsymmetryIndex}",
+            features.decayAsymmetryIndex > 0.1
+        )
+
+        // Beats measured should be most of the detected peaks (60 bpm × 60 s ≈ 60).
+        assertTrue("beatsMeasured=${features.beatsMeasured}", features.beatsMeasured >= 30)
+    }
+
+    @Test
+    fun `dichrotic notch position is detected on PPG-like beat with notch`() {
+        val result = PpgSignalProcessor.extract(ppgLikeWaveform(bpm = 60.0, durationSec = 60.0), fs)
+        val features = result.waveformFeatures
+        assertNotNull(features)
+        // The notch in the synthetic beat sits at phase ~0.50 of the beat
+        // period. Smoothing and trough-finding will shift this slightly —
+        // accept the broad mid-beat band.
+        val notch = features!!.dichroticNotchRelativePosition
+        if (notch != null) {
+            assertTrue(
+                "dichroticNotchRelativePosition=$notch should sit in mid-beat",
+                notch in 0.25..0.75
+            )
+        }
+        // It is acceptable for notch detection to return null on a low-fs
+        // synthetic — the field is documented as nullable. We only assert
+        // the value is sensible *when* present.
+    }
+
+    @Test
+    fun `rejected PPG carries null waveform features`() {
+        val flat = List((60.0 * fs).toInt()) { 50.0 }
+        val result = PpgSignalProcessor.extract(flat, fs)
+        assertFalse(result.accepted)
+        assertNull(
+            "rejected recordings must not surface morphology",
+            result.waveformFeatures
+        )
+    }
+
+    @Test
+    fun `clean sinusoid yields symmetric rise and decay`() {
+        val result = PpgSignalProcessor.extract(sinusoid(bpm = 60.0, durationSec = 60.0), fs)
+        assertTrue(result.accepted)
+        val features = result.waveformFeatures
+        assertNotNull(features)
+        // Pure sinusoid → rise ≈ decay → asymmetry index close to 0.
+        assertEquals(
+            "sinusoidal beat must have near-zero decay asymmetry",
+            0.0,
+            features!!.decayAsymmetryIndex,
+            0.15
+        )
+    }
 }

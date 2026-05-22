@@ -114,20 +114,38 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun excludedStates_wiring_pins_v2_scope() {
-        // v1 wired only cardiovascular_stress. v2 (#186) adds frailty
-        // exclusion to four baseline-deviation patterns. If this fails,
-        // document the additional wired patterns so the explicit list
-        // keeps tracking what's gated.
-        val wired = ConditionPatterns.all.filter { it.excludedStates.isNotEmpty() }.map { it.id }.toSet()
-        val expected = setOf(
-            "sleep_disruption",
-            "cardiovascular_stress",
-            "cardiorespiratory_deconditioning",
-            "recovery_deficit",
+    fun only_explicitly_documented_patterns_declare_excludedStates() {
+        // Pins the wired-pattern set so future additions are explicit. The
+        // gating currently covers:
+        //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
+        //     postpartum, and endurance-athlete physiology; also frail >75
+        //     (#186) whose baseline encodes deconditioning
+        //   - sleep_disruption / cardiorespiratory_deconditioning /
+        //     recovery_deficit (#186): same frailty rationale
+        //   - sepsis_screen (#182): NEWS2 thresholds are validated for adults
+        //     only — paediatric early-warning scores (PEWS) use age-banded
+        //     bands that don't map onto NEWS2 components
+        // When a new pattern lands here, add its id to the expected map below
+        // so the gating contract stays visible.
+        val expected = mapOf(
+            "sleep_disruption" to setOf(PhysiologyState.FRAILTY_FLAG),
+            "cardiovascular_stress" to setOf(
+                PhysiologyState.PREGNANCY_T1,
+                PhysiologyState.PREGNANCY_T2,
+                PhysiologyState.PREGNANCY_T3,
+                PhysiologyState.POSTPARTUM,
+                PhysiologyState.ATHLETE_HIGH_FITNESS,
+                PhysiologyState.FRAILTY_FLAG,
+            ),
+            "cardiorespiratory_deconditioning" to setOf(PhysiologyState.FRAILTY_FLAG),
+            "recovery_deficit" to setOf(PhysiologyState.FRAILTY_FLAG),
+            "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
         )
+        val wired = ConditionPatterns.all
+            .filter { it.excludedStates.isNotEmpty() }
+            .associate { it.id to it.excludedStates }
         assertEquals(
-            "Expected exactly the four frailty-wired patterns: $expected; got $wired",
+            "Patterns with excludedStates drifted from the documented set",
             expected, wired,
         )
     }
