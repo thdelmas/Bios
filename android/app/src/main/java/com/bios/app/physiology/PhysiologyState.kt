@@ -76,7 +76,24 @@ enum class PhysiologyState(val displayName: String) {
      * high-altitude trip don't trigger it. Owner-revocable, no clinical
      * confirmation required.
      */
-    KNOWN_COPD("Known COPD");
+    KNOWN_COPD("Known COPD"),
+
+    /**
+     * Owner-set: a clinician has diagnosed heart failure (HFrEF, HFpEF, or
+     * mid-range EF). Gates the HeartLogic-lite decompensation-prodrome
+     * pattern in [com.bios.app.alerts.HeartFailureDecompensationPattern].
+     *
+     * Cardiology audit §2.4 (CARDIOLOGY_POV.md): the wearable-derivable subset
+     * of the FDA-cleared HeartLogic algorithm (Boehmer 2017 MultiSENSE) —
+     * RHR trend, nocturnal RR trend, activity decline, body-weight rise —
+     * predicts decompensation 7–14 days ahead in known-HF populations.
+     * Firing the prodrome pattern on owners *without* a HF diagnosis would
+     * be clinically irrelevant noise (a 32-year-old with a viral illness
+     * would light up every signal), so the pattern only runs when the
+     * owner has affirmatively set this state. Manifesto guard: Bios never
+     * infers HF — the owner picks.
+     */
+    KNOWN_HF("Known heart failure");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
