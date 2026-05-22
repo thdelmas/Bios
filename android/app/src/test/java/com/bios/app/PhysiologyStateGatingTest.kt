@@ -70,11 +70,12 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun cardiovascular_stress_still_fires_in_standard_and_frailty_and_paediatric() {
-        // Frailty and paediatric don't have a known normative RHR-elevation
-        // pattern — the cardiovascular-stress signal still applies. (Paediatric
-        // threshold-modifier work belongs to a future PR.)
-        for (state in listOf(PhysiologyState.STANDARD, PhysiologyState.FRAILTY_FLAG, PhysiologyState.PAEDIATRIC)) {
+    fun cardiovascular_stress_still_fires_in_standard_and_paediatric() {
+        // Paediatric doesn't have a known normative RHR-elevation pattern in
+        // this library yet — the cardiovascular-stress signal still applies.
+        // (Paediatric threshold-modifier work belongs to a future PR.)
+        // FRAILTY_FLAG is now excluded — see frailty_excludes_baseline_deviation_patterns.
+        for (state in listOf(PhysiologyState.STANDARD, PhysiologyState.PAEDIATRIC)) {
             assertTrue(
                 "cardiovascular_stress should fire in $state",
                 applicable(state).any { it.id == "cardiovascular_stress" }
@@ -83,15 +84,51 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun no_other_pattern_currently_declares_excludedStates() {
-        // Pins the v1 scope: only one pattern is wired; future PRs add more.
-        // If this fails, document the additional wired patterns here so the
-        // explicit list keeps tracking what's gated.
-        val wired = ConditionPatterns.all.filter { it.excludedStates.isNotEmpty() }
-        assertEquals(
-            "Expected exactly 1 pattern with excludedStates (cardiovascular_stress)",
-            1, wired.size
+    fun frailty_excludes_baseline_deviation_patterns() {
+        // Wired by issue #186 per GERIATRICS_PALLIATIVE_POV.md §2.1 (Fried
+        // 2001 phenotype; Morley 2012 FRAIL questionnaire). The four patterns
+        // calibrated to a stable-adult baseline false-fire in the frail >75
+        // cohort whose baseline encodes deconditioning by definition.
+        val applicable = applicable(PhysiologyState.FRAILTY_FLAG).map { it.id }.toSet()
+        for (id in listOf(
+            "sleep_disruption",
+            "cardiovascular_stress",
+            "cardiorespiratory_deconditioning",
+            "recovery_deficit",
+        )) {
+            assertFalse(
+                "$id should be excluded under FRAILTY_FLAG",
+                id in applicable,
+            )
+        }
+    }
+
+    @Test
+    fun frailty_does_not_suppress_unrelated_patterns() {
+        // The frailty gate is targeted at four specific baseline-deviation
+        // patterns. Infection onset, biomarker patterns, and emergency
+        // vital cutoffs must still fire in the frail cohort — frail elders
+        // get infections and have heart attacks too.
+        val applicable = applicable(PhysiologyState.FRAILTY_FLAG).map { it.id }.toSet()
+        assertTrue("infection_onset should fire under FRAILTY_FLAG", "infection_onset" in applicable)
+    }
+
+    @Test
+    fun excludedStates_wiring_pins_v2_scope() {
+        // v1 wired only cardiovascular_stress. v2 (#186) adds frailty
+        // exclusion to four baseline-deviation patterns. If this fails,
+        // document the additional wired patterns so the explicit list
+        // keeps tracking what's gated.
+        val wired = ConditionPatterns.all.filter { it.excludedStates.isNotEmpty() }.map { it.id }.toSet()
+        val expected = setOf(
+            "sleep_disruption",
+            "cardiovascular_stress",
+            "cardiorespiratory_deconditioning",
+            "recovery_deficit",
         )
-        assertEquals("cardiovascular_stress", wired.single().id)
+        assertEquals(
+            "Expected exactly the four frailty-wired patterns: $expected; got $wired",
+            expected, wired,
+        )
     }
 }
