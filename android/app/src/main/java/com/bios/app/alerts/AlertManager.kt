@@ -12,10 +12,15 @@ import androidx.core.content.ContextCompat
 import com.bios.app.R
 import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.GoalsOfCareRepo
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.PipelineStage
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
+import com.bios.app.model.InterventionLevel
+import com.bios.app.physiology.PhysiologyState
+import com.bios.app.physiology.PhysiologyStateStore
+import kotlinx.coroutines.runBlocking
 
 /**
  * Manages alert generation, notification delivery, and alert lifecycle.
@@ -23,7 +28,10 @@ import com.bios.app.model.Anomaly
 class AlertManager(
     private val context: Context,
     private val db: BiosDatabase,
-    private val latencyTracker: DetectionLatencyTracker? = null
+    private val latencyTracker: DetectionLatencyTracker? = null,
+    private val physiologyStateStore: PhysiologyStateStore =
+        PhysiologyStateStore(context),
+    private val goalsOfCareRepo: GoalsOfCareRepo = GoalsOfCareRepo(db),
 ) {
     private val anomalyDao = db.anomalyDao()
 
@@ -33,6 +41,20 @@ class AlertManager(
         const val CHANNEL_URGENT = "bios_urgent"
         const val CHANNEL_FOLLOWUP = "bios_followup"
         const val CHANNEL_DIGEST = "bios_digest"
+
+        /**
+         * Non-pejorative note appended to in-app alert text when the
+         * URGENT-escalation pathway has been silenced because of the
+         * owner's declared goals of care (#184). The text deliberately
+         * avoids second-person lifestyle judgments, evaluative
+         * language, and guilt mechanics — it states the fact of the
+         * configuration and the path back to default.
+         */
+        const val GOALS_OF_CARE_NOTE: String =
+            "Per the goals-of-care preference on file, no automatic " +
+                "escalation will occur. Open the alert in-app to act on it, " +
+                "or change the preference in Settings to restore default " +
+                "escalation."
     }
 
     init {
@@ -57,15 +79,34 @@ class AlertManager(
             ) return
         }
 
-        val (channelId, priority) = when (tier) {
-            AlertTier.URGENT -> CHANNEL_URGENT to NotificationCompat.PRIORITY_HIGH
-            AlertTier.ADVISORY -> CHANNEL_ADVISORY to NotificationCompat.PRIORITY_DEFAULT
+        // Goals-of-care gate (#184). When the owner has declared
+        // hospice mode or COMFORT_ONLY intervention level, an URGENT
+        // alert is silenced from the system notification channel and
+        // does NOT trigger downstream emergency escalation (SMS-to-
+        // emergency-contact / tap-to-call, added by #215). The alert
+        // is still persisted to the DB so it appears in-app for the
+        // owner / caregivers to read.
+        val urgentEscalationSuppressed =
+            tier == AlertTier.URGENT && isUrgentEscalationSuppressed()
+
+        val (channelId, priority) = when {
+            urgentEscalationSuppressed ->
+                // Silence: emit on the low-importance NOTICE channel
+                // with PRIORITY_LOW so no sound / vibration fires.
+                CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
+            tier == AlertTier.URGENT -> CHANNEL_URGENT to NotificationCompat.PRIORITY_HIGH
+            tier == AlertTier.ADVISORY -> CHANNEL_ADVISORY to NotificationCompat.PRIORITY_DEFAULT
             else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
         }
 
         // Append regional disclaimer to explanation
         val regionConfig = RegionConfigProvider.forCurrentLocale()
-        val fullExplanation = "${anomaly.explanation}\n\n${regionConfig.regulatory.alertDisclaimer}"
+        val baseExplanation = if (urgentEscalationSuppressed) {
+            "${anomaly.explanation}\n\n$GOALS_OF_CARE_NOTE"
+        } else {
+            anomaly.explanation
+        }
+        val fullExplanation = "$baseExplanation\n\n${regionConfig.regulatory.alertDisclaimer}"
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -83,11 +124,37 @@ class AlertManager(
         latencyTracker?.record(
             PipelineStage.NOTIFICATION_DELIVERY,
             System.currentTimeMillis() - notificationStart,
-            mapOf("tier" to tier.label, "pattern" to (anomaly.patternId ?: "unknown"))
+            mapOf(
+                "tier" to tier.label,
+                "pattern" to (anomaly.patternId ?: "unknown"),
+                "goalsOfCareSuppressed" to urgentEscalationSuppressed.toString(),
+            )
         )
 
         // Schedule a follow-up reminder in 24h to prompt journal entry
         FollowUpWorker.schedule(context, anomaly.id, anomaly.title)
+    }
+
+    /**
+     * True when URGENT-tier auto-escalation should be short-circuited
+     * (#184). Delegates to [UrgentEscalationGate] (pure logic) using
+     * the current physiology state and the owner's declared
+     * intervention level.
+     *
+     * Public so callers that bypass [sendNotification] — e.g. the
+     * future emergency-contact escalation worker added by #215 — can
+     * gate on the same condition.
+     */
+    fun isUrgentEscalationSuppressed(): Boolean {
+        val state = physiologyStateStore.current()
+        val interventionLevel = runBlocking {
+            goalsOfCareRepo.fetch()?.interventionLevel ?: InterventionLevel.UNSPECIFIED
+        }
+        return UrgentEscalationGate.shouldSuppress(
+            tier = AlertTier.URGENT,
+            state = state,
+            interventionLevel = interventionLevel,
+        )
     }
 
     private fun createNotificationChannels() {
