@@ -1,5 +1,6 @@
 package com.bios.app
 
+import com.bios.app.alerts.BaselineDeviationPatterns
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
 import org.junit.Assert.*
@@ -95,14 +96,14 @@ class ConditionPatternsTest {
 
     @Test
     fun `infection onset pattern requires 3 signals from 6 rules`() {
-        val pattern = ConditionPatterns.infectionOnset
+        val pattern = BaselineDeviationPatterns.infectionOnset
         assertEquals(3, pattern.minActiveSignals)
         assertEquals(6, pattern.signalRules.size)
     }
 
     @Test
     fun `infection onset monitors correct metrics`() {
-        val metricKeys = ConditionPatterns.infectionOnset.signalRules.map { it.metricType.key }
+        val metricKeys = BaselineDeviationPatterns.infectionOnset.signalRules.map { it.metricType.key }
         assertTrue(metricKeys.contains("resting_heart_rate"))
         assertTrue(metricKeys.contains("heart_rate_variability"))
         assertTrue(metricKeys.contains("skin_temperature_deviation"))
@@ -111,12 +112,12 @@ class ConditionPatternsTest {
 
     @Test
     fun `sleep disruption pattern requires 2 signals`() {
-        assertEquals(2, ConditionPatterns.sleepDisruption.minActiveSignals)
+        assertEquals(2, BaselineDeviationPatterns.sleepDisruption.minActiveSignals)
     }
 
     @Test
     fun `cardiovascular stress pattern requires 2 signals`() {
-        assertEquals(2, ConditionPatterns.cardiovascularStress.minActiveSignals)
+        assertEquals(2, BaselineDeviationPatterns.cardiovascularStress.minActiveSignals)
     }
 
     @Test
