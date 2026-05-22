@@ -84,13 +84,16 @@ class PhysiologyStateGatingTest {
 
     @Test
     fun only_explicitly_documented_patterns_declare_excludedStates() {
-        // Pins the wired-pattern set so future additions are explicit. Two
-        // patterns currently use the gating:
+        // Pins the wired-pattern set so future additions are explicit.
+        // Three patterns currently use the gating:
         //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
         //     postpartum, and endurance-athlete physiology
         //   - sepsis_screen (#182): NEWS2 thresholds are validated for adults
         //     only — paediatric early-warning scores (PEWS) use age-banded
         //     bands that don't map onto NEWS2 components
+        //   - dka_screen (#190): adult ADA hyperglycaemic-crises threshold
+        //     (≥250 mg/dL) under-triggers in children; ISPAD 2022 paediatric
+        //     cutoff (≥200 mg/dL) is a future PhysiologyState refinement
         // When a new pattern lands here, add its id to the expected map below
         // so the gating contract stays visible.
         val expected = mapOf(
@@ -102,6 +105,7 @@ class PhysiologyStateGatingTest {
                 PhysiologyState.ATHLETE_HIGH_FITNESS,
             ),
             "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "dka_screen" to setOf(PhysiologyState.PAEDIATRIC),
         )
         val wired = ConditionPatterns.all
             .filter { it.excludedStates.isNotEmpty() }

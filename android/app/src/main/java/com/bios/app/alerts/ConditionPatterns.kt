@@ -121,7 +121,8 @@ object ConditionPatterns {
             BiomarkerConditionPatterns.all + EmergencyVitalPatterns.all +
             HypertensionPatterns.all + SleepApneaPattern.all +
             RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
-            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all
+            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
+            AcuteWindowPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
