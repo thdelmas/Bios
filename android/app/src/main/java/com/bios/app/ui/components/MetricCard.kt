@@ -173,15 +173,21 @@ private fun DeviationIndicator(value: Double, baseline: PersonalBaseline) {
  * dimmed for it. Returns the threshold in milliseconds.
  *
  * Why these specific metrics: vital signs that wearables emit continuously
- * (HR, HRV, respiration, SpO2) should reflect the last few minutes — if
+ * (HR, HRV, respiration, SpO2) should reflect the last sync window — if
  * they don't, the upstream companion app isn't syncing and the displayed
  * value is misleading rather than informative.
+ *
+ * Why 30 min: typical wearable companion apps (Coros, Garmin) batch their
+ * Health Connect writes every ~20 min when allowed to wake in background.
+ * A 10-min threshold tripped on nearly every reading and turned the nudge
+ * into noise; 30 min lets the normal cadence breathe but still catches the
+ * "hours stale" cases the threshold is actually for.
  */
 internal fun staleThresholdMillis(metricType: MetricType): Long? = when (metricType) {
     MetricType.HEART_RATE,
     MetricType.HEART_RATE_VARIABILITY,
     MetricType.RESPIRATORY_RATE,
-    MetricType.BLOOD_OXYGEN -> 10L * 60_000L
+    MetricType.BLOOD_OXYGEN -> 30L * 60_000L
     else -> null
 }
 
