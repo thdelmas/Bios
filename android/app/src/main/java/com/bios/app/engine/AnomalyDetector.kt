@@ -33,20 +33,35 @@ class AnomalyDetector(
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
     /** Owner-set physiology context (#159); filters patterns by excludedStates. */
-    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD
+    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
+    /** Sub-window acute-event detector (#190). Null disables the acute path. */
+    private val acuteWindowDetector: AcuteWindowDetector? =
+        AcuteWindowDetector(db, physiologyState),
 ) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
-    private fun applicablePatterns(): List<ConditionPattern> =
-        ConditionPatterns.all.filter { physiologyState !in it.excludedStates }
+    private fun applicablePatterns(): List<ConditionPattern> {
+        // Acute-window patterns (#190) fire on their own detector — slow
+        // engine cannot express their rate-of-change semantics; skip here
+        // to avoid duplicate alerts.
+        val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
+        return ConditionPatterns.all.filter {
+            physiologyState !in it.excludedStates && it.id !in acuteIds
+        }
+    }
 
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()
         val newAnomalies = mutableListOf<Anomaly>()
         val patterns = applicablePatterns()
+
+        // Acute-window detection (#190) — parallel path for sub-window
+        // events (anaphylaxis, OUD respiratory depression, DKA, shock).
+        val acuteAnomalies = acuteWindowDetector?.runAcuteDetection() ?: emptyList()
+        newAnomalies.addAll(acuteAnomalies)
 
         // Pattern-based detection (existing statistical approach)
         val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) {
@@ -468,33 +483,17 @@ class AnomalyDetector(
     }
 }
 
-// EVENT-unit metrics (tobacco_use, fall_event, …) are intentionally
-// companion-written — SELF_REPORTED or DERIVED. CompanionConditionPatterns
-// rules explicitly want those rows. PR #25 over-applied the SENSOR-only
-// filter to every fetch and broke the cessation / fall-rate patterns; this
-// branches the filter by unit so SENSOR-typed metrics still resolve against
-// sensor sources (the decision 3 reason — z-scores vs a sensor baseline)
-// while EVENT-typed metrics see the data they're meant to see.
-//
-// WOMENS_HEALTH metrics (BBT, CYCLE_PHASE, CYCLE_DAY, MENSTRUATION_ONSET) are
-// also exempted: those readings live in the isolated ReproductiveDatabase
-// and are SELF_REPORTED by design (no sensor adapter writes BBT — would
-// break the privacy isolation). The decision-3 SENSOR filter exists to keep
-// self-reports out of *physiological* baselines; for a metric whose
-// canonical source IS self-report, the filter would just zero the rows.
+// EVENT-unit metrics (tobacco_use, fall_event, …) are companion-written
+// SELF_REPORTED / DERIVED — CompanionConditionPatterns rules want those
+// rows, so the SENSOR-only baseline filter is branched off for them.
+// WOMENS_HEALTH metrics live in ReproductiveDatabase and are SELF_REPORTED
+// by design — same carve-out.
 internal fun readingKindFilterFor(metricType: MetricType): String? = when {
     metricType.unit == MetricUnit.EVENT -> null
     isReproductiveMetric(metricType) -> null
     else -> ReadingKind.SENSOR.name
 }
 
-/**
- * Reproductive metrics whose raw readings live in
- * [com.bios.app.data.ReproductiveDatabase] rather than the main
- * [BiosDatabase]. Anomaly evaluation must route value fetches to the
- * isolated DB; baselines for these metrics, when computed, are still
- * stored as summary-only rows in the main DB per the documented contract
- * on [com.bios.app.data.ReproductiveDatabase].
- */
+/** Reproductive metrics route raw-reading fetches to ReproductiveDatabase. */
 internal fun isReproductiveMetric(metricType: MetricType): Boolean =
     metricType.domain == MetricDomain.WOMENS_HEALTH
