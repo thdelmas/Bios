@@ -73,12 +73,12 @@ class MetricCardFormatTest {
     }
 
     @Test
-    fun `live vitals have a 10 minute stale threshold`() {
-        val tenMin = 10L * 60_000L
-        assertEquals(tenMin, staleThresholdMillis(MetricType.HEART_RATE))
-        assertEquals(tenMin, staleThresholdMillis(MetricType.HEART_RATE_VARIABILITY))
-        assertEquals(tenMin, staleThresholdMillis(MetricType.RESPIRATORY_RATE))
-        assertEquals(tenMin, staleThresholdMillis(MetricType.BLOOD_OXYGEN))
+    fun `live vitals have a 30 minute stale threshold`() {
+        val thirtyMin = 30L * 60_000L
+        assertEquals(thirtyMin, staleThresholdMillis(MetricType.HEART_RATE))
+        assertEquals(thirtyMin, staleThresholdMillis(MetricType.HEART_RATE_VARIABILITY))
+        assertEquals(thirtyMin, staleThresholdMillis(MetricType.RESPIRATORY_RATE))
+        assertEquals(thirtyMin, staleThresholdMillis(MetricType.BLOOD_OXYGEN))
     }
 
     @Test
@@ -93,12 +93,13 @@ class MetricCardFormatTest {
     @Test
     fun `isStale is false for fresh HR`() {
         assertFalse(isStale(MetricType.HEART_RATE, 30_000))
-        assertFalse(isStale(MetricType.HEART_RATE, 9 * 60_000L))
+        assertFalse(isStale(MetricType.HEART_RATE, 20 * 60_000L))
+        assertFalse(isStale(MetricType.HEART_RATE, 29 * 60_000L))
     }
 
     @Test
     fun `isStale is true for HR older than threshold`() {
-        assertTrue(isStale(MetricType.HEART_RATE, 11 * 60_000L))
+        assertTrue(isStale(MetricType.HEART_RATE, 31 * 60_000L))
         assertTrue(isStale(MetricType.HEART_RATE, 11L * 60 * 60_000L))
     }
 
