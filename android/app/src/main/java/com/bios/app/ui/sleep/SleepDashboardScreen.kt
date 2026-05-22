@@ -80,6 +80,9 @@ fun SleepDashboardScreen(
     var bufferedSamples by remember { mutableStateOf(0) }
     var lastSampleMs by remember { mutableStateOf<Long?>(null) }
     var longestQuietMs by remember { mutableStateOf(0L) }
+    var signalBreakdown by remember {
+        mutableStateOf<com.bios.app.engine.PhoneSleepInference.SignalBreakdown?>(null)
+    }
 
     LaunchedEffect(windowDays, refreshTick) {
         val end = System.currentTimeMillis()
@@ -107,6 +110,7 @@ fun SleepDashboardScreen(
                 )
             }
         longestQuietMs = com.bios.app.engine.PhoneSleepInference.longestScreenOffMs(samples)
+        signalBreakdown = com.bios.app.engine.PhoneSleepInference.signalBreakdown(samples)
     }
 
     val onInferNow: () -> Unit = {
@@ -183,6 +187,7 @@ fun SleepDashboardScreen(
                         bufferedSamples = bufferedSamples,
                         lastSampleMs = lastSampleMs,
                         longestQuietMs = longestQuietMs,
+                        signalBreakdown = signalBreakdown,
                     )
                 }
             } else {

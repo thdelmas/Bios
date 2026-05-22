@@ -23,6 +23,7 @@ internal fun EmptyStateCard(
     bufferedSamples: Int,
     lastSampleMs: Long?,
     longestQuietMs: Long,
+    signalBreakdown: PhoneSleepInference.SignalBreakdown?,
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -45,7 +46,12 @@ internal fun EmptyStateCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            PhoneInferenceDiagnostics(bufferedSamples, lastSampleMs, longestQuietMs)
+            PhoneInferenceDiagnostics(
+                bufferedSamples,
+                lastSampleMs,
+                longestQuietMs,
+                signalBreakdown,
+            )
             FilledTonalButton(
                 onClick = onInferNow,
                 enabled = !inferring,
@@ -62,6 +68,7 @@ private fun PhoneInferenceDiagnostics(
     bufferedSamples: Int,
     lastSampleMs: Long?,
     longestQuietMs: Long,
+    signalBreakdown: PhoneSleepInference.SignalBreakdown?,
 ) {
     val minNeeded = PhoneSleepWorker.MIN_SAMPLES_FOR_INFERENCE
     val minWindowMs = PhoneSleepInference.MIN_SLEEP_WINDOW_MS
@@ -105,16 +112,55 @@ private fun PhoneInferenceDiagnostics(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else if (longestQuietMs < minWindowMs && bufferedSamples >= minNeeded) {
+            signalBreakdown?.let { SignalBreakdownText(it) }
             Text(
-                "Inference needs a continuous screen-off stretch — single " +
-                    "screen-on flickers under 20 min are tolerated, but " +
-                    "longer wake periods split the stretch. Notifications, " +
-                    "always-on-display, or lift-to-wake during sleep are the " +
-                    "usual culprits.",
+                "Inference needs a continuous quiet stretch — fused from " +
+                    "display-off OR (stationary + dark + charging). The " +
+                    "breakdown above shows which signals your samples pass; " +
+                    "the weak link is the bottleneck.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun SignalBreakdownText(b: PhoneSleepInference.SignalBreakdown) {
+    if (b.total == 0) return
+    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Text(
+            "Per-signal sample counts (out of ${b.total}):",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "  • display inactive: ${b.screenInactive}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "  • stationary (low motion): ${b.lowMotion}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "  • dark environment: ${b.dark}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "  • charging: ${b.charging}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "  → passes fused quiet predicate: ${b.quiet}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
