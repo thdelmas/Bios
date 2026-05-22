@@ -30,9 +30,11 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         MedicationAnnotation::class,
         ImmunizationRecord::class,
         ScreeningEntry::class,
-        RiskProfile::class
+        RiskProfile::class,
+        GoalsOfCare::class,
+        ClinicalDirective::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -54,6 +56,8 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun immunizationRecordDao(): ImmunizationRecordDao
     abstract fun screeningEntryDao(): ScreeningEntryDao
     abstract fun riskProfileDao(): RiskProfileDao
+    abstract fun goalsOfCareDao(): GoalsOfCareDao
+    abstract fun clinicalDirectiveDao(): ClinicalDirectiveDao
 
     companion object {
         @Volatile
@@ -76,7 +80,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -385,6 +389,40 @@ abstract class BiosDatabase : RoomDatabase() {
                         personalCancerHistory TEXT,
                         personalCardiacEventHistory TEXT,
                         note TEXT,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        // Owner-declared goals of care + clinical-directive metadata
+        // (#184). Two single-row tables holding the owner's standing
+        // preferences about CPR / hospitalisation / intervention level
+        // and the metadata of any advance-directive documents they
+        // have filed elsewhere. The AlertManager reads goals_of_care
+        // to decide whether to short-circuit URGENT-tier escalation
+        // when the owner has declared COMFORT_ONLY care.
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS goals_of_care (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        cprPreference TEXT NOT NULL,
+                        hospitalizationPreference TEXT NOT NULL,
+                        interventionLevel TEXT NOT NULL,
+                        lastReviewedAt INTEGER NOT NULL,
+                        documentLocation TEXT,
+                        notes TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS clinical_directive (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        hasAdvanceDirective INTEGER NOT NULL,
+                        hasPolst INTEGER NOT NULL,
+                        hasHealthcareProxy INTEGER NOT NULL,
+                        proxyContactName TEXT,
+                        proxyContactPhone TEXT,
                         updatedAt INTEGER NOT NULL
                     )
                 """.trimIndent())

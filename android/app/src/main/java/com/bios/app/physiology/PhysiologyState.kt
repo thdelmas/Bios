@@ -35,7 +35,24 @@ enum class PhysiologyState(val displayName: String) {
     POSTPARTUM("Postpartum (first 6 months)"),
     ATHLETE_HIGH_FITNESS("Endurance athlete"),
     FRAILTY_FLAG("Frailty / age >75"),
-    PAEDIATRIC("Paediatric (under 18)");
+    PAEDIATRIC("Paediatric (under 18)"),
+
+    /**
+     * Hospice / end-of-life context (#184, audit gap §3.2 from
+     * GERIATRICS_PALLIATIVE_POV.md, with converging support from the
+     * Oncology, Emergency/Critical Care, and Cardiology HF-prognosis
+     * audits). When the owner sets HOSPICE_MODE, the URGENT-tier
+     * escalation pathway short-circuits: alerts may still appear
+     * in-app for the owner and caregivers to read, but no auto-call,
+     * no SMS-to-emergency-contact, and no high-importance notification
+     * sound or vibration. The manifesto's "silence is a feature"
+     * reaches its purest form here — Bios honors what the owner
+     * already declared.
+     *
+     * Owner-revocable instantly. No waiting period. No clinical
+     * confirmation. The owner is final.
+     */
+    HOSPICE_MODE("Hospice / end-of-life care");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
