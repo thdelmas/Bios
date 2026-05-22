@@ -137,29 +137,123 @@ object PhoneSleepInference {
     }
 
     /**
+     * Per-sample "owner is likely quiet / not actively using the device"
+     * predicate. Display-off is the primary signal; when it reads "on" we
+     * fall back to a strict three-way fusion to cover phones whose display
+     * state is unreliable (always-on-display devices report STATE_ON even
+     * during sleep on some OEMs):
+     *
+     *   - phone is stationary (low accelerometer variance)
+     *   - room is dark
+     *   - device is charging
+     *
+     * Requiring all three of the fallback signals keeps "watching a movie
+     * in a dark room" from being misclassified as sleep — that scenario
+     * fails the stationary check the moment the owner adjusts position.
+     * "Phone on nightstand showing AOD" passes all three.
+     */
+    internal fun isQuietSample(s: Sample): Boolean {
+        if (s.screenOff) return true
+        val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+        val dark = (s.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
+        return s.charging && lowMotion && dark
+    }
+
+    /**
      * Walk the samples and return the index range of the longest contiguous
-     * stretch where [Sample.screenOff] is true. Returns null when no
-     * screen-off stretch exists at all.
+     * stretch where [isQuietSample] holds, **tolerating brief activity
+     * flickers** shorter than [SCREEN_ON_FLICKER_MS]. A notification, AOD
+     * wake, or "lift to wake" event mid-sleep would otherwise split a clean
+     * overnight stretch in two; treating those single-sample flickers as
+     * part of the surrounding sleep matches owner intent.
+     *
+     * Returns null when no quiet stretch exists at all.
      */
     private fun longestScreenOffStretch(samples: List<Sample>): Pair<Int, Int>? {
         var best: Pair<Int, Int>? = null
         var bestLen = 0L
         var runStart = -1
-        for (i in samples.indices) {
-            if (samples[i].screenOff) {
+        var i = 0
+        while (i < samples.size) {
+            if (isQuietSample(samples[i])) {
                 if (runStart == -1) runStart = i
                 if (i == samples.lastIndex) {
                     val len = samples[i].timestamp - samples[runStart].timestamp
                     if (len > bestLen) { best = runStart to i; bestLen = len }
                 }
+                i++
             } else if (runStart != -1) {
-                val runEnd = i - 1
+                // Look ahead: how long is this active gap, and does the
+                // quiet stretch resume after? If the gap is brief, treat it
+                // as a flicker and keep the run going.
+                val gapStart = i
+                while (i < samples.size && !isQuietSample(samples[i])) i++
+                val gapEndExclusive = i
+                val gapDurMs = if (gapEndExclusive < samples.size) {
+                    samples[gapEndExclusive].timestamp - samples[gapStart].timestamp
+                } else {
+                    Long.MAX_VALUE
+                }
+                val resumes = gapEndExclusive < samples.size
+                if (resumes && gapDurMs < SCREEN_ON_FLICKER_MS) {
+                    // Brief flicker, sleep resumes → keep the run alive.
+                    continue
+                }
+                // Real active segment ended the stretch.
+                val runEnd = gapStart - 1
                 val len = samples[runEnd].timestamp - samples[runStart].timestamp
                 if (len > bestLen) { best = runStart to runEnd; bestLen = len }
                 runStart = -1
+            } else {
+                i++
             }
         }
         return best
+    }
+
+    /**
+     * Public helper: returns the duration in milliseconds of the longest
+     * (flicker-tolerant) screen-off stretch in the given samples, or 0 when
+     * no stretch exists. Used by the dashboard diagnostic so the owner can
+     * see how close the buffer is to crossing the 4h floor.
+     */
+    fun longestScreenOffMs(samples: List<Sample>): Long {
+        if (samples.size < 2) return 0L
+        val sorted = samples.sortedBy { it.timestamp }
+        val range = longestScreenOffStretch(sorted) ?: return 0L
+        return sorted[range.second].timestamp - sorted[range.first].timestamp
+    }
+
+    /** Per-signal breakdown of the buffer so owners can diagnose which
+     *  signal is keeping the inference from firing. */
+    data class SignalBreakdown(
+        val total: Int,
+        val screenInactive: Int,
+        val lowMotion: Int,
+        val dark: Int,
+        val charging: Int,
+        val quiet: Int,
+    )
+
+    fun signalBreakdown(samples: List<Sample>): SignalBreakdown {
+        val total = samples.size
+        val screenInactive = samples.count { it.screenOff }
+        val lowMotion = samples.count {
+            (it.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+        }
+        val dark = samples.count {
+            (it.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
+        }
+        val charging = samples.count { it.charging }
+        val quiet = samples.count { isQuietSample(it) }
+        return SignalBreakdown(
+            total = total,
+            screenInactive = screenInactive,
+            lowMotion = lowMotion,
+            dark = dark,
+            charging = charging,
+            quiet = quiet,
+        )
     }
 
     /**
@@ -196,6 +290,11 @@ object PhoneSleepInference {
     internal const val MIN_SLEEP_DURATION_MS: Long = 1L * 60L * 60L * 1000L
     // Brief movement bouts (< 5 min) are posture shifts, not wake events.
     internal const val AWAKE_BOUT_MIN_MS: Long = 5L * 60L * 1000L
+    // Single notification waking the screen, AOD, or a "lift to wake" event
+    // shouldn't bisect an otherwise clean overnight stretch. ~20 min covers
+    // one missed sample at the 15-min cadence plus a small buffer for clock
+    // drift; longer gaps imply real wake activity.
+    internal const val SCREEN_ON_FLICKER_MS: Long = 20L * 60L * 1000L
     // Accel-magnitude variance above this counts a sample as AWAKE. Hand-
     // tuned for ~5 Hz sampled accelerometer; the variance unit is (m/s^2)^2.
     internal const val ACTIVITY_THRESHOLD: Float = 0.5f
