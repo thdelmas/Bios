@@ -80,6 +80,7 @@ internal fun standardRegion(
     emergencyNumber: String?,
     regulatoryBody: String,
     indigenousFlagged: Boolean = false,
+    tropicalDiseaseRelevant: Boolean = false,
     thresholds: ClinicalThresholds = mmolGlucoseDefaults(),
     disclaimer: String = defaultDisclaimer(),
     fhirProfileUrl: String? = null,
@@ -101,6 +102,7 @@ internal fun standardRegion(
     ),
     emergencyNumber = emergencyNumber,
     indigenousFlagged = indigenousFlagged,
+    tropicalDiseaseRelevant = tropicalDiseaseRelevant,
 )
 
 // -- Unit conversion helpers --

@@ -20,28 +20,28 @@ internal object RegionConfigsAsia {
 
     val configs: Map<String, RegionConfig> = listOf(
         jp(),
-        // East Asia
-        standardRegion("CN", "China", "120", "NMPA"),          // 120 EMS
+        // East Asia — non-tropical (subtropical HK/TW excluded per PR #225 list).
+        standardRegion("CN", "China", "120", "NMPA"),
         standardRegion("KR", "South Korea", "119", "MFDS"),
         standardRegion("HK", "Hong Kong", "999", "DH"),
         standardRegion("TW", "Taiwan", "119", "TFDA"),
         standardRegion("MN", "Mongolia", "103", "DRA"),
-        // South Asia
-        standardRegion("IN", "India", "108", "CDSCO"),         // 108 unified EMS
-        standardRegion("PK", "Pakistan", "115", "DRAP"),       // 115 Edhi ambulance
-        standardRegion("BD", "Bangladesh", "199", "DGDA"),
-        standardRegion("LK", "Sri Lanka", "1990", "NMRA"),     // Suwa Seriya
+        // South Asia — tropical flags per PR #225 / WHO dengue+malaria endemicity.
+        standardRegion("IN", "India", "108", "CDSCO", tropicalDiseaseRelevant = true),
+        standardRegion("PK", "Pakistan", "115", "DRAP", tropicalDiseaseRelevant = true),
+        standardRegion("BD", "Bangladesh", "199", "DGDA", tropicalDiseaseRelevant = true),
+        standardRegion("LK", "Sri Lanka", "1990", "NMRA", tropicalDiseaseRelevant = true),
         standardRegion("NP", "Nepal", "102", "DDA"),
         standardRegion("BT", "Bhutan", "112", "DRA"),
-        // South-East Asia
-        standardRegion("VN", "Vietnam", "115", "DAV"),
-        standardRegion("TH", "Thailand", "1669", "Thai FDA"),  // Narenthorn EMS
-        standardRegion("MY", "Malaysia", "999", "NPRA"),
+        // South-East Asia — tropical flags per PR #225.
+        standardRegion("VN", "Vietnam", "115", "DAV", tropicalDiseaseRelevant = true),
+        standardRegion("TH", "Thailand", "1669", "Thai FDA", tropicalDiseaseRelevant = true),
+        standardRegion("MY", "Malaysia", "999", "NPRA", tropicalDiseaseRelevant = true),
         standardRegion("SG", "Singapore", "995", "HSA"),
-        standardRegion("ID", "Indonesia", "119", "BPOM"),
-        standardRegion("PH", "Philippines", "911", "FDA-PH"),
-        standardRegion("MM", "Myanmar", "192", "FDA-MM"),
-        standardRegion("KH", "Cambodia", "119", "DDF"),
+        standardRegion("ID", "Indonesia", "119", "BPOM", tropicalDiseaseRelevant = true),
+        standardRegion("PH", "Philippines", "911", "FDA-PH", tropicalDiseaseRelevant = true),
+        standardRegion("MM", "Myanmar", "192", "FDA-MM", tropicalDiseaseRelevant = true),
+        standardRegion("KH", "Cambodia", "119", "DDF", tropicalDiseaseRelevant = true),
         standardRegion("LA", "Laos", "1623", "FDD"),
         standardRegion("BN", "Brunei", "991", "MOH"),
         // Central Asia

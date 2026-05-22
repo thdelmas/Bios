@@ -27,15 +27,15 @@ internal object RegionConfigsPacific {
     val configs: Map<String, RegionConfig> = listOf(
         au(),
         nz(),
-        // Melanesia
-        standardRegion("FJ", "Fiji", "911", "MoHMS", indigenousFlagged = true),
-        standardRegion("PG", "Papua New Guinea", "111", "NDOH", indigenousFlagged = true),
-        standardRegion("SB", "Solomon Islands", "999", "MHMS", indigenousFlagged = true),
-        standardRegion("VU", "Vanuatu", "112", "MoH", indigenousFlagged = true),
+        // Melanesia — tropical flags per PR #225 (ciguatera + dengue belt).
+        standardRegion("FJ", "Fiji", "911", "MoHMS", indigenousFlagged = true, tropicalDiseaseRelevant = true),
+        standardRegion("PG", "Papua New Guinea", "111", "NDOH", indigenousFlagged = true, tropicalDiseaseRelevant = true),
+        standardRegion("SB", "Solomon Islands", "999", "MHMS", indigenousFlagged = true, tropicalDiseaseRelevant = true),
+        standardRegion("VU", "Vanuatu", "112", "MoH", indigenousFlagged = true, tropicalDiseaseRelevant = true),
         standardRegion("NC", "New Caledonia", "15", "ARS", indigenousFlagged = true),
         // Polynesia
         standardRegion("TO", "Tonga", "911", "MoH", indigenousFlagged = true),
-        standardRegion("WS", "Samoa", "994", "MoH", indigenousFlagged = true),
+        standardRegion("WS", "Samoa", "994", "MoH", indigenousFlagged = true, tropicalDiseaseRelevant = true),
         standardRegion("CK", "Cook Islands", "998", "MoH", indigenousFlagged = true),
         standardRegion("NU", "Niue", "999", "Niue Health", indigenousFlagged = true),
         standardRegion("PF", "French Polynesia", "15", "ARS", indigenousFlagged = true),
