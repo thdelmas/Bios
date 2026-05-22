@@ -41,6 +41,7 @@ fun SettingsScreen(
     onNavigateToPreventiveCare: () -> Unit = {},
     onNavigateToRiskProfile: () -> Unit = {},
     onNavigateToPhysiologyState: () -> Unit = {},
+    onNavigateToFrailAssessment: () -> Unit = {},
     onNavigateToGoalsOfCare: () -> Unit = {},
     onNavigateToHeadacheDiary: () -> Unit = {},
     onNavigateToFastStroke: () -> Unit = {}
@@ -99,6 +100,7 @@ fun SettingsScreen(
                     "Preventive care" to onNavigateToPreventiveCare,
                     "Risk profile" to onNavigateToRiskProfile,
                     "Physiology state" to onNavigateToPhysiologyState,
+                    "FRAIL assessment" to onNavigateToFrailAssessment,
                     "Goals of care" to onNavigateToGoalsOfCare,
                     "Headache & migraine diary" to onNavigateToHeadacheDiary,
                     "FAST stroke check" to onNavigateToFastStroke,
@@ -494,6 +496,5 @@ private fun SettingsActionButton(label: String, onClick: () -> Unit) {
 }
 
 private fun saveTier(context: Context, tier: PrivacyTier) {
-    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
-        .edit().putString("privacy_tier", tier.name).apply()
+    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE).edit().putString("privacy_tier", tier.name).apply()
 }
