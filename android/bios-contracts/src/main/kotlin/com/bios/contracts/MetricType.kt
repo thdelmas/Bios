@@ -91,6 +91,17 @@ enum class MetricType(
     SLEEP_APNEA_EVENT("sleep_apnea_event", MetricUnit.EVENT, MetricDomain.RESPIRATORY),
     AHI("ahi", MetricUnit.COUNT, MetricDomain.RESPIRATORY, allowsManualEntry = true),
 
+    // Asthma surveillance (#200, audit gap §2.9 from PAEDIATRICS_POV +
+    // MEDICAL_PROFESSIONAL_POV). Owner-measured peak expiratory flow from a
+    // standalone peak-flow meter is the canonical paediatric/adult asthma
+    // home-monitoring metric (GINA 2024 personal-best framing). FEV1 is the
+    // spirometry gold standard typically captured in clinic — owner-entered
+    // when an owner has a take-home spirometer or wants to log a clinic
+    // reading alongside Bios's wearable signals. Manual entry both — these
+    // are owner-measured / clinician-measured values, not wearable-derived.
+    PEAK_EXPIRATORY_FLOW_LMIN("peak_expiratory_flow_lmin", MetricUnit.LITERS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
+    FORCED_EXPIRATORY_VOLUME_1_LITERS("forced_expiratory_volume_1_liters", MetricUnit.LITERS, MetricDomain.RESPIRATORY, allowsManualEntry = true),
+
     // Temperature
     SKIN_TEMPERATURE("skin_temperature", MetricUnit.CELSIUS, MetricDomain.TEMPERATURE, allowsManualEntry = true),
     SKIN_TEMPERATURE_DEVIATION("skin_temperature_deviation", MetricUnit.DELTA_CELSIUS, MetricDomain.TEMPERATURE),
@@ -165,6 +176,16 @@ enum class MetricType(
     AIR_PM25("air_pm25", MetricUnit.UG_PER_M3, MetricDomain.ENVIRONMENT),
     AIR_VOC("air_voc", MetricUnit.PPB, MetricDomain.ENVIRONMENT),
     AIR_CO2("air_co2", MetricUnit.PPM, MetricDomain.ENVIRONMENT),
+    // Ambient humidity + temperature (#200, audit gap §2.9). Phone barometers
+    // and most BLE ESS sensors emit relative humidity and ambient temperature.
+    // Asthma exacerbation triggers correlate with cold-dry and humid-warm
+    // conditions (GINA 2024 trigger list); heat-illness screening (#19) reads
+    // heat-index = f(temperature, humidity); damp/dry six-pathogens overlay
+    // (TCM_POV §2.7) and Ritucharya/six-paruvam patterns (Ayurveda, Siddha,
+    // Unani) all key off humidity + temperature. Phone-sensor sourced; not
+    // owner-set, so manual entry stays false.
+    AMBIENT_HUMIDITY_PCT("ambient_humidity_pct", MetricUnit.PERCENT, MetricDomain.ENVIRONMENT),
+    AMBIENT_TEMPERATURE_C("ambient_temperature_c", MetricUnit.CELSIUS, MetricDomain.ENVIRONMENT),
 
     // Biomarkers (lab-drawn or imported via FHIR; slow-moving, no streaming).
     // First wave matches the clinical concepts already described in
@@ -323,6 +344,7 @@ enum class MetricUnit(val symbol: String) {
     PPM("ppm"),
     PPB("ppb"),
     LITERS_PER_MIN("L/min"),
+    LITERS("L"),
     MILLIGRAMS("mg"),
     GRAMS("g"),
     /** Enzyme activity per litre — ALT, AST, GGT, etc. */
