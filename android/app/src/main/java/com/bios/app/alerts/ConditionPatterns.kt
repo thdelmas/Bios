@@ -88,6 +88,13 @@ data class SignalRule(
      * home BP averaging.
      */
     val absoluteMinReadings: Int = 1,
+    /**
+     * #205 (SURGICAL_POV §2.1): when true, the rule evaluates against the frozen
+     * pre-op [com.bios.app.physiology.PerioperativeBaseline] instead of the
+     * rolling 14-day personal baseline. Lets post-op-windowed patterns detect
+     * re-elevation after normalisation (the NHSN SSI shape).
+     */
+    val useFrozenBaseline: Boolean = false,
 ) {
     /** True when this rule is evaluated as an absolute clinical threshold. */
     val isAbsolute: Boolean get() = absoluteAbove != null || absoluteBelow != null
@@ -135,6 +142,6 @@ object ConditionPatterns {
             AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
             PregnancyPatterns.all + HeadachePatterns.all +
             HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all +
-            TropicalDiseasePatterns.all
+            TropicalDiseasePatterns.all + PerioperativePatterns.all
     }
 }
