@@ -19,7 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,6 +77,12 @@ fun SleepDashboardScreen(
     var sourceLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var inferring by remember { mutableStateOf(false) }
     var inferenceMessage by remember { mutableStateOf<String?>(null) }
+    var bufferedSamples by remember { mutableStateOf(0) }
+    var lastSampleMs by remember { mutableStateOf<Long?>(null) }
+    var longestQuietMs by remember { mutableStateOf(0L) }
+    var signalBreakdown by remember {
+        mutableStateOf<com.bios.app.engine.PhoneSleepInference.SignalBreakdown?>(null)
+    }
 
     LaunchedEffect(windowDays, refreshTick) {
         val end = System.currentTimeMillis()
@@ -87,6 +92,25 @@ fun SleepDashboardScreen(
             .sortedByDescending { it.timestamp }
         sourceLabels = viewModel.db.dataSourceDao().getAll()
             .associate { it.id to (it.deviceName ?: it.sourceType) }
+        bufferedSamples = viewModel.db.phoneSleepSampleDao().count()
+        lastSampleMs = viewModel.db.phoneSleepSampleDao().lastTimestamp()
+        // Compute the longest screen-off stretch in the inference window so
+        // the empty-state diagnostic can show how close the buffer is to the
+        // 4h floor — turns "NoSleepWindow" into "you have 2h 30m, need 4h".
+        val bufferStart = end - PhoneSleepWorker.FORCE_WINDOW_MS
+        val samples = viewModel.db.phoneSleepSampleDao()
+            .fetchInRange(bufferStart, end)
+            .map {
+                com.bios.app.engine.PhoneSleepInference.Sample(
+                    timestamp = it.timestamp,
+                    screenOff = it.screenOff,
+                    charging = it.charging,
+                    ambientLightLux = it.ambientLightLux,
+                    accelMagnitudeVar = it.accelMagnitudeVar,
+                )
+            }
+        longestQuietMs = com.bios.app.engine.PhoneSleepInference.longestScreenOffMs(samples)
+        signalBreakdown = com.bios.app.engine.PhoneSleepInference.signalBreakdown(samples)
     }
 
     val onInferNow: () -> Unit = {
@@ -144,13 +168,7 @@ fun SleepDashboardScreen(
         ) {
             item { WindowSelector(windowDays) { windowDays = it } }
             inferenceMessage?.let { msg ->
-                item {
-                    Text(
-                        msg,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                item { InferenceResultCard(msg) }
             }
             item { RegularityCard(regularity) }
             item { SummaryCard(nights) }
@@ -162,7 +180,16 @@ fun SleepDashboardScreen(
                 )
             }
             if (nights.isEmpty()) {
-                item { EmptyStateCard(inferring = inferring, onInferNow = onInferNow) }
+                item {
+                    EmptyStateCard(
+                        inferring = inferring,
+                        onInferNow = onInferNow,
+                        bufferedSamples = bufferedSamples,
+                        lastSampleMs = lastSampleMs,
+                        longestQuietMs = longestQuietMs,
+                        signalBreakdown = signalBreakdown,
+                    )
+                }
             } else {
                 items(nights, key = { it.id }) { night ->
                     NightRow(night, sourceLabels)
@@ -337,40 +364,6 @@ private fun formatDuration(seconds: Long): String {
 
 private val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.US)
 private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
-
-@Composable
-private fun EmptyStateCard(inferring: Boolean, onInferNow: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                "No sleep readings in the selected window.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "Connect a wearable, sync Health Connect, log a night manually, " +
-                    "or run phone inference now against whatever samples already buffered.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            FilledTonalButton(
-                onClick = onInferNow,
-                enabled = !inferring,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (inferring) "Running inference…" else "Run phone inference now")
-            }
-        }
-    }
-}
 
 private fun describe(result: PhoneSleepWorker.ImmediateResult): String = when (result) {
     is PhoneSleepWorker.ImmediateResult.Written ->
