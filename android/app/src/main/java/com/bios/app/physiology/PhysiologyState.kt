@@ -38,6 +38,47 @@ enum class PhysiologyState(val displayName: String) {
     PAEDIATRIC("Paediatric (under 18)"),
 
     /**
+     * Hospice / end-of-life context (#184, audit gap §3.2 from
+     * GERIATRICS_PALLIATIVE_POV.md, with converging support from the
+     * Oncology, Emergency/Critical Care, and Cardiology HF-prognosis
+     * audits). When the owner sets HOSPICE_MODE, the URGENT-tier
+     * escalation pathway short-circuits: alerts may still appear
+     * in-app for the owner and caregivers to read, but no auto-call,
+     * no SMS-to-emergency-contact, and no high-importance notification
+     * sound or vibration. The manifesto's "silence is a feature"
+     * reaches its purest form here — Bios honors what the owner
+     * already declared.
+     *
+     * Owner-revocable instantly. No waiting period. No clinical
+     * confirmation. The owner is final.
+     */
+    HOSPICE_MODE("Hospice / end-of-life care"),
+
+    /**
+     * Owner-declared known asthma (#200, audit gap §2.9 from
+     * PAEDIATRICS_POV.md + MEDICAL_PROFESSIONAL_POV.md). Gates the
+     * acute asthma-exacerbation screening pattern via the
+     * [com.bios.app.alerts.ConditionPattern.requiredStates] axis —
+     * the pattern only fires for owners who have flagged themselves
+     * as asthmatic. Healthy-owner false positives from a strenuous
+     * hike (RR up + activity drop) or transient illness would dominate
+     * without this gate. Same shape as HOSPICE_MODE: owner-revocable,
+     * no clinical confirmation, the owner is final.
+     */
+    KNOWN_ASTHMA("Known asthma"),
+
+    /**
+     * Owner-declared known COPD (#200). Gates the acute COPD-exacerbation
+     * screening pattern. COPD owners typically have lower SpO2 baselines
+     * than the general population (88–92 % is normal for some, not hypoxia),
+     * and the personal-baseline framework handles that; the acute screen
+     * additionally fires only for this population so non-COPD owners on a
+     * high-altitude trip don't trigger it. Owner-revocable, no clinical
+     * confirmation required.
+     */
+    KNOWN_COPD("Known COPD"),
+
+    /**
      * Owner-set: a clinician has diagnosed heart failure (HFrEF, HFpEF, or
      * mid-range EF). Gates the HeartLogic-lite decompensation-prodrome
      * pattern in [com.bios.app.alerts.HeartFailureDecompensationPattern].
