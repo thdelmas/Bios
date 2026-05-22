@@ -41,6 +41,8 @@ class MetricTypeKeysSnapshotTest {
         "blood_oxygen",
         // PPG-derived AFib screen (#180) + pulse-wave morphology (#181)
         "irregular_rhythm_burden",
+        // Single-lead ECG strip presence (#188)
+        "ecg_strip_available",
         "ppg_peak_amplitude_mean",
         "ppg_peak_amplitude_cov",
         "ppg_rise_time_mean",
@@ -162,6 +164,10 @@ class MetricTypeKeysSnapshotTest {
         "check_in_miss",
         // Reserved active-test result
         "reaction_time_ms",
+        // Neurology owner-PRO (#207)
+        "headache_intensity_nrs",
+        "migraine_attack_event",
+        "fast_stroke_suspected",
     )
 
     @Test

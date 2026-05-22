@@ -50,4 +50,7 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("preventive_care") {
         com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
     }
+    composable("ecg_strips") {
+        com.bios.app.ui.ecg.EcgStripsScreen(onBack = { navController.popBackStack() })
+    }
 }
