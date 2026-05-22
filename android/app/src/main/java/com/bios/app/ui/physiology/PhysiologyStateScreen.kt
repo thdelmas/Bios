@@ -96,9 +96,11 @@ private fun ManifestoCard() {
                     "raises resting heart rate 10–20 bpm by trimester 2 — that's " +
                     "normative, not pathology. Athletes have low resting heart rates by " +
                     "design. Paediatric and frailty bodies follow different rules. " +
-                    "Pick the state that matches your context so Bios doesn't false-flag " +
-                    "what's normal for you. Default is Standard adult; nothing is set " +
-                    "automatically.",
+                    "Known heart failure unlocks a HeartLogic-lite decompensation-" +
+                    "prodrome pattern that only makes sense if a clinician has made " +
+                    "that diagnosis. Pick the state that matches your context so Bios " +
+                    "doesn't false-flag what's normal for you. Default is Standard " +
+                    "adult; nothing is set automatically.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
