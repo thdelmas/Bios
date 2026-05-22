@@ -83,15 +83,32 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun no_other_pattern_currently_declares_excludedStates() {
-        // Pins the v1 scope: only one pattern is wired; future PRs add more.
-        // If this fails, document the additional wired patterns here so the
-        // explicit list keeps tracking what's gated.
-        val wired = ConditionPatterns.all.filter { it.excludedStates.isNotEmpty() }
-        assertEquals(
-            "Expected exactly 1 pattern with excludedStates (cardiovascular_stress)",
-            1, wired.size
+    fun only_explicitly_documented_patterns_declare_excludedStates() {
+        // Pins the wired-pattern set so future additions are explicit. Two
+        // patterns currently use the gating:
+        //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
+        //     postpartum, and endurance-athlete physiology
+        //   - sepsis_screen (#182): NEWS2 thresholds are validated for adults
+        //     only — paediatric early-warning scores (PEWS) use age-banded
+        //     bands that don't map onto NEWS2 components
+        // When a new pattern lands here, add its id to the expected map below
+        // so the gating contract stays visible.
+        val expected = mapOf(
+            "cardiovascular_stress" to setOf(
+                PhysiologyState.PREGNANCY_T1,
+                PhysiologyState.PREGNANCY_T2,
+                PhysiologyState.PREGNANCY_T3,
+                PhysiologyState.POSTPARTUM,
+                PhysiologyState.ATHLETE_HIGH_FITNESS,
+            ),
+            "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
         )
-        assertEquals("cardiovascular_stress", wired.single().id)
+        val wired = ConditionPatterns.all
+            .filter { it.excludedStates.isNotEmpty() }
+            .associate { it.id to it.excludedStates }
+        assertEquals(
+            "Patterns with excludedStates drifted from the documented set",
+            expected, wired,
+        )
     }
 }

@@ -117,10 +117,10 @@ object ConditionPatterns {
             infectionOnset, sleepDisruption, cardiovascularStress, overtraining,
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit,
             respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
-        ) + CircadianConditionPattern.all +
-            CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
-            EmergencyVitalPatterns.all + HypertensionPatterns.all +
-            SleepApneaPattern.all + RespiratoryExacerbationPatterns.all
+        ) + CircadianConditionPattern.all + CompanionConditionPatterns.all +
+            BiomarkerConditionPatterns.all + EmergencyVitalPatterns.all +
+            HypertensionPatterns.all + SleepApneaPattern.all +
+            RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
