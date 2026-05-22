@@ -17,7 +17,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.MedicationAnnotationRepo
+import com.bios.app.data.SubstanceSource
 import com.bios.app.model.MedicationAnnotation
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -153,9 +158,16 @@ fun MedicationsScreen(onBack: () -> Unit) {
     if (showAddDialog) {
         AddMedicationDialog(
             onDismiss = { showAddDialog = false },
-            onSave = { name, startDate, note ->
+            onSave = { name, startDate, note, source, code, traditional ->
                 scope.launch {
-                    repo.add(name = name, startDate = startDate, note = note)
+                    repo.add(
+                        name = name,
+                        startDate = startDate,
+                        note = note,
+                        substanceSource = source,
+                        substanceCode = code,
+                        traditionalName = traditional,
+                    )
                     refresh()
                 }
                 showAddDialog = false
@@ -198,6 +210,14 @@ private fun MedicationRow(
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            medication.traditionalName?.takeIf { it.isNotBlank() }?.let { traditional ->
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    traditional,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(Modifier.height(2.dp))
             Text(
                 buildString {
@@ -207,6 +227,25 @@ private fun MedicationRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            val sourceLabel = remember(medication.substanceSource, medication.substanceCode) {
+                val source = SubstanceSource.fromPersistenceString(medication.substanceSource)
+                val showsSource = medication.substanceSource != null &&
+                    source != SubstanceSource.LOCAL_FREE_TEXT
+                val code = medication.substanceCode?.takeIf { it.isNotBlank() }
+                when {
+                    showsSource && code != null -> "${humanLabel(source)}: $code"
+                    showsSource -> humanLabel(source)
+                    else -> null
+                }
+            }
+            sourceLabel?.let {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             medication.note?.takeIf { it.isNotBlank() }?.let {
                 Spacer(Modifier.height(2.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall)
@@ -237,12 +276,27 @@ private fun MedicationRow(
 @Composable
 private fun AddMedicationDialog(
     onDismiss: () -> Unit,
-    onSave: (name: String, startDate: Long, note: String?) -> Unit,
+    onSave: (
+        name: String,
+        startDate: Long,
+        note: String?,
+        source: SubstanceSource?,
+        code: String?,
+        traditional: String?,
+    ) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var startDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    // Vocabulary fields default closed — the free-text path stays the
+    // path of least resistance. Owner expands the section only when they
+    // care to classify the substance.
+    var showVocabulary by remember { mutableStateOf(false) }
+    var selectedSource by remember { mutableStateOf<SubstanceSource?>(null) }
+    var substanceCode by remember { mutableStateOf("") }
+    var traditionalName by remember { mutableStateOf("") }
+    var sourceMenuExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -268,11 +322,82 @@ private fun AddMedicationDialog(
                 ) {
                     Text("Started on: ${formatDate(startDate)}")
                 }
+                TextButton(
+                    onClick = { showVocabulary = !showVocabulary },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (showVocabulary) "Hide source vocabulary (optional)"
+                        else "Add source vocabulary (optional)"
+                    )
+                }
+                if (showVocabulary) {
+                    ExposedDropdownMenuBox(
+                        expanded = sourceMenuExpanded,
+                        onExpandedChange = { sourceMenuExpanded = !sourceMenuExpanded },
+                    ) {
+                        OutlinedTextField(
+                            value = selectedSource?.let { humanLabel(it) } ?: "Free text (default)",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Source vocabulary") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceMenuExpanded)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = sourceMenuExpanded,
+                            onDismissRequest = { sourceMenuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Free text (default)") },
+                                onClick = {
+                                    selectedSource = null
+                                    sourceMenuExpanded = false
+                                }
+                            )
+                            SubstanceSource.entries.forEach { source ->
+                                DropdownMenuItem(
+                                    text = { Text(humanLabel(source)) },
+                                    onClick = {
+                                        selectedSource = source
+                                        sourceMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = substanceCode,
+                        onValueChange = { substanceCode = it },
+                        label = { Text("Substance code (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = traditionalName,
+                        onValueChange = { traditionalName = it },
+                        label = { Text("Traditional name (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name.trim(), startDate, note.trim().takeIf { it.isNotBlank() }) },
+                onClick = {
+                    onSave(
+                        name.trim(),
+                        startDate,
+                        note.trim().takeIf { it.isNotBlank() },
+                        selectedSource,
+                        substanceCode.trim().takeIf { it.isNotBlank() },
+                        traditionalName.trim().takeIf { it.isNotBlank() },
+                    )
+                },
                 enabled = name.isNotBlank()
             ) { Text("Save") }
         },
@@ -302,3 +427,20 @@ private fun AddMedicationDialog(
 
 private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
 private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
+
+/**
+ * Short human label for a [SubstanceSource] in the medications UI. Kept
+ * deliberately neutral and descriptive — "Ayurveda / AYUSH (WHO ICD-11
+ * ch. 26)" not "Ayurvedic medicine works for…". The owner's choice of
+ * vocabulary is recorded; Bios doesn't editorialise.
+ */
+private fun humanLabel(source: SubstanceSource): String = when (source) {
+    SubstanceSource.RXNORM -> "RxNorm"
+    SubstanceSource.ATC -> "ATC (WHO)"
+    SubstanceSource.AYUSH_ICD11 -> "Traditional medicine (WHO ICD-11 ch. 26)"
+    SubstanceSource.TCM_FORMULA_CODE -> "TCM formula code"
+    SubstanceSource.TSUMURA_NHI_148 -> "Kampo (Japan NHI)"
+    SubstanceSource.KOREAN_AYUSH -> "Korean traditional"
+    SubstanceSource.WHO_BOTANICAL_MONOGRAPH -> "WHO botanical monograph"
+    SubstanceSource.LOCAL_FREE_TEXT -> "Free text"
+}

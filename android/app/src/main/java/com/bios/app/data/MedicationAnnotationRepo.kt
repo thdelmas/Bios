@@ -25,8 +25,23 @@ class MedicationAnnotationRepo(private val db: BiosDatabase) {
      * @param startDate epoch millis the owner started this medication;
      *   defaults to "right now" so the typical add-from-the-screen path
      *   doesn't have to pick a date.
+     * @param substanceSource optional vocabulary the [substanceCode] is
+     *   drawn from (RxNorm, ATC, AYUSH_ICD11, TCM formula, Kampo NHI,
+     *   WHO botanical monograph, etc.). Null defaults to the legacy
+     *   free-text path. See [SubstanceSource].
+     * @param substanceCode optional code drawn from [substanceSource];
+     *   never validated against an external service.
+     * @param traditionalName optional traditional / vernacular name in
+     *   the owner's preferred script. Recorded verbatim.
      */
-    suspend fun add(name: String, startDate: Long = System.currentTimeMillis(), note: String? = null): Long {
+    suspend fun add(
+        name: String,
+        startDate: Long = System.currentTimeMillis(),
+        note: String? = null,
+        substanceSource: SubstanceSource? = null,
+        substanceCode: String? = null,
+        traditionalName: String? = null,
+    ): Long {
         require(name.isNotBlank()) { "Medication name cannot be blank" }
         return dao.insert(
             MedicationAnnotation(
@@ -34,6 +49,9 @@ class MedicationAnnotationRepo(private val db: BiosDatabase) {
                 startDate = startDate,
                 endDate = null,
                 note = note?.takeIf { it.isNotBlank() }?.trim(),
+                substanceSource = substanceSource?.toPersistenceString(),
+                substanceCode = substanceCode?.takeIf { it.isNotBlank() }?.trim(),
+                traditionalName = traditionalName?.takeIf { it.isNotBlank() }?.trim(),
             )
         )
     }
