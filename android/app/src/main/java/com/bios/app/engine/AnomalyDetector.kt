@@ -33,22 +33,32 @@ class AnomalyDetector(
     private val latencyTracker: DetectionLatencyTracker? = null,
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
-    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD
+    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
+    /** Sub-window acute-event detector (#190). Null disables the acute path. */
+    private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
 ) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
-    // Honors both axes: excludedStates blocks listed states; requiredStates,
-    // when non-empty, restricts the pattern to the listed states only (#200).
-    private fun applicablePatterns(): List<ConditionPattern> =
-        ConditionPatterns.all.filter { it.appliesIn(physiologyState) }
+    // Acute-window patterns (#190) fire on their own detector (rate-of-change
+    // semantics the slow engine cannot express); skip them here to avoid dupes.
+    // appliesIn honors both excludedStates and requiredStates (#200).
+    private fun applicablePatterns(): List<ConditionPattern> {
+        val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
+        return ConditionPatterns.all.filter { it.appliesIn(physiologyState) && it.id !in acuteIds }
+    }
 
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()
         val newAnomalies = mutableListOf<Anomaly>()
         val patterns = applicablePatterns()
+
+        // Acute-window detection (#190) — parallel path for sub-window
+        // events (anaphylaxis, OUD respiratory depression, DKA, shock).
+        val acuteAnomalies = acuteWindowDetector?.runAcuteDetection() ?: emptyList()
+        newAnomalies.addAll(acuteAnomalies)
 
         // Pattern-based detection (existing statistical approach)
         val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) {
@@ -470,20 +480,11 @@ class AnomalyDetector(
     }
 }
 
-// EVENT-unit metrics (tobacco_use, fall_event, …) are intentionally
-// companion-written — SELF_REPORTED or DERIVED. CompanionConditionPatterns
-// rules explicitly want those rows. PR #25 over-applied the SENSOR-only
-// filter to every fetch and broke the cessation / fall-rate patterns; this
-// branches the filter by unit so SENSOR-typed metrics still resolve against
-// sensor sources (the decision 3 reason — z-scores vs a sensor baseline)
-// while EVENT-typed metrics see the data they're meant to see.
-//
-// WOMENS_HEALTH metrics (BBT, CYCLE_PHASE, CYCLE_DAY, MENSTRUATION_ONSET) are
-// also exempted: those readings live in the isolated ReproductiveDatabase
-// and are SELF_REPORTED by design (no sensor adapter writes BBT — would
-// break the privacy isolation). The decision-3 SENSOR filter exists to keep
-// self-reports out of *physiological* baselines; for a metric whose
-// canonical source IS self-report, the filter would just zero the rows.
+// EVENT-unit metrics (tobacco_use, fall_event, …) are companion-written
+// SELF_REPORTED / DERIVED — CompanionConditionPatterns rules want those
+// rows, so the SENSOR-only baseline filter is branched off for them.
+// WOMENS_HEALTH metrics live in ReproductiveDatabase and are SELF_REPORTED
+// by design — same carve-out.
 internal fun readingKindFilterFor(metricType: MetricType): String? = when {
     metricType.unit == MetricUnit.EVENT -> null
     isReproductiveMetric(metricType) -> null

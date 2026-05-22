@@ -132,8 +132,9 @@ class PhysiologyStateGatingTest {
         // gating contract today:
         //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
         //     postpartum, endurance-athlete physiology, and FRAILTY_FLAG (#186).
-        //   - sepsis_screen (#182): NEWS2 is adult-validated only — paediatric
-        //     uses PEWS with age-banded thresholds.
+        //   - sepsis_screen (#182) / dka_screen (#190): adult-validated thresholds
+        //     (NEWS2; ADA ≥250 mg/dL) under-trigger in children. PEWS / ISPAD
+        //     paediatric refinements are tracked as future work.
         //   - pregnancy gating cohort (#189, OBGYN_POV §2.2): every adult
         //     baseline-relative trend pattern whose signal triad matches
         //     normal pregnancy / postpartum physiology is suppressed in
@@ -175,6 +176,7 @@ class PhysiologyStateGatingTest {
             "recovery_deficit" to pregnancyPostpartumFrailty,
             "menstrual_cycle_anomaly" to pregnancyAndPostpartum,
             "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "dka_screen" to setOf(PhysiologyState.PAEDIATRIC),
             "gestational_hypertension_screen" to outsideT2T3,
             "severe_range_preeclampsia_screen" to outsidePregnancyAndPostpartum,
             "postpartum_pre_eclampsia_screen" to outsidePostpartum,

@@ -130,7 +130,7 @@ object ConditionPatterns {
             HypertensionPatterns.all + SleepApneaPattern.all +
             RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
             AfibRhythmPattern.all + AutonomicPatternShiftPattern.all + PregnancyPatterns.all + HeadachePatterns.all +
-            HeartFailureDecompensationPattern.all
+            HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
