@@ -72,7 +72,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)
     val mlModel = TFLiteAnomalyModel.load(application)
     val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker, reproductiveReadingDao,
-        physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current())
+        physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current(),
+        ownerConditions = com.bios.app.physiology.OwnerConditionStore(application).current())
     val alertManager = AlertManager(application, db, latencyTracker)
 
     private val _isInitialized = MutableStateFlow(false)

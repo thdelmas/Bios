@@ -128,28 +128,11 @@ class PhysiologyStateGatingTest {
 
     @Test
     fun only_explicitly_documented_patterns_declare_excludedStates() {
-        // Pins the wired-pattern set so future additions are explicit. The
-        // gating contract today:
-        //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
-        //     postpartum, endurance-athlete physiology, and FRAILTY_FLAG (#186).
-        //   - sepsis_screen (#182) / dka_screen (#190): adult-validated thresholds
-        //     (NEWS2; ADA ≥250 mg/dL) under-trigger in children. PEWS / ISPAD
-        //     paediatric refinements are tracked as future work.
-        //   - pregnancy gating cohort (#189, OBGYN_POV §2.2): every adult
-        //     baseline-relative trend pattern whose signal triad matches
-        //     normal pregnancy / postpartum physiology is suppressed in
-        //     PREGNANCY_* + POSTPARTUM. PregnancyPatterns.* replaces those
-        //     with pregnancy-aware screens (preeclampsia + PPCM). The
-        //     mental-health pattern is intentionally NOT in this list —
-        //     perinatal depression detection is preserved.
-        //   - frailty overlap (#186): sleep_disruption / cardio_deconditioning /
-        //     recovery_deficit also encode a deconditioned baseline in the
-        //     frail >75 cohort, so FRAILTY_FLAG joins their pregnancy gate.
-        //   - severe_range_preeclampsia_screen / postpartum_pre_eclampsia_screen
-        //     / peripartum_cardiomyopathy_screen / gestational_hypertension_screen
-        //     are the inverse — they fire ONLY in the listed pregnancy /
-        //     postpartum states, so their excludedStates set is every state
-        //     except the active one.
+        // See the comprehensive gating-contract doc in this PR's body and the
+        // companion patterns; the expected map below pins the contract.
+        // Includes ciguatera_suggestive (#196): the bradycardia gate (RHR <50 bpm
+        // sustained 48h) would false-fire on endurance athletes whose baseline
+        // RHR is already below the threshold.
         val pregnancyAndPostpartum = setOf(
             PhysiologyState.PREGNANCY_T1,
             PhysiologyState.PREGNANCY_T2,
@@ -177,6 +160,7 @@ class PhysiologyStateGatingTest {
             "menstrual_cycle_anomaly" to pregnancyAndPostpartum,
             "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
             "dka_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "ciguatera_suggestive" to setOf(PhysiologyState.ATHLETE_HIGH_FITNESS),
             "gestational_hypertension_screen" to outsideT2T3,
             "severe_range_preeclampsia_screen" to outsidePregnancyAndPostpartum,
             "postpartum_pre_eclampsia_screen" to outsidePostpartum,

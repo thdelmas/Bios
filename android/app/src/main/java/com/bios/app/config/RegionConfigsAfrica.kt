@@ -21,31 +21,34 @@ package com.bios.app.config
 internal object RegionConfigsAfrica {
 
     val configs: Map<String, RegionConfig> = listOf(
-        // -- Sub-Saharan --
-        standardRegion("NG", "Nigeria", "112", "NAFDAC"),         // 112 unified, 199 also valid
-        standardRegion("KE", "Kenya", "999", "PPB"),
-        standardRegion("ZA", "South Africa", "10177", "SAHPRA"),  // 10177 EMS, 10111 police
-        standardRegion("GH", "Ghana", "193", "FDA-GH"),           // 193 ambulance
-        standardRegion("ET", "Ethiopia", "907", "EFDA"),          // RoSA — Addis only
-        standardRegion("TZ", "Tanzania", "114", "TMDA"),
-        standardRegion("UG", "Uganda", "999", "NDA-UG"),
+        // -- Sub-Saharan -- (tropical flags per PR #225 / CDC dengue+malaria maps;
+        // Maghreb stays default — non-endemic). Other sub-Saharan regions in this
+        // file but not in the PR's authoritative list (MZ/AO/ZW/BW/NA/MW/ZM/RW/MG)
+        // stay default; a follow-up can extend coverage with audit support.
+        standardRegion("NG", "Nigeria", "112", "NAFDAC", tropicalDiseaseRelevant = true),
+        standardRegion("KE", "Kenya", "999", "PPB", tropicalDiseaseRelevant = true),
+        standardRegion("ZA", "South Africa", "10177", "SAHPRA", tropicalDiseaseRelevant = true),
+        standardRegion("GH", "Ghana", "193", "FDA-GH", tropicalDiseaseRelevant = true),
+        standardRegion("ET", "Ethiopia", "907", "EFDA", tropicalDiseaseRelevant = true),
+        standardRegion("TZ", "Tanzania", "114", "TMDA", tropicalDiseaseRelevant = true),
+        standardRegion("UG", "Uganda", "999", "NDA-UG", tropicalDiseaseRelevant = true),
         standardRegion("MZ", "Mozambique", "117", "ANARME"),
-        standardRegion("SN", "Senegal", "15", "DPM"),             // 15 SAMU
-        standardRegion("CI", "Côte d'Ivoire", "185", "DPML"),     // 185 SAMU Abidjan
-        standardRegion("CM", "Cameroon", "119", "MoH"),
-        standardRegion("AO", "Angola", "115", "INAMED"),          // 115 SIAC EMS
+        standardRegion("SN", "Senegal", "15", "DPM", tropicalDiseaseRelevant = true),
+        standardRegion("CI", "Côte d'Ivoire", "185", "DPML", tropicalDiseaseRelevant = true),
+        standardRegion("CM", "Cameroon", "119", "MoH", tropicalDiseaseRelevant = true),
+        standardRegion("AO", "Angola", "115", "INAMED"),
         standardRegion("ZW", "Zimbabwe", "999", "MCAZ"),
         standardRegion("BW", "Botswana", "911", "BoMRA"),
-        standardRegion("NA", "Namibia", "211", "NMRC"),           // 211 emergency dispatch
+        standardRegion("NA", "Namibia", "211", "NMRC"),
         standardRegion("MW", "Malawi", "998", "PMRA"),
         standardRegion("ZM", "Zambia", "902", "ZAMRA"),
         standardRegion("RW", "Rwanda", "912", "Rwanda FDA"),
-        standardRegion("CD", "DR Congo", "118", "ACOREP"),
+        standardRegion("CD", "DR Congo", "118", "ACOREP", tropicalDiseaseRelevant = true),
         standardRegion("MG", "Madagascar", "124", "Agence du Médicament"),
 
         // -- Maghreb / North Africa --
-        standardRegion("DZ", "Algeria", "14", "ANPP"),            // 14 SAMU
-        standardRegion("MA", "Morocco", "15", "DMP"),             // 15 SAMU
+        standardRegion("DZ", "Algeria", "14", "ANPP"),
+        standardRegion("MA", "Morocco", "15", "DMP"),
         standardRegion("TN", "Tunisia", "190", "DPM-TN"),
         standardRegion("EG", "Egypt", "123", "EDA"),
         standardRegion("LY", "Libya", "193", "FDC-LY"),

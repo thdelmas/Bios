@@ -14,29 +14,25 @@ data class RegionConfig(
     val clinicalThresholds: ClinicalThresholds,
     val regulatory: RegulatoryConfig,
     /**
-     * Local emergency services number for the region. Surfaced on alerts that
-     * recommend professional escalation. `null` when no single canonical
-     * number exists or it has not been verified — UI should fall back to
-     * "your local emergency services" rather than show a wrong number.
-     *
-     * Numbers verified against Wikipedia's "List of emergency telephone
-     * numbers" (cross-referenced country-by-country). When a region operates
-     * separate EMS / fire / police lines, the EMS / ambulance number is
-     * preferred since that is what a vital-signs alert maps to.
+     * Local emergency services number for the region. Surfaced on alerts
+     * recommending professional escalation. `null` when no canonical number
+     * exists — UI falls back to "your local emergency services".
      */
     val emergencyNumber: String? = null,
     /**
      * `true` when this locale sits inside a recognised indigenous data-
      * sovereignty framework (e.g. Te Mana Raraunga in NZ, NACCHO in AU,
-     * CARE Principles for Indigenous Data Governance in CA-territories,
-     * tribal data sovereignty in US tribal lands). Surfaced as a footnote
-     * on any data-export UI so the owner sees the framework reference
-     * before deciding what leaves the device.
-     *
-     * Cross-reference: docs/audits/INDIGENOUS_AMERICAS_POV.md §2.5,
-     * docs/audits/OCEANIC_ARCTIC_POV.md.
+     * CARE Principles for Indigenous Data Governance). Surfaced as a footnote
+     * on data-export UI. Cross-ref: INDIGENOUS_AMERICAS_POV §2.5, OCEANIC_ARCTIC_POV.
      */
-    val indigenousFlagged: Boolean = false
+    val indigenousFlagged: Boolean = false,
+    /**
+     * Whether tropical / endemic-disease patterns (malaria, dengue, chikungunya,
+     * leptospirosis, scrub typhus, ciguatera) should fire in this region (#196,
+     * audit gap §2.6). Cross-ref: AFRICAN_TRADITIONAL_POV §2.6, OTHER_ASIAN_SYSTEMS_POV §2-3,
+     * OCEANIC_ARCTIC_POV §2.6. Owner override via [com.bios.app.physiology.OwnerCondition].
+     */
+    val tropicalDiseaseRelevant: Boolean = false,
 )
 
 /**

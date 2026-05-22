@@ -42,15 +42,16 @@ internal object RegionConfigsAmericas {
         py(),
         cr(),
         pa(),
-        // DO uses 911 (unified emergency line since 2014)
-        standardRegion("DO", "Dominican Republic", "911", "DIGEMAPS"),
-        // Central America — emergency lines vary
-        standardRegion("GT", "Guatemala", "122", "MSPAS"),
-        standardRegion("HN", "Honduras", "911", "ARSA"),
+        // Caribbean + Central America (#196): tropical-flagged for dengue/chikungunya
+        // endemicity. SV stays default to mirror PR #225's authoritative list.
+        standardRegion("DO", "Dominican Republic", "911", "DIGEMAPS", tropicalDiseaseRelevant = true),
+        standardRegion("JM", "Jamaica", "110", "MOHWJM", tropicalDiseaseRelevant = true),
+        standardRegion("GT", "Guatemala", "122", "MSPAS", tropicalDiseaseRelevant = true),
+        standardRegion("HN", "Honduras", "911", "ARSA", tropicalDiseaseRelevant = true),
         standardRegion("SV", "El Salvador", "911", "MINSAL"),
-        standardRegion("NI", "Nicaragua", "118", "MINSA"),
-        standardRegion("CU", "Cuba", "185", "MINSAP"),
-        standardRegion("HT", "Haiti", "118", "MSPP"),
+        standardRegion("NI", "Nicaragua", "118", "MINSA", tropicalDiseaseRelevant = true),
+        standardRegion("CU", "Cuba", "185", "MINSAP", tropicalDiseaseRelevant = true),
+        standardRegion("HT", "Haiti", "118", "MSPP", tropicalDiseaseRelevant = true),
     ).associateBy { it.regionCode }
 
     // -- Anchor regions --
@@ -121,94 +122,81 @@ internal object RegionConfigsAmericas {
     // pattern (most countries report glucose in mmol/L on official
     // forms). Per-country override possible if a survey shows otherwise.
 
+    // Tropical-flagged regions activate TropicalDiseasePatterns (#196). CDC
+    // endemicity maps for dengue / chikungunya / malaria converge on the
+    // Americas tropics: Mexico through tropical South America, plus the
+    // Caribbean. AR/CL/UY/CR stay default (subtropical / temperate).
     private fun mx() = standardRegion(
-        regionCode = "MX",
-        displayName = "Mexico",
-        emergencyNumber = "911",          // National unified since 2017
-        regulatoryBody = "COFEPRIS",
+        regionCode = "MX", displayName = "Mexico",
+        emergencyNumber = "911", regulatoryBody = "COFEPRIS",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun ar() = standardRegion(
-        regionCode = "AR",
-        displayName = "Argentina",
-        emergencyNumber = "107",          // EMS (SAME) — 911 also valid in BA
-        regulatoryBody = "ANMAT",
+        regionCode = "AR", displayName = "Argentina",
+        emergencyNumber = "107", regulatoryBody = "ANMAT",
     )
 
     private fun br() = standardRegion(
-        regionCode = "BR",
-        displayName = "Brazil",
-        emergencyNumber = "192",          // SAMU — 190 is police, 193 fire
-        regulatoryBody = "ANVISA",
+        regionCode = "BR", displayName = "Brazil",
+        emergencyNumber = "192", regulatoryBody = "ANVISA",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun cl() = standardRegion(
-        regionCode = "CL",
-        displayName = "Chile",
-        emergencyNumber = "131",          // SAMU — 133 police
-        regulatoryBody = "ISP",
+        regionCode = "CL", displayName = "Chile",
+        emergencyNumber = "131", regulatoryBody = "ISP",
     )
 
     private fun co() = standardRegion(
-        regionCode = "CO",
-        displayName = "Colombia",
-        emergencyNumber = "123",          // National unified line
-        regulatoryBody = "INVIMA",
+        regionCode = "CO", displayName = "Colombia",
+        emergencyNumber = "123", regulatoryBody = "INVIMA",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun pe() = standardRegion(
-        regionCode = "PE",
-        displayName = "Peru",
-        emergencyNumber = "106",          // SAMU
-        regulatoryBody = "DIGEMID",
+        regionCode = "PE", displayName = "Peru",
+        emergencyNumber = "106", regulatoryBody = "DIGEMID",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun ve() = standardRegion(
-        regionCode = "VE",
-        displayName = "Venezuela",
-        emergencyNumber = "171",          // VEN-911 system (unified)
-        regulatoryBody = "INHRR",
+        regionCode = "VE", displayName = "Venezuela",
+        emergencyNumber = "171", regulatoryBody = "INHRR",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun ec() = standardRegion(
-        regionCode = "EC",
-        displayName = "Ecuador",
-        emergencyNumber = "911",          // ECU 911 unified
-        regulatoryBody = "ARCSA",
+        regionCode = "EC", displayName = "Ecuador",
+        emergencyNumber = "911", regulatoryBody = "ARCSA",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun bo() = standardRegion(
-        regionCode = "BO",
-        displayName = "Bolivia",
-        emergencyNumber = "118",          // Ambulance (110 police)
-        regulatoryBody = "AGEMED",
+        regionCode = "BO", displayName = "Bolivia",
+        emergencyNumber = "118", regulatoryBody = "AGEMED",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun uy() = standardRegion(
-        regionCode = "UY",
-        displayName = "Uruguay",
-        emergencyNumber = "911",          // National unified line
-        regulatoryBody = "MSP",
+        regionCode = "UY", displayName = "Uruguay",
+        emergencyNumber = "911", regulatoryBody = "MSP",
     )
 
     private fun py() = standardRegion(
-        regionCode = "PY",
-        displayName = "Paraguay",
-        emergencyNumber = "911",          // National unified line
-        regulatoryBody = "DINAVISA",
+        regionCode = "PY", displayName = "Paraguay",
+        emergencyNumber = "911", regulatoryBody = "DINAVISA",
+        tropicalDiseaseRelevant = true,
     )
 
     private fun cr() = standardRegion(
-        regionCode = "CR",
-        displayName = "Costa Rica",
-        emergencyNumber = "911",
-        regulatoryBody = "Ministerio de Salud",
+        regionCode = "CR", displayName = "Costa Rica",
+        emergencyNumber = "911", regulatoryBody = "Ministerio de Salud",
     )
 
     private fun pa() = standardRegion(
-        regionCode = "PA",
-        displayName = "Panama",
-        emergencyNumber = "911",
-        regulatoryBody = "MINSA",
+        regionCode = "PA", displayName = "Panama",
+        emergencyNumber = "911", regulatoryBody = "MINSA",
+        tropicalDiseaseRelevant = true,
     )
 }

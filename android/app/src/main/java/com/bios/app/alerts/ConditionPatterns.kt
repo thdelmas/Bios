@@ -2,6 +2,7 @@ package com.bios.app.alerts
 
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
+import com.bios.app.physiology.OwnerCondition
 import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 
@@ -24,24 +25,20 @@ data class ConditionPattern(
      * patterns).
      */
     val severityFloor: AlertTier? = null,
-    /**
-     * Negative gate (#159, audit gap §2.7; frailty per geriatrics audit §2.1):
-     * states where this pattern should NOT fire because deviation is normative
-     * (RHR rise in pregnancy; deconditioned baseline in frailty). See [appliesIn].
-     */
+    /** Negative state gate (#159, audit gap §2.7; #186 frailty): states where this pattern is suppressed. */
     val excludedStates: Set<PhysiologyState> = emptySet(),
-    /**
-     * Positive gate (#200, audit gap §2.9): when non-empty, the pattern fires
-     * only if the owner's [PhysiologyState] is in this set. Used by patterns
-     * that only make clinical sense for a specific cohort — KNOWN_COPD acute
-     * exacerbation, KNOWN_HF prodrome (CARDIOLOGY_POV §2.4), PAEDIATRIC
-     * thresholds. Dual of [excludedStates]. See [appliesIn].
-     */
+    /** Positive state gate (#200, audit gap §2.9): when non-empty, pattern fires only in listed states. */
     val requiredStates: Set<PhysiologyState> = emptySet(),
+    /** Region gate (#196, audit gap §2.6): when true, fires only where RegionConfig.tropicalDiseaseRelevant. */
+    val requiresTropicalRegion: Boolean = false,
+    /** Owner-condition gate (#196): when non-empty, fires only if owner has declared all listed conditions. */
+    val requiredOwnerConditions: Set<OwnerCondition> = emptySet(),
 ) {
-    /** True when [state] passes both the [excludedStates] and [requiredStates] gates. */
-    fun appliesIn(state: PhysiologyState): Boolean =
-        state !in excludedStates && (requiredStates.isEmpty() || state in requiredStates)
+    /** True when the pattern passes all four gates (state both axes, region, owner conditions). */
+    fun appliesIn(state: PhysiologyState, regionConfig: com.bios.app.config.RegionConfig? = null, ownerConditions: Set<OwnerCondition> = emptySet()): Boolean =
+        state !in excludedStates && (requiredStates.isEmpty() || state in requiredStates) &&
+            (!requiresTropicalRegion || regionConfig?.tropicalDiseaseRelevant == true) &&
+            ownerConditions.containsAll(requiredOwnerConditions)
 }
 
 data class SignalRule(
@@ -130,7 +127,7 @@ object ConditionPatterns {
             HypertensionPatterns.all + SleepApneaPattern.all +
             RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
             AfibRhythmPattern.all + AutonomicPatternShiftPattern.all + PregnancyPatterns.all + HeadachePatterns.all +
-            HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all
+            HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all + TropicalDiseasePatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
