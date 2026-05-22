@@ -303,7 +303,8 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
                     onNavigateToHeadacheDiary = { navController.navigate("headache_diary") },
                     onNavigateToFastStroke = { navController.navigate("fast_stroke") },
-                    onNavigateToEsasCapture = { navController.navigate("esas_capture") }
+                    onNavigateToEsasCapture = { navController.navigate("esas_capture") },
+                    onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") }
                 )
             }
             composable("esas_capture") {
@@ -326,6 +327,9 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("fast_stroke") {
                 com.bios.app.ui.stroke.FastStrokeScreen(onBack = { navController.popBackStack() })
+            }
+            composable("traditional_medicine_context") {
+                com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })
             }
             composable("medications") {
                 com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })

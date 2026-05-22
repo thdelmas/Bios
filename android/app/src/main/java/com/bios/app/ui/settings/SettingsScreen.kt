@@ -45,7 +45,8 @@ fun SettingsScreen(
     onNavigateToGoalsOfCare: () -> Unit = {},
     onNavigateToHeadacheDiary: () -> Unit = {},
     onNavigateToFastStroke: () -> Unit = {},
-    onNavigateToEsasCapture: () -> Unit = {}
+    onNavigateToEsasCapture: () -> Unit = {},
+    onNavigateToTraditionalMedicine: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -104,6 +105,7 @@ fun SettingsScreen(
                     "Headache & migraine diary" to onNavigateToHeadacheDiary,
                     "FAST stroke check" to onNavigateToFastStroke,
                     "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
+                    "Traditional medicine" to onNavigateToTraditionalMedicine,
                 ).forEachIndexed { idx, (label, action) ->
                     if (idx > 0) Spacer(Modifier.height(4.dp))
                     SettingsActionButton(label, action)
@@ -111,9 +113,7 @@ fun SettingsScreen(
             }
         }
 
-        // Privacy — what can leave, and who can access. The single highest-
-        // stakes surface in the app. Companion Apps was previously buried
-        // inside Data Sources; promoted here per the audit recommendation.
+        // Privacy — what can leave, and who can access. Highest-stakes surface.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Privacy", style = MaterialTheme.typography.titleSmall)
