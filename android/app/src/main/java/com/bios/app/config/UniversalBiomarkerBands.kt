@@ -1,0 +1,129 @@
+package com.bios.app.config
+
+import com.bios.contracts.MetricType
+
+/**
+ * Biomarker bands that are clinically identical across every region Bios
+ * supports. ADA / WHO / NICE / JSCC / etc. all use the same cut-offs for these
+ * assays; SI ↔ US unit conversions are handled by [UnitDisplay], not here.
+ * When a future biomarker has region-divergent bands (e.g. JDS historically
+ * used different HbA1c bands), the region-specific config can override.
+ *
+ * Extracted from [RegionConfigProvider] so per-continent region tables can
+ * share it without re-importing the full provider.
+ */
+internal val universalBiomarkerBands: Map<MetricType, BiomarkerBands> = mapOf(
+    // hsCRP (mg/L): <1.0 low, 1.0–3.0 moderate, ≥3.0 high
+    // (Ridker 2003; Pearson AHA/CDC 2003)
+    MetricType.HSCRP to BiomarkerBands(normalCeiling = 1.0, borderlineCeiling = 3.0),
+    // HbA1c (%): <5.7 normal, 5.7–6.5 prediabetic, ≥6.5 diabetic (ADA 2024)
+    MetricType.HBA1C to BiomarkerBands(normalCeiling = 5.7, borderlineCeiling = 6.5),
+    // Total cholesterol (mg/dL): <200 desirable, 200–239 borderline, ≥240 high
+    // (NCEP ATP III; AHA 2018 guideline)
+    MetricType.TOTAL_CHOLESTEROL to BiomarkerBands(
+        normalCeiling = 200.0, borderlineCeiling = 240.0,
+    ),
+    // LDL-C (mg/dL): <100 optimal, 100–160 borderline, ≥160 high (NCEP ATP III)
+    MetricType.LDL_CHOLESTEROL to BiomarkerBands(
+        normalCeiling = 100.0, borderlineCeiling = 160.0,
+    ),
+    // HDL-C (mg/dL): <40 concerning low, 40–60 borderline, ≥60 protective
+    // — INVERSE direction: low HDL is the clinical concern (NCEP ATP III)
+    MetricType.HDL_CHOLESTEROL to BiomarkerBands(
+        normalCeiling = 40.0, borderlineCeiling = 60.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Triglycerides (mg/dL): <150 normal, 150–200 borderline, ≥200 high
+    // (NCEP ATP III)
+    MetricType.TRIGLYCERIDES to BiomarkerBands(
+        normalCeiling = 150.0, borderlineCeiling = 200.0,
+    ),
+    // ApoB (mg/dL): <90 desirable, 90–120 borderline, ≥120 high
+    // (Sniderman et al. 2019; AACC 2023 — particle-count gold standard)
+    MetricType.APO_B to BiomarkerBands(
+        normalCeiling = 90.0, borderlineCeiling = 120.0,
+    ),
+    // 25-OH vitamin D (ng/mL): <20 deficient, 20–30 insufficient, ≥30 sufficient
+    // — INVERSE direction: low values are the clinical concern
+    // (Holick et al. 2011 — Endocrine Society Clinical Practice Guideline)
+    MetricType.VITAMIN_D_25OH to BiomarkerBands(
+        normalCeiling = 20.0, borderlineCeiling = 30.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // TSH (mIU/L): <0.4 hyperthyroid, 0.4–4.0 normal, 4.0–10.0 subclinical
+    // hypothyroid, ≥10.0 overt hypothyroid. (AACE/ATA 2012; ATA 2014)
+    MetricType.TSH to BiomarkerBands(
+        normalCeiling = 4.0, borderlineCeiling = 10.0,
+        concerningDirection = BandDirection.ABOVE,
+        lowCeiling = 0.4,
+    ),
+    // Free T4 (ng/dL) — hypo-focused window. (AACE 2012)
+    MetricType.FREE_T4 to BiomarkerBands(
+        normalCeiling = 0.8, borderlineCeiling = 1.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Free T3 (pg/mL) — bidirectional (Ross 2016 / Garber 2012)
+    MetricType.FREE_T3 to BiomarkerBands(
+        normalCeiling = 4.2, borderlineCeiling = 6.5,
+        concerningDirection = BandDirection.ABOVE,
+        lowCeiling = 2.3,
+    ),
+    // -- CBC panel --
+    // Hemoglobin (g/dL): WHO anemia thresholds. (WHO 2011)
+    MetricType.HEMOGLOBIN to BiomarkerBands(
+        normalCeiling = 12.0, borderlineCeiling = 13.5,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Hematocrit (%) — combined-sex conservative. (WHO 2011)
+    MetricType.HEMATOCRIT to BiomarkerBands(
+        normalCeiling = 36.0, borderlineCeiling = 40.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // WBC (giga/L) — bidirectional. (Williams Hematology 10th ed.)
+    MetricType.WBC to BiomarkerBands(
+        normalCeiling = 11.0, borderlineCeiling = 15.0,
+        concerningDirection = BandDirection.ABOVE,
+        lowCeiling = 4.5,
+    ),
+    // RBC (tera/L). (Williams Hematology 10th ed.)
+    MetricType.RBC to BiomarkerBands(
+        normalCeiling = 4.0, borderlineCeiling = 4.5,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Platelets (giga/L). (NCI CTCAE; Williams Hematology 10th ed.)
+    MetricType.PLATELETS to BiomarkerBands(
+        normalCeiling = 100.0, borderlineCeiling = 150.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // -- Renal / hepatic / insulin-resistance panel --
+    // eGFR (mL/min/1.73m²) — KDIGO 2024
+    MetricType.EGFR to BiomarkerBands(
+        normalCeiling = 60.0, borderlineCeiling = 90.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Creatinine (mg/dL) — KDIGO 2024
+    MetricType.CREATININE to BiomarkerBands(
+        normalCeiling = 1.1, borderlineCeiling = 1.3,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // ALT (U/L) — AASLD 2017
+    MetricType.ALT to BiomarkerBands(
+        normalCeiling = 33.0, borderlineCeiling = 50.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // AST (U/L) — AASLD 2017
+    MetricType.AST to BiomarkerBands(
+        normalCeiling = 35.0, borderlineCeiling = 50.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // GGT (U/L) — AASLD 2017
+    MetricType.GGT to BiomarkerBands(
+        normalCeiling = 40.0, borderlineCeiling = 60.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // HOMA-IR — Matthews 1985 / Tam 2012
+    MetricType.HOMA_IR to BiomarkerBands(
+        normalCeiling = 2.0, borderlineCeiling = 2.5,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+)

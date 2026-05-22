@@ -135,49 +135,7 @@ fun BiosApp(viewModel: AppViewModel) {
         }
     }
 
-    // Deep-link from CompanionAccessNotifier — opens Settings → Companion Apps.
-    LaunchedEffect(Unit) {
-        val activity = context as? android.app.Activity ?: return@LaunchedEffect
-        val intent = activity.intent ?: return@LaunchedEffect
-        if (intent.getBooleanExtra(
-                com.bios.app.provider.CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS,
-                false
-            )
-        ) {
-            intent.removeExtra(com.bios.app.provider.CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS)
-            navController.navigate("companions")
-        }
-    }
-
-    // Deep-link from DisconnectNotifier — opens Data Coverage so the
-    // owner can reconnect the failing source.
-    LaunchedEffect(Unit) {
-        val activity = context as? android.app.Activity ?: return@LaunchedEffect
-        val intent = activity.intent ?: return@LaunchedEffect
-        if (intent.getBooleanExtra(
-                com.bios.app.alerts.DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE,
-                false
-            )
-        ) {
-            intent.removeExtra(com.bios.app.alerts.DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE)
-            navController.navigate("data_coverage")
-        }
-    }
-
-    // Deep-link from a companion (e.g. W2F "take a snapshot" CTA): bios://capture/ppg
-    // lands directly on the PPG capture screen. popUpTo home/inclusive empties
-    // the in-app back stack so pressing back from capture finishes the
-    // activity and returns to the calling companion, not Bios Home.
-    LaunchedEffect(Unit) {
-        val activity = context as? android.app.Activity ?: return@LaunchedEffect
-        val data = activity.intent?.data ?: return@LaunchedEffect
-        if (data.scheme == "bios" && data.host == "capture" && data.path == "/ppg") {
-            activity.intent.data = null
-            navController.navigate("ppg_capture") {
-                popUpTo("home") { inclusive = true }
-            }
-        }
-    }
+    HandleDeepLinks(navController)
 
     LaunchedEffect(error) {
         error?.let {
@@ -341,9 +299,16 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
                     onNavigateToRiskProfile = { navController.navigate("risk_profile") },
                     onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
+                    onNavigateToFrailAssessment = { navController.navigate("frail_assessment") },
                     onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
+                    onNavigateToHeadacheDiary = { navController.navigate("headache_diary") },
+                    onNavigateToFastStroke = { navController.navigate("fast_stroke") },
+                    onNavigateToEsasCapture = { navController.navigate("esas_capture") },
                     onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") }
                 )
+            }
+            composable("esas_capture") {
+                com.bios.app.ui.esas.EsasCaptureScreen(onBack = { navController.popBackStack() })
             }
             composable("risk_profile") {
                 com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
@@ -351,8 +316,17 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("physiology_state") {
                 com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
             }
+            composable("frail_assessment") {
+                com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
+            }
             composable("goals_of_care") {
                 com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
+            }
+            composable("headache_diary") {
+                com.bios.app.ui.headache.HeadacheDiaryScreen(onBack = { navController.popBackStack() })
+            }
+            composable("fast_stroke") {
+                com.bios.app.ui.stroke.FastStrokeScreen(onBack = { navController.popBackStack() })
             }
             composable("traditional_medicine_context") {
                 com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })

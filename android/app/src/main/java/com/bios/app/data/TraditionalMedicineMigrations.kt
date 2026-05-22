@@ -14,12 +14,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * tradition they practice within. Pull-side only; Bios never
  * classifies within any tradition.
  *
- * NOTE: [MIGRATION_16_17] may need to shift on merge if other PRs
- * land first. Renumber to the next available slot.
+ * Renumbered from 16→17 during merge with main: slots 16→17 (neurology),
+ * 17→18 (ESAS) were taken before this PR landed; lands at 18→19.
  */
 internal object TraditionalMedicineMigrations {
 
-    val MIGRATION_16_17: Migration = object : Migration(16, 17) {
+    val MIGRATION_18_19: Migration = object : Migration(18, 19) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """
