@@ -204,8 +204,30 @@ enum class MetricType(
     // (TCM_POV §2.7) and Ritucharya/six-paruvam patterns (Ayurveda, Siddha,
     // Unani) all key off humidity + temperature. Phone-sensor sourced; not
     // owner-set, so manual entry stays false.
-    AMBIENT_HUMIDITY_PCT("ambient_humidity_pct", MetricUnit.PERCENT, MetricDomain.ENVIRONMENT),
-    AMBIENT_TEMPERATURE_C("ambient_temperature_c", MetricUnit.CELSIUS, MetricDomain.ENVIRONMENT),
+    // Environmental context (#197, audit gaps converge from SOWA_RIGPA_POV
+    // §2.1 altitude, INDIGENOUS_AMERICAS_POV Andes/Mesoamerica,
+    // OCEANIC_ARCTIC_POV cold + Pacific heat, AFRICAN_TRADITIONAL_POV climate,
+    // OTHER_ASIAN_SYSTEMS_POV, MODERN_NON_ALLOPATHIC_POV environmental
+    // medicine). Bios's SpO2 / HR / temperature / sleep thresholds were
+    // baselined as if the owner lives in a temperate Northern climate at
+    // sea level — clinically wrong for owners in the Andes, Tibet, the
+    // Sahel, or above 60° latitude. These keys carry owner-set context that
+    // modulates absolute clinical thresholds (the personal-baseline path
+    // self-corrects; the hard-cutoff path needs explicit context).
+    //
+    // ELEVATION_M is owner-entered metres above sea level; never derived
+    // from GPS without permission (manifesto: no hidden ingestion).
+    // AMBIENT_TEMPERATURE_C / AMBIENT_HUMIDITY_PCT can come from phone
+    // sensors (if available) or owner annotation. AMBIENT_HUMIDITY_PCT is
+    // also slated by issue #200 — if that PR lands first, this declaration
+    // will be a no-op duplicate the `fromKey()` resolver still handles.
+    // DAYLIGHT_HOURS is computed from owner latitude (RegionConfig) + date
+    // by EnvironmentalContextProvider; carries photoperiod for the SAAD
+    // (seasonal affective adjustment-disorder) screening pattern.
+    ELEVATION_M("elevation_m", MetricUnit.METERS, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
+    AMBIENT_TEMPERATURE_C("ambient_temperature_c", MetricUnit.CELSIUS, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
+    AMBIENT_HUMIDITY_PCT("ambient_humidity_pct", MetricUnit.PERCENT, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
+    DAYLIGHT_HOURS("daylight_hours", MetricUnit.HOURS, MetricDomain.ENVIRONMENT),
 
     // Biomarkers (lab-drawn or imported via FHIR; slow-moving, no streaming).
     // First wave matches the clinical concepts already described in
@@ -370,7 +392,11 @@ enum class MetricUnit(val symbol: String) {
     /** Enzyme activity per litre — ALT, AST, GGT, etc. */
     U_PER_L("U/L"),
     /** eGFR normalized to body surface area — KDIGO 2024 standard. */
-    ML_PER_MIN_PER_173("mL/min/1.73m²")
+    ML_PER_MIN_PER_173("mL/min/1.73m²"),
+    /** Linear distance — elevation above sea level. */
+    METERS("m"),
+    /** Time of day length — daylight hours computed from latitude + date. */
+    HOURS("h")
 }
 
 enum class MetricDomain {

@@ -23,6 +23,9 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("physiology_state") {
         com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
     }
+    composable("environmental_context") {
+        com.bios.app.ui.environmental.EnvironmentalContextScreen(onBack = { navController.popBackStack() })
+    }
     composable("frail_assessment") {
         com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
     }
