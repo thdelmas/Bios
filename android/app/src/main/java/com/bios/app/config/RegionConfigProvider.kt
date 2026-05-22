@@ -202,8 +202,8 @@ object RegionConfigProvider {
         "EU" to euConfig(),
         "CA" to caConfig(),
         "AU" to auConfig(),
-        "JP" to jpConfig()
-    )
+        "JP" to jpConfig(),
+    ) + tropicalConfigs()
 
     /** Default config used when no region-specific config exists. */
     private val defaultConfig = euConfig()
@@ -399,6 +399,76 @@ object RegionConfigProvider {
             regulatoryBody = "PMDA",
             alertDisclaimer = "Biosは医療機器ではありません。アラートは情報提供を目的としており、医学的助言ではありません。"
         )
+    )
+
+    /**
+     * Tropical / subtropical region configs (#196, audit gap §2.6 cluster).
+     * All share the WHO-anchored adult thresholds the EU config uses (SI
+     * units, 38.0 °C tachycardia, etc.) and flip `tropicalDiseaseRelevant`
+     * to true so [com.bios.app.alerts.TropicalDiseasePatterns] activate.
+     *
+     * Coverage is not exhaustive — the goal is to seed the major endemic
+     * cohorts so a phone's `Locale.getDefault().country` resolves to a
+     * tropical config when relevant. Additional regions can be added
+     * without code changes by extending this map. ISO 3166-1 alpha-2:
+     *  - Africa (sub-Saharan): NG, KE, GH, TZ, UG, ZA, ET, CI, SN, CM, CD
+     *  - South / Southeast Asia: IN, PK, BD, LK, ID, TH, VN, PH, MY, MM, KH
+     *  - Pacific: FJ, PG, SB, VU, WS (ciguatera + dengue belt)
+     *  - Caribbean / Central America: HT, DO, JM, CU, MX, GT, HN, NI, PA
+     *  - South America (tropical): BR, CO, VE, PE, EC, BO, PY
+     */
+    private fun tropicalConfigs(): Map<String, RegionConfig> {
+        val codes = listOf(
+            // sub-Saharan Africa
+            "NG" to "Nigeria", "KE" to "Kenya", "GH" to "Ghana", "TZ" to "Tanzania",
+            "UG" to "Uganda", "ZA" to "South Africa", "ET" to "Ethiopia",
+            "CI" to "Côte d'Ivoire", "SN" to "Senegal", "CM" to "Cameroon",
+            "CD" to "Democratic Republic of the Congo",
+            // South / Southeast Asia
+            "IN" to "India", "PK" to "Pakistan", "BD" to "Bangladesh",
+            "LK" to "Sri Lanka", "ID" to "Indonesia", "TH" to "Thailand",
+            "VN" to "Vietnam", "PH" to "Philippines", "MY" to "Malaysia",
+            "MM" to "Myanmar", "KH" to "Cambodia",
+            // Pacific
+            "FJ" to "Fiji", "PG" to "Papua New Guinea", "SB" to "Solomon Islands",
+            "VU" to "Vanuatu", "WS" to "Samoa",
+            // Caribbean / Central America
+            "HT" to "Haiti", "DO" to "Dominican Republic", "JM" to "Jamaica",
+            "CU" to "Cuba", "MX" to "Mexico", "GT" to "Guatemala",
+            "HN" to "Honduras", "NI" to "Nicaragua", "PA" to "Panama",
+            // tropical South America
+            "BR" to "Brazil", "CO" to "Colombia", "VE" to "Venezuela",
+            "PE" to "Peru", "EC" to "Ecuador", "BO" to "Bolivia", "PY" to "Paraguay",
+        )
+        return codes.associate { (code, name) -> code to tropicalConfig(code, name) }
+    }
+
+    private fun tropicalConfig(code: String, name: String): RegionConfig = RegionConfig(
+        regionCode = code,
+        displayName = name,
+        unitOverrides = emptyMap(),
+        clinicalThresholds = ClinicalThresholds(
+            spo2ConcernThreshold = 95.0,
+            spo2UrgentThreshold = 92.0,
+            feverDeltaCelsius = 0.5,
+            highFeverCelsius = 39.0,
+            tachycardiaBpm = 100,
+            bradycardiaBpm = 50,
+            glucoseInMmol = true,
+            fastingGlucoseConcern = 5.6,
+            hypertensionSystolic = 140,
+            hypertensionDiastolic = 90,
+            biomarkerBands = universalBiomarkerBands,
+        ),
+        regulatory = RegulatoryConfig(
+            reproductiveDataIsolation = false,
+            defaultRetentionDays = 90,
+            explicitCommunityConsent = true,
+            fhirProfileUrl = null,
+            regulatoryBody = "Local regulator",
+            alertDisclaimer = "Bios is not a registered medical device in this region. Alerts are informational and do not constitute medical advice.",
+        ),
+        tropicalDiseaseRelevant = true,
     )
 
     // -- Unit conversion helpers --

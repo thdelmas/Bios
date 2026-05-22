@@ -2,6 +2,7 @@ package com.bios.app.alerts
 
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
+import com.bios.app.physiology.OwnerCondition
 import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 
@@ -33,7 +34,25 @@ data class ConditionPattern(
      * [com.bios.app.physiology.PhysiologyStateStore] and filters
      * [ConditionPatterns.all] before evaluating. Closes audit gap §2.7.
      */
-    val excludedStates: Set<PhysiologyState> = emptySet()
+    val excludedStates: Set<PhysiologyState> = emptySet(),
+    /**
+     * If true, the pattern fires only when the active [com.bios.app.config.RegionConfig]
+     * has `tropicalDiseaseRelevant = true` *or* the owner has set a
+     * travelling-/lived-in-tropics override. Used by [TropicalDiseasePatterns]
+     * so malaria / dengue / chikungunya / leptospirosis / scrub typhus /
+     * ciguatera signatures stay silent on Northern-temperate baselines
+     * (audit gap §2.6 cluster). Filter applied by [com.bios.app.engine.AnomalyDetector].
+     */
+    val requiresTropicalRegion: Boolean = false,
+    /**
+     * [OwnerCondition]s that must all be present in the owner's
+     * declared-conditions set before this pattern fires. Default empty =
+     * no gating. Used for specialty patterns whose signature would mis-
+     * fire on the general population (e.g. SCD vaso-occlusive crisis:
+     * a desat + tachycardia + pain spike has many differential causes
+     * in non-SCD owners — silent unless the owner has declared SCD).
+     */
+    val requiredOwnerConditions: Set<OwnerCondition> = emptySet(),
 )
 
 data class SignalRule(
@@ -121,7 +140,8 @@ object ConditionPatterns {
             BiomarkerConditionPatterns.all + EmergencyVitalPatterns.all +
             HypertensionPatterns.all + SleepApneaPattern.all +
             RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
-            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all
+            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
+            TropicalDiseasePatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */

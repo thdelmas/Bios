@@ -3,10 +3,13 @@ package com.bios.app.engine
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
+import com.bios.app.config.RegionConfig
+import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.MedicationAnnotationRepo
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.*
+import com.bios.app.physiology.OwnerCondition
 import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
@@ -33,15 +36,22 @@ class AnomalyDetector(
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
     /** Owner-set physiology context (#159); filters patterns by excludedStates. */
-    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD
+    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
+    /** Active region config (#196); gates `requiresTropicalRegion` patterns. */
+    private val regionConfig: RegionConfig = RegionConfigProvider.forCurrentLocale(),
+    /** Owner-declared known conditions (#196); gates `requiredOwnerConditions`. */
+    private val ownerConditions: Set<OwnerCondition> = emptySet(),
 ) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
-    private fun applicablePatterns(): List<ConditionPattern> =
-        ConditionPatterns.all.filter { physiologyState !in it.excludedStates }
+    private fun applicablePatterns(): List<ConditionPattern> = ConditionPatterns.all.filter { p ->
+        physiologyState !in p.excludedStates &&
+            (!p.requiresTropicalRegion || regionConfig.tropicalDiseaseRelevant) &&
+            ownerConditions.containsAll(p.requiredOwnerConditions)
+    }
 
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()
@@ -49,27 +59,17 @@ class AnomalyDetector(
         val patterns = applicablePatterns()
 
         // Pattern-based detection (existing statistical approach)
-        val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) {
+        suspend fun evalAll(): List<Anomaly> {
             val results = mutableListOf<Anomaly>()
             for (pattern in patterns) {
-                val anomaly = evaluatePattern(pattern)
-                if (anomaly != null) {
-                    anomalyDao.insert(anomaly)
-                    results.add(anomaly)
+                evaluatePattern(pattern)?.let {
+                    anomalyDao.insert(it)
+                    results.add(it)
                 }
             }
-            results
-        } ?: run {
-            val results = mutableListOf<Anomaly>()
-            for (pattern in patterns) {
-                val anomaly = evaluatePattern(pattern)
-                if (anomaly != null) {
-                    anomalyDao.insert(anomaly)
-                    results.add(anomaly)
-                }
-            }
-            results
+            return results
         }
+        val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) { evalAll() } ?: evalAll()
         newAnomalies.addAll(patternAnomalies)
 
         // ML-based holistic anomaly detection
