@@ -5,8 +5,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.hardware.display.DisplayManager
 import android.os.BatteryManager
-import android.os.PowerManager
+import android.view.Display
 import com.bios.app.engine.PhoneSleepInference
 import com.bios.app.model.MetricReading
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -35,8 +36,8 @@ class PhoneSleepAdapter(private val context: Context) {
 
     private val sensorManager =
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val powerManager =
-        context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    private val displayManager =
+        context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
     private val batteryManager =
         context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
 
@@ -62,11 +63,30 @@ class PhoneSleepAdapter(private val context: Context) {
         val now = System.currentTimeMillis()
         return PhoneSleepInference.Sample(
             timestamp = now,
-            screenOff = !powerManager.isInteractive,
+            screenOff = isScreenInactive(),
             charging = batteryManager.isCharging,
             ambientLightLux = readOnce(lightSensor, AMBIENT_LIGHT_TIMEOUT_MS),
             accelMagnitudeVar = sampleAccelVariance(accelWindowMs),
         )
+    }
+
+    /**
+     * Phones with always-on display keep `PowerManager.isInteractive()`
+     * true through the night, which collapsed the inference's screen-off
+     * stretch to a few minutes between unlocks. Read the actual display
+     * state instead: OFF / DOZE / DOZE_SUSPEND / ON_SUSPEND are all
+     * "owner isn't actively using the device" — only [Display.STATE_ON]
+     * (and the unknown fallback) count as truly interactive.
+     */
+    private fun isScreenInactive(): Boolean {
+        val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY) ?: return false
+        return when (display.state) {
+            Display.STATE_OFF,
+            Display.STATE_DOZE,
+            Display.STATE_DOZE_SUSPEND,
+            Display.STATE_ON_SUSPEND -> true
+            else -> false
+        }
     }
 
     /**
