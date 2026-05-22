@@ -25,15 +25,24 @@ data class ConditionPattern(
      */
     val severityFloor: AlertTier? = null,
     /**
-     * [PhysiologyState]s this pattern should NOT fire in. Default empty =
-     * applies in every state. Patterns with normative deviations in some
-     * state (e.g. RHR rises 10–20 bpm in pregnancy → cardiovascular_stress
-     * would false-fire) list those states here. The
-     * [com.bios.app.engine.AnomalyDetector] reads
-     * [com.bios.app.physiology.PhysiologyStateStore] and filters
-     * [ConditionPatterns.all] before evaluating. Closes audit gap §2.7.
+     * [PhysiologyState]s in which this pattern should not fire. Default
+     * empty. [com.bios.app.engine.AnomalyDetector] filters [ConditionPatterns.all]
+     * against [com.bios.app.physiology.PhysiologyStateStore] before evaluating
+     * (#159, audit gap §2.7; frailty wiring per geriatrics audit §2.1).
      */
-    val excludedStates: Set<PhysiologyState> = emptySet()
+    val excludedStates: Set<PhysiologyState> = emptySet(),
+    /**
+     * [PhysiologyState]s this pattern requires the owner to be in for it
+     * to fire (positive-gating axis, dual of [excludedStates]). Default
+     * empty = no gating, applies in every state. Used by patterns that
+     * only make clinical sense for a specific population — e.g. acute
+     * COPD-exacerbation screening (gated on [PhysiologyState.KNOWN_COPD])
+     * or paediatric thresholds (gated on [PhysiologyState.PAEDIATRIC]).
+     * When non-empty, the pattern fires only if the owner's current
+     * [PhysiologyState] is in this set. Closes audit gap §2.9 for
+     * disease-cohort-specific screening (#200).
+     */
+    val requiredStates: Set<PhysiologyState> = emptySet()
 )
 
 data class SignalRule(
@@ -116,11 +125,13 @@ object ConditionPatterns {
         listOf(
             infectionOnset, sleepDisruption, cardiovascularStress, overtraining,
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit,
-            respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
-        ) + CircadianConditionPattern.all +
-            CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
-            EmergencyVitalPatterns.all + HypertensionPatterns.all +
-            SleepApneaPattern.all + RespiratoryExacerbationPatterns.all
+            respiratoryInfection, mentalHealthCorrelate, menstrualCycleAnomaly,
+        ) + CircadianConditionPattern.all + CompanionConditionPatterns.all +
+            BiomarkerConditionPatterns.all + EmergencyVitalPatterns.all +
+            HypertensionPatterns.all + SleepApneaPattern.all +
+            RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
+            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
+            HeadachePatterns.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
@@ -181,7 +192,8 @@ object ConditionPatterns {
         earlyDetection = "Sleep disruption often manifests gradually. The first measurable sign is a reduction in deep and REM sleep stages, even when total sleep duration appears normal. Heart rate variability drops during sleep, and resting heart rate drifts upward — both indicators that your autonomic nervous system is not fully recovering overnight. Bios detects these shifts over a 48-72 hour window, catching the pattern before you consciously feel sleep-deprived.",
         prevention = "Maintain a consistent sleep schedule, even on weekends. Keep your bedroom cool (18-20C), dark, and quiet. Avoid caffeine after early afternoon and limit alcohol, which fragments sleep architecture. Reduce blue light exposure 1-2 hours before bed. Regular physical activity improves sleep quality, but avoid intense exercise within 3 hours of bedtime. Establish a wind-down routine — reading, stretching, or breathing exercises signal your body to prepare for rest.",
         healing = "If your sleep has already deteriorated, start by resetting your schedule: go to bed and wake up at fixed times for at least one week. Avoid napping longer than 20 minutes. Consider relaxation techniques such as progressive muscle relaxation, guided meditation, or 4-7-8 breathing. If stress is a contributor, journaling or cognitive behavioral strategies can help. Magnesium and melatonin supplements may assist short-term (consult your doctor). If poor sleep persists beyond two weeks, seek evaluation for underlying causes such as sleep apnea or anxiety disorders.",
-        risks = "Chronic sleep disruption affects nearly every body system. Short-term, it impairs cognitive function, reaction time, mood regulation, and immune response. Over weeks and months, sustained poor sleep increases the risk of obesity, type 2 diabetes, cardiovascular disease, and depression. Sleep deprivation raises cortisol levels, promotes systemic inflammation, and impairs memory consolidation. Performance, relationships, and overall quality of life decline progressively the longer poor sleep goes unaddressed."
+        risks = "Chronic sleep disruption affects nearly every body system. Short-term, it impairs cognitive function, reaction time, mood regulation, and immune response. Over weeks and months, sustained poor sleep increases the risk of obesity, type 2 diabetes, cardiovascular disease, and depression. Sleep deprivation raises cortisol levels, promotes systemic inflammation, and impairs memory consolidation. Performance, relationships, and overall quality of life decline progressively the longer poor sleep goes unaddressed.",
+        excludedStates = setOf(PhysiologyState.FRAILTY_FLAG)
     )
 
     val cardiovascularStress = ConditionPattern(
@@ -199,12 +211,17 @@ object ConditionPatterns {
         minActiveSignals = 2,
         explanation = "Your cardiovascular markers are showing sustained elevation above your personal baseline. This may indicate physical or emotional stress, overtraining, or other factors affecting your heart.",
         suggestedAction = "Consider reducing intense exercise, managing stress, and ensuring adequate rest. If you experience chest pain, dizziness, or shortness of breath, seek medical attention promptly.",
+        references = listOf(
+            "Booth FW et al. (2012) — Lack of exercise is a major cause of chronic diseases",
+            "Plews DJ et al. (2013) — Training adaptation and HRV in elite endurance athletes",
+            "Somers VK et al. (2008) — Sleep apnea and cardiovascular disease (AHA/ACC scientific statement) — untreated obstructive sleep apnea is a known upstream driver of sustained cardiovascular strain via repeated nocturnal sympathetic activation; see SleepApneaPattern.sleepApneaScreen for the OSA screening pathway"
+        ),
         earlyDetection = "Cardiovascular stress builds over days before it becomes symptomatic. Resting heart rate rising 2+ standard deviations above your baseline is the primary signal, especially when sustained over 48 hours. A simultaneous drop in HRV indicates your autonomic nervous system is under sustained load. Declining blood oxygen saturation, even mildly, adds a third corroborating signal. Bios requires at least two of these three markers to flag cardiovascular strain, reducing false positives from exercise or transient stress.",
         prevention = "Regular aerobic exercise strengthens the cardiovascular system — aim for 150 minutes of moderate or 75 minutes of vigorous activity per week. Manage chronic stress through mindfulness, therapy, or lifestyle adjustments, as sustained cortisol elevates resting heart rate and blood pressure. Limit sodium intake, avoid smoking, and moderate alcohol consumption. Monitor blood pressure periodically. Maintain a healthy weight and get adequate sleep — both directly affect cardiovascular load.",
         healing = "Reduce physical and emotional stressors immediately. Prioritize rest and sleep. Practice breathing exercises or meditation to activate the parasympathetic nervous system and lower heart rate. If stress is work-related, consider taking breaks or adjusting workload. Stay hydrated and avoid stimulants (caffeine, nicotine). If resting heart rate remains elevated for more than a week, or if you experience chest pain, palpitations, dizziness, or shortness of breath, consult a cardiologist. An ECG or stress test may be warranted to rule out underlying conditions.",
         risks = "Sustained cardiovascular strain left unaddressed can lead to serious consequences. Chronically elevated resting heart rate is an independent risk factor for heart attack and stroke. Persistent autonomic imbalance (low HRV, high resting HR) is associated with hypertension, arrhythmias, and heart failure over time. Reduced blood oxygen may indicate respiratory or circulatory issues that worsen without intervention. Acute risks include exercise-induced cardiac events if intense training continues despite warning signs.",
-        // RHR elevation is normative in pregnancy / postpartum / athletes (#159).
-        excludedStates = PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM, PhysiologyState.ATHLETE_HIGH_FITNESS)
+        // RHR rises in pregnancy / postpartum / athletes (#159) + frail baseline drift (geriatrics audit §2.1).
+        excludedStates = PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM, PhysiologyState.ATHLETE_HIGH_FITNESS, PhysiologyState.FRAILTY_FLAG)
     )
 
     val overtraining = ConditionPattern(
@@ -303,7 +320,8 @@ object ConditionPatterns {
         earlyDetection = "Cardiorespiratory deconditioning starts within days of reduced activity but takes weeks to become measurable in resting vitals. Resting heart rate gradually increases as the heart becomes less efficient. HRV declines as autonomic fitness weakens. Activity minutes drop — the cause of the deconditioning. Bios uses a 14-day window to distinguish normal variation from a genuine downward trend. VO2 max, the clinical gold standard, drops measurably after 2-4 weeks of inactivity; the wearable proxy signals detect the trajectory earlier.",
         prevention = "Maintain at least 150 minutes of moderate or 75 minutes of vigorous aerobic activity per week, as recommended by the WHO. Include both sustained cardio (running, cycling, swimming) and everyday movement (walking, stairs). Avoid prolonged sedentary periods — stand or walk for 5 minutes every hour. Consistency matters more than intensity; three 30-minute sessions per week maintain baseline fitness. Even during illness or injury, gentle movement (if safe) slows deconditioning.",
         healing = "If fitness has already declined, rebuild gradually. Start with daily walks at a pace that feels moderate. Increase duration before intensity. The 10% rule applies to reconditioning: increase weekly volume by no more than 10%. Expect resting HR to begin improving within 1-2 weeks of resumed activity. Full reconditioning to prior fitness levels typically takes 2-3 times longer than the period of inactivity. If deconditioning occurred due to illness, get medical clearance before resuming vigorous exercise.",
-        risks = "Cardiorespiratory fitness is one of the strongest predictors of all-cause mortality — stronger than smoking, diabetes, or hypertension. Each 1-MET decline in fitness increases mortality risk by approximately 13%. Prolonged deconditioning leads to reduced cardiac output, increased blood pressure, insulin resistance, and muscle atrophy. In older adults, deconditioning accelerates frailty and fall risk. The cardiovascular system deconditions faster than it reconditions — prevention is far easier than recovery."
+        risks = "Cardiorespiratory fitness is one of the strongest predictors of all-cause mortality — stronger than smoking, diabetes, or hypertension. Each 1-MET decline in fitness increases mortality risk by approximately 13%. Prolonged deconditioning leads to reduced cardiac output, increased blood pressure, insulin resistance, and muscle atrophy. In older adults, deconditioning accelerates frailty and fall risk. The cardiovascular system deconditions faster than it reconditions — prevention is far easier than recovery.",
+        excludedStates = setOf(PhysiologyState.FRAILTY_FLAG)
     )
 
     /** Chronic inflammation: sustained low-grade inflammatory signal over 2+ weeks. */
@@ -359,7 +377,8 @@ object ConditionPatterns {
         earlyDetection = "Recovery deficit differs from acute overtraining in timescale and subtlety. Where overtraining produces dramatic 48-72h deviations after heavy exercise, recovery deficit accumulates over weeks — HRV never quite returns to baseline between sessions, resting HR drifts upward gradually, and sleep quality erodes. The pattern is quiet enough to miss day-to-day but clear over a 14-day window. Bios detects this slower trajectory by using longer evaluation windows (14 days) and lower thresholds than the overtraining pattern.",
         prevention = "Build recovery into your routine proactively, not just when you feel tired. Ensure 7-9 hours of sleep (8+ if physically active). Alternate hard training days with easy days or rest. Manage total life stress — work, relationships, and training stress all draw from the same recovery bank. Adequate nutrition (especially protein and micronutrients), hydration, and social connection support systemic recovery. Monitor your HRV trend weekly; a flattening or declining trend is an early signal to reduce load.",
         healing = "Recovery deficit requires patience. Reduce all discretionary physical stress by 50% for at least 2 weeks. Prioritize sleep above all else — aim for 9 hours in bed. Gentle movement (walking, light stretching) is better than complete rest, which can worsen mood and deconditioning. Increase caloric intake slightly to support repair. Address any ongoing stressors: work deadlines, sleep environment, or relationship strain. If HRV and resting HR do not begin improving within 2 weeks, consult your doctor — persistent recovery failure can indicate underlying conditions (thyroid dysfunction, iron deficiency, depression).",
-        risks = "Accumulated recovery debt weakens the immune system, impairs cognitive function, increases injury risk, and degrades mood. Over months, it can lead to burnout, chronic fatigue syndrome, or clinical depression. The cardiovascular system suffers from sustained sympathetic dominance (low HRV, elevated HR). Athletic performance plateaus or declines despite continued training. The longer recovery debt accumulates, the longer the recovery period — weeks of deficit may require months of careful restoration."
+        risks = "Accumulated recovery debt weakens the immune system, impairs cognitive function, increases injury risk, and degrades mood. Over months, it can lead to burnout, chronic fatigue syndrome, or clinical depression. The cardiovascular system suffers from sustained sympathetic dominance (low HRV, elevated HR). Athletic performance plateaus or declines despite continued training. The longer recovery debt accumulates, the longer the recovery period — weeks of deficit may require months of careful restoration.",
+        excludedStates = setOf(PhysiologyState.FRAILTY_FLAG)
     )
 
     // --- Phase 4: Expanded condition patterns ---
@@ -390,32 +409,6 @@ object ConditionPatterns {
         prevention = "Respiratory infections spread primarily through airborne droplets and surface contact. Hand washing, avoiding touching the face, and good ventilation reduce transmission. During high-risk seasons, N95/FFP2 masks in crowded indoor spaces provide significant protection. Adequate sleep, moderate exercise, and stress management support mucosal immune defenses — the first barrier against respiratory pathogens. Stay current on influenza and COVID-19 vaccinations.",
         healing = "Rest and hydration are foundational. Saline nasal irrigation reduces congestion. Honey (for adults) soothes cough. Monitor SpO2 if available — sustained readings below 95% warrant medical evaluation. Avoid cough suppressants that prevent productive clearing of mucus. Seek medical attention for high fever (>39°C), difficulty breathing, chest pain, or symptoms that worsen after 5-7 days (may indicate secondary bacterial infection requiring antibiotics). Most viral respiratory infections resolve within 7-14 days.",
         risks = "Untreated respiratory infections can progress to pneumonia, bronchitis, or sinusitis. In vulnerable populations, even common respiratory viruses can cause severe illness. Continuing intense exercise during active respiratory infection increases the risk of myocarditis and prolonged recovery. 'Silent hypoxia' — significant oxygen desaturation without subjective breathlessness — was identified as a dangerous feature of COVID-19 and can occur with other respiratory infections. Early detection enables earlier rest and medical intervention."
-    )
-
-    /** Atrial fibrillation screening: HRV irregularity patterns. */
-    val atrialFibrillationScreen = ConditionPattern(
-        id = "afib_screen",
-        title = "Heart rhythm irregularity detected",
-        category = ConditionCategory.CARDIOVASCULAR,
-        signalRules = listOf(
-            SignalRule(MetricType.HEART_RATE_VARIABILITY, DeviationDirection.IRREGULAR, 2.0, 12, 1.5,
-                ThresholdSource.LITERATURE, "Perez et al. (2019) - irregular pulse notification from Apple Watch PPG correlated with AFib"),
-            SignalRule(MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.5, 12, 1.0,
-                ThresholdSource.LITERATURE, "January et al. (2014) - elevated resting HR accompanies paroxysmal AFib episodes"),
-            SignalRule(MetricType.BLOOD_OXYGEN, DeviationDirection.BELOW, 1.0, 12, 0.6,
-                ThresholdSource.ENGINEERING)
-        ),
-        minActiveSignals = 2,
-        explanation = "Your heart rate variability pattern shows unusual irregularity combined with elevated resting heart rate. This pattern can be associated with atrial fibrillation episodes, though many other causes are possible.",
-        suggestedAction = "This is not a diagnosis. If you experience palpitations, dizziness, or unexplained fatigue, discuss ECG screening with your healthcare provider. Wearable HRV data cannot definitively detect AFib — clinical ECG is required.",
-        references = listOf(
-            "Perez MV et al. (2019) - Large-scale assessment of a smartwatch to identify atrial fibrillation (Apple Heart Study)",
-            "January CT et al. (2014) - AHA/ACC/HRS guideline for management of atrial fibrillation"
-        ),
-        earlyDetection = "Atrial fibrillation (AFib) is the most common cardiac arrhythmia, affecting 2-3% of adults. Many episodes are paroxysmal — they come and go — and are missed by periodic clinical ECGs. Wearable optical HR sensors can detect irregular pulse patterns consistent with AFib. The Apple Heart Study (2019) demonstrated that PPG-based notifications had a 34% positive predictive value for AFib on follow-up ECG — meaningful for screening but not diagnostic. Bios flags HRV irregularity patterns as screening signals, always with the explicit caveat that clinical confirmation is required.",
-        prevention = "Modifiable AFib risk factors include hypertension (the strongest modifiable risk), obesity, excessive alcohol consumption, sleep apnea, and intense endurance exercise. Managing blood pressure, maintaining healthy weight, moderating alcohol, and treating sleep apnea significantly reduce AFib risk. Regular moderate exercise is protective. Stress management and adequate sleep support stable heart rhythm.",
-        healing = "AFib management requires medical supervision. If AFib is confirmed by ECG, treatment options include rate control (beta-blockers, calcium channel blockers), rhythm control (antiarrhythmics, cardioversion, ablation), and anticoagulation to reduce stroke risk. Lifestyle modifications (weight loss, alcohol reduction, sleep apnea treatment) reduce AFib burden significantly. The owner's wearable data can help clinicians assess episode frequency and duration — export data for your cardiologist.",
-        risks = "Undetected AFib increases stroke risk 5-fold. Many strokes are the first sign of previously undiagnosed AFib. AFib also contributes to heart failure, cognitive decline, and reduced quality of life. Paroxysmal AFib can progress to persistent or permanent AFib if underlying causes are not addressed. Early detection and treatment significantly reduce these risks — screening with wearable data, while imperfect, catches episodes that periodic clinical visits miss."
     )
 
     /** Mental health correlates: sleep, HRV, activity, + companion signals from W2F.
