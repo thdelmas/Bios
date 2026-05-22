@@ -93,10 +93,25 @@ enum class PhysiologyState(val displayName: String) {
      * owner has affirmatively set this state. Manifesto guard: Bios never
      * infers HF — the owner picks.
      */
-    KNOWN_HF("Known heart failure");
+    KNOWN_HF("Known heart failure"),
+
+    /**
+     * Cardio-oncology contexts (#201, ONCOLOGY_POV §2.3-2.5). Owner-declared
+     * cancer therapy state; enables CardioOncologyPatterns surveillance via
+     * the `requiredStates` axis. Drug-class annotation lives separately in
+     * [PhysiologyStateStore.drugClass]. Bios never infers cancer therapy.
+     */
+    ON_ACTIVE_CHEMOTHERAPY("Active chemotherapy"),
+    ON_IMMUNE_CHECKPOINT_INHIBITOR("Immune-checkpoint inhibitor (ICI) therapy"),
+    ON_CAR_T_RECOVERY("CAR-T cell therapy recovery");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
         val PREGNANCY: Set<PhysiologyState> = setOf(PREGNANCY_T1, PREGNANCY_T2, PREGNANCY_T3)
+
+        /** All cardio-oncology treatment states (#201). */
+        val CANCER_TREATMENT: Set<PhysiologyState> = setOf(
+            ON_ACTIVE_CHEMOTHERAPY, ON_IMMUNE_CHECKPOINT_INHIBITOR, ON_CAR_T_RECOVERY,
+        )
     }
 }

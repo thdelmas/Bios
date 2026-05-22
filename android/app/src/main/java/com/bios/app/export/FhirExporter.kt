@@ -431,6 +431,8 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.GRAMS -> "g"
     MetricUnit.U_PER_L -> "U/L"
     MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
+    MetricUnit.NG_PER_L -> "ng/L"
+    MetricUnit.PER_MICRO_L -> "/uL"
 }
 
 internal fun formatInstant(instant: Instant): String =

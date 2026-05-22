@@ -267,6 +267,17 @@ enum class MetricType(
     AST("ast", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
     GGT("ggt", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    // Cardio-oncology biomarker panel (#201, audit gap from ONCOLOGY_POV
+    // §2.3-2.5 + CARDIOLOGY_POV §2.3). Anchors the cardiotoxicity /
+    // neutropenic-fever surveillance patterns in
+    // alerts/CardioOncologyPatterns.kt. NT-proBNP and high-sensitivity
+    // troponin are the AHA 2018 / ASCO 2017 cardio-oncology cardiac
+    // biomarkers; absolute neutrophil count anchors the IDSA 2010
+    // febrile-neutropenia screen.
+    TROPONIN_NG_PER_L("troponin_ng_per_l", MetricUnit.NG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    NT_PRO_BNP_PG_PER_ML("nt_pro_bnp_pg_per_ml", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ABSOLUTE_NEUTROPHIL_COUNT("absolute_neutrophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
@@ -369,6 +380,10 @@ enum class MetricUnit(val symbol: String) {
     GRAMS("g"),
     /** Enzyme activity per litre — ALT, AST, GGT, etc. */
     U_PER_L("U/L"),
+    /** Mass per litre — high-sensitivity troponin clinical convention. */
+    NG_PER_L("ng/L"),
+    /** Cell count per microlitre — absolute neutrophil count clinical convention. */
+    PER_MICRO_L("/µL"),
     /** eGFR normalized to body surface area — KDIGO 2024 standard. */
     ML_PER_MIN_PER_173("mL/min/1.73m²")
 }

@@ -33,12 +33,20 @@ data class ConditionPattern(
     val requiresTropicalRegion: Boolean = false,
     /** Owner-condition gate (#196): when non-empty, fires only if owner has declared all listed conditions. */
     val requiredOwnerConditions: Set<OwnerCondition> = emptySet(),
+    /** Drug-class gate (#201): when non-empty, fires only if owner's declared cancer-therapy drug class is in this set. */
+    val requiredDrugClasses: Set<com.bios.app.physiology.CancerTherapyDrugClass> = emptySet(),
 ) {
-    /** True when the pattern passes all four gates (state both axes, region, owner conditions). */
-    fun appliesIn(state: PhysiologyState, regionConfig: com.bios.app.config.RegionConfig? = null, ownerConditions: Set<OwnerCondition> = emptySet()): Boolean =
+    /** True when the pattern passes all five gates (state both axes, region, owner conditions, drug class). */
+    fun appliesIn(
+        state: PhysiologyState,
+        regionConfig: com.bios.app.config.RegionConfig? = null,
+        ownerConditions: Set<OwnerCondition> = emptySet(),
+        drugClass: com.bios.app.physiology.CancerTherapyDrugClass = com.bios.app.physiology.CancerTherapyDrugClass.NONE,
+    ): Boolean =
         state !in excludedStates && (requiredStates.isEmpty() || state in requiredStates) &&
             (!requiresTropicalRegion || regionConfig?.tropicalDiseaseRelevant == true) &&
-            ownerConditions.containsAll(requiredOwnerConditions)
+            ownerConditions.containsAll(requiredOwnerConditions) &&
+            (requiredDrugClasses.isEmpty() || drugClass in requiredDrugClasses)
 }
 
 data class SignalRule(
@@ -135,6 +143,6 @@ object ConditionPatterns {
             AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
             PregnancyPatterns.all + HeadachePatterns.all +
             HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all +
-            TropicalDiseasePatterns.all
+            TropicalDiseasePatterns.all + CardioOncologyPatterns.all
     }
 }
