@@ -78,6 +78,8 @@ fun SleepDashboardScreen(
     var sourceLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var inferring by remember { mutableStateOf(false) }
     var inferenceMessage by remember { mutableStateOf<String?>(null) }
+    var bufferedSamples by remember { mutableStateOf(0) }
+    var lastSampleMs by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(windowDays, refreshTick) {
         val end = System.currentTimeMillis()
@@ -87,6 +89,8 @@ fun SleepDashboardScreen(
             .sortedByDescending { it.timestamp }
         sourceLabels = viewModel.db.dataSourceDao().getAll()
             .associate { it.id to (it.deviceName ?: it.sourceType) }
+        bufferedSamples = viewModel.db.phoneSleepSampleDao().count()
+        lastSampleMs = viewModel.db.phoneSleepSampleDao().lastTimestamp()
     }
 
     val onInferNow: () -> Unit = {
@@ -144,13 +148,7 @@ fun SleepDashboardScreen(
         ) {
             item { WindowSelector(windowDays) { windowDays = it } }
             inferenceMessage?.let { msg ->
-                item {
-                    Text(
-                        msg,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                item { InferenceResultCard(msg) }
             }
             item { RegularityCard(regularity) }
             item { SummaryCard(nights) }
@@ -162,7 +160,14 @@ fun SleepDashboardScreen(
                 )
             }
             if (nights.isEmpty()) {
-                item { EmptyStateCard(inferring = inferring, onInferNow = onInferNow) }
+                item {
+                    EmptyStateCard(
+                        inferring = inferring,
+                        onInferNow = onInferNow,
+                        bufferedSamples = bufferedSamples,
+                        lastSampleMs = lastSampleMs,
+                    )
+                }
             } else {
                 items(nights, key = { it.id }) { night ->
                     NightRow(night, sourceLabels)
@@ -339,7 +344,12 @@ private val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.US)
 private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
 
 @Composable
-private fun EmptyStateCard(inferring: Boolean, onInferNow: () -> Unit) {
+private fun EmptyStateCard(
+    inferring: Boolean,
+    onInferNow: () -> Unit,
+    bufferedSamples: Int,
+    lastSampleMs: Long?,
+) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -361,6 +371,7 @@ private fun EmptyStateCard(inferring: Boolean, onInferNow: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            PhoneInferenceDiagnostics(bufferedSamples, lastSampleMs)
             FilledTonalButton(
                 onClick = onInferNow,
                 enabled = !inferring,
@@ -369,6 +380,71 @@ private fun EmptyStateCard(inferring: Boolean, onInferNow: () -> Unit) {
                 Text(if (inferring) "Running inference…" else "Run phone inference now")
             }
         }
+    }
+}
+
+@Composable
+private fun PhoneInferenceDiagnostics(bufferedSamples: Int, lastSampleMs: Long?) {
+    val minNeeded = PhoneSleepWorker.MIN_SAMPLES_FOR_INFERENCE
+    val lastSampleText = lastSampleMs?.let { relativeTime(it) } ?: "never"
+    val statusColor = if (bufferedSamples >= minNeeded) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.tertiary
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            "Phone inference buffer: $bufferedSamples / $minNeeded samples",
+            style = MaterialTheme.typography.labelSmall,
+            color = statusColor,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "Last sample collected: $lastSampleText",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (bufferedSamples == 0) {
+            Text(
+                "The background worker hasn't recorded any sensor samples yet. " +
+                    "On Android, periodic work can be delayed by battery savers or " +
+                    "aggressive app-killing — check that Bios isn't restricted in " +
+                    "battery/optimization settings, then wait ~15 min for the next run.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun relativeTime(timestampMs: Long): String {
+    val deltaMs = System.currentTimeMillis() - timestampMs
+    if (deltaMs < 0) return "in the future"
+    val minutes = deltaMs / 60_000L
+    val hours = minutes / 60L
+    val days = hours / 24L
+    return when {
+        minutes < 1 -> "just now"
+        minutes < 60 -> "${minutes}m ago"
+        hours < 24 -> "${hours}h ago"
+        else -> "${days}d ago"
+    }
+}
+
+@Composable
+private fun InferenceResultCard(message: String) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            message,
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
     }
 }
 

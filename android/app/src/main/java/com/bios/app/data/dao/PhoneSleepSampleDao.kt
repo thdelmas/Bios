@@ -32,4 +32,7 @@ interface PhoneSleepSampleDao {
 
     @Query("SELECT COUNT(*) FROM phone_sleep_samples")
     suspend fun count(): Int
+
+    @Query("SELECT MAX(timestamp) FROM phone_sleep_samples")
+    suspend fun lastTimestamp(): Long?
 }
