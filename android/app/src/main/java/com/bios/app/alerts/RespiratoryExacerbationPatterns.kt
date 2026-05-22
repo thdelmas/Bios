@@ -12,7 +12,7 @@ import com.bios.contracts.MetricType
  * [ConditionPatterns.respiratoryInfection] pattern. Both patterns gate
  * on multi-signal convergence so a one-off SpO2 dip on a hike doesn't
  * fire them; both surface as screening signals, same shape as
- * [ConditionPatterns.atrialFibrillationScreen].
+ * [AfibRhythmPattern.paroxysmalAfibScreen].
  *
  * **Owner-set chronic-respiratory flag** (#159 PhysiologyState — defer):
  * the audit issue specifies that these patterns should only fire when
