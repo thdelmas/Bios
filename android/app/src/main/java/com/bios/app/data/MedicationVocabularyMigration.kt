@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 internal object MedicationVocabularyMigration {
 
-    val MIGRATION_16_17: Migration = object : Migration(16, 17) {
+    val MIGRATION_19_20: Migration = object : Migration(19, 20) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE medication_annotations ADD COLUMN substanceSource TEXT")
             db.execSQL("ALTER TABLE medication_annotations ADD COLUMN substanceCode TEXT")
