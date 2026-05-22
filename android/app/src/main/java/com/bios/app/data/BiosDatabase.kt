@@ -30,9 +30,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         MedicationAnnotation::class,
         ImmunizationRecord::class,
         ScreeningEntry::class,
-        RiskProfile::class
+        RiskProfile::class,
+        EsasReport::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -54,6 +55,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun immunizationRecordDao(): ImmunizationRecordDao
     abstract fun screeningEntryDao(): ScreeningEntryDao
     abstract fun riskProfileDao(): RiskProfileDao
+    abstract fun esasReportDao(): EsasReportDao
 
     companion object {
         @Volatile
@@ -76,7 +78,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -438,6 +440,33 @@ abstract class BiosDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_anomalyId ON professional_reviews(anomalyId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_status ON professional_reviews(status)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_requestedAt ON professional_reviews(requestedAt)")
+            }
+        }
+
+        // Owner-administered ESAS-r symptom-burden reports (#185).
+        // Nine 0-10 NRS items (Watanabe 2011) plus an optional
+        // owner-named "other" symptom. Pull-side only; never inferred.
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS esas_reports (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        timestamp INTEGER NOT NULL,
+                        painScore INTEGER NOT NULL,
+                        tirednessScore INTEGER NOT NULL,
+                        drowsinessScore INTEGER NOT NULL,
+                        nauseaScore INTEGER NOT NULL,
+                        appetiteScore INTEGER NOT NULL,
+                        shortnessOfBreathScore INTEGER NOT NULL,
+                        depressionScore INTEGER NOT NULL,
+                        anxietyScore INTEGER NOT NULL,
+                        wellbeingScore INTEGER NOT NULL,
+                        otherSymptomLabel TEXT,
+                        otherSymptomScore INTEGER,
+                        note TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_esas_reports_timestamp ON esas_reports (timestamp)")
             }
         }
 
