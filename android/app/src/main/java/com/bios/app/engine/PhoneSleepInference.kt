@@ -138,28 +138,67 @@ object PhoneSleepInference {
 
     /**
      * Walk the samples and return the index range of the longest contiguous
-     * stretch where [Sample.screenOff] is true. Returns null when no
-     * screen-off stretch exists at all.
+     * stretch where [Sample.screenOff] is true, **tolerating brief screen-on
+     * flickers** shorter than [SCREEN_ON_FLICKER_MS]. A notification, AOD
+     * wake, or "lift to wake" event mid-sleep would otherwise split a clean
+     * overnight stretch in two; treating those single-sample flickers as
+     * part of the surrounding sleep matches owner intent.
+     *
+     * Returns null when no screen-off stretch exists at all.
      */
     private fun longestScreenOffStretch(samples: List<Sample>): Pair<Int, Int>? {
         var best: Pair<Int, Int>? = null
         var bestLen = 0L
         var runStart = -1
-        for (i in samples.indices) {
+        var i = 0
+        while (i < samples.size) {
             if (samples[i].screenOff) {
                 if (runStart == -1) runStart = i
                 if (i == samples.lastIndex) {
                     val len = samples[i].timestamp - samples[runStart].timestamp
                     if (len > bestLen) { best = runStart to i; bestLen = len }
                 }
+                i++
             } else if (runStart != -1) {
-                val runEnd = i - 1
+                // Look ahead: how long is this screen-on gap, and does
+                // screen-off resume after? If the gap is brief and screen-off
+                // resumes, treat it as a flicker and keep the run going.
+                val gapStart = i
+                while (i < samples.size && !samples[i].screenOff) i++
+                val gapEndExclusive = i
+                val gapDurMs = if (gapEndExclusive < samples.size) {
+                    samples[gapEndExclusive].timestamp - samples[gapStart].timestamp
+                } else {
+                    Long.MAX_VALUE
+                }
+                val resumes = gapEndExclusive < samples.size
+                if (resumes && gapDurMs < SCREEN_ON_FLICKER_MS) {
+                    // Brief flicker, sleep resumes → keep the run alive.
+                    continue
+                }
+                // Real screen-on segment ended the stretch.
+                val runEnd = gapStart - 1
                 val len = samples[runEnd].timestamp - samples[runStart].timestamp
                 if (len > bestLen) { best = runStart to runEnd; bestLen = len }
                 runStart = -1
+            } else {
+                i++
             }
         }
         return best
+    }
+
+    /**
+     * Public helper: returns the duration in milliseconds of the longest
+     * (flicker-tolerant) screen-off stretch in the given samples, or 0 when
+     * no stretch exists. Used by the dashboard diagnostic so the owner can
+     * see how close the buffer is to crossing the 4h floor.
+     */
+    fun longestScreenOffMs(samples: List<Sample>): Long {
+        if (samples.size < 2) return 0L
+        val sorted = samples.sortedBy { it.timestamp }
+        val range = longestScreenOffStretch(sorted) ?: return 0L
+        return sorted[range.second].timestamp - sorted[range.first].timestamp
     }
 
     /**
@@ -196,6 +235,11 @@ object PhoneSleepInference {
     internal const val MIN_SLEEP_DURATION_MS: Long = 1L * 60L * 60L * 1000L
     // Brief movement bouts (< 5 min) are posture shifts, not wake events.
     internal const val AWAKE_BOUT_MIN_MS: Long = 5L * 60L * 1000L
+    // Single notification waking the screen, AOD, or a "lift to wake" event
+    // shouldn't bisect an otherwise clean overnight stretch. ~20 min covers
+    // one missed sample at the 15-min cadence plus a small buffer for clock
+    // drift; longer gaps imply real wake activity.
+    internal const val SCREEN_ON_FLICKER_MS: Long = 20L * 60L * 1000L
     // Accel-magnitude variance above this counts a sample as AWAKE. Hand-
     // tuned for ~5 Hz sampled accelerometer; the variance unit is (m/s^2)^2.
     internal const val ACTIVITY_THRESHOLD: Float = 0.5f
