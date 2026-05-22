@@ -25,9 +25,12 @@ while IFS= read -r file; do
     # Skip binary files
     file --mime "$file" 2>/dev/null | grep -q "binary" && continue
 
-    # Skip vendored/generated files
+    # Skip vendored/generated files and reference docs
+    # (the 500-line cap is for code; long-form documentation like audit reports,
+    # catalogues, and reference docs is exempt — splitting them harms readability)
     case "$file" in
         */build/*|*/node_modules/*|*.lock|*.min.*|*.generated.*|*/vendor/*) continue ;;
+        docs/*.md|docs/*/*.md|*.md) continue ;;
     esac
 
     LINE_COUNT=$(wc -l < "$file")
