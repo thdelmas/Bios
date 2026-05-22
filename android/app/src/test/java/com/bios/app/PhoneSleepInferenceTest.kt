@@ -50,11 +50,43 @@ class PhoneSleepInferenceTest {
     }
 
     @Test
-    fun `screen-on samples are not counted as sleep`() {
-        // Same 8h but screen is ON throughout — long meeting, not sleep.
+    fun `screen-on samples in a lit room are not counted as sleep`() {
+        // 8h, screen on, in a lit room (desk or meeting). The fused-quiet
+        // fallback rejects this because the dark-room booster fails.
         val samples = trace(durationMs = 8 * 60 * minuteMs, screenOff = false, charging = true,
+            lux = 200f, accelVar = 0f)
+        assertTrue(PhoneSleepInference.infer(samples, sourceId).isEmpty())
+    }
+
+    @Test
+    fun `phone-in-hand in a dark room is not counted as sleep`() {
+        // Owner reading / scrolling in bed: screen on, dark room, but the
+        // hand-held device generates motion. Fused-quiet must reject this.
+        val samples = trace(durationMs = 8 * 60 * minuteMs, screenOff = false, charging = true,
+            lux = 0f, accelVar = 2f)
+        assertTrue(PhoneSleepInference.infer(samples, sourceId).isEmpty())
+    }
+
+    @Test
+    fun `unplugged screen-on phone is not counted as sleep`() {
+        // Without the charging booster, screen-on phone in a dark still
+        // room is too ambiguous (pocket, drawer, bag) to claim as sleep.
+        val samples = trace(durationMs = 8 * 60 * minuteMs, screenOff = false, charging = false,
             lux = 0f, accelVar = 0f)
         assertTrue(PhoneSleepInference.infer(samples, sourceId).isEmpty())
+    }
+
+    @Test
+    fun `always-on-display phone on a charged nightstand is counted as sleep`() {
+        // The bug that triggered the fused-quiet fallback: phones with AOD
+        // keep the display reading STATE_ON through the night even when
+        // the owner is asleep. If they're stationary, the room is dark,
+        // and they're charging, that's the AOD-on-nightstand signature.
+        val samples = trace(durationMs = 8 * 60 * minuteMs, screenOff = false, charging = true,
+            lux = 0f, accelVar = 0f)
+        val readings = PhoneSleepInference.infer(samples, sourceId)
+        val duration = readings.firstOrNull { it.metricType == MetricType.SLEEP_DURATION.key }
+        assertNotNull("Expected the AOD-on-nightstand window to land", duration)
     }
 
     @Test

@@ -137,14 +137,37 @@ object PhoneSleepInference {
     }
 
     /**
+     * Per-sample "owner is likely quiet / not actively using the device"
+     * predicate. Display-off is the primary signal; when it reads "on" we
+     * fall back to a strict three-way fusion to cover phones whose display
+     * state is unreliable (always-on-display devices report STATE_ON even
+     * during sleep on some OEMs):
+     *
+     *   - phone is stationary (low accelerometer variance)
+     *   - room is dark
+     *   - device is charging
+     *
+     * Requiring all three of the fallback signals keeps "watching a movie
+     * in a dark room" from being misclassified as sleep — that scenario
+     * fails the stationary check the moment the owner adjusts position.
+     * "Phone on nightstand showing AOD" passes all three.
+     */
+    internal fun isQuietSample(s: Sample): Boolean {
+        if (s.screenOff) return true
+        val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+        val dark = (s.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
+        return s.charging && lowMotion && dark
+    }
+
+    /**
      * Walk the samples and return the index range of the longest contiguous
-     * stretch where [Sample.screenOff] is true, **tolerating brief screen-on
+     * stretch where [isQuietSample] holds, **tolerating brief activity
      * flickers** shorter than [SCREEN_ON_FLICKER_MS]. A notification, AOD
      * wake, or "lift to wake" event mid-sleep would otherwise split a clean
      * overnight stretch in two; treating those single-sample flickers as
      * part of the surrounding sleep matches owner intent.
      *
-     * Returns null when no screen-off stretch exists at all.
+     * Returns null when no quiet stretch exists at all.
      */
     private fun longestScreenOffStretch(samples: List<Sample>): Pair<Int, Int>? {
         var best: Pair<Int, Int>? = null
@@ -152,7 +175,7 @@ object PhoneSleepInference {
         var runStart = -1
         var i = 0
         while (i < samples.size) {
-            if (samples[i].screenOff) {
+            if (isQuietSample(samples[i])) {
                 if (runStart == -1) runStart = i
                 if (i == samples.lastIndex) {
                     val len = samples[i].timestamp - samples[runStart].timestamp
@@ -160,11 +183,11 @@ object PhoneSleepInference {
                 }
                 i++
             } else if (runStart != -1) {
-                // Look ahead: how long is this screen-on gap, and does
-                // screen-off resume after? If the gap is brief and screen-off
-                // resumes, treat it as a flicker and keep the run going.
+                // Look ahead: how long is this active gap, and does the
+                // quiet stretch resume after? If the gap is brief, treat it
+                // as a flicker and keep the run going.
                 val gapStart = i
-                while (i < samples.size && !samples[i].screenOff) i++
+                while (i < samples.size && !isQuietSample(samples[i])) i++
                 val gapEndExclusive = i
                 val gapDurMs = if (gapEndExclusive < samples.size) {
                     samples[gapEndExclusive].timestamp - samples[gapStart].timestamp
@@ -176,7 +199,7 @@ object PhoneSleepInference {
                     // Brief flicker, sleep resumes → keep the run alive.
                     continue
                 }
-                // Real screen-on segment ended the stretch.
+                // Real active segment ended the stretch.
                 val runEnd = gapStart - 1
                 val len = samples[runEnd].timestamp - samples[runStart].timestamp
                 if (len > bestLen) { best = runStart to runEnd; bestLen = len }
