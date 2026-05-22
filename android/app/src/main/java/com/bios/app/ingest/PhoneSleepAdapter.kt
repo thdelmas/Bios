@@ -1,6 +1,8 @@
 package com.bios.app.ingest
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -38,8 +40,6 @@ class PhoneSleepAdapter(private val context: Context) {
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val displayManager =
         context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-    private val batteryManager =
-        context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
 
     private val accelerometer: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -64,7 +64,7 @@ class PhoneSleepAdapter(private val context: Context) {
         return PhoneSleepInference.Sample(
             timestamp = now,
             screenOff = isScreenInactive(),
-            charging = batteryManager.isCharging,
+            charging = isPluggedIn(),
             ambientLightLux = readOnce(lightSensor, AMBIENT_LIGHT_TIMEOUT_MS),
             accelMagnitudeVar = sampleAccelVariance(accelWindowMs),
         )
@@ -87,6 +87,26 @@ class PhoneSleepAdapter(private val context: Context) {
             Display.STATE_ON_SUSPEND -> true
             else -> false
         }
+    }
+
+    /**
+     * `BatteryManager.isCharging()` returns false the moment a topped-off
+     * battery stops actively drawing current — and most phones reach 100%
+     * within a few hours of plug-in, so a 6h "is charging" signal would
+     * miss the entire second half of the night. The right "phone is on a
+     * nightstand dock" signal is plug state, not current draw.
+     *
+     * Reads the sticky [Intent.ACTION_BATTERY_CHANGED] (null receiver
+     * returns the cached value, no broadcast registration cost) and treats
+     * any non-zero plugged source (AC / USB / wireless / dock) as plugged.
+     */
+    private fun isPluggedIn(): Boolean {
+        val intent = context.registerReceiver(
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+        ) ?: return false
+        val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+        return plugged != 0
     }
 
     /**
