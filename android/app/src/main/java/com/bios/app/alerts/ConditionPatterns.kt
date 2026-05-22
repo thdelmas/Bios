@@ -24,17 +24,15 @@ data class ConditionPattern(
      * patterns).
      */
     val severityFloor: AlertTier? = null,
-    /**
-     * [PhysiologyState]s this pattern should NOT fire in. Default empty =
-     * applies in every state. Patterns with normative deviations in some
-     * state (e.g. RHR rises 10–20 bpm in pregnancy → cardiovascular_stress
-     * would false-fire) list those states here. The
-     * [com.bios.app.engine.AnomalyDetector] reads
-     * [com.bios.app.physiology.PhysiologyStateStore] and filters
-     * [ConditionPatterns.all] before evaluating. Closes audit gap §2.7.
-     */
-    val excludedStates: Set<PhysiologyState> = emptySet()
-)
+    /** Audit §2.7 (#159): skip in states where deviation is normative (RHR rise in pregnancy). See [appliesIn]. */
+    val excludedStates: Set<PhysiologyState> = emptySet(),
+    /** CARDIOLOGY_POV §2.4: non-empty = only run in matching state (HF prodrome → [PhysiologyState.KNOWN_HF]). See [appliesIn]. */
+    val requiredStates: Set<PhysiologyState> = emptySet(),
+) {
+    /** True when [state] passes both the [excludedStates] and [requiredStates] gates. */
+    fun appliesIn(state: PhysiologyState): Boolean =
+        state !in excludedStates && (requiredStates.isEmpty() || state in requiredStates)
+}
 
 data class SignalRule(
     val metricType: MetricType,
@@ -120,7 +118,8 @@ object ConditionPatterns {
         ) + CircadianConditionPattern.all +
             CompanionConditionPatterns.all + BiomarkerConditionPatterns.all +
             EmergencyVitalPatterns.all + HypertensionPatterns.all +
-            SleepApneaPattern.all + RespiratoryExacerbationPatterns.all
+            SleepApneaPattern.all + RespiratoryExacerbationPatterns.all +
+            HeartFailureDecompensationPattern.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
