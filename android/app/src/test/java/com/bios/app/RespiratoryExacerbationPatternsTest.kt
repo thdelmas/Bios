@@ -18,7 +18,7 @@ import org.junit.Test
  * Guards the COPD / asthma exacerbation patterns (#161, audit gap §2.8).
  * Both patterns gate on multi-signal convergence of baseline-relative
  * respiratory signals — distinct from the existing
- * [com.bios.app.alerts.ConditionPatterns.respiratoryInfection] pattern
+ * [com.bios.app.alerts.BaselineDeviationPatterns.respiratoryInfection] pattern
  * which uses acute thresholds and temperature.
  */
 class RespiratoryExacerbationPatternsTest {

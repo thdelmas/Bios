@@ -307,39 +307,9 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") }
                 )
             }
-            composable("esas_capture") {
-                com.bios.app.ui.esas.EsasCaptureScreen(onBack = { navController.popBackStack() })
-            }
-            composable("risk_profile") {
-                com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
-            }
-            composable("physiology_state") {
-                com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
-            }
-            composable("frail_assessment") {
-                com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
-            }
-            composable("goals_of_care") {
-                com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
-            }
-            composable("headache_diary") {
-                com.bios.app.ui.headache.HeadacheDiaryScreen(onBack = { navController.popBackStack() })
-            }
-            composable("fast_stroke") {
-                com.bios.app.ui.stroke.FastStrokeScreen(onBack = { navController.popBackStack() })
-            }
-            composable("traditional_medicine_context") {
-                com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })
-            }
-            composable("medications") {
-                com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
-            }
-            composable("immunisations") {
-                com.bios.app.ui.immunisations.ImmunisationsScreen(onBack = { navController.popBackStack() })
-            }
-            composable("preventive_care") {
-                com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
-            }
+            // Self-surface routes — extracted to IdentityRoutes.kt to keep this file
+            // under the 500-line cap and give new self-screens a single landing zone.
+            identityRoutes(navController)
             composable("ble_pair") {
                 val bleVm = remember(viewModel) {
                     com.bios.app.ui.ble.BleAirQualityPairViewModel(

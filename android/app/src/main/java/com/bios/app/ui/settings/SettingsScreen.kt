@@ -89,29 +89,19 @@ fun SettingsScreen(
     ) {
         Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
-        // Identity — owner-annotated medical and physiological context; not configuration.
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Identity", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                listOf(
-                    "Current medications" to onNavigateToMedications,
-                    "Immunisation record" to onNavigateToImmunisations,
-                    "Preventive care" to onNavigateToPreventiveCare,
-                    "Risk profile" to onNavigateToRiskProfile,
-                    "Physiology state" to onNavigateToPhysiologyState,
-                    "FRAIL assessment" to onNavigateToFrailAssessment,
-                    "Goals of care" to onNavigateToGoalsOfCare,
-                    "Headache & migraine diary" to onNavigateToHeadacheDiary,
-                    "FAST stroke check" to onNavigateToFastStroke,
-                    "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
-                    "Traditional medicine" to onNavigateToTraditionalMedicine,
-                ).forEachIndexed { idx, (label, action) ->
-                    if (idx > 0) Spacer(Modifier.height(4.dp))
-                    SettingsActionButton(label, action)
-                }
-            }
-        }
+        IdentityCard(
+            onNavigateToMedications = onNavigateToMedications,
+            onNavigateToImmunisations = onNavigateToImmunisations,
+            onNavigateToPreventiveCare = onNavigateToPreventiveCare,
+            onNavigateToRiskProfile = onNavigateToRiskProfile,
+            onNavigateToPhysiologyState = onNavigateToPhysiologyState,
+            onNavigateToFrailAssessment = onNavigateToFrailAssessment,
+            onNavigateToGoalsOfCare = onNavigateToGoalsOfCare,
+            onNavigateToHeadacheDiary = onNavigateToHeadacheDiary,
+            onNavigateToFastStroke = onNavigateToFastStroke,
+            onNavigateToEsasCapture = onNavigateToEsasCapture,
+            onNavigateToTraditionalMedicine = onNavigateToTraditionalMedicine,
+        )
 
         // Privacy — what can leave, and who can access. Highest-stakes surface.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
