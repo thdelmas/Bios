@@ -48,14 +48,16 @@ class PhysiologyStateGatingTest {
         // PEC, PPCM) are scoped *only* to their respective physiology
         // states — STANDARD should see every other pattern but not those
         // four. Pin the exact set so future additions stay explicit.
-        val pregnancyOnly = setOf(
+        val stateGated = setOf(
             "gestational_hypertension_screen",
             "severe_range_preeclampsia_screen",
             "postpartum_pre_eclampsia_screen",
             "peripartum_cardiomyopathy_screen",
+            // Paediatric-only growth screen (#199) — STANDARD excluded.
+            "failure_to_thrive_screen",
         )
         val applicable = applicable(PhysiologyState.STANDARD).map { it.id }.toSet()
-        val expected = ConditionPatterns.all.map { it.id }.toSet() - pregnancyOnly
+        val expected = ConditionPatterns.all.map { it.id }.toSet() - stateGated
         assertEquals(expected, applicable)
     }
 
@@ -165,6 +167,10 @@ class PhysiologyStateGatingTest {
             "severe_range_preeclampsia_screen" to outsidePregnancyAndPostpartum,
             "postpartum_pre_eclampsia_screen" to outsidePostpartum,
             "peripartum_cardiomyopathy_screen" to outsidePostpartum,
+            // Paediatric growth + body composition (#199)
+            "failure_to_thrive_screen" to (allStates - setOf(PhysiologyState.PAEDIATRIC)),
+            "sarcopenia_trajectory_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "cachexia_screen" to setOf(PhysiologyState.PAEDIATRIC),
         )
         val wired = ConditionPatterns.all
             .filter { it.excludedStates.isNotEmpty() }

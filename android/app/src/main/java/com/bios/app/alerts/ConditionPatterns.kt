@@ -135,6 +135,6 @@ object ConditionPatterns {
             AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
             PregnancyPatterns.all + HeadachePatterns.all +
             HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all +
-            TropicalDiseasePatterns.all
+            TropicalDiseasePatterns.all + GrowthAndCompositionPatterns.all
     }
 }

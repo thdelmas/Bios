@@ -182,6 +182,28 @@ enum class MetricType(
     BODY_WATER_PCT("body_water_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC, allowsManualEntry = true),
     BONE_MASS("bone_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC, allowsManualEntry = true),
 
+    // Anthropometry + body composition (#199, paediatric + geriatric audits).
+    //
+    // Paediatric growth tracking requires height + head circumference to plot
+    // WHO/CDC growth curves; failure-to-thrive surveillance is the canonical
+    // primary-paediatric-care signal. The adult-side trajectory primitives
+    // (lean mass + fat mass + BMI) feed the EWGSOP2 sarcopenia and Fearon-2011
+    // cachexia screens used by the Geriatrics and Oncology audits.
+    //
+    // BMI is stored as a derived value alongside its inputs (height + weight)
+    // rather than recomputed on every read — body-composition exporters
+    // (Withings, manual entry) commonly ship BMI directly, and storing the
+    // value lets historical trends survive a future change to the derivation
+    // formula. LEAN_BODY_MASS_KG / FAT_MASS_KG ride alongside the existing
+    // LEAN_MASS / BODY_FAT_PCT keys: LEAN_MASS is the legacy METABOLIC-domain
+    // entry kept for back-compat; LEAN_BODY_MASS_KG is the BODY_COMPOSITION
+    // canonical key used by the growth-and-composition surface.
+    HEIGHT_CM("height_cm", MetricUnit.CENTIMETERS, MetricDomain.ANTHROPOMETRY, allowsManualEntry = true),
+    HEAD_CIRCUMFERENCE_CM("head_circumference_cm", MetricUnit.CENTIMETERS, MetricDomain.ANTHROPOMETRY, allowsManualEntry = true),
+    BMI_KG_PER_M2("bmi_kg_per_m2", MetricUnit.KG_PER_M2, MetricDomain.ANTHROPOMETRY, allowsManualEntry = true),
+    LEAN_BODY_MASS_KG("lean_body_mass_kg", MetricUnit.KILOGRAMS, MetricDomain.BODY_COMPOSITION, allowsManualEntry = true),
+    FAT_MASS_KG("fat_mass_kg", MetricUnit.KILOGRAMS, MetricDomain.BODY_COMPOSITION, allowsManualEntry = true),
+
     // Recovery
     RECOVERY_SCORE("recovery_score", MetricUnit.SCORE, MetricDomain.RECOVERY),
 
@@ -370,11 +392,19 @@ enum class MetricUnit(val symbol: String) {
     /** Enzyme activity per litre — ALT, AST, GGT, etc. */
     U_PER_L("U/L"),
     /** eGFR normalized to body surface area — KDIGO 2024 standard. */
-    ML_PER_MIN_PER_173("mL/min/1.73m²")
+    ML_PER_MIN_PER_173("mL/min/1.73m²"),
+    /** Anthropometric length — height, head circumference. */
+    CENTIMETERS("cm"),
+    /** Body Mass Index — kg/m². */
+    KG_PER_M2("kg/m²")
 }
 
 enum class MetricDomain {
     CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
     ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, NEUROLOGICAL, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER
+    MENTAL_HEALTH, NEUROLOGICAL, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER,
+    /** Length / circumference measurements (height, head circumference, BMI). */
+    ANTHROPOMETRY,
+    /** Body composition (lean mass, fat mass) — distinct from METABOLIC weight/% scalars. */
+    BODY_COMPOSITION
 }
