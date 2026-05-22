@@ -17,16 +17,71 @@ enum class Applicability {
 }
 
 /**
- * One screening recommendation. Pinned to the USPSTF adult schedule v1
- * (#155, audit gap §2.2). Region-specific overrides (NHS Health Check,
- * Tokutei Kenshin, KCDC, BowelScreen AU) are tracked as a follow-up —
- * the data shape here is region-agnostic so a future RegionConfig hook
- * can substitute alternate catalogs without touching the engine.
+ * Risk-profile gate that decides whether a catalog entry is surfaced to
+ * the owner at all. The cadence engine evaluates this against the
+ * owner's [com.bios.app.model.RiskProfile] — entries gated on a
+ * hereditary syndrome only render when the owner has self-declared the
+ * matching flag. Pure data-driven enum so the catalog stays serializable
+ * and the engine doesn't need to capture closures.
  *
- * **Threshold sourcing.** USPSTF A/B recommendations cited per-entry.
- * Risk-adjusted cadences (e.g. colorectal at age 40 with first-degree
- * family history) are explicitly out of scope until #160 (family-history
- * surface) ships.
+ * Manifesto guard: the owner is the one who flips these flags from the
+ * risk-profile screen. Bios never infers a syndrome — the owner enters
+ * what they know, the engine honours it.
+ */
+enum class RiskGate {
+    /** No risk gate — surface to everyone in the age / applicability band. */
+    NONE,
+    /** Only surface when [com.bios.app.model.RiskProfile.lynchSyndrome] is set. */
+    LYNCH_SYNDROME,
+    /** Only surface when [com.bios.app.model.RiskProfile.liFraumeni] is set. */
+    LI_FRAUMENI,
+    /** Only surface when [com.bios.app.model.RiskProfile.fapFamilialAdenomatousPolyposis] is set. */
+    FAP,
+    /** Only surface when [com.bios.app.model.RiskProfile.cowdenSyndrome] is set. */
+    COWDEN,
+    /** Only surface when [com.bios.app.model.RiskProfile.peutzJeghersSyndrome] is set. */
+    PEUTZ_JEGHERS,
+    /** Only surface when [com.bios.app.model.RiskProfile.vhlVonHippelLindau] is set. */
+    VHL,
+    /** Only surface when [com.bios.app.model.RiskProfile.men1] is set. */
+    MEN1,
+    /** Only surface when [com.bios.app.model.RiskProfile.men2A] is set. */
+    MEN2A,
+    /** Only surface when [com.bios.app.model.RiskProfile.men2B] is set. */
+    MEN2B,
+    /** Only surface when [com.bios.app.model.RiskProfile.hdgcHereditaryDiffuseGastric] is set. */
+    HDGC,
+    /**
+     * Only surface when the owner is an IHS-served diabetic American
+     * Indian / Alaska Native (per IHS Diabetes Standards of Care: HbA1c
+     * twice yearly given T2DM prevalence ~2–3× baseline). Requires
+     * [com.bios.app.model.RiskProfile.ihsDiabeticAianStatus].
+     */
+    IHS_DIABETIC_AIAN,
+    /**
+     * Only surface when the owner has any first-degree-relative pack-year
+     * smoking history recorded — the USPSTF AAA one-time ultrasound is
+     * scoped to men 65–75 who have ever smoked. The engine treats
+     * [com.bios.app.model.RiskProfile.personalTobaccoYears] != null or
+     * `personalTobaccoPackYears` != null as "ever smoked".
+     */
+    EVER_SMOKER,
+}
+
+/**
+ * One screening recommendation. Pinned to the USPSTF adult schedule v1
+ * (#155, audit gap §2.2), with hereditary-syndrome / cardiology
+ * one-time / Ob/Gyn-society / IHS extensions added in #191.
+ *
+ * Region-specific overrides (NHS Health Check, Tokutei Kenshin, KCDC,
+ * BowelScreen AU) are tracked as a follow-up — the data shape here is
+ * region-agnostic so a future RegionConfig hook can substitute alternate
+ * catalogs without touching the engine.
+ *
+ * **Threshold sourcing.** USPSTF A/B recommendations cited per-entry;
+ * hereditary cadences cite NCCN; vaccine-overlap and one-time entries
+ * cite the matching society guideline (AHA/EAS Lp(a), ACOG DEXA, ACS
+ * mammogram, IHS Diabetes Standards).
  */
 data class ScreeningCatalogEntry(
     /** Stable key matching `ScreeningEntry.screeningKey`. Renames are breaking. */
@@ -43,13 +98,25 @@ data class ScreeningCatalogEntry(
     val applicability: Applicability,
     /** Source guideline citation. */
     val citation: String,
+    /**
+     * Owner-asserted risk gate. `RiskGate.NONE` means "everyone in the
+     * age / applicability band"; any other value means the cadence
+     * engine only surfaces this entry when the matching
+     * [com.bios.app.model.RiskProfile] flag is set.
+     */
+    val riskGate: RiskGate = RiskGate.NONE,
 )
 
 /**
  * Static catalog of adult screening recommendations the cadence engine
- * iterates over. Currently USPSTF-only; region-localised catalogs land
- * via a future RegionConfig hook (see audit issue body for the
- * NHS / ESC / JSH / KCDC equivalents).
+ * iterates over. USPSTF anchors the base set; #191 layers in
+ * hereditary-syndrome (NCCN), Ob/Gyn-society (ACOG / ACS),
+ * cardiology-one-time (AHA-EAS Lp(a)), and IHS regional cadences. The
+ * sub-lists stay separate so test fixtures can pin them individually,
+ * and the engine reads [combined] for end-to-end evaluation.
+ *
+ * Region-localised catalogs (NHS, Tokutei Kenshin, KCDC, BowelScreen AU)
+ * are still tracked as a follow-up via a future RegionConfig hook.
  */
 object ScreeningCatalog {
 
@@ -82,6 +149,7 @@ object ScreeningCatalog {
             minAge = 65, maxAge = 75, cadenceMonths = Int.MAX_VALUE,
             applicability = Applicability.PRESENTS_AS_MALE,
             citation = "USPSTF 2019 (B recommendation) — one-time AAA ultrasound, men 65–75 who have ever smoked",
+            riskGate = RiskGate.EVER_SMOKER,
         ),
         ScreeningCatalogEntry(
             key = "lipid_panel",
@@ -112,4 +180,43 @@ object ScreeningCatalog {
             citation = "USPSTF 2023 (B recommendation) — annual depression screening in adults",
         ),
     )
+
+    /**
+     * Hereditary cancer-syndrome surveillance cadences (#191). NCCN /
+     * NCI / VHL Alliance / ATA sources. Entries surface only when the
+     * owner has self-declared the matching flag on the risk-profile
+     * screen. Bios never infers — the owner enters what they know.
+     */
+    val hereditary: List<ScreeningCatalogEntry> = HereditarySyndromeCatalog.entries
+
+    /**
+     * Ob/Gyn society cadences (#191) beyond USPSTF — ACS mammography
+     * starting age 45 (a known divergence from USPSTF 40), ACOG
+     * postmenopausal DEXA recurrence cadence. Documented per-entry.
+     */
+    val obGynSociety: List<ScreeningCatalogEntry> = ObGynSocietyCatalog.entries
+
+    /**
+     * Cardiology one-time / society-recommended screens (#191) —
+     * AHA/EAS 2022 once-in-lifetime Lp(a). AAA is already in [uspstf]
+     * under the ever-smoker gate; we don't duplicate it here.
+     */
+    val cardiology: List<ScreeningCatalogEntry> = CardiologyCatalog.entries
+
+    /**
+     * IHS / PAHO regional cadences (#191) — IHS Diabetes Standards
+     * twice-yearly HbA1c for diabetic American Indian / Alaska Native
+     * owners (T2DM prevalence ~2–3× baseline; Indigenous Americas
+     * audit §2.4 named this).
+     */
+    val ihsPaho: List<ScreeningCatalogEntry> = IhsPahoCatalog.entries
+
+    /**
+     * Everything the engine should evaluate in the default cadence
+     * screen. The UI iterates this list; each entry's [riskGate] +
+     * [applicability] + age-band decide whether it actually renders for
+     * the active owner.
+     */
+    val combined: List<ScreeningCatalogEntry> =
+        uspstf + hereditary + obGynSociety + cardiology + ihsPaho
 }
