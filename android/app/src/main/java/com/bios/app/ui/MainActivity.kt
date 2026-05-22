@@ -340,8 +340,12 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToImmunisations = { navController.navigate("immunisations") },
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
                     onNavigateToRiskProfile = { navController.navigate("risk_profile") },
-                    onNavigateToPhysiologyState = { navController.navigate("physiology_state") }
+                    onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
+                    onNavigateToEsasCapture = { navController.navigate("esas_capture") }
                 )
+            }
+            composable("esas_capture") {
+                com.bios.app.ui.esas.EsasCaptureScreen(onBack = { navController.popBackStack() })
             }
             composable("risk_profile") {
                 com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
