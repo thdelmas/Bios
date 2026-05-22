@@ -14,6 +14,7 @@ import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
+import com.bios.app.engine.RhythmClassifier
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
@@ -176,7 +177,25 @@ class CameraPpgAdapter(private val context: Context) {
             }
 
             val durSec = ppg.durationSec.toInt().coerceAtLeast(1)
-            val readings = listOf(
+            // PPG-derived AFib screening burden (#180, cardiology audit §2.1).
+            // Per-session verdict 0.0 (regular) / 100.0 (irregularly irregular)
+            // — the pattern's rolling median over 7 days decides whether to fire.
+            // INSUFFICIENT_DATA windows are skipped so the burden estimate
+            // isn't biased by short captures.
+            val rhythmVerdict = RhythmClassifier.classify(ppg.rrIntervalsMs)
+            val burdenReading = if (rhythmVerdict.verdict == RhythmClassifier.WindowVerdict.INSUFFICIENT_DATA) {
+                null
+            } else {
+                MetricReading(
+                    metricType = MetricType.IRREGULAR_RHYTHM_BURDEN.key,
+                    value = if (rhythmVerdict.irregular) 100.0 else 0.0,
+                    timestamp = timestamp,
+                    durationSec = durSec,
+                    sourceId = sourceId,
+                    confidence = ConfidenceTier.LOW.level
+                )
+            }
+            val readings = listOfNotNull(
                 MetricReading(
                     metricType = MetricType.HEART_RATE.key,
                     value = hrv.meanHrBpm,
@@ -232,7 +251,8 @@ class CameraPpgAdapter(private val context: Context) {
                     durationSec = durSec,
                     sourceId = sourceId,
                     confidence = ConfidenceTier.LOW.level
-                )
+                ),
+                burdenReading,
             )
             return CaptureResult(
                 readings = readings,

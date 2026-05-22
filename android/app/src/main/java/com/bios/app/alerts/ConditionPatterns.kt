@@ -116,11 +116,12 @@ object ConditionPatterns {
         listOf(
             infectionOnset, sleepDisruption, cardiovascularStress, overtraining,
             metabolicDrift, cardiorespiratoryDeconditioning, chronicInflammation, recoveryDeficit,
-            respiratoryInfection, atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly,
+            respiratoryInfection, mentalHealthCorrelate, menstrualCycleAnomaly,
         ) + CircadianConditionPattern.all + CompanionConditionPatterns.all +
             BiomarkerConditionPatterns.all + EmergencyVitalPatterns.all +
             HypertensionPatterns.all + SleepApneaPattern.all +
-            RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all
+            RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
+            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
@@ -390,32 +391,6 @@ object ConditionPatterns {
         prevention = "Respiratory infections spread primarily through airborne droplets and surface contact. Hand washing, avoiding touching the face, and good ventilation reduce transmission. During high-risk seasons, N95/FFP2 masks in crowded indoor spaces provide significant protection. Adequate sleep, moderate exercise, and stress management support mucosal immune defenses — the first barrier against respiratory pathogens. Stay current on influenza and COVID-19 vaccinations.",
         healing = "Rest and hydration are foundational. Saline nasal irrigation reduces congestion. Honey (for adults) soothes cough. Monitor SpO2 if available — sustained readings below 95% warrant medical evaluation. Avoid cough suppressants that prevent productive clearing of mucus. Seek medical attention for high fever (>39°C), difficulty breathing, chest pain, or symptoms that worsen after 5-7 days (may indicate secondary bacterial infection requiring antibiotics). Most viral respiratory infections resolve within 7-14 days.",
         risks = "Untreated respiratory infections can progress to pneumonia, bronchitis, or sinusitis. In vulnerable populations, even common respiratory viruses can cause severe illness. Continuing intense exercise during active respiratory infection increases the risk of myocarditis and prolonged recovery. 'Silent hypoxia' — significant oxygen desaturation without subjective breathlessness — was identified as a dangerous feature of COVID-19 and can occur with other respiratory infections. Early detection enables earlier rest and medical intervention."
-    )
-
-    /** Atrial fibrillation screening: HRV irregularity patterns. */
-    val atrialFibrillationScreen = ConditionPattern(
-        id = "afib_screen",
-        title = "Heart rhythm irregularity detected",
-        category = ConditionCategory.CARDIOVASCULAR,
-        signalRules = listOf(
-            SignalRule(MetricType.HEART_RATE_VARIABILITY, DeviationDirection.IRREGULAR, 2.0, 12, 1.5,
-                ThresholdSource.LITERATURE, "Perez et al. (2019) - irregular pulse notification from Apple Watch PPG correlated with AFib"),
-            SignalRule(MetricType.RESTING_HEART_RATE, DeviationDirection.ABOVE, 1.5, 12, 1.0,
-                ThresholdSource.LITERATURE, "January et al. (2014) - elevated resting HR accompanies paroxysmal AFib episodes"),
-            SignalRule(MetricType.BLOOD_OXYGEN, DeviationDirection.BELOW, 1.0, 12, 0.6,
-                ThresholdSource.ENGINEERING)
-        ),
-        minActiveSignals = 2,
-        explanation = "Your heart rate variability pattern shows unusual irregularity combined with elevated resting heart rate. This pattern can be associated with atrial fibrillation episodes, though many other causes are possible.",
-        suggestedAction = "This is not a diagnosis. If you experience palpitations, dizziness, or unexplained fatigue, discuss ECG screening with your healthcare provider. Wearable HRV data cannot definitively detect AFib — clinical ECG is required.",
-        references = listOf(
-            "Perez MV et al. (2019) - Large-scale assessment of a smartwatch to identify atrial fibrillation (Apple Heart Study)",
-            "January CT et al. (2014) - AHA/ACC/HRS guideline for management of atrial fibrillation"
-        ),
-        earlyDetection = "Atrial fibrillation (AFib) is the most common cardiac arrhythmia, affecting 2-3% of adults. Many episodes are paroxysmal — they come and go — and are missed by periodic clinical ECGs. Wearable optical HR sensors can detect irregular pulse patterns consistent with AFib. The Apple Heart Study (2019) demonstrated that PPG-based notifications had a 34% positive predictive value for AFib on follow-up ECG — meaningful for screening but not diagnostic. Bios flags HRV irregularity patterns as screening signals, always with the explicit caveat that clinical confirmation is required.",
-        prevention = "Modifiable AFib risk factors include hypertension (the strongest modifiable risk), obesity, excessive alcohol consumption, sleep apnea, and intense endurance exercise. Managing blood pressure, maintaining healthy weight, moderating alcohol, and treating sleep apnea significantly reduce AFib risk. Regular moderate exercise is protective. Stress management and adequate sleep support stable heart rhythm.",
-        healing = "AFib management requires medical supervision. If AFib is confirmed by ECG, treatment options include rate control (beta-blockers, calcium channel blockers), rhythm control (antiarrhythmics, cardioversion, ablation), and anticoagulation to reduce stroke risk. Lifestyle modifications (weight loss, alcohol reduction, sleep apnea treatment) reduce AFib burden significantly. The owner's wearable data can help clinicians assess episode frequency and duration — export data for your cardiologist.",
-        risks = "Undetected AFib increases stroke risk 5-fold. Many strokes are the first sign of previously undiagnosed AFib. AFib also contributes to heart failure, cognitive decline, and reduced quality of life. Paroxysmal AFib can progress to persistent or permanent AFib if underlying causes are not addressed. Early detection and treatment significantly reduce these risks — screening with wearable data, while imperfect, catches episodes that periodic clinical visits miss."
     )
 
     /** Mental health correlates: sleep, HRV, activity, + companion signals from W2F.
