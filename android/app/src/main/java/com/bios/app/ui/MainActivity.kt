@@ -299,6 +299,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
                     onNavigateToRiskProfile = { navController.navigate("risk_profile") },
                     onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
+                    onNavigateToFrailAssessment = { navController.navigate("frail_assessment") },
                     onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
                     onNavigateToHeadacheDiary = { navController.navigate("headache_diary") },
                     onNavigateToFastStroke = { navController.navigate("fast_stroke") }
@@ -309,6 +310,9 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("physiology_state") {
                 com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
+            }
+            composable("frail_assessment") {
+                com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
             }
             composable("goals_of_care") {
                 com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
