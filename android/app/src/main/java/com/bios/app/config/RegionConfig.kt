@@ -12,7 +12,20 @@ data class RegionConfig(
     val displayName: String,
     val unitOverrides: Map<MetricType, UnitDisplay>,
     val clinicalThresholds: ClinicalThresholds,
-    val regulatory: RegulatoryConfig
+    val regulatory: RegulatoryConfig,
+    /**
+     * Whether tropical / endemic-disease patterns (malaria, dengue,
+     * chikungunya, leptospirosis, scrub typhus, ciguatera) should be
+     * active in this region. True for sub-Saharan African, South /
+     * Southeast Asian, Pacific, Caribbean, and South American tropical
+     * regions; false for the Northern temperate cohort whose epidemiology
+     * doesn't match those patterns. Cross-references audits:
+     * AFRICAN_TRADITIONAL_POV §2.6, INDIGENOUS_AMERICAS_POV,
+     * OTHER_ASIAN_SYSTEMS_POV §2-3, OCEANIC_ARCTIC_POV §2.6, SIDDHA_POV
+     * §2.5. The owner can also override by setting a "travelling /
+     * lived in tropics" flag in Settings — see [com.bios.app.physiology.OwnerCondition].
+     */
+    val tropicalDiseaseRelevant: Boolean = false,
 )
 
 /**
