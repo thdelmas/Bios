@@ -224,6 +224,38 @@ object PhoneSleepInference {
         return sorted[range.second].timestamp - sorted[range.first].timestamp
     }
 
+    /** Per-signal breakdown of the buffer so owners can diagnose which
+     *  signal is keeping the inference from firing. */
+    data class SignalBreakdown(
+        val total: Int,
+        val screenInactive: Int,
+        val lowMotion: Int,
+        val dark: Int,
+        val charging: Int,
+        val quiet: Int,
+    )
+
+    fun signalBreakdown(samples: List<Sample>): SignalBreakdown {
+        val total = samples.size
+        val screenInactive = samples.count { it.screenOff }
+        val lowMotion = samples.count {
+            (it.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+        }
+        val dark = samples.count {
+            (it.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
+        }
+        val charging = samples.count { it.charging }
+        val quiet = samples.count { isQuietSample(it) }
+        return SignalBreakdown(
+            total = total,
+            screenInactive = screenInactive,
+            lowMotion = lowMotion,
+            dark = dark,
+            charging = charging,
+            quiet = quiet,
+        )
+    }
+
     /**
      * Two booster signals confirm "this was actual sleep, not a long
      * powered-off phone in a drawer":
