@@ -39,6 +39,8 @@ class DirectSensorAdapter(context: Context) {
     private val stepCounter: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
+    private val stepDelta = StepCounterDelta(context)
+
     val hasHeartRate: Boolean get() = heartRateSensor != null
     val hasHeartBeat: Boolean get() = heartBeatSensor != null
     val hasStepCounter: Boolean get() = stepCounter != null
@@ -147,16 +149,22 @@ class DirectSensorAdapter(context: Context) {
     }
 
     /**
-     * Read cumulative step count from hardware pedometer.
+     * Read steps from the hardware pedometer as a delta since the previous
+     * sample. TYPE_STEP_COUNTER is cumulative since boot, so emitting the
+     * raw value on every sync would double-count; the delta tracker
+     * persists the last seen cumulative per source and handles reboot
+     * resets.
      */
     suspend fun readSteps(sourceId: String): MetricReading? {
         val sensor = stepCounter ?: return null
         val samples = collectFloatSamples(sensor, STEP_SAMPLE_MS)
         if (samples.isEmpty()) return null
 
+        val cumulative = samples.last().toLong()
+        val delta = stepDelta.computeDelta(cumulative, sourceId) ?: return null
         return MetricReading(
             metricType = MetricType.STEPS.key,
-            value = samples.last(),
+            value = delta.toDouble(),
             timestamp = System.currentTimeMillis(),
             sourceId = sourceId,
             confidence = ConfidenceTier.LOW.level
