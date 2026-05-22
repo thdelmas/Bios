@@ -36,6 +36,8 @@ internal fun IdentityCard(
     onNavigateToFastStroke: () -> Unit = {},
     onNavigateToEsasCapture: () -> Unit = {},
     onNavigateToTraditionalMedicine: () -> Unit = {},
+    onNavigateToInterventionEvents: () -> Unit = {},
+    onNavigateToTreatmentCourses: () -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -53,6 +55,8 @@ internal fun IdentityCard(
                 "FAST stroke check" to onNavigateToFastStroke,
                 "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
                 "Traditional medicine" to onNavigateToTraditionalMedicine,
+                "Intervention events" to onNavigateToInterventionEvents,
+                "Treatment courses" to onNavigateToTreatmentCourses,
             ).forEachIndexed { idx, (label, action) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }

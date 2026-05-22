@@ -50,4 +50,10 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("preventive_care") {
         com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
     }
+    composable("intervention_events") {
+        com.bios.app.ui.interventions.InterventionEventsScreen(onBack = { navController.popBackStack() })
+    }
+    composable("treatment_courses") {
+        com.bios.app.ui.interventions.TreatmentCoursesScreen(onBack = { navController.popBackStack() })
+    }
 }
