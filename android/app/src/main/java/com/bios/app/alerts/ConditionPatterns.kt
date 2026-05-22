@@ -33,7 +33,19 @@ data class ConditionPattern(
      * [com.bios.app.physiology.PhysiologyStateStore] and filters
      * [ConditionPatterns.all] before evaluating. Closes audit gap §2.7.
      */
-    val excludedStates: Set<PhysiologyState> = emptySet()
+    val excludedStates: Set<PhysiologyState> = emptySet(),
+    /**
+     * [PhysiologyState]s this pattern requires the owner to be in for it
+     * to fire (positive-gating axis, dual of [excludedStates]). Default
+     * empty = no gating, applies in every state. Used by patterns that
+     * only make clinical sense for a specific population — e.g. acute
+     * COPD-exacerbation screening (gated on [PhysiologyState.KNOWN_COPD])
+     * or paediatric thresholds (gated on [PhysiologyState.PAEDIATRIC]).
+     * When non-empty, the pattern fires only if the owner's current
+     * [PhysiologyState] is in this set. Closes audit gap §2.9 for
+     * disease-cohort-specific screening (#200).
+     */
+    val requiredStates: Set<PhysiologyState> = emptySet()
 )
 
 data class SignalRule(
@@ -201,6 +213,11 @@ object ConditionPatterns {
         minActiveSignals = 2,
         explanation = "Your cardiovascular markers are showing sustained elevation above your personal baseline. This may indicate physical or emotional stress, overtraining, or other factors affecting your heart.",
         suggestedAction = "Consider reducing intense exercise, managing stress, and ensuring adequate rest. If you experience chest pain, dizziness, or shortness of breath, seek medical attention promptly.",
+        references = listOf(
+            "Booth FW et al. (2012) — Lack of exercise is a major cause of chronic diseases",
+            "Plews DJ et al. (2013) — Training adaptation and HRV in elite endurance athletes",
+            "Somers VK et al. (2008) — Sleep apnea and cardiovascular disease (AHA/ACC scientific statement) — untreated obstructive sleep apnea is a known upstream driver of sustained cardiovascular strain via repeated nocturnal sympathetic activation; see SleepApneaPattern.sleepApneaScreen for the OSA screening pathway"
+        ),
         earlyDetection = "Cardiovascular stress builds over days before it becomes symptomatic. Resting heart rate rising 2+ standard deviations above your baseline is the primary signal, especially when sustained over 48 hours. A simultaneous drop in HRV indicates your autonomic nervous system is under sustained load. Declining blood oxygen saturation, even mildly, adds a third corroborating signal. Bios requires at least two of these three markers to flag cardiovascular strain, reducing false positives from exercise or transient stress.",
         prevention = "Regular aerobic exercise strengthens the cardiovascular system — aim for 150 minutes of moderate or 75 minutes of vigorous activity per week. Manage chronic stress through mindfulness, therapy, or lifestyle adjustments, as sustained cortisol elevates resting heart rate and blood pressure. Limit sodium intake, avoid smoking, and moderate alcohol consumption. Monitor blood pressure periodically. Maintain a healthy weight and get adequate sleep — both directly affect cardiovascular load.",
         healing = "Reduce physical and emotional stressors immediately. Prioritize rest and sleep. Practice breathing exercises or meditation to activate the parasympathetic nervous system and lower heart rate. If stress is work-related, consider taking breaks or adjusting workload. Stay hydrated and avoid stimulants (caffeine, nicotine). If resting heart rate remains elevated for more than a week, or if you experience chest pain, palpitations, dizziness, or shortness of breath, consult a cardiologist. An ECG or stress test may be warranted to rule out underlying conditions.",
