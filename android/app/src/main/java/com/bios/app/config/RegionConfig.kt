@@ -12,7 +12,31 @@ data class RegionConfig(
     val displayName: String,
     val unitOverrides: Map<MetricType, UnitDisplay>,
     val clinicalThresholds: ClinicalThresholds,
-    val regulatory: RegulatoryConfig
+    val regulatory: RegulatoryConfig,
+    /**
+     * Local emergency services number for the region. Surfaced on alerts that
+     * recommend professional escalation. `null` when no single canonical
+     * number exists or it has not been verified — UI should fall back to
+     * "your local emergency services" rather than show a wrong number.
+     *
+     * Numbers verified against Wikipedia's "List of emergency telephone
+     * numbers" (cross-referenced country-by-country). When a region operates
+     * separate EMS / fire / police lines, the EMS / ambulance number is
+     * preferred since that is what a vital-signs alert maps to.
+     */
+    val emergencyNumber: String? = null,
+    /**
+     * `true` when this locale sits inside a recognised indigenous data-
+     * sovereignty framework (e.g. Te Mana Raraunga in NZ, NACCHO in AU,
+     * CARE Principles for Indigenous Data Governance in CA-territories,
+     * tribal data sovereignty in US tribal lands). Surfaced as a footnote
+     * on any data-export UI so the owner sees the framework reference
+     * before deciding what leaves the device.
+     *
+     * Cross-reference: docs/audits/INDIGENOUS_AMERICAS_POV.md §2.5,
+     * docs/audits/OCEANIC_ARCTIC_POV.md.
+     */
+    val indigenousFlagged: Boolean = false
 )
 
 /**
