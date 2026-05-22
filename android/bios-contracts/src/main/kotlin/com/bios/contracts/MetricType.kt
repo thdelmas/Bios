@@ -48,6 +48,22 @@ enum class MetricType(
     BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
 
+    // PPG pulse-wave morphology summaries (#181, CARDIOLOGY_POV §2.2 + TCM,
+    // Sowa Rigpa, Kampo, Korean, Siddha, Unani, Ayurveda pulse-quality
+    // audits). Statistical scalars only — raw waveforms are never persisted.
+    // Computed by PpgSignalProcessor.computeWaveformFeatures from the
+    // smoothed luminance waveform and accepted peak indices; surfaced for
+    // arterial-stiffness reference views (Vlachopoulos 2010; Townsend 2015
+    // AHA stiffness statement; ESC 2018) and traditional-medicine pulse-
+    // quality readers. No new condition pattern fires off these today —
+    // the data is held so pull-side views can read it.
+    PPG_PEAK_AMPLITUDE_MEAN("ppg_peak_amplitude_mean", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
+    PPG_PEAK_AMPLITUDE_COV("ppg_peak_amplitude_cov", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
+    PPG_RISE_TIME_MEAN("ppg_rise_time_mean", MetricUnit.SECONDS, MetricDomain.CARDIOVASCULAR),
+    PPG_RISE_TIME_COV("ppg_rise_time_cov", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
+    PPG_DECAY_ASYMMETRY_INDEX("ppg_decay_asymmetry_index", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
+    PPG_DICHROTIC_NOTCH_POSITION("ppg_dichrotic_notch_position", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
+
     // Respiratory
     RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
     // Administered supplemental O2 (cannula/mask). Contextualises SpO2:
