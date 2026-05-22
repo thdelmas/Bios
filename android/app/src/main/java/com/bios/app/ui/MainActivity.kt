@@ -341,7 +341,8 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
                     onNavigateToRiskProfile = { navController.navigate("risk_profile") },
                     onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
-                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") }
+                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
+                    onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") }
                 )
             }
             composable("risk_profile") {
@@ -352,6 +353,9 @@ fun BiosApp(viewModel: AppViewModel) {
             }
             composable("goals_of_care") {
                 com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
+            }
+            composable("traditional_medicine_context") {
+                com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })
             }
             composable("medications") {
                 com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })

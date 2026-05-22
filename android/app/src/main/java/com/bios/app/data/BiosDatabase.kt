@@ -32,9 +32,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ScreeningEntry::class,
         RiskProfile::class,
         GoalsOfCare::class,
-        ClinicalDirective::class
+        ClinicalDirective::class,
+        TraditionalMedicineContext::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false
 )
 abstract class BiosDatabase : RoomDatabase() {
@@ -58,6 +59,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun riskProfileDao(): RiskProfileDao
     abstract fun goalsOfCareDao(): GoalsOfCareDao
     abstract fun clinicalDirectiveDao(): ClinicalDirectiveDao
+    abstract fun traditionalMedicineContextDao(): TraditionalMedicineContextDao
 
     companion object {
         @Volatile
@@ -80,7 +82,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -428,6 +430,14 @@ abstract class BiosDatabase : RoomDatabase() {
                 """.trimIndent())
             }
         }
+
+        // Owner-declared traditional-medicine context (#193).
+        // Migration definition extracted to TraditionalMedicineMigrations.kt
+        // to keep this file under the 500-line cap.
+        //
+        // NOTE: This migration number may need to shift on merge if
+        // other PRs land first. Renumber to the next available slot.
+        private val MIGRATION_16_17 = TraditionalMedicineMigrations.MIGRATION_16_17
 
         // Sidecar table for composite event payloads. Each row is one field
         // of a structured event attached to a parent MetricReading row.

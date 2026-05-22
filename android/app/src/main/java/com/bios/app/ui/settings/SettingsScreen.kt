@@ -41,7 +41,8 @@ fun SettingsScreen(
     onNavigateToPreventiveCare: () -> Unit = {},
     onNavigateToRiskProfile: () -> Unit = {},
     onNavigateToPhysiologyState: () -> Unit = {},
-    onNavigateToGoalsOfCare: () -> Unit = {}
+    onNavigateToGoalsOfCare: () -> Unit = {},
+    onNavigateToTraditionalMedicine: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -98,6 +99,7 @@ fun SettingsScreen(
                     "Risk profile" to onNavigateToRiskProfile,
                     "Physiology state" to onNavigateToPhysiologyState,
                     "Goals of care" to onNavigateToGoalsOfCare,
+                    "Traditional medicine" to onNavigateToTraditionalMedicine,
                 ).forEachIndexed { idx, (label, action) ->
                     if (idx > 0) Spacer(Modifier.height(4.dp))
                     SettingsActionButton(label, action)
