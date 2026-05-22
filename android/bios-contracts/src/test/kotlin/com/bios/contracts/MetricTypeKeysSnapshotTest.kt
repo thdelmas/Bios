@@ -39,9 +39,23 @@ class MetricTypeKeysSnapshotTest {
         "blood_pressure_systolic",
         "blood_pressure_diastolic",
         "blood_oxygen",
+        // PPG-derived AFib screen (#180) + pulse-wave morphology (#181)
+        "irregular_rhythm_burden",
+        "ppg_peak_amplitude_mean",
+        "ppg_peak_amplitude_cov",
+        "ppg_rise_time_mean",
+        "ppg_rise_time_cov",
+        "ppg_decay_asymmetry_index",
+        "ppg_dichrotic_notch_position",
         // Respiratory
         "respiratory_rate",
         "oxygen_flow_rate",
+        // Sleep apnea passthrough (#157)
+        "sleep_apnea_event",
+        "ahi",
+        // Asthma surveillance (#200) — owner-measured PEF + FEV1
+        "peak_expiratory_flow_lmin",
+        "forced_expiratory_volume_1_liters",
         // Neurological (manual-capture clinical signs)
         "pain_score",
         "consciousness_level",
@@ -86,6 +100,10 @@ class MetricTypeKeysSnapshotTest {
         "air_pm25",
         "air_voc",
         "air_co2",
+        // Environment expansion (#200) — humidity + ambient temp for asthma
+        // trigger context, heat-index, damp/dry pathogen overlays
+        "ambient_humidity_pct",
+        "ambient_temperature_c",
         // Biomarkers
         "hba1c",
         "hscrp",
@@ -115,6 +133,12 @@ class MetricTypeKeysSnapshotTest {
         "vitamin_b12",
         "folate",
         "magnesium",
+        // Renal / hepatic panel (#158)
+        "egfr",
+        "creatinine",
+        "alt",
+        "ast",
+        "ggt",
         // Epigenetic age clocks
         "epigenetic_age_dunedin_pace",
         "epigenetic_age_grim",

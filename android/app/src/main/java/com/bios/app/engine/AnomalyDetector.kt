@@ -40,8 +40,10 @@ class AnomalyDetector(
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
+    // Honors both axes: excludedStates blocks listed states; requiredStates,
+    // when non-empty, restricts the pattern to the listed states only (#200).
     private fun applicablePatterns(): List<ConditionPattern> =
-        ConditionPatterns.all.filter { physiologyState !in it.excludedStates }
+        ConditionPatterns.all.filter { p -> physiologyState !in p.excludedStates && (p.requiredStates.isEmpty() || physiologyState in p.requiredStates) }
 
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()
@@ -490,11 +492,8 @@ internal fun readingKindFilterFor(metricType: MetricType): String? = when {
 
 /**
  * Reproductive metrics whose raw readings live in
- * [com.bios.app.data.ReproductiveDatabase] rather than the main
- * [BiosDatabase]. Anomaly evaluation must route value fetches to the
- * isolated DB; baselines for these metrics, when computed, are still
- * stored as summary-only rows in the main DB per the documented contract
- * on [com.bios.app.data.ReproductiveDatabase].
+ * [com.bios.app.data.ReproductiveDatabase]; anomaly evaluation routes value
+ * fetches there. Baselines for these metrics, when computed, are still
+ * stored as summary-only rows in the main DB per the documented contract.
  */
-internal fun isReproductiveMetric(metricType: MetricType): Boolean =
-    metricType.domain == MetricDomain.WOMENS_HEALTH
+internal fun isReproductiveMetric(metricType: MetricType): Boolean = metricType.domain == MetricDomain.WOMENS_HEALTH
