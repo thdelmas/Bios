@@ -41,6 +41,8 @@ class PhoneSensorAdapter(context: Context) {
     private val stepCounter: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
+    private val stepDelta = StepCounterDelta(context)
+
     private val lightSensor: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
 
@@ -90,19 +92,22 @@ class PhoneSensorAdapter(context: Context) {
     }
 
     /**
-     * Reads the hardware step counter and returns accumulated steps.
-     * The step counter is cumulative since boot, so we return the raw value
-     * and let IngestManager handle delta computation.
+     * Reads the hardware step counter and returns the delta since the
+     * previous sample. TYPE_STEP_COUNTER is cumulative since boot, so
+     * emitting the raw value on every sync would double-count — the
+     * delta tracker persists the last seen cumulative per source and
+     * handles reboot resets.
      */
     suspend fun readStepCounter(sourceId: String): MetricReading? {
         val sensor = stepCounter ?: return null
         val samples = collectSamples(sensor, STEP_SAMPLE_MS)
         if (samples.isEmpty()) return null
 
-        val stepCount = samples.last().first // step counter uses values[0]
+        val cumulative = samples.last().first.toLong()
+        val delta = stepDelta.computeDelta(cumulative, sourceId) ?: return null
         return MetricReading(
             metricType = MetricType.STEPS.key,
-            value = stepCount.toDouble(),
+            value = delta.toDouble(),
             timestamp = System.currentTimeMillis(),
             sourceId = sourceId,
             confidence = ConfidenceTier.LOW.level
