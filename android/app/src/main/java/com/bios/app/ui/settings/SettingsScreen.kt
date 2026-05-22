@@ -41,7 +41,11 @@ fun SettingsScreen(
     onNavigateToPreventiveCare: () -> Unit = {},
     onNavigateToRiskProfile: () -> Unit = {},
     onNavigateToPhysiologyState: () -> Unit = {},
-    onNavigateToGoalsOfCare: () -> Unit = {}
+    onNavigateToFrailAssessment: () -> Unit = {},
+    onNavigateToGoalsOfCare: () -> Unit = {},
+    onNavigateToHeadacheDiary: () -> Unit = {},
+    onNavigateToFastStroke: () -> Unit = {},
+    onNavigateToEsasCapture: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -84,9 +88,7 @@ fun SettingsScreen(
     ) {
         Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
-        // Identity — who the owner is. Surfaces the owner annotates about
-        // themselves. Not "settings" in the configuration sense; this is
-        // the owner's medical and physiological context.
+        // Identity — owner-annotated medical and physiological context; not configuration.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Identity", style = MaterialTheme.typography.titleSmall)
@@ -97,7 +99,11 @@ fun SettingsScreen(
                     "Preventive care" to onNavigateToPreventiveCare,
                     "Risk profile" to onNavigateToRiskProfile,
                     "Physiology state" to onNavigateToPhysiologyState,
+                    "FRAIL assessment" to onNavigateToFrailAssessment,
                     "Goals of care" to onNavigateToGoalsOfCare,
+                    "Headache & migraine diary" to onNavigateToHeadacheDiary,
+                    "FAST stroke check" to onNavigateToFastStroke,
+                    "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
                 ).forEachIndexed { idx, (label, action) ->
                     if (idx > 0) Spacer(Modifier.height(4.dp))
                     SettingsActionButton(label, action)
@@ -490,6 +496,5 @@ private fun SettingsActionButton(label: String, onClick: () -> Unit) {
 }
 
 private fun saveTier(context: Context, tier: PrivacyTier) {
-    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
-        .edit().putString("privacy_tier", tier.name).apply()
+    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE).edit().putString("privacy_tier", tier.name).apply()
 }

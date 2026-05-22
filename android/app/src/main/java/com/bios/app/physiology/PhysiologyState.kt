@@ -52,7 +52,31 @@ enum class PhysiologyState(val displayName: String) {
      * Owner-revocable instantly. No waiting period. No clinical
      * confirmation. The owner is final.
      */
-    HOSPICE_MODE("Hospice / end-of-life care");
+    HOSPICE_MODE("Hospice / end-of-life care"),
+
+    /**
+     * Owner-declared known asthma (#200, audit gap §2.9 from
+     * PAEDIATRICS_POV.md + MEDICAL_PROFESSIONAL_POV.md). Gates the
+     * acute asthma-exacerbation screening pattern via the
+     * [com.bios.app.alerts.ConditionPattern.requiredStates] axis —
+     * the pattern only fires for owners who have flagged themselves
+     * as asthmatic. Healthy-owner false positives from a strenuous
+     * hike (RR up + activity drop) or transient illness would dominate
+     * without this gate. Same shape as HOSPICE_MODE: owner-revocable,
+     * no clinical confirmation, the owner is final.
+     */
+    KNOWN_ASTHMA("Known asthma"),
+
+    /**
+     * Owner-declared known COPD (#200). Gates the acute COPD-exacerbation
+     * screening pattern. COPD owners typically have lower SpO2 baselines
+     * than the general population (88–92 % is normal for some, not hypoxia),
+     * and the personal-baseline framework handles that; the acute screen
+     * additionally fires only for this population so non-COPD owners on a
+     * high-altitude trip don't trigger it. Owner-revocable, no clinical
+     * confirmation required.
+     */
+    KNOWN_COPD("Known COPD");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
