@@ -19,7 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,6 +79,7 @@ fun SleepDashboardScreen(
     var inferenceMessage by remember { mutableStateOf<String?>(null) }
     var bufferedSamples by remember { mutableStateOf(0) }
     var lastSampleMs by remember { mutableStateOf<Long?>(null) }
+    var longestQuietMs by remember { mutableStateOf(0L) }
 
     LaunchedEffect(windowDays, refreshTick) {
         val end = System.currentTimeMillis()
@@ -91,6 +91,22 @@ fun SleepDashboardScreen(
             .associate { it.id to (it.deviceName ?: it.sourceType) }
         bufferedSamples = viewModel.db.phoneSleepSampleDao().count()
         lastSampleMs = viewModel.db.phoneSleepSampleDao().lastTimestamp()
+        // Compute the longest screen-off stretch in the inference window so
+        // the empty-state diagnostic can show how close the buffer is to the
+        // 4h floor — turns "NoSleepWindow" into "you have 2h 30m, need 4h".
+        val bufferStart = end - PhoneSleepWorker.FORCE_WINDOW_MS
+        val samples = viewModel.db.phoneSleepSampleDao()
+            .fetchInRange(bufferStart, end)
+            .map {
+                com.bios.app.engine.PhoneSleepInference.Sample(
+                    timestamp = it.timestamp,
+                    screenOff = it.screenOff,
+                    charging = it.charging,
+                    ambientLightLux = it.ambientLightLux,
+                    accelMagnitudeVar = it.accelMagnitudeVar,
+                )
+            }
+        longestQuietMs = com.bios.app.engine.PhoneSleepInference.longestScreenOffMs(samples)
     }
 
     val onInferNow: () -> Unit = {
@@ -166,6 +182,7 @@ fun SleepDashboardScreen(
                         onInferNow = onInferNow,
                         bufferedSamples = bufferedSamples,
                         lastSampleMs = lastSampleMs,
+                        longestQuietMs = longestQuietMs,
                     )
                 }
             } else {
@@ -342,111 +359,6 @@ private fun formatDuration(seconds: Long): String {
 
 private val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.US)
 private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
-
-@Composable
-private fun EmptyStateCard(
-    inferring: Boolean,
-    onInferNow: () -> Unit,
-    bufferedSamples: Int,
-    lastSampleMs: Long?,
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                "No sleep readings in the selected window.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "Connect a wearable, sync Health Connect, log a night manually, " +
-                    "or run phone inference now against whatever samples already buffered.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            PhoneInferenceDiagnostics(bufferedSamples, lastSampleMs)
-            FilledTonalButton(
-                onClick = onInferNow,
-                enabled = !inferring,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (inferring) "Running inference…" else "Run phone inference now")
-            }
-        }
-    }
-}
-
-@Composable
-private fun PhoneInferenceDiagnostics(bufferedSamples: Int, lastSampleMs: Long?) {
-    val minNeeded = PhoneSleepWorker.MIN_SAMPLES_FOR_INFERENCE
-    val lastSampleText = lastSampleMs?.let { relativeTime(it) } ?: "never"
-    val statusColor = if (bufferedSamples >= minNeeded) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.tertiary
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            "Phone inference buffer: $bufferedSamples / $minNeeded samples",
-            style = MaterialTheme.typography.labelSmall,
-            color = statusColor,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            "Last sample collected: $lastSampleText",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (bufferedSamples == 0) {
-            Text(
-                "The background worker hasn't recorded any sensor samples yet. " +
-                    "On Android, periodic work can be delayed by battery savers or " +
-                    "aggressive app-killing — check that Bios isn't restricted in " +
-                    "battery/optimization settings, then wait ~15 min for the next run.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-private fun relativeTime(timestampMs: Long): String {
-    val deltaMs = System.currentTimeMillis() - timestampMs
-    if (deltaMs < 0) return "in the future"
-    val minutes = deltaMs / 60_000L
-    val hours = minutes / 60L
-    val days = hours / 24L
-    return when {
-        minutes < 1 -> "just now"
-        minutes < 60 -> "${minutes}m ago"
-        hours < 24 -> "${hours}h ago"
-        else -> "${days}d ago"
-    }
-}
-
-@Composable
-private fun InferenceResultCard(message: String) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            message,
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
-        )
-    }
-}
 
 private fun describe(result: PhoneSleepWorker.ImmediateResult): String = when (result) {
     is PhoneSleepWorker.ImmediateResult.Written ->
