@@ -35,9 +35,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ClinicalDirective::class,
         MigraineAttack::class,
         HeadacheLog::class,
-        FastStrokeEvent::class
+        FastStrokeEvent::class,
+        EsasReport::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 @androidx.room.TypeConverters(MigraineTriggerConverter::class)
@@ -65,6 +66,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun migraineAttackDao(): MigraineAttackDao
     abstract fun headacheLogDao(): HeadacheLogDao
     abstract fun fastStrokeEventDao(): FastStrokeEventDao
+    abstract fun esasReportDao(): EsasReportDao
 
     companion object {
         @Volatile
@@ -87,7 +89,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -486,15 +488,13 @@ abstract class BiosDatabase : RoomDatabase() {
             }
         }
 
-        // Neurology owner-symptom logging (#207) — see NeurologyMigrations.kt.
+        // Owner-PRO migrations live in sibling files to keep this one under 500 lines.
         private val MIGRATION_16_17 = NeurologyMigrations.MIGRATION_16_17
+        private val MIGRATION_17_18 = EsasMigrations.MIGRATION_17_18
 
         /** In-memory instance for testing. */
         fun buildInMemory(context: Context): BiosDatabase {
-            return Room.inMemoryDatabaseBuilder(
-                context.applicationContext,
-                BiosDatabase::class.java
-            ).build()
+            return Room.inMemoryDatabaseBuilder(context.applicationContext, BiosDatabase::class.java).build()
         }
     }
 }
