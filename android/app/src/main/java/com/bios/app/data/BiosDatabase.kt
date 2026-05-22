@@ -36,9 +36,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         MigraineAttack::class,
         HeadacheLog::class,
         FastStrokeEvent::class,
-        EsasReport::class
+        EsasReport::class,
+        TraditionalMedicineContext::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 @androidx.room.TypeConverters(MigraineTriggerConverter::class)
@@ -67,6 +68,7 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun headacheLogDao(): HeadacheLogDao
     abstract fun fastStrokeEventDao(): FastStrokeEventDao
     abstract fun esasReportDao(): EsasReportDao
+    abstract fun traditionalMedicineContextDao(): TraditionalMedicineContextDao
 
     companion object {
         @Volatile
@@ -89,7 +91,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -405,12 +407,9 @@ abstract class BiosDatabase : RoomDatabase() {
         }
 
         // Owner-declared goals of care + clinical-directive metadata
-        // (#184). Two single-row tables holding the owner's standing
-        // preferences about CPR / hospitalisation / intervention level
-        // and the metadata of any advance-directive documents they
-        // have filed elsewhere. The AlertManager reads goals_of_care
-        // to decide whether to short-circuit URGENT-tier escalation
-        // when the owner has declared COMFORT_ONLY care.
+        // (#184) goals_of_care + clinical_directive: owner standing preferences
+        // (CPR / hospitalisation / intervention level) + advance-directive metadata.
+        // AlertManager reads these to short-circuit URGENT escalation under COMFORT_ONLY.
         private val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""
@@ -491,6 +490,7 @@ abstract class BiosDatabase : RoomDatabase() {
         // Owner-PRO migrations live in sibling files to keep this one under 500 lines.
         private val MIGRATION_16_17 = NeurologyMigrations.MIGRATION_16_17
         private val MIGRATION_17_18 = EsasMigrations.MIGRATION_17_18
+        private val MIGRATION_18_19 = TraditionalMedicineMigrations.MIGRATION_18_19
 
         /** In-memory instance for testing. */
         fun buildInMemory(context: Context): BiosDatabase {
