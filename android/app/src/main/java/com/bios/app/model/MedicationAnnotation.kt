@@ -15,17 +15,22 @@ import androidx.room.PrimaryKey
  * medication backdrop alongside the pattern.
  *
  * **Not** a Posology-class adherence tracker — no reminders, no schedule,
- * no dose. v1 ships free-text [name] only; an RxNorm-coded follow-up can
- * land without schema change since [name] stays the canonical display
- * string. The full medications companion is explicitly deferred (Phase 9
- * of `docs/ROADMAP.md`).
+ * no dose.
+ *
+ * **Traditional / functional pharmacopoeia support (issue #194).** Eleven
+ * audit lenses (Ayurveda, TCM, Kampo, Korean, Siddha, Unani, Sowa Rigpa,
+ * African Traditional, Indigenous Americas, Modern Non-Allopathic, Other
+ * Asian Systems) converged on the same gap: traditional/folk substances
+ * need a *vocabulary layer* so they are recordable without endorsement.
+ * The free-text path is unchanged and remains the default; the structured
+ * fields are opt-in. Recording is not endorsement — Bios stores what the
+ * owner says they take, never validates whether a substance "works".
  *
  * **Discontinued meds are kept**, not deleted: the [endDate] column flips
  * an active row to historical. Past medications are part of the owner's
  * own context — a sudden RHR jump three weeks after stopping a beta-
  * blocker is far less mysterious when the discontinuation date is on
- * record. Use [name] + [endDate] together to express that. Hard delete is
- * for typo correction only.
+ * record. Hard delete is for typo correction only.
  */
 @Entity(
     tableName = "medication_annotations",
@@ -35,9 +40,9 @@ data class MedicationAnnotation(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     /**
      * Free-text medication name as the owner records it ("metoprolol",
-     * "Lipitor 20mg", "vitamin D3"). v1 is intentionally non-coded —
-     * RxNorm or ATC mapping is a future enhancement layered on top of
-     * this column without migration.
+     * "Lipitor 20mg", "vitamin D3", "Ashwagandha churna"). This stays the
+     * canonical display string regardless of whether [substanceSource] is
+     * set — owners record in whatever idiom matches their pharmacopoeia.
      */
     val name: String,
     /** When the owner started taking this medication. Epoch millis. */
@@ -54,4 +59,26 @@ data class MedicationAnnotation(
      * medications screen and in the alert context line.
      */
     val note: String? = null,
+    /**
+     * Optional vocabulary the [substanceCode] is drawn from. Defaults to
+     * `null` so the legacy free-text path stays the default. When set,
+     * lets companion surfaces (CredibleMeds QT context, AGS Beers
+     * filtering) reason about the substance without parsing [name].
+     * See [com.bios.app.data.SubstanceSource].
+     */
+    val substanceSource: String? = null,
+    /**
+     * Optional code drawn from [substanceSource]'s vocabulary. RxNorm CUI,
+     * ATC code, AYUSH ICD-11 code, TCM formula code, Tsumura NHI number,
+     * etc. Free text — Bios never validates against an external service.
+     */
+    val substanceCode: String? = null,
+    /**
+     * Optional traditional / vernacular name in the owner's preferred
+     * script (Devanagari, Hanzi, Hangul, Tibetan, Arabic, Latin
+     * transliteration). Recorded verbatim. Example: "अश्वगंधा" /
+     * "Withania somnifera" / "Ashwagandha". Surfaced alongside [name] on
+     * the medications screen.
+     */
+    val traditionalName: String? = null,
 )

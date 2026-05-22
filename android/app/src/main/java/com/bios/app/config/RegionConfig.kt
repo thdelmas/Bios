@@ -14,16 +14,23 @@ data class RegionConfig(
     val clinicalThresholds: ClinicalThresholds,
     val regulatory: RegulatoryConfig,
     /**
-     * Whether tropical / endemic-disease patterns (malaria, dengue,
-     * chikungunya, leptospirosis, scrub typhus, ciguatera) should be
-     * active in this region. True for sub-Saharan African, South /
-     * Southeast Asian, Pacific, Caribbean, and South American tropical
-     * regions; false for the Northern temperate cohort whose epidemiology
-     * doesn't match those patterns. Cross-references audits:
-     * AFRICAN_TRADITIONAL_POV §2.6, INDIGENOUS_AMERICAS_POV,
-     * OTHER_ASIAN_SYSTEMS_POV §2-3, OCEANIC_ARCTIC_POV §2.6, SIDDHA_POV
-     * §2.5. The owner can also override by setting a "travelling /
-     * lived in tropics" flag in Settings — see [com.bios.app.physiology.OwnerCondition].
+     * Local emergency services number for the region. Surfaced on alerts
+     * recommending professional escalation. `null` when no canonical number
+     * exists — UI falls back to "your local emergency services".
+     */
+    val emergencyNumber: String? = null,
+    /**
+     * `true` when this locale sits inside a recognised indigenous data-
+     * sovereignty framework (e.g. Te Mana Raraunga in NZ, NACCHO in AU,
+     * CARE Principles for Indigenous Data Governance). Surfaced as a footnote
+     * on data-export UI. Cross-ref: INDIGENOUS_AMERICAS_POV §2.5, OCEANIC_ARCTIC_POV.
+     */
+    val indigenousFlagged: Boolean = false,
+    /**
+     * Whether tropical / endemic-disease patterns (malaria, dengue, chikungunya,
+     * leptospirosis, scrub typhus, ciguatera) should fire in this region (#196,
+     * audit gap §2.6). Cross-ref: AFRICAN_TRADITIONAL_POV §2.6, OTHER_ASIAN_SYSTEMS_POV §2-3,
+     * OCEANIC_ARCTIC_POV §2.6. Owner override via [com.bios.app.physiology.OwnerCondition].
      */
     val tropicalDiseaseRelevant: Boolean = false,
 )
