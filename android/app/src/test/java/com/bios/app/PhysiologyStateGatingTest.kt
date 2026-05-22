@@ -41,9 +41,22 @@ class PhysiologyStateGatingTest {
         ConditionPatterns.all.filter { state !in it.excludedStates }
 
     @Test
-    fun standard_state_includes_every_pattern_in_the_library() {
-        val applicable = applicable(PhysiologyState.STANDARD)
-        assertEquals(ConditionPatterns.all.size, applicable.size)
+    fun standard_state_includes_every_non_pregnancy_pattern_in_the_library() {
+        // Before #189 every pattern was active in STANDARD. With the
+        // pregnancy-specific PregnancyPatterns landing, the four pregnancy /
+        // postpartum screens (gestational HTN, severe-range PEC, postpartum
+        // PEC, PPCM) are scoped *only* to their respective physiology
+        // states — STANDARD should see every other pattern but not those
+        // four. Pin the exact set so future additions stay explicit.
+        val pregnancyOnly = setOf(
+            "gestational_hypertension_screen",
+            "severe_range_preeclampsia_screen",
+            "postpartum_pre_eclampsia_screen",
+            "peripartum_cardiomyopathy_screen",
+        )
+        val applicable = applicable(PhysiologyState.STANDARD).map { it.id }.toSet()
+        val expected = ConditionPatterns.all.map { it.id }.toSet() - pregnancyOnly
+        assertEquals(expected, applicable)
     }
 
     @Test
@@ -70,11 +83,12 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun cardiovascular_stress_still_fires_in_standard_and_frailty_and_paediatric() {
-        // Frailty and paediatric don't have a known normative RHR-elevation
-        // pattern — the cardiovascular-stress signal still applies. (Paediatric
-        // threshold-modifier work belongs to a future PR.)
-        for (state in listOf(PhysiologyState.STANDARD, PhysiologyState.FRAILTY_FLAG, PhysiologyState.PAEDIATRIC)) {
+    fun cardiovascular_stress_still_fires_in_standard_and_paediatric() {
+        // Paediatric doesn't have a known normative RHR-elevation pattern in
+        // this library yet — the cardiovascular-stress signal still applies.
+        // (Paediatric threshold-modifier work belongs to a future PR.)
+        // FRAILTY_FLAG is now excluded — see frailty_excludes_baseline_deviation_patterns.
+        for (state in listOf(PhysiologyState.STANDARD, PhysiologyState.PAEDIATRIC)) {
             assertTrue(
                 "cardiovascular_stress should fire in $state",
                 applicable(state).any { it.id == "cardiovascular_stress" }
@@ -83,15 +97,121 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun no_other_pattern_currently_declares_excludedStates() {
-        // Pins the v1 scope: only one pattern is wired; future PRs add more.
-        // If this fails, document the additional wired patterns here so the
-        // explicit list keeps tracking what's gated.
-        val wired = ConditionPatterns.all.filter { it.excludedStates.isNotEmpty() }
-        assertEquals(
-            "Expected exactly 1 pattern with excludedStates (cardiovascular_stress)",
-            1, wired.size
+    fun frailty_excludes_baseline_deviation_patterns() {
+        // Wired by issue #186 per GERIATRICS_PALLIATIVE_POV.md §2.1 (Fried
+        // 2001 phenotype; Morley 2012 FRAIL questionnaire). The four patterns
+        // calibrated to a stable-adult baseline false-fire in the frail >75
+        // cohort whose baseline encodes deconditioning by definition.
+        val applicable = applicable(PhysiologyState.FRAILTY_FLAG).map { it.id }.toSet()
+        for (id in listOf(
+            "sleep_disruption",
+            "cardiovascular_stress",
+            "cardiorespiratory_deconditioning",
+            "recovery_deficit",
+        )) {
+            assertFalse(
+                "$id should be excluded under FRAILTY_FLAG",
+                id in applicable,
+            )
+        }
+    }
+
+    @Test
+    fun frailty_does_not_suppress_unrelated_patterns() {
+        // The frailty gate is targeted at four specific baseline-deviation
+        // patterns. Infection onset, biomarker patterns, and emergency
+        // vital cutoffs must still fire in the frail cohort — frail elders
+        // get infections and have heart attacks too.
+        val applicable = applicable(PhysiologyState.FRAILTY_FLAG).map { it.id }.toSet()
+        assertTrue("infection_onset should fire under FRAILTY_FLAG", "infection_onset" in applicable)
+    }
+
+    @Test
+    fun only_explicitly_documented_patterns_declare_excludedStates() {
+        // Pins the wired-pattern set so future additions are explicit. The
+        // gating contract today:
+        //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
+        //     postpartum, endurance-athlete physiology, and FRAILTY_FLAG (#186).
+        //   - sepsis_screen (#182): NEWS2 is adult-validated only — paediatric
+        //     uses PEWS with age-banded thresholds.
+        //   - pregnancy gating cohort (#189, OBGYN_POV §2.2): every adult
+        //     baseline-relative trend pattern whose signal triad matches
+        //     normal pregnancy / postpartum physiology is suppressed in
+        //     PREGNANCY_* + POSTPARTUM. PregnancyPatterns.* replaces those
+        //     with pregnancy-aware screens (preeclampsia + PPCM). The
+        //     mental-health pattern is intentionally NOT in this list —
+        //     perinatal depression detection is preserved.
+        //   - frailty overlap (#186): sleep_disruption / cardio_deconditioning /
+        //     recovery_deficit also encode a deconditioned baseline in the
+        //     frail >75 cohort, so FRAILTY_FLAG joins their pregnancy gate.
+        //   - severe_range_preeclampsia_screen / postpartum_pre_eclampsia_screen
+        //     / peripartum_cardiomyopathy_screen / gestational_hypertension_screen
+        //     are the inverse — they fire ONLY in the listed pregnancy /
+        //     postpartum states, so their excludedStates set is every state
+        //     except the active one.
+        val pregnancyAndPostpartum = setOf(
+            PhysiologyState.PREGNANCY_T1,
+            PhysiologyState.PREGNANCY_T2,
+            PhysiologyState.PREGNANCY_T3,
+            PhysiologyState.POSTPARTUM,
         )
-        assertEquals("cardiovascular_stress", wired.single().id)
+        val pregnancyPostpartumFrailty = pregnancyAndPostpartum + PhysiologyState.FRAILTY_FLAG
+        val cardiovascularStressGate = pregnancyAndPostpartum +
+            setOf(PhysiologyState.ATHLETE_HIGH_FITNESS, PhysiologyState.FRAILTY_FLAG)
+        val allStates = PhysiologyState.entries.toSet()
+        val outsidePregnancyAndPostpartum = allStates - pregnancyAndPostpartum
+        val outsidePostpartum = allStates - setOf(PhysiologyState.POSTPARTUM)
+        val outsideT2T3 = allStates -
+            setOf(PhysiologyState.PREGNANCY_T2, PhysiologyState.PREGNANCY_T3)
+
+        val expected = mapOf(
+            "infection_onset" to pregnancyAndPostpartum,
+            "sleep_disruption" to pregnancyPostpartumFrailty,
+            "cardiovascular_stress" to cardiovascularStressGate,
+            "overtraining" to pregnancyAndPostpartum,
+            "metabolic_drift" to pregnancyAndPostpartum,
+            "cardiorespiratory_deconditioning" to pregnancyPostpartumFrailty,
+            "chronic_inflammation" to pregnancyAndPostpartum,
+            "recovery_deficit" to pregnancyPostpartumFrailty,
+            "menstrual_cycle_anomaly" to pregnancyAndPostpartum,
+            "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "gestational_hypertension_screen" to outsideT2T3,
+            "severe_range_preeclampsia_screen" to outsidePregnancyAndPostpartum,
+            "postpartum_pre_eclampsia_screen" to outsidePostpartum,
+            "peripartum_cardiomyopathy_screen" to outsidePostpartum,
+        )
+        val wired = ConditionPatterns.all
+            .filter { it.excludedStates.isNotEmpty() }
+            .associate { it.id to it.excludedStates }
+        assertEquals(
+            "Patterns with excludedStates drifted from the documented set",
+            expected, wired,
+        )
+    }
+
+    @Test
+    fun mental_health_correlate_still_fires_in_pregnancy_and_postpartum() {
+        // Perinatal depression IS a real condition — the gating sweep in
+        // #189 explicitly preserves this pattern in PREGNANCY_T1/T2/T3 and
+        // POSTPARTUM. Guards against future regressions that "tidy up" the
+        // gating cohort and accidentally suppress it.
+        for (state in PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM)) {
+            assertTrue(
+                "mental_health_correlate should fire in $state",
+                applicable(state).any { it.id == "mental_health_correlate" },
+            )
+        }
+    }
+
+    @Test
+    fun infection_onset_is_suppressed_in_pregnancy_t2() {
+        // Synthetic check: the pregnancy gating sweep (#189) suppresses
+        // the broad infection-onset trend pattern in PREGNANCY_T2 because
+        // RHR rises 10–20 bpm by Q2 and would false-fire continuously.
+        // Acute-infection coverage remains via SepsisScreenPattern and
+        // respiratoryInfection.
+        assertFalse(
+            applicable(PhysiologyState.PREGNANCY_T2).any { it.id == "infection_onset" },
+        )
     }
 }
