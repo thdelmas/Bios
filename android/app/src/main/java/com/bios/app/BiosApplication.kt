@@ -75,6 +75,11 @@ class BiosApplication : Application() {
             DailyDigestWorker.schedule(this)
         }
 
+        // Schedule daily paediatric-band recompute (#198). Idempotent and
+        // a no-op when no birth date is on file — safe to enqueue on every
+        // launch.
+        com.bios.app.physiology.PaediatricBandWorker.schedule(this)
+
         // Re-register UnifiedPush if previously enabled (idempotent — just
         // confirms the registration with the distributor). Does NOT auto-enable;
         // only fires if the owner previously opted in via Settings.
