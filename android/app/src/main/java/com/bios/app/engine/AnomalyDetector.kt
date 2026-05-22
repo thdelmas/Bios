@@ -21,14 +21,10 @@ import kotlin.math.min
 
 /**
  * Detects anomalies by scoring deviations from personal baselines and
- * cross-correlating multiple signals.
- *
- * `reproductiveReadingDao` (#142): optional DAO for the isolated
- * [com.bios.app.data.ReproductiveDatabase] — WOMENS_HEALTH metrics resolve
- * there; baselines stay in the main DB as summary-only rows.
- * `medicationRepo` (#154): appends "Annotated current medications" to alert
- * explanations, frozen at anomaly creation.
- * `physiologyState` (#159, CARDIOLOGY_POV §2.4): filters patterns via [appliesIn].
+ * cross-correlating multiple signals. `reproductiveReadingDao` (#142) routes
+ * WOMENS_HEALTH metrics to the isolated [com.bios.app.data.ReproductiveDatabase].
+ * `medicationRepo` (#154) freezes annotated medications on alert creation.
+ * `physiologyState` (#159, CARDIOLOGY_POV §2.4) filters patterns via [appliesIn].
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
@@ -41,6 +37,8 @@ class AnomalyDetector(
     private val regionConfig: RegionConfig = RegionConfigProvider.forCurrentLocale(),
     /** Owner-declared known conditions (#196); gates `requiredOwnerConditions`. */
     private val ownerConditions: Set<OwnerCondition> = emptySet(),
+    /** Cancer-therapy drug class (#201); gates `requiredDrugClasses`. */
+    private val drugClass: com.bios.app.physiology.CancerTherapyDrugClass = com.bios.app.physiology.CancerTherapyDrugClass.NONE,
     /** Sub-window acute-event detector (#190). Null disables the acute path. */
     private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
 ) {
@@ -55,7 +53,7 @@ class AnomalyDetector(
     private fun applicablePatterns(): List<ConditionPattern> {
         val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
         return ConditionPatterns.all.filter {
-            it.appliesIn(physiologyState, regionConfig, ownerConditions) && it.id !in acuteIds
+            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) && it.id !in acuteIds
         }
     }
 

@@ -47,6 +47,10 @@ class BiomarkerEntrySelectorsTest {
             // Renal / hepatic (#158).
             MetricType.EGFR, MetricType.CREATININE,
             MetricType.ALT, MetricType.AST, MetricType.GGT,
+            // Cardio-oncology biomarkers (#201).
+            MetricType.NT_PRO_BNP_PG_PER_ML,
+            MetricType.TROPONIN_NG_PER_L,
+            MetricType.ABSOLUTE_NEUTROPHIL_COUNT,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
