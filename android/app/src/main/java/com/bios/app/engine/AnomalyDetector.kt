@@ -17,14 +17,15 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * Detects anomalies by scoring deviations from personal baselines
- * and cross-correlating multiple signals.
+ * Detects anomalies by scoring deviations from personal baselines and
+ * cross-correlating multiple signals.
  *
  * `reproductiveReadingDao` (#142): optional DAO for the isolated
- * [com.bios.app.data.ReproductiveDatabase]. WOMENS_HEALTH metrics resolve
+ * [com.bios.app.data.ReproductiveDatabase] — WOMENS_HEALTH metrics resolve
  * there; baselines stay in the main DB as summary-only rows.
- * `medicationRepo` (#154): appends an "Annotated current medications" line
- * to alert explanations, snapshot frozen at anomaly creation.
+ * `medicationRepo` (#154): appends "Annotated current medications" to alert
+ * explanations, frozen at anomaly creation.
+ * `physiologyState` (#159, CARDIOLOGY_POV §2.4): filters patterns via [appliesIn].
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
@@ -32,7 +33,6 @@ class AnomalyDetector(
     private val latencyTracker: DetectionLatencyTracker? = null,
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
-    /** Owner-set physiology context (#159); filters patterns by excludedStates. */
     private val physiologyState: PhysiologyState = PhysiologyState.STANDARD
 ) {
 
@@ -43,7 +43,7 @@ class AnomalyDetector(
     // Honors both axes: excludedStates blocks listed states; requiredStates,
     // when non-empty, restricts the pattern to the listed states only (#200).
     private fun applicablePatterns(): List<ConditionPattern> =
-        ConditionPatterns.all.filter { p -> physiologyState !in p.excludedStates && (p.requiredStates.isEmpty() || physiologyState in p.requiredStates) }
+        ConditionPatterns.all.filter { it.appliesIn(physiologyState) }
 
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()

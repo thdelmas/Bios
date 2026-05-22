@@ -25,25 +25,24 @@ data class ConditionPattern(
      */
     val severityFloor: AlertTier? = null,
     /**
-     * [PhysiologyState]s in which this pattern should not fire. Default
-     * empty. [com.bios.app.engine.AnomalyDetector] filters [ConditionPatterns.all]
-     * against [com.bios.app.physiology.PhysiologyStateStore] before evaluating
-     * (#159, audit gap §2.7; frailty wiring per geriatrics audit §2.1).
+     * Negative gate (#159, audit gap §2.7; frailty per geriatrics audit §2.1):
+     * states where this pattern should NOT fire because deviation is normative
+     * (RHR rise in pregnancy; deconditioned baseline in frailty). See [appliesIn].
      */
     val excludedStates: Set<PhysiologyState> = emptySet(),
     /**
-     * [PhysiologyState]s this pattern requires the owner to be in for it
-     * to fire (positive-gating axis, dual of [excludedStates]). Default
-     * empty = no gating, applies in every state. Used by patterns that
-     * only make clinical sense for a specific population — e.g. acute
-     * COPD-exacerbation screening (gated on [PhysiologyState.KNOWN_COPD])
-     * or paediatric thresholds (gated on [PhysiologyState.PAEDIATRIC]).
-     * When non-empty, the pattern fires only if the owner's current
-     * [PhysiologyState] is in this set. Closes audit gap §2.9 for
-     * disease-cohort-specific screening (#200).
+     * Positive gate (#200, audit gap §2.9): when non-empty, the pattern fires
+     * only if the owner's [PhysiologyState] is in this set. Used by patterns
+     * that only make clinical sense for a specific cohort — KNOWN_COPD acute
+     * exacerbation, KNOWN_HF prodrome (CARDIOLOGY_POV §2.4), PAEDIATRIC
+     * thresholds. Dual of [excludedStates]. See [appliesIn].
      */
-    val requiredStates: Set<PhysiologyState> = emptySet()
-)
+    val requiredStates: Set<PhysiologyState> = emptySet(),
+) {
+    /** True when [state] passes both the [excludedStates] and [requiredStates] gates. */
+    fun appliesIn(state: PhysiologyState): Boolean =
+        state !in excludedStates && (requiredStates.isEmpty() || state in requiredStates)
+}
 
 data class SignalRule(
     val metricType: MetricType,
@@ -130,7 +129,8 @@ object ConditionPatterns {
             BiomarkerConditionPatterns.all + EmergencyVitalPatterns.all +
             HypertensionPatterns.all + SleepApneaPattern.all +
             RespiratoryExacerbationPatterns.all + SepsisScreenPattern.all +
-            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all + PregnancyPatterns.all + HeadachePatterns.all
+            AfibRhythmPattern.all + AutonomicPatternShiftPattern.all + PregnancyPatterns.all + HeadachePatterns.all +
+            HeartFailureDecompensationPattern.all
     }
 
     /** Infection / illness onset: the Phase 1 primary detection target. */
