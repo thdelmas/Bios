@@ -121,9 +121,9 @@ class ConditionPatternsTest {
 
     @Test
     fun `every ConditionPattern val on the object is registered in the all list`() {
-        // Guard against the Phase 4 regression: four patterns (respiratoryInfection,
-        // atrialFibrillationScreen, mentalHealthCorrelate, menstrualCycleAnomaly)
-        // were defined as `val`s on ConditionPatterns for ~6 weeks without being
+        // Guard against the Phase 4 regression: three patterns (respiratoryInfection,
+        // mentalHealthCorrelate, menstrualCycleAnomaly) were defined as `val`s on
+        // ConditionPatterns for ~6 weeks without being
         // added to `all`, so the AnomalyDetector silently never ran them. This
         // test makes any future drop visible at build time.
         val registeredIds = ConditionPatterns.all.map { it.id }.toSet()
