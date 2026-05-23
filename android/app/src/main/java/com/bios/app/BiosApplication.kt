@@ -2,6 +2,7 @@ package com.bios.app
 
 import android.app.Application
 import com.bios.app.alerts.DailyDigestWorker
+import com.bios.app.alerts.MohScreeningWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.ingest.GadgetbridgeReceiver
 import com.bios.app.ingest.PowerConnectionReceiver
@@ -93,6 +94,11 @@ class BiosApplication : Application() {
         if (DailyDigestWorker.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
         }
+
+        // Schedule the daily MOH screening worker (#276). Idempotent via
+        // WorkManager's unique-work policy. The worker is a no-op when
+        // the diary is empty, so it's safe to enqueue unconditionally.
+        MohScreeningWorker.schedule(this)
 
         // Schedule daily paediatric-band recompute (#198). Idempotent and
         // a no-op when no birth date is on file — safe to enqueue on every
