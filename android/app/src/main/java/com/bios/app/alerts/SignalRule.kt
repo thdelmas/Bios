@@ -82,6 +82,19 @@ data class SignalRule(
      * re-elevation after normalisation (the NHSN SSI shape).
      */
     val useFrozenBaseline: Boolean = false,
+    /**
+     * #268 (NEUROLOGY_POV §2.1): minimum [com.bios.app.model.MetricReading.durationSec]
+     * a row must carry to count toward this rule. Used by
+     * `status_epilepticus_convulsive` to enforce the ILAE 2015 t1 = 5 min
+     * convulsive-SE cutoff: a 2-minute SEIZURE_EVENT is silently dropped,
+     * a 5+ minute event passes through to the absolute-threshold check.
+     *
+     * Only meaningful for absolute-rule rows ([absoluteWindowHours] > 0);
+     * the detector swaps to the row-level DAO fetch when this field is
+     * non-null so it can see the [com.bios.app.model.MetricReading.durationSec]
+     * column. Default null = no duration filter.
+     */
+    val durationAtLeastSec: Int? = null,
 ) {
     /** True when this rule is evaluated as an absolute clinical threshold. */
     val isAbsolute: Boolean get() = absoluteAbove != null || absoluteBelow != null
