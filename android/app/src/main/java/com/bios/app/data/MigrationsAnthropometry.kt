@@ -23,7 +23,7 @@ internal object MigrationsAnthropometry {
      * encrypted DB — anthropometry is not cycle-linked and stays alongside
      * the rest of the owner's data.
      */
-    val MIGRATION_24_25: Migration = object : Migration(24, 25) {
+    val MIGRATION_25_26: Migration = object : Migration(25, 26) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """

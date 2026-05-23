@@ -115,7 +115,14 @@ internal object BaselineDeviationPatterns {
         healing = "Reduce physical and emotional stressors immediately. Prioritize rest and sleep. Practice breathing exercises or meditation to activate the parasympathetic nervous system and lower heart rate. If stress is work-related, consider taking breaks or adjusting workload. Stay hydrated and avoid stimulants (caffeine, nicotine). If resting heart rate remains elevated for more than a week, or if you experience chest pain, palpitations, dizziness, or shortness of breath, consult a cardiologist. An ECG or stress test may be warranted to rule out underlying conditions.",
         risks = "Sustained cardiovascular strain left unaddressed can lead to serious consequences. Chronically elevated resting heart rate is an independent risk factor for heart attack and stroke. Persistent autonomic imbalance (low HRV, high resting HR) is associated with hypertension, arrhythmias, and heart failure over time. Reduced blood oxygen may indicate respiratory or circulatory issues that worsen without intervention. Acute risks include exercise-induced cardiac events if intense training continues despite warning signs.",
         // RHR rises in pregnancy / postpartum / athletes (#159) + frail baseline drift (geriatrics audit §2.1).
-        excludedStates = PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM, PhysiologyState.ATHLETE_HIGH_FITNESS, PhysiologyState.FRAILTY_FLAG)
+        // Pre-adolescent paediatric bands also excluded — the adult z-score
+        // machinery is invalid against a growing child's non-stationary
+        // baseline (#198). Adolescents (13–18y) approach adult physiology
+        // and keep the pattern active.
+        excludedStates = PhysiologyState.PREGNANCY +
+            setOf(PhysiologyState.POSTPARTUM, PhysiologyState.ATHLETE_HIGH_FITNESS, PhysiologyState.FRAILTY_FLAG) +
+            PhysiologyState.PAEDIATRIC_PRE_ADOLESCENT +
+            setOf(PhysiologyState.PAEDIATRIC)
     )
 
     val overtraining = ConditionPattern(
@@ -212,7 +219,14 @@ internal object BaselineDeviationPatterns {
         healing = "If fitness has already declined, rebuild gradually. Start with daily walks at a pace that feels moderate. Increase duration before intensity. The 10% rule applies to reconditioning: increase weekly volume by no more than 10%. Expect resting HR to begin improving within 1-2 weeks of resumed activity. Full reconditioning to prior fitness levels typically takes 2-3 times longer than the period of inactivity. If deconditioning occurred due to illness, get medical clearance before resuming vigorous exercise.",
         risks = "Cardiorespiratory fitness is one of the strongest predictors of all-cause mortality — stronger than smoking, diabetes, or hypertension. Each 1-MET decline in fitness increases mortality risk by approximately 13%. Prolonged deconditioning leads to reduced cardiac output, increased blood pressure, insulin resistance, and muscle atrophy. In older adults, deconditioning accelerates frailty and fall risk. The cardiovascular system deconditions faster than it reconditions — prevention is far easier than recovery.",
         // #189 + #186 gate: T3/postpartum activity drop is physiologic; deconditioning is the FRAILTY_FLAG baseline. PPCM screen replaces.
-        excludedStates = PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM, PhysiologyState.FRAILTY_FLAG),
+        // Pre-adolescent paediatric bands: the adult VO2 max gold standard
+        // and resting-HR / HRV deconditioning trajectory are not validated
+        // for growing children, where activity-and-fitness baselines shift
+        // naturally with growth (#198). Adolescents keep the pattern active.
+        excludedStates = PhysiologyState.PREGNANCY +
+            setOf(PhysiologyState.POSTPARTUM, PhysiologyState.FRAILTY_FLAG) +
+            PhysiologyState.PAEDIATRIC_PRE_ADOLESCENT +
+            setOf(PhysiologyState.PAEDIATRIC),
     )
 
     /** Chronic inflammation: sustained low-grade inflammatory signal over 2+ weeks. */

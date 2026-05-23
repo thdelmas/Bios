@@ -305,7 +305,13 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToFastStroke = { navController.navigate("fast_stroke") },
                     onNavigateToEsasCapture = { navController.navigate("esas_capture") },
                     onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") },
-                    onNavigateToAnthropometry = { navController.navigate("anthropometry") }
+                    onNavigateToEnvironmentalContext = { navController.navigate("environmental_context") },
+                    onNavigateToEmergencyContacts = { navController.navigate("emergency_contacts") },
+                    onNavigateToEcgStrips = { navController.navigate("ecg_strips") },
+                    onNavigateToSurgicalRecovery = { navController.navigate("surgical_recovery") },
+                    onNavigateToInterventionEvents = { navController.navigate("intervention_events") },
+                    onNavigateToTreatmentCourses = { navController.navigate("treatment_courses") },
+                    onNavigateToAnthropometry = { navController.navigate("anthropometry") },
                 )
             }
             // Self-surface routes — extracted to IdentityRoutes.kt to keep this file

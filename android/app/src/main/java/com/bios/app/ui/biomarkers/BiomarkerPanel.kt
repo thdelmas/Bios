@@ -130,6 +130,25 @@ object BiomarkerPanels {
         ),
     )
 
+    /**
+     * Cardio-oncology panel (#201). NT-proBNP and high-sensitivity troponin
+     * are the AHA 2018 / ASCO 2017 cardio-oncology cardiac biomarkers used
+     * to surveil for anthracycline / trastuzumab cardiotoxicity. ANC anchors
+     * the IDSA 2010 febrile-neutropenia screen. The panel is dashboard-
+     * visible to every owner because the assays are also used outside
+     * cancer therapy (NT-proBNP for HF rule-out; troponin for ACS; ANC for
+     * any cytopenia work-up).
+     */
+    val cardioOncology = BiomarkerPanel(
+        id = "cardio_oncology",
+        title = "Cardio-Oncology",
+        metrics = listOf(
+            MetricType.NT_PRO_BNP_PG_PER_ML,
+            MetricType.TROPONIN_NG_PER_L,
+            MetricType.ABSOLUTE_NEUTROPHIL_COUNT,
+        ),
+    )
+
     /** Render order on the dashboard — order matches the typical lab-
      *  report layout (lipids first, then metabolic, then inflammation). */
     val all: List<BiomarkerPanel> = listOf(
@@ -142,6 +161,7 @@ object BiomarkerPanels {
         renal,
         hepatic,
         endocrine,
+        cardioOncology,
         epigenetic,
     )
 }
