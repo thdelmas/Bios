@@ -31,6 +31,18 @@ internal object EcgStripMigrations {
                 """.trimIndent(),
             )
             db.execSQL("CREATE INDEX IF NOT EXISTS index_ecg_strips_timestamp ON ecg_strips (timestamp)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_ecg_strips_classification ON ecg_strips (classification)")
+        }
+    }
+
+    // Backfills the `index_ecg_strips_classification` index for installs that
+    // already crossed MIGRATION_21_22 before the index was added to the
+    // declaration. Without it Room's schema validator throws at first DAO
+    // call (the entity declares Index("classification") but the table has
+    // only the timestamp index).
+    val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_ecg_strips_classification ON ecg_strips (classification)")
         }
     }
 }
