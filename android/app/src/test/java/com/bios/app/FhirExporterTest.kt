@@ -112,12 +112,13 @@ class FhirExporterTest {
 
     @Test
     fun `metric types with LOINC mappings include the AHI passthrough`() {
-        // 32 base + 5 wave-5 biomarkers (#158: eGFR, creatinine, ALT, AST, GGT)
-        // + AHI (#157) + 36 Wave-1 biomarker expansion (Blueprint audit §3.1)
-        // = 74. The count assertion is intentionally maintained alongside the
-        // loincCode() table so any unmapped new MetricType is caught.
+        // 32 base + 5 wave-5 biomarkers (#158) + AHI (#157) + 36 Wave-1
+        // (audit §3.1) + 8 Wave-2 (audit §3.2 — telomere/bone-T/vit K2
+        // intentionally unmapped) = 82. The count assertion is maintained
+        // alongside the loincCode() table so any unmapped new MetricType is
+        // caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(74, mapped)
+        assertEquals(82, mapped)
     }
 
     @Test
@@ -154,6 +155,24 @@ class FhirExporterTest {
         assertEquals("2498-4", loincCode(MetricType.IRON_SERUM)!!.first)
         assertEquals("15067-2", loincCode(MetricType.FSH)!!.first)
         assertEquals("13967-5", loincCode(MetricType.SHBG)!!.first)
+    }
+
+    @Test
+    fun `Wave-2 mapped markers point to canonical LOINC codes`() {
+        // Audit §3.2 additions. Telomere length / bone-density T-score /
+        // vitamin K2 deliberately have no LOINC (proprietary / site-specific
+        // / no stable code) and stay in the unmapped-fallback path.
+        assertEquals("8099-3", loincCode(MetricType.THYROID_PEROXIDASE_AB)!!.first)
+        assertEquals("8088-6", loincCode(MetricType.THYROGLOBULIN_AB)!!.first)
+        assertEquals("2857-1", loincCode(MetricType.PSA_TOTAL)!!.first)
+        assertEquals("10886-0", loincCode(MetricType.PSA_FREE)!!.first)
+        assertEquals("49595-2", loincCode(MetricType.CORONARY_CALCIUM_SCORE)!!.first)
+        assertEquals("102965-7", loincCode(MetricType.PTAU_217)!!.first)
+        assertEquals("2923-1", loincCode(MetricType.VITAMIN_A_RETINOL)!!.first)
+        assertEquals("1823-4", loincCode(MetricType.VITAMIN_E_ALPHA_TOCOPHEROL)!!.first)
+        assertNull(loincCode(MetricType.TELOMERE_LENGTH))
+        assertNull(loincCode(MetricType.BONE_DENSITY_T_SCORE))
+        assertNull(loincCode(MetricType.VITAMIN_K2))
     }
 
     @Test
@@ -347,6 +366,15 @@ class FhirExporterTest {
             MetricType.TESTOSTERONE_FREE -> "2991-8" to "Testosterone.free [Mass/volume] in Serum or Plasma"
             MetricType.PROLACTIN -> "2842-3" to "Prolactin [Mass/volume] in Serum or Plasma"
             MetricType.DHEA_SULFATE -> "2191-5" to "Dehydroepiandrosterone sulfate [Mass/volume] in Serum or Plasma"
+            // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2).
+            MetricType.THYROID_PEROXIDASE_AB -> "8099-3" to "Thyroid peroxidase Ab [Units/volume] in Serum"
+            MetricType.THYROGLOBULIN_AB -> "8088-6" to "Thyroglobulin Ab [Units/volume] in Serum"
+            MetricType.PSA_TOTAL -> "2857-1" to "Prostate specific Ag [Mass/volume] in Serum or Plasma"
+            MetricType.PSA_FREE -> "10886-0" to "Prostate Specific Ag Free [Mass/volume] in Serum or Plasma"
+            MetricType.CORONARY_CALCIUM_SCORE -> "49595-2" to "Coronary artery calcium score by CT"
+            MetricType.PTAU_217 -> "102965-7" to "Phosphorylated tau 217 [Mass/volume] in Serum or Plasma"
+            MetricType.VITAMIN_A_RETINOL -> "2923-1" to "Retinol [Mass/volume] in Serum or Plasma"
+            MetricType.VITAMIN_E_ALPHA_TOCOPHEROL -> "1823-4" to "Tocopherol alpha [Mass/volume] in Serum or Plasma"
             else -> null
         }
     }
@@ -436,6 +464,7 @@ class FhirExporterTest {
             MetricUnit.FEMTOLITERS -> "fL"
             MetricUnit.PICOGRAMS -> "pg"
             MetricUnit.MIU_PER_ML -> "m[IU]/mL"
+            MetricUnit.IU_PER_ML -> "[IU]/mL"
         }
     }
 }

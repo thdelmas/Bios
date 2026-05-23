@@ -185,6 +185,18 @@ class MetricTypeKeysSnapshotTest {
         "testosterone_free",
         "prolactin",
         "dhea_sulfate",
+        // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2)
+        "thyroid_peroxidase_ab",
+        "thyroglobulin_ab",
+        "psa_total",
+        "psa_free",
+        "telomere_length",
+        "coronary_calcium_score",
+        "bone_density_t_score",
+        "ptau_217",
+        "vitamin_k2",
+        "vitamin_a_retinol",
+        "vitamin_e_alpha_tocopherol",
         // Epigenetic age clocks
         "epigenetic_age_dunedin_pace",
         "epigenetic_age_grim",
