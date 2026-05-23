@@ -73,6 +73,7 @@ object ConditionPatterns {
             PregnancyPatterns.all + HeadachePatterns.all +
             HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all +
             TropicalDiseasePatterns.all + EnvironmentalPatterns.all +
-            PerioperativePatterns.all + CardioOncologyPatterns.all
+            PerioperativePatterns.all + CardioOncologyPatterns.all +
+            GrowthAndCompositionPatterns.all
     }
 }

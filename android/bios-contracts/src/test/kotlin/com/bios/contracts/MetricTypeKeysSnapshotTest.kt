@@ -175,6 +175,12 @@ class MetricTypeKeysSnapshotTest {
         "headache_intensity_nrs",
         "migraine_attack_event",
         "fast_stroke_suspected",
+        // Paediatric growth + body composition (#199)
+        "height_cm",
+        "head_circumference_cm",
+        "bmi_kg_per_m2",
+        "lean_body_mass_kg",
+        "fat_mass_kg",
     )
 
     @Test

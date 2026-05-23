@@ -68,4 +68,7 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("treatment_courses") {
         com.bios.app.ui.interventions.TreatmentCoursesScreen(onBack = { navController.popBackStack() })
     }
+    composable("anthropometry") {
+        com.bios.app.ui.anthropometry.AnthropometryScreen(onBack = { navController.popBackStack() })
+    }
 }

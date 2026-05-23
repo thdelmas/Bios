@@ -311,6 +311,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToSurgicalRecovery = { navController.navigate("surgical_recovery") },
                     onNavigateToInterventionEvents = { navController.navigate("intervention_events") },
                     onNavigateToTreatmentCourses = { navController.navigate("treatment_courses") },
+                    onNavigateToAnthropometry = { navController.navigate("anthropometry") },
                 )
             }
             // Self-surface routes — extracted to IdentityRoutes.kt to keep this file
