@@ -312,6 +312,13 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToInterventionEvents = { navController.navigate("intervention_events") },
                     onNavigateToTreatmentCourses = { navController.navigate("treatment_courses") },
                     onNavigateToAnthropometry = { navController.navigate("anthropometry") },
+                    onNavigateToMetricReadingsDebug = { navController.navigate("metric_readings_debug") },
+                )
+            }
+            composable("metric_readings_debug") {
+                com.bios.app.ui.diagnostics.MetricReadingsDebugScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
                 )
             }
             // Self-surface routes — extracted to IdentityRoutes.kt to keep this file

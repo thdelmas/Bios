@@ -139,6 +139,53 @@ interface MetricReadingDao {
     @Query("SELECT * FROM metric_readings WHERE createdAt > :sinceMillis ORDER BY createdAt ASC")
     suspend fun fetchCreatedAfter(sinceMillis: Long): List<MetricReading>
 
+    /**
+     * Per-metric-type row count + most-recent timestamp, count-descending.
+     * Powers the debug screen in #253 ("what's actually in my DB right now").
+     * `lastTimestamp` is nullable because empty buckets (no surviving rows
+     * for a metric after a pruning sweep) report MAX(...) = NULL.
+     */
+    data class MetricTypeCountRow(
+        val metricType: String,
+        val count: Int,
+        val lastTimestamp: Long?,
+    )
+
+    @Query("""
+        SELECT metricType AS metricType,
+               COUNT(*) AS count,
+               MAX(timestamp) AS lastTimestamp
+        FROM metric_readings
+        GROUP BY metricType
+        ORDER BY count DESC
+    """)
+    suspend fun metricTypeCounts(): List<MetricTypeCountRow>
+
+    /**
+     * Per-sourceId row count for a single metric type, count-descending.
+     * Used by the debug screen to surface vendor-specific drift on the
+     * top metrics (e.g. HR coming half from Health Connect and half from
+     * a paired wearable). Joins the data_sources table for the human-
+     * readable label.
+     */
+    data class SourceCountRow(
+        val sourceId: String,
+        val sourceLabel: String?,
+        val count: Int,
+    )
+
+    @Query("""
+        SELECT mr.sourceId AS sourceId,
+               ds.deviceName AS sourceLabel,
+               COUNT(*) AS count
+        FROM metric_readings mr
+        LEFT JOIN data_sources ds ON mr.sourceId = ds.id
+        WHERE mr.metricType = :metricType
+        GROUP BY mr.sourceId
+        ORDER BY count DESC
+    """)
+    suspend fun sourceCountsForMetric(metricType: String): List<SourceCountRow>
+
     @Query("DELETE FROM metric_readings WHERE timestamp < :beforeMillis")
     suspend fun deleteBefore(beforeMillis: Long): Int
 
