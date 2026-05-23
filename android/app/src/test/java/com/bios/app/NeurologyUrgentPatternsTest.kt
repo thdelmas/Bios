@@ -14,26 +14,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Guards the neurology URGENT patterns wired in #24 (NEUROLOGY_POV.md §2.1
- * + §2.3). Same shape as `EmergencyVitalPatternsTest`: every pattern must
- * declare `severityFloor = URGENT`, fire on a single required absolute
- * rule, cite literature, and pass [AlertContentPolicy].
+ * Guards the neurology event-triggered patterns wired in #24 / #268
+ * (NEUROLOGY_POV.md §2.1 + §2.3). Same shape as `EmergencyVitalPatternsTest`:
+ * every pattern fires on a single required absolute rule, cites literature,
+ * and passes [AlertContentPolicy]. Severity floor is URGENT for single-event
+ * acute patterns and ADVISORY for [NeurologyUrgentPatterns.seizureCluster].
  */
 class NeurologyUrgentPatternsTest {
 
     @Test
     fun all_neurology_urgent_patterns_register_in_global_all_list() {
-        assertTrue(NeurologyUrgentPatterns.seizureEventLogged in ConditionPatterns.all)
+        assertTrue(NeurologyUrgentPatterns.statusEpilepticusConvulsive in ConditionPatterns.all)
+        assertTrue(NeurologyUrgentPatterns.seizureCluster in ConditionPatterns.all)
         assertTrue(NeurologyUrgentPatterns.acuteAlteredConsciousnessLowGcs in ConditionPatterns.all)
         assertTrue(NeurologyUrgentPatterns.thunderclapHeadache in ConditionPatterns.all)
     }
 
     @Test
-    fun every_neurology_pattern_declares_urgent_severity_floor() {
+    fun every_neurology_pattern_declares_the_expected_severity_floor() {
+        val expected = mapOf(
+            NeurologyUrgentPatterns.statusEpilepticusConvulsive.id to AlertTier.URGENT,
+            NeurologyUrgentPatterns.seizureCluster.id to AlertTier.ADVISORY,
+            NeurologyUrgentPatterns.acuteAlteredConsciousnessLowGcs.id to AlertTier.URGENT,
+            NeurologyUrgentPatterns.thunderclapHeadache.id to AlertTier.URGENT,
+        )
         for (pattern in NeurologyUrgentPatterns.all) {
             assertEquals(
-                "${pattern.id} should declare severityFloor = URGENT",
-                AlertTier.URGENT,
+                "${pattern.id} severity floor",
+                expected[pattern.id],
                 pattern.severityFloor,
             )
         }
@@ -67,17 +75,34 @@ class NeurologyUrgentPatternsTest {
         }
     }
 
-    // -- seizure_event_logged --
+    // -- status_epilepticus_convulsive --
 
     @Test
-    fun seizure_event_logged_fires_on_any_event_in_last_hour() {
-        val rule = NeurologyUrgentPatterns.seizureEventLogged.signalRules.single()
+    fun status_epilepticus_convulsive_keys_on_a_5min_seizure_within_the_last_hour() {
+        val rule = NeurologyUrgentPatterns.statusEpilepticusConvulsive.signalRules.single()
         assertEquals(MetricType.SEIZURE_EVENT, rule.metricType)
         assertEquals(DeviationDirection.ABOVE, rule.direction)
         assertEquals(0.0, rule.absoluteAbove!!, 1e-9)
         assertNull(rule.absoluteBelow)
         assertEquals(1, rule.absoluteWindowHours)
         assertEquals(1, rule.absoluteMinReadings)
+        // ILAE 2015 t1 = 300 s — the duration discriminator the v1 pattern
+        // could not express.
+        assertEquals(300, rule.durationAtLeastSec)
+    }
+
+    // -- seizure_cluster --
+
+    @Test
+    fun seizure_cluster_keys_on_three_or_more_events_in_24h_regardless_of_duration() {
+        val rule = NeurologyUrgentPatterns.seizureCluster.signalRules.single()
+        assertEquals(MetricType.SEIZURE_EVENT, rule.metricType)
+        assertEquals(DeviationDirection.ABOVE, rule.direction)
+        assertEquals(0.0, rule.absoluteAbove!!, 1e-9)
+        assertEquals(24, rule.absoluteWindowHours)
+        assertEquals(3, rule.absoluteMinReadings)
+        // No duration filter — Haut 2007 cluster definition is count-based.
+        assertNull(rule.durationAtLeastSec)
     }
 
     // -- acute_altered_consciousness_gcs_le_8 --
