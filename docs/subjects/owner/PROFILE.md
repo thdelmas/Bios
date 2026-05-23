@@ -196,25 +196,33 @@ real events.
 
 `typing_cadence`, `mood_drift_score`, `reaction_time_ms`: W2F-owned.
 
-### Lab biomarkers — **ALL MISSING (every single one)**
+### Lab biomarkers — **NO DATA YET (catalog covers ~76 lab keys)**
 
-Bios supports ~40 lab keys; the subject has none in the DB yet. Each accepts
-manual entry from a paper printout via Bios → Biomarkers, and FHIR import
-will populate them at scale once that's wired.
+Bios supports ~76 lab keys after the Wave-1 expansion (PR #252,
+[Blueprint audit §3.1](../../audits/BLUEPRINT_PROTOCOL_AUDIT.md)); the
+subject has none of them in the DB yet. Each accepts manual entry from a
+paper printout via Bios → Biomarkers, and FHIR import populates them at
+scale through the LOINC table.
 
-Wave 1 (most-cited preventive panel):
+Wave 1 panel (post-expansion — what to order):
 
-- **Lipid:** total_cholesterol, ldl_cholesterol, hdl_cholesterol, triglycerides, **apo_b**
+- **Lipid + independent ASCVD risk:** total_cholesterol, ldl_cholesterol, hdl_cholesterol, triglycerides, **apo_b**, **lipoprotein_a**, **homocysteine**
 - **Glycemic:** hba1c, fasting_glucose, fasting_insulin, homa_ir
 - **Thyroid:** tsh, free_t4, free_t3
 - **Inflammation:** hscrp
-- **CBC:** hemoglobin, hematocrit, wbc, rbc, platelets
-- **Renal:** egfr, creatinine
-- **Hepatic:** alt, ast, ggt
-- **Micronutrients:** vitamin_d_25oh, vitamin_b12, folate, magnesium, ferritin
+- **CBC + indices + 5-cell differential:** hemoglobin, hematocrit, wbc, rbc, platelets, **mcv, mch, mchc, rdw, mpv**, **neutrophils_pct, lymphocytes_pct, monocytes_pct, eosinophils_pct, basophils_pct**
+- **Iron panel:** ferritin, **iron_serum, iron_saturation_pct, tibc**
+- **CMP (electrolytes + minerals):** **sodium, potassium, chloride, carbon_dioxide, calcium_serum, phosphate**
+- **Renal:** egfr, creatinine, **bun, uric_acid**
+- **Hepatic + pancreatic:** alt, ast, ggt, **albumin, alkaline_phosphatase, bilirubin_total, total_protein, amylase, lipase**
+- **Micronutrients:** vitamin_d_25oh, vitamin_b12, folate, magnesium
 - **Endocrine (male-relevant):** testosterone_total, cortisol, igf_1
+- **Reproductive endocrine:** **fsh, lh, shbg, amh, testosterone_free, prolactin, dhea_sulfate** (sex- and cycle-phase-specific reference ranges; provider's range travels with the FHIR import)
 - **Cardio-oncology:** troponin_ng_per_l, nt_pro_bnp_pg_per_ml, absolute_neutrophil_count (only relevant if undergoing cardiotoxic therapy)
 - **Aging clocks:** epigenetic_age_dunedin_pace, grim, pheno, horvath (optional, TruDiagnostic-style import)
+
+Bold items are Wave-1 expansion additions (PR #252) — previously missing
+from the enum, now first-class manual-entry + FHIR-importable keys.
 
 ## Gaps Ranked by Action Cost
 
@@ -244,12 +252,20 @@ Wave 1 (most-cited preventive panel):
 
 ### Lab work (next clinical visit)
 
-Order a single comprehensive panel covering Wave 1 biomarkers. Manually
-enter the values into Bios as soon as the lab report arrives. With those
-in place, every preventive alert pattern (`alerts/BiomarkerReference.kt`,
-`alerts/CardioOncologyPatterns.kt`, NAFLD / CKD / insulin-resistance
-screens) will have ground truth to anchor against instead of relying on
-wearable proxies alone.
+Order a single comprehensive panel covering the Wave-1 list above —
+practically: lipid + ASCVD (incl. Lp(a) + homocysteine) + CMP + CBC w/
+differential + iron studies + thyroid + HbA1c + hsCRP + vitamin D / B12 /
+folate. Manually enter the values into Bios as soon as the lab report
+arrives. With those in place, every preventive alert pattern
+(`alerts/BiomarkerReference.kt`, `alerts/CardioOncologyPatterns.kt`,
+NAFLD / CKD / insulin-resistance screens) will have ground truth to
+anchor against instead of relying on wearable proxies alone.
+
+The dashboard now has matching panels for every Wave-1 result
+(Cardiometabolic, Glycemic, Inflammation & Iron, Thyroid, Hematology,
+Electrolytes & Minerals, Renal, Hepatic & Pancreatic, Endocrine,
+Reproductive Endocrine, Cardio-Oncology, Epigenetic Age) — each tile
+fills the moment a value lands.
 
 ### Hardware purchases (only if relevant)
 
