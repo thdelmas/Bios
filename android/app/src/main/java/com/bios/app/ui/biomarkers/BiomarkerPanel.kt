@@ -35,6 +35,7 @@ object BiomarkerPanels {
             MetricType.APO_B,
             MetricType.LIPOPROTEIN_A,
             MetricType.HOMOCYSTEINE,
+            MetricType.CORONARY_CALCIUM_SCORE,
         ),
     )
 
@@ -68,6 +69,8 @@ object BiomarkerPanels {
             MetricType.TSH,
             MetricType.FREE_T4,
             MetricType.FREE_T3,
+            MetricType.THYROID_PEROXIDASE_AB,
+            MetricType.THYROGLOBULIN_AB,
         ),
     )
 
@@ -79,6 +82,9 @@ object BiomarkerPanels {
             MetricType.VITAMIN_B12,
             MetricType.FOLATE,
             MetricType.MAGNESIUM,
+            MetricType.VITAMIN_K2,
+            MetricType.VITAMIN_A_RETINOL,
+            MetricType.VITAMIN_E_ALPHA_TOCOPHEROL,
         ),
     )
 
@@ -185,12 +191,52 @@ object BiomarkerPanels {
 
     val epigenetic = BiomarkerPanel(
         id = "epigenetic",
-        title = "Epigenetic Age",
+        title = "Aging Biomarkers",
         metrics = listOf(
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
             MetricType.EPIGENETIC_AGE_PHENO,
             MetricType.EPIGENETIC_AGE_HORVATH,
+            MetricType.TELOMERE_LENGTH,
+        ),
+    )
+
+    /**
+     * Men's prostate screening (Wave-2, audit §3.2). PSA Total is the
+     * routine men-50+ screen; PSA Free / Total ratio refines borderline
+     * elevated total PSA values.
+     */
+    val prostate = BiomarkerPanel(
+        id = "prostate",
+        title = "Prostate Screening",
+        metrics = listOf(
+            MetricType.PSA_TOTAL,
+            MetricType.PSA_FREE,
+        ),
+    )
+
+    /**
+     * Skeletal health (Wave-2, audit §3.2). DEXA T-score is the single-
+     * number osteoporosis screen; anatomical site rides in event_payloads.
+     */
+    val skeletal = BiomarkerPanel(
+        id = "skeletal",
+        title = "Bone Health",
+        metrics = listOf(
+            MetricType.BONE_DENSITY_T_SCORE,
+        ),
+    )
+
+    /**
+     * Plasma neurology (Wave-2, audit §3.2). pTau-217 is the emerging
+     * Alzheimer's blood biomarker; single-tile panel today, will fill
+     * out as additional neuro biomarkers ship (Aβ42/40 ratio, NfL, GFAP).
+     */
+    val neurology = BiomarkerPanel(
+        id = "neurology",
+        title = "Neurology",
+        metrics = listOf(
+            MetricType.PTAU_217,
         ),
     )
 
@@ -227,6 +273,9 @@ object BiomarkerPanels {
         hepatic,
         endocrine,
         reproductiveEndocrine,
+        prostate,
+        skeletal,
+        neurology,
         cardioOncology,
         epigenetic,
     )
