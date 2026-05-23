@@ -134,7 +134,8 @@ object PpgSignalProcessor {
                 RejectionReason.MOTION_ARTIFACT,
                 durationSec = durationSec,
                 peakCount = peakIndices.size,
-                sqiScore = 30
+                sqiScore = 30,
+                peakAmplitudeCov = peakAmpCov,
             )
         }
 
@@ -145,7 +146,8 @@ object PpgSignalProcessor {
                 RejectionReason.IRREGULAR_RHYTHM,
                 durationSec = durationSec,
                 peakCount = peakIndices.size,
-                sqiScore = 40
+                sqiScore = 40,
+                peakAmplitudeCov = peakAmpCov,
             )
         }
 
@@ -157,7 +159,8 @@ object PpgSignalProcessor {
             rejectionReason = null,
             peakCount = peakIndices.size,
             durationSec = durationSec,
-            waveformFeatures = features
+            waveformFeatures = features,
+            peakAmplitudeCov = peakAmpCov,
         )
     }
 
