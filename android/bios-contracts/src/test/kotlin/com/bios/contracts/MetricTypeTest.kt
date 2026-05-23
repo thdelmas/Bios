@@ -354,4 +354,22 @@ class MetricTypeTest {
         assertNotNull(BiosIntentActions.ACTION_SUGGEST_BAND)
         assertNotNull(BiosIntentActions.ACTION_REQUEST_STOP)
     }
+
+    // -- ECG strip presence (#188, audit gap §2.8) --
+
+    @Test
+    fun ecg_strip_available_is_cardiovascular_boolean() {
+        // ECG strips are not scalar measurements — the waveform lives
+        // in the `ecg_strips` table. This MetricType key is just the
+        // presence indicator the pattern engine joins against.
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.ECG_STRIP_AVAILABLE.domain)
+        assertEquals(MetricUnit.BOOLEAN, MetricType.ECG_STRIP_AVAILABLE.unit)
+        // Booleans aren't manually entered — the strip is the artefact;
+        // owners import the strip itself rather than the presence flag.
+        assertEquals(false, MetricType.ECG_STRIP_AVAILABLE.allowsManualEntry)
+        // Sibling-consistency check: every cardiovascular key has
+        // resolvable round-trip semantics through fromKey.
+        assertEquals(MetricType.ECG_STRIP_AVAILABLE,
+            MetricType.fromKey("ecg_strip_available"))
+    }
 }
