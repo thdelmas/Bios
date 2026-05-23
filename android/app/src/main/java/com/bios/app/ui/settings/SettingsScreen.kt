@@ -54,6 +54,7 @@ fun SettingsScreen(
     onNavigateToInterventionEvents: () -> Unit = {},
     onNavigateToTreatmentCourses: () -> Unit = {},
     onNavigateToAnthropometry: () -> Unit = {},
+    onNavigateToMetricReadingsDebug: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -401,14 +402,8 @@ fun SettingsScreen(
 
         SettingsDiagnosticsCard()
 
-        // About
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("About", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                SettingsRow("Version", "0.2.0")
-            }
-        }
+        // About — long-press Version row opens the metric_readings debug screen (#253).
+        SettingsAboutCard(onLongPressVersion = onNavigateToMetricReadingsDebug)
     }
 
     if (showDeleteDialog) {
