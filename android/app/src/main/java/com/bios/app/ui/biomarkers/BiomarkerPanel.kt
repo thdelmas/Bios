@@ -33,6 +33,8 @@ object BiomarkerPanels {
             MetricType.HDL_CHOLESTEROL,
             MetricType.TRIGLYCERIDES,
             MetricType.APO_B,
+            MetricType.LIPOPROTEIN_A,
+            MetricType.HOMOCYSTEINE,
         ),
     )
 
@@ -53,6 +55,9 @@ object BiomarkerPanels {
         metrics = listOf(
             MetricType.HSCRP,
             MetricType.FERRITIN,
+            MetricType.IRON_SERUM,
+            MetricType.IRON_SATURATION_PCT,
+            MetricType.TIBC,
         ),
     )
 
@@ -86,6 +91,16 @@ object BiomarkerPanels {
             MetricType.WBC,
             MetricType.RBC,
             MetricType.PLATELETS,
+            MetricType.MCV,
+            MetricType.MCH,
+            MetricType.MCHC,
+            MetricType.RDW,
+            MetricType.MPV,
+            MetricType.NEUTROPHILS_PCT,
+            MetricType.LYMPHOCYTES_PCT,
+            MetricType.MONOCYTES_PCT,
+            MetricType.EOSINOPHILS_PCT,
+            MetricType.BASOPHILS_PCT,
         ),
     )
 
@@ -95,16 +110,44 @@ object BiomarkerPanels {
         metrics = listOf(
             MetricType.EGFR,
             MetricType.CREATININE,
+            MetricType.BUN,
+            MetricType.URIC_ACID,
+        ),
+    )
+
+    /**
+     * Electrolytes + minerals (Blueprint audit §1.7 + §1.15). Sodium /
+     * potassium / chloride / total CO2 are the four basic-metabolic-panel
+     * electrolytes; calcium + phosphate ride along because both are
+     * commonly reported on the same CMP and share the same clinical context
+     * (parathyroid, renal, bone).
+     */
+    val electrolytes = BiomarkerPanel(
+        id = "electrolytes",
+        title = "Electrolytes & Minerals",
+        metrics = listOf(
+            MetricType.SODIUM,
+            MetricType.POTASSIUM,
+            MetricType.CHLORIDE,
+            MetricType.CARBON_DIOXIDE,
+            MetricType.CALCIUM_SERUM,
+            MetricType.PHOSPHATE,
         ),
     )
 
     val hepatic = BiomarkerPanel(
         id = "hepatic",
-        title = "Hepatic",
+        title = "Hepatic & Pancreatic",
         metrics = listOf(
             MetricType.ALT,
             MetricType.AST,
             MetricType.GGT,
+            MetricType.ALBUMIN,
+            MetricType.ALKALINE_PHOSPHATASE,
+            MetricType.BILIRUBIN_TOTAL,
+            MetricType.TOTAL_PROTEIN,
+            MetricType.AMYLASE,
+            MetricType.LIPASE,
         ),
     )
 
@@ -116,6 +159,27 @@ object BiomarkerPanels {
             MetricType.ESTRADIOL,
             MetricType.CORTISOL,
             MetricType.IGF_1,
+        ),
+    )
+
+    /**
+     * Reproductive endocrine axis (Blueprint audit §1.9 + §1.12). FSH/LH/
+     * SHBG/AMH/free testosterone/prolactin/DHEA-S — sex- and (for women)
+     * cycle-phase-dependent reference ranges, so the dashboard renders
+     * the value without a coloured cutoff and the owner reads the lab's
+     * own range supplied via the FHIR import.
+     */
+    val reproductiveEndocrine = BiomarkerPanel(
+        id = "reproductive_endocrine",
+        title = "Reproductive Endocrine",
+        metrics = listOf(
+            MetricType.FSH,
+            MetricType.LH,
+            MetricType.SHBG,
+            MetricType.AMH,
+            MetricType.TESTOSTERONE_FREE,
+            MetricType.PROLACTIN,
+            MetricType.DHEA_SULFATE,
         ),
     )
 
@@ -158,9 +222,11 @@ object BiomarkerPanels {
         thyroid,
         vitamins,
         hematology,
+        electrolytes,
         renal,
         hepatic,
         endocrine,
+        reproductiveEndocrine,
         cardioOncology,
         epigenetic,
     )

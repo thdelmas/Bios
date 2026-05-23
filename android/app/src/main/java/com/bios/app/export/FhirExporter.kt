@@ -389,6 +389,46 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     // 90562-0 is the standard PSG-derived LOINC ("Sleep apnea hypopnea
     // index"). Wearable-derived passthrough uses the same code.
     MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
+    // Wave-1 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
+    // LOINC codes sourced from loinc.org's canonical lab-test catalog;
+    // Lp(a) uses the nmol/L LOINC (89594-4) since the MetricType is in
+    // NMOL_PER_L per ESC 2021 / NLA 2022 reporting guidance.
+    MetricType.LIPOPROTEIN_A -> "89594-4" to "Lipoprotein a [Moles/volume] in Serum or Plasma"
+    MetricType.HOMOCYSTEINE -> "13965-9" to "Homocysteine [Moles/volume] in Serum or Plasma"
+    MetricType.BUN -> "3094-0" to "Urea nitrogen [Mass/volume] in Serum or Plasma"
+    MetricType.CALCIUM_SERUM -> "17861-6" to "Calcium [Mass/volume] in Serum or Plasma"
+    MetricType.CARBON_DIOXIDE -> "2028-9" to "Carbon dioxide, total [Moles/volume] in Serum or Plasma"
+    MetricType.CHLORIDE -> "2075-0" to "Chloride [Moles/volume] in Serum or Plasma"
+    MetricType.PHOSPHATE -> "2777-1" to "Phosphate [Mass/volume] in Serum or Plasma"
+    MetricType.SODIUM -> "2951-2" to "Sodium [Moles/volume] in Serum or Plasma"
+    MetricType.POTASSIUM -> "2823-3" to "Potassium [Moles/volume] in Serum or Plasma"
+    MetricType.URIC_ACID -> "3084-1" to "Urate [Mass/volume] in Serum or Plasma"
+    MetricType.ALBUMIN -> "1751-7" to "Albumin [Mass/volume] in Serum or Plasma"
+    MetricType.ALKALINE_PHOSPHATASE -> "6768-6" to "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.BILIRUBIN_TOTAL -> "1975-2" to "Bilirubin.total [Mass/volume] in Serum or Plasma"
+    MetricType.TOTAL_PROTEIN -> "2885-2" to "Protein [Mass/volume] in Serum or Plasma"
+    MetricType.AMYLASE -> "1798-8" to "Amylase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.LIPASE -> "3040-3" to "Lipase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.MCV -> "787-2" to "MCV [Entitic volume] by Automated count"
+    MetricType.MCH -> "785-6" to "MCH [Entitic mass] by Automated count"
+    MetricType.MCHC -> "786-4" to "MCHC [Mass/volume] by Automated count"
+    MetricType.RDW -> "788-0" to "Erythrocyte distribution width [Ratio] by Automated count"
+    MetricType.MPV -> "32623-1" to "Platelet mean volume [Entitic volume] in Blood by Automated count"
+    MetricType.NEUTROPHILS_PCT -> "770-8" to "Neutrophils/100 leukocytes in Blood by Automated count"
+    MetricType.LYMPHOCYTES_PCT -> "736-9" to "Lymphocytes/100 leukocytes in Blood by Automated count"
+    MetricType.MONOCYTES_PCT -> "5905-5" to "Monocytes/100 leukocytes in Blood by Automated count"
+    MetricType.EOSINOPHILS_PCT -> "713-8" to "Eosinophils/100 leukocytes in Blood by Automated count"
+    MetricType.BASOPHILS_PCT -> "706-2" to "Basophils/100 leukocytes in Blood by Automated count"
+    MetricType.IRON_SERUM -> "2498-4" to "Iron [Mass/volume] in Serum or Plasma"
+    MetricType.IRON_SATURATION_PCT -> "2502-3" to "Iron saturation [Mass Fraction] in Serum or Plasma"
+    MetricType.TIBC -> "2500-7" to "Iron binding capacity [Mass/volume] in Serum or Plasma"
+    MetricType.FSH -> "15067-2" to "Follitropin [Units/volume] in Serum or Plasma"
+    MetricType.LH -> "10501-5" to "Lutropin [Units/volume] in Serum or Plasma"
+    MetricType.SHBG -> "13967-5" to "Sex hormone binding globulin [Moles/volume] in Serum or Plasma"
+    MetricType.AMH -> "38476-0" to "Mullerian inhibiting substance [Mass/volume] in Serum or Plasma"
+    MetricType.TESTOSTERONE_FREE -> "2991-8" to "Testosterone.free [Mass/volume] in Serum or Plasma"
+    MetricType.PROLACTIN -> "2842-3" to "Prolactin [Mass/volume] in Serum or Plasma"
+    MetricType.DHEA_SULFATE -> "2191-5" to "Dehydroepiandrosterone sulfate [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -441,6 +481,13 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     // for boolean flags — the actual waveform is exported as a separate
     // FHIR Media resource by the ECG strip exporter, not as a quantity.
     MetricUnit.BOOLEAN -> "{boolean}"
+    // Wave-1 biomarker expansion units (BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
+    MetricUnit.NMOL_PER_L -> "nmol/L"
+    MetricUnit.UMOL_PER_L -> "umol/L"
+    MetricUnit.MEQ_PER_L -> "meq/L"
+    MetricUnit.FEMTOLITERS -> "fL"
+    MetricUnit.PICOGRAMS -> "pg"
+    MetricUnit.MIU_PER_ML -> "m[IU]/mL"
 }
 
 internal fun formatInstant(instant: Instant): String =
