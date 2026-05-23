@@ -226,6 +226,9 @@ class MetricTypeKeysSnapshotTest {
         "headache_intensity_nrs",
         "migraine_attack_event",
         "fast_stroke_suspected",
+        // Neurology URGENT primitives (#216, audit §3.2 #24)
+        "seizure_event",
+        "thunderclap_headache_suspected",
         // Paediatric growth + body composition (#199)
         "height_cm",
         "head_circumference_cm",
