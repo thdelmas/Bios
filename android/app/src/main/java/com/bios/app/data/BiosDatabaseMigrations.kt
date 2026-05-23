@@ -23,12 +23,12 @@ internal object BiosDatabaseMigrations {
      *
      * NOTE on version numbering: several audit-derived PRs are
      * concurrently bumping the DB version. This migration claims
-     * 16→17; if a sibling PR lands first, rebase by renumbering both
-     * the `@Database(version)` annotation and the `Migration(16, 17)`
+     * 24→25; if a sibling PR lands first, rebase by renumbering both
+     * the `@Database(version)` annotation and the `Migration(24, 25)`
      * constructor below to the next free slot. The schema body does
      * not depend on the version number.
      */
-    val MIGRATION_23_24 = object : Migration(23, 24) {
+    val MIGRATION_24_25 = object : Migration(24, 25) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""
                 CREATE TABLE IF NOT EXISTS treatment_courses (
