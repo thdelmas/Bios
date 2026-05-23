@@ -47,16 +47,11 @@ enum class MetricType(
     BLOOD_PRESSURE_SYSTOLIC("blood_pressure_systolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
-    // PPG-derived AFib screening burden (#180, audit gap §2.1). Percentage of
-    // recent valid PPG sessions whose RR-interval series the on-device rhythm
-    // classifier scored as irregularly irregular (Poincaré SD1/SD2 + sample
-    // entropy + turning-point ratio). Each PPG capture writes a per-session
-    // verdict as 0 % (regular) or 100 % (irregularly irregular); the rolling
-    // median over a 7-day window is what the AFib screen pattern reads. Apple
-    // Heart Study (Perez 2019), mAFA-II (Guo 2019), and Fitbit Heart Study
-    // (Lubitz 2022) all run an equivalent classifier over the IBI tachogram.
-    // See engine/RhythmClassifier.kt. Manual entry stays false — the value is
-    // derived from a PPG session, not something the owner can self-report.
+    // PPG AFib screening burden (#180, audit §2.1). Rolling 7-day median of
+    // per-PPG-session irregularly-irregular verdicts (Poincaré SD1/SD2 +
+    // sample entropy + turning-point ratio). Mirrors Apple Heart Study
+    // (Perez 2019), mAFA-II (Guo 2019), Fitbit Heart Study (Lubitz 2022)
+    // classifier shape. See engine/RhythmClassifier.kt.
     IRREGULAR_RHYTHM_BURDEN("irregular_rhythm_burden", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
 
     // Single-lead ECG strip presence (#188, audit gap §2.8). The actual
@@ -93,6 +88,9 @@ enum class MetricType(
     // (matches the clinical SphygmoCor AIx direction). Peripheral PPG proxy
     // for trend tracking, not the central-aortic gold standard.
     AUGMENTATION_INDEX_PPG("augmentation_index_ppg", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+
+    HR_RECOVERY_1MIN("hr_recovery_1min", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
+    HR_RECOVERY_2MIN("hr_recovery_2min", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
 
     // Respiratory
     RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),

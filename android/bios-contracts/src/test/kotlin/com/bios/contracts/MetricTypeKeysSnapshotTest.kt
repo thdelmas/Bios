@@ -51,6 +51,9 @@ class MetricTypeKeysSnapshotTest {
         "ppg_dichrotic_notch_position",
         // PPG-derived augmentation index (Blueprint audit §3.1 #8)
         "augmentation_index_ppg",
+        // Heart-rate recovery (Triage Inventory #26)
+        "hr_recovery_1min",
+        "hr_recovery_2min",
         // Respiratory
         "respiratory_rate",
         "oxygen_flow_rate",
