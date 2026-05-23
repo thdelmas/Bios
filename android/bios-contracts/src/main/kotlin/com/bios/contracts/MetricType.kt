@@ -137,24 +137,22 @@ enum class MetricType(
     CONSCIOUSNESS_LEVEL("consciousness_level", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
 
     // Neurology owner-symptom logging (#207, NEUROLOGY_POV §2.6 / §2.5 /
-    // §2.15). Owner-input only — Bios never derives any of these from
-    // biomarkers. The owner reports; Bios stores.
-    //
-    // HEADACHE_INTENSITY_NRS: 0–10 numeric rating scale for a headache the
-    // owner is logging. Shipped alongside the structured HeadacheLog /
-    // MigraineAttack entities so a clinician export and the trend view can
-    // read a flat metric row in addition to the structured record.
-    // MIGRAINE_ATTACK_EVENT: timestamp-shaped event recorded when the
-    // owner opens a MigraineAttack entry. Sidecar fields (aura, triggers,
-    // medication taken) live on the MigraineAttack row, not on
-    // event_payloads — the structured entity is the canonical record.
-    // FAST_STROKE_SUSPECTED: timestamp-shaped event recorded when the
-    // owner answers "yes" to any FAST screen item (Facial drooping, Arm
-    // weakness, Speech difficulty). Owner-input only — manifesto §3.3
-    // explicitly prohibits automated voice / face stroke detection.
+    // §2.15). Owner-input only — manifesto §3.3 prohibits automated voice /
+    // face stroke detection. HEADACHE_INTENSITY_NRS is the flat-metric
+    // shadow of the structured HeadacheLog / MigraineAttack entities;
+    // sidecar fields (aura, triggers, treatment, FAST item) live on the
+    // structured row, not in event_payloads.
     HEADACHE_INTENSITY_NRS("headache_intensity_nrs", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     MIGRAINE_ATTACK_EVENT("migraine_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     FAST_STROKE_SUSPECTED("fast_stroke_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+
+    // Neurology URGENT primitives (audit §3.2 #24 / NEUROLOGY_POV §2.1+§2.3).
+    // Owner-logged EVENTs with value=1.0 + optional structured sidecar in
+    // event_payloads. Thunderclap is separate from HEADACHE_INTENSITY_NRS
+    // because the URGENT alert keys on onset velocity (IHS ICHD-3 §6.2.2
+    // SAH screen — peak intensity within 60 s) not severity score.
+    SEIZURE_EVENT("seizure_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    THUNDERCLAP_HEADACHE_SUSPECTED("thunderclap_headache_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
 
     // Sleep
     SLEEP_STAGE("sleep_stage", MetricUnit.CATEGORY, MetricDomain.SLEEP),
