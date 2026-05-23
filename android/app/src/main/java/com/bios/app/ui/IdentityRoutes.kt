@@ -41,6 +41,9 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("traditional_medicine_context") {
         com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })
     }
+    composable("emergency_contacts") {
+        com.bios.app.ui.emergency.EmergencyContactsScreen(onBack = { navController.popBackStack() })
+    }
     composable("medications") {
         com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
     }
