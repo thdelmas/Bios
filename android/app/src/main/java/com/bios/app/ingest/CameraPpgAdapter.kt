@@ -12,6 +12,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.bios.app.engine.CaptureQuality
 import com.bios.app.engine.EctopyDetector
 import com.bios.app.engine.HrvAnalyzer
+import com.bios.app.engine.PpgCalibrationLogger
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
@@ -127,6 +128,25 @@ class CameraPpgAdapter(private val context: Context) {
         val samplingRateHz = snapshot.size / actualDurationSec
         val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz)
         val hrv = if (ppg.accepted) HrvAnalyzer.analyze(ppg.rrIntervalsMs) else null
+
+        if (PpgCalibrationLogger.isEnabled(context)) {
+            // Diagnostic log opted in by the owner. Computed here (not inside
+            // the processor) because saturationRatio is the only field we
+            // can derive without re-running peak detection, and the
+            // median-jump distribution is intrinsically a property of the
+            // raw luminance series.
+            val row = PpgCalibrationLogger.rowFor(
+                timestampMs = System.currentTimeMillis(),
+                samplingRateHz = samplingRateHz,
+                jumpStats = CaptureQuality.medianJumpPercentiles(snapshot, samplingRateHz),
+                peakAmplitudeCov = ppg.peakAmplitudeCov,
+                saturationRatio = PpgSignalProcessor.saturationRatio(snapshot),
+                peakCount = ppg.peakCount,
+                durationSec = actualDurationSec,
+                rejectionReason = ppg.rejectionReason,
+            )
+            withContext(Dispatchers.IO) { PpgCalibrationLogger(context).log(row) }
+        }
 
         toResult(ppg, hrv, sourceId, System.currentTimeMillis())
     }

@@ -399,6 +399,8 @@ fun SettingsScreen(
 
         SettingsFeedbackCard()
 
+        SettingsDiagnosticsCard()
+
         // About
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
