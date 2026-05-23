@@ -109,8 +109,8 @@ Active periodic workers confirmed on device:
 
 ## Biomarker Inventory — Present / Partial / Missing
 
-Catalog source: [`android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt`](../android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt).
-Total `MetricType` keys: **~108** across 16 domains.
+Catalog source: [`android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt`](../../../android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt).
+Total `MetricType` keys: **~156** across 16 domains (post-expansion: PR #252 +36, PR #255 +11, PR #256 +1).
 
 ### Cardiovascular
 
@@ -123,7 +123,8 @@ Total `MetricType` keys: **~108** across 16 domains.
 | parasympathetic_tone, stress_score, lf_hf_ratio, hrv_lf_power, hrv_hf_power | DERIVED-on-demand | Run camera PPG session (the app supports `bios://capture/ppg`) |
 | irregular_rhythm_burden | DERIVED | Same — camera PPG → RhythmClassifier |
 | ecg_strip_available | MISSING | HC ECG record; Fitbit Sense / Apple Watch / KardiaMobile import |
-| ppg_peak_amplitude_mean/cov, ppg_rise_time_mean/cov, ppg_decay_asymmetry_index, ppg_dichrotic_notch_position | DERIVED | Camera PPG capture writes these alongside HRV |
+| augmentation_index_ppg | DERIVED-on-demand | Camera PPG capture; written when a diastolic rebound is detectable (PR #256) |
+| ppg_peak_amplitude_mean/cov, ppg_rise_time_mean/cov, ppg_decay_asymmetry_index, ppg_dichrotic_notch_position | COMPUTED-NOT-PERSISTED | `PpgSignalProcessor` produces these but `CameraPpgAdapter` does not yet write them as `MetricReadings` — follow-up to PR #256 |
 
 ### Respiratory
 
@@ -196,33 +197,38 @@ real events.
 
 `typing_cadence`, `mood_drift_score`, `reaction_time_ms`: W2F-owned.
 
-### Lab biomarkers — **NO DATA YET (catalog covers ~76 lab keys)**
+### Lab biomarkers — **NO DATA YET (catalog covers ~87 lab keys)**
 
-Bios supports ~76 lab keys after the Wave-1 expansion (PR #252,
-[Blueprint audit §3.1](../../audits/BLUEPRINT_PROTOCOL_AUDIT.md)); the
-subject has none of them in the DB yet. Each accepts manual entry from a
-paper printout via Bios → Biomarkers, and FHIR import populates them at
-scale through the LOINC table.
+Bios supports ~87 lab keys after the Wave-1 + Wave-2 expansions (PR #252
+and PR #255, [Blueprint audit §3.1 + §3.2](../../audits/BLUEPRINT_PROTOCOL_AUDIT.md));
+the subject has none of them in the DB yet. Each accepts manual entry
+from a paper printout via Bios → Biomarkers, and FHIR import populates
+them at scale through the LOINC table.
 
-Wave 1 panel (post-expansion — what to order):
+Wave-1 + Wave-2 panel (post-expansion — what to order):
 
-- **Lipid + independent ASCVD risk:** total_cholesterol, ldl_cholesterol, hdl_cholesterol, triglycerides, **apo_b**, **lipoprotein_a**, **homocysteine**
+- **Lipid + independent ASCVD risk:** total_cholesterol, ldl_cholesterol, hdl_cholesterol, triglycerides, **apo_b**, **lipoprotein_a**, **homocysteine**, ***coronary_calcium_score*** (CT-derived, once-per-decade)
 - **Glycemic:** hba1c, fasting_glucose, fasting_insulin, homa_ir
-- **Thyroid:** tsh, free_t4, free_t3
+- **Thyroid + autoimmunity:** tsh, free_t4, free_t3, ***thyroid_peroxidase_ab***, ***thyroglobulin_ab***
 - **Inflammation:** hscrp
 - **CBC + indices + 5-cell differential:** hemoglobin, hematocrit, wbc, rbc, platelets, **mcv, mch, mchc, rdw, mpv**, **neutrophils_pct, lymphocytes_pct, monocytes_pct, eosinophils_pct, basophils_pct**
 - **Iron panel:** ferritin, **iron_serum, iron_saturation_pct, tibc**
 - **CMP (electrolytes + minerals):** **sodium, potassium, chloride, carbon_dioxide, calcium_serum, phosphate**
 - **Renal:** egfr, creatinine, **bun, uric_acid**
 - **Hepatic + pancreatic:** alt, ast, ggt, **albumin, alkaline_phosphatase, bilirubin_total, total_protein, amylase, lipase**
-- **Micronutrients:** vitamin_d_25oh, vitamin_b12, folate, magnesium
+- **Vitamins & Minerals:** vitamin_d_25oh, vitamin_b12, folate, magnesium, ***vitamin_k2***, ***vitamin_a_retinol***, ***vitamin_e_alpha_tocopherol***
 - **Endocrine (male-relevant):** testosterone_total, cortisol, igf_1
 - **Reproductive endocrine:** **fsh, lh, shbg, amh, testosterone_free, prolactin, dhea_sulfate** (sex- and cycle-phase-specific reference ranges; provider's range travels with the FHIR import)
+- **Prostate screening (men 50+):** ***psa_total***, ***psa_free***
+- **Skeletal:** ***bone_density_t_score*** (DEXA-derived)
+- **Neurology:** ***ptau_217*** (emerging Alzheimer's plasma biomarker)
 - **Cardio-oncology:** troponin_ng_per_l, nt_pro_bnp_pg_per_ml, absolute_neutrophil_count (only relevant if undergoing cardiotoxic therapy)
-- **Aging clocks:** epigenetic_age_dunedin_pace, grim, pheno, horvath (optional, TruDiagnostic-style import)
+- **Aging biomarkers:** epigenetic_age_dunedin_pace, grim, pheno, horvath (optional, TruDiagnostic-style import), ***telomere_length*** (TeloYears / SpectraCell)
 
-Bold items are Wave-1 expansion additions (PR #252) — previously missing
-from the enum, now first-class manual-entry + FHIR-importable keys.
+**Bold** = Wave-1 additions (PR #252). ***Bold italic*** = Wave-2
+additions (PR #255). All are first-class manual-entry + FHIR-importable
+keys (a handful — telomere length, bone density, vitamin K2 — stay
+manual-only because no stable canonical LOINC exists).
 
 ## Gaps Ranked by Action Cost
 
@@ -252,20 +258,27 @@ from the enum, now first-class manual-entry + FHIR-importable keys.
 
 ### Lab work (next clinical visit)
 
-Order a single comprehensive panel covering the Wave-1 list above —
-practically: lipid + ASCVD (incl. Lp(a) + homocysteine) + CMP + CBC w/
-differential + iron studies + thyroid + HbA1c + hsCRP + vitamin D / B12 /
-folate. Manually enter the values into Bios as soon as the lab report
+Order a single comprehensive panel covering the Wave-1 + Wave-2 list
+above — practically: lipid + ASCVD (incl. Lp(a) + homocysteine) + CMP +
+CBC w/ differential + iron studies + thyroid w/ TPO/Tg Ab + HbA1c +
+hsCRP + vitamin D / B12 / folate (plus K2 / A / E if the lab offers
+them). Manually enter the values into Bios as soon as the lab report
 arrives. With those in place, every preventive alert pattern
 (`alerts/BiomarkerReference.kt`, `alerts/CardioOncologyPatterns.kt`,
 NAFLD / CKD / insulin-resistance screens) will have ground truth to
 anchor against instead of relying on wearable proxies alone.
 
-The dashboard now has matching panels for every Wave-1 result
-(Cardiometabolic, Glycemic, Inflammation & Iron, Thyroid, Hematology,
-Electrolytes & Minerals, Renal, Hepatic & Pancreatic, Endocrine,
-Reproductive Endocrine, Cardio-Oncology, Epigenetic Age) — each tile
-fills the moment a value lands.
+PSA Total/Free, Coronary Calcium Score (CT), DEXA bone density T-score,
+pTau-217, and telomere length are once-per-window tests (annual through
+once-per-decade) — order opportunistically rather than alongside the
+routine panel.
+
+The dashboard now has matching panels for every result
+(Cardiometabolic, Glycemic, Inflammation & Iron, Thyroid, Vitamins &
+Minerals, Hematology, Electrolytes & Minerals, Renal, Hepatic &
+Pancreatic, Endocrine, Reproductive Endocrine, Prostate Screening, Bone
+Health, Neurology, Cardio-Oncology, Aging Biomarkers) — each tile fills
+the moment a value lands.
 
 ### Hardware purchases (only if relevant)
 
