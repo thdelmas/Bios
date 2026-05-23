@@ -362,10 +362,9 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
     MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
     MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
-    // #24 — glycemic-extended, iron, endocrine, micronutrient.
-    // LOINC codes sourced from loinc.org's canonical lab-test catalog; each
-    // pairs the code with its official long-form display name so the FHIR
-    // round-trip is greppable in a Bundle.
+    // #24 — glycemic-extended, iron, endocrine, micronutrient. LOINC codes
+    // sourced from loinc.org's canonical catalog (display names ride along
+    // so the FHIR round-trip stays greppable in a Bundle).
     MetricType.FASTING_GLUCOSE -> "1558-6" to "Fasting glucose [Mass/volume] in Serum or Plasma"
     MetricType.FASTING_INSULIN -> "20448-7" to "Insulin [Units/volume] in Serum or Plasma --fasting"
     MetricType.HOMA_IR -> "81576-7" to "Homeostatic model assessment Insulin resistance Calculated"
@@ -377,22 +376,15 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.VITAMIN_B12 -> "2132-9" to "Cobalamins [Mass/volume] in Serum or Plasma"
     MetricType.FOLATE -> "2284-8" to "Folate [Mass/volume] in Serum or Plasma"
     MetricType.MAGNESIUM -> "2601-3" to "Magnesium [Mass/volume] in Serum or Plasma"
-    // #158 — renal / hepatic. eGFR pairs with creatinine (creatinine is the
-    // raw input; eGFR is the body-surface-normalised derived value most labs
-    // report alongside it). ALT / AST / GGT are the core hepatic panel.
+    // #158 — renal / hepatic. eGFR is the body-surface-normalised CKD-EPI 2021 form.
     MetricType.EGFR -> "62238-1" to "Glomerular filtration rate/1.73 sq M.predicted by Creatinine-based formula (CKD-EPI 2021)"
     MetricType.CREATININE -> "2160-0" to "Creatinine [Mass/volume] in Serum or Plasma"
     MetricType.ALT -> "1742-6" to "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
     MetricType.AST -> "1920-8" to "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
     MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
-    // #157 — apnea-hypopnea index. Universal sleep-medicine measure;
-    // 90562-0 is the standard PSG-derived LOINC ("Sleep apnea hypopnea
-    // index"). Wearable-derived passthrough uses the same code.
+    // #157 — apnea-hypopnea index; same LOINC for PSG-derived and wearable passthrough.
     MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
-    // Wave-1 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
-    // LOINC codes sourced from loinc.org's canonical lab-test catalog;
-    // Lp(a) uses the nmol/L LOINC (89594-4) since the MetricType is in
-    // NMOL_PER_L per ESC 2021 / NLA 2022 reporting guidance.
+    // Wave-1 expansion (audit §3.1). Lp(a) uses the nmol/L LOINC per ESC 2021 / NLA 2022.
     MetricType.LIPOPROTEIN_A -> "89594-4" to "Lipoprotein a [Moles/volume] in Serum or Plasma"
     MetricType.HOMOCYSTEINE -> "13965-9" to "Homocysteine [Moles/volume] in Serum or Plasma"
     MetricType.BUN -> "3094-0" to "Urea nitrogen [Mass/volume] in Serum or Plasma"
@@ -429,6 +421,16 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.TESTOSTERONE_FREE -> "2991-8" to "Testosterone.free [Mass/volume] in Serum or Plasma"
     MetricType.PROLACTIN -> "2842-3" to "Prolactin [Mass/volume] in Serum or Plasma"
     MetricType.DHEA_SULFATE -> "2191-5" to "Dehydroepiandrosterone sulfate [Mass/volume] in Serum or Plasma"
+    // Wave-2 (audit §3.2). Telomere length / bone-density T-score / vitamin
+    // K2 stay unmapped — proprietary scoring, site-specific, or no stable code.
+    MetricType.THYROID_PEROXIDASE_AB -> "8099-3" to "Thyroid peroxidase Ab [Units/volume] in Serum"
+    MetricType.THYROGLOBULIN_AB -> "8088-6" to "Thyroglobulin Ab [Units/volume] in Serum"
+    MetricType.PSA_TOTAL -> "2857-1" to "Prostate specific Ag [Mass/volume] in Serum or Plasma"
+    MetricType.PSA_FREE -> "10886-0" to "Prostate Specific Ag Free [Mass/volume] in Serum or Plasma"
+    MetricType.CORONARY_CALCIUM_SCORE -> "49595-2" to "Coronary artery calcium score by CT"
+    MetricType.PTAU_217 -> "102965-7" to "Phosphorylated tau 217 [Mass/volume] in Serum or Plasma"
+    MetricType.VITAMIN_A_RETINOL -> "2923-1" to "Retinol [Mass/volume] in Serum or Plasma"
+    MetricType.VITAMIN_E_ALPHA_TOCOPHEROL -> "1823-4" to "Tocopherol alpha [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -488,6 +490,7 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.FEMTOLITERS -> "fL"
     MetricUnit.PICOGRAMS -> "pg"
     MetricUnit.MIU_PER_ML -> "m[IU]/mL"
+    MetricUnit.IU_PER_ML -> "[IU]/mL"
 }
 
 internal fun formatInstant(instant: Instant): String =

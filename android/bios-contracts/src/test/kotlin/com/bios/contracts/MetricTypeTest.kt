@@ -417,6 +417,35 @@ class MetricTypeTest {
         assertEquals("mIU/mL", MetricUnit.MIU_PER_ML.symbol)
     }
 
+    // -- Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2) --
+
+    @Test
+    fun wave2_biomarkers_use_canonical_per_assay_units() {
+        val expected = mapOf(
+            MetricType.THYROID_PEROXIDASE_AB to MetricUnit.IU_PER_ML,
+            MetricType.THYROGLOBULIN_AB to MetricUnit.IU_PER_ML,
+            MetricType.PSA_TOTAL to MetricUnit.NG_PER_ML,
+            MetricType.PSA_FREE to MetricUnit.NG_PER_ML,
+            MetricType.TELOMERE_LENGTH to MetricUnit.SCORE,
+            MetricType.CORONARY_CALCIUM_SCORE to MetricUnit.SCORE,
+            MetricType.BONE_DENSITY_T_SCORE to MetricUnit.SCORE,
+            MetricType.PTAU_217 to MetricUnit.PG_PER_ML,
+            MetricType.VITAMIN_K2 to MetricUnit.NG_PER_ML,
+            MetricType.VITAMIN_A_RETINOL to MetricUnit.UG_PER_DL,
+            MetricType.VITAMIN_E_ALPHA_TOCOPHEROL to MetricUnit.MG_PER_L,
+        )
+        for ((type, unit) in expected) {
+            assertEquals(MetricDomain.BIOMARKER, type.domain, "${type.key} must be a BIOMARKER")
+            assertEquals(unit, type.unit, "${type.key} must report in ${unit.name}")
+            assertTrue(type.allowsManualEntry, "${type.key} (biomarker) must allow manual entry")
+        }
+    }
+
+    @Test
+    fun wave2_new_unit_carries_expected_symbol() {
+        assertEquals("IU/mL", MetricUnit.IU_PER_ML.symbol)
+    }
+
     // -- ECG strip presence (#188, audit gap §2.8) --
 
     @Test
