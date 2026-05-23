@@ -106,6 +106,9 @@ class MetricTypeKeysSnapshotTest {
         // trigger context, heat-index, damp/dry pathogen overlays
         "ambient_humidity_pct",
         "ambient_temperature_c",
+        // Environmental context (#197) — elevation + daylight hours
+        "elevation_m",
+        "daylight_hours",
         // Biomarkers
         "hba1c",
         "hscrp",
@@ -141,6 +144,10 @@ class MetricTypeKeysSnapshotTest {
         "alt",
         "ast",
         "ggt",
+        // Cardio-oncology biomarkers (#201)
+        "troponin_ng_per_l",
+        "nt_pro_bnp_pg_per_ml",
+        "absolute_neutrophil_count",
         // Epigenetic age clocks
         "epigenetic_age_dunedin_pace",
         "epigenetic_age_grim",

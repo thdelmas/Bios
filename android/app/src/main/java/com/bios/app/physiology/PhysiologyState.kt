@@ -96,6 +96,16 @@ enum class PhysiologyState(val displayName: String) {
     KNOWN_HF("Known heart failure"),
 
     /**
+     * Cardio-oncology contexts (#201, ONCOLOGY_POV §2.3-2.5). Owner-declared
+     * cancer therapy state; enables CardioOncologyPatterns surveillance via
+     * the `requiredStates` axis. Drug-class annotation lives separately in
+     * [PhysiologyStateStore.drugClass]. Bios never infers cancer therapy.
+     */
+    ON_ACTIVE_CHEMOTHERAPY("Active chemotherapy"),
+    ON_IMMUNE_CHECKPOINT_INHIBITOR("Immune-checkpoint inhibitor (ICI) therapy"),
+    ON_CAR_T_RECOVERY("CAR-T cell therapy recovery"),
+
+    /**
      * Peri-operative states (#205, SURGICAL_POV §2.1-§2.6). Owner-set or
      * auto-transitioned via [com.bios.app.physiology.PerioperativeStateTransitionWorker].
      * Suppresses baseline-relative patterns whose deviations are normative
@@ -110,6 +120,11 @@ enum class PhysiologyState(val displayName: String) {
     companion object {
         /** Convenience set: all pregnancy trimesters. */
         val PREGNANCY: Set<PhysiologyState> = setOf(PREGNANCY_T1, PREGNANCY_T2, PREGNANCY_T3)
+
+        /** All cardio-oncology treatment states (#201). */
+        val CANCER_TREATMENT: Set<PhysiologyState> = setOf(
+            ON_ACTIVE_CHEMOTHERAPY, ON_IMMUNE_CHECKPOINT_INHIBITOR, ON_CAR_T_RECOVERY,
+        )
 
         /** All peri-operative states (SURGICAL_POV §2.1). */
         val PERIOPERATIVE: Set<PhysiologyState> = setOf(
