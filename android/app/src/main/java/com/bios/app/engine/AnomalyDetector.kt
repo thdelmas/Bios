@@ -12,8 +12,6 @@ import com.bios.app.model.*
 import com.bios.app.physiology.OwnerCondition
 import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
-import com.bios.contracts.MetricUnit
-import com.bios.contracts.MetricDomain
 import com.bios.app.ui.diagnostics.DiagnosticResult
 import com.bios.app.ui.diagnostics.SignalStatus
 import kotlin.math.abs
@@ -443,6 +441,20 @@ class AnomalyDetector(
         )
     }
 
+    // Window-mode values for the absolute-rule path; row-fetch + duration
+    // filter when SignalRule.durationAtLeastSec is set (#268), otherwise
+    // the value-only fast path.
+    private suspend fun fetchAbsoluteWindowValues(rule: com.bios.app.alerts.SignalRule): List<Double> {
+        val minDuration = rule.durationAtLeastSec
+            ?: return fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+        val endMillis = System.currentTimeMillis()
+        val startMillis = endMillis - rule.absoluteWindowHours.toLong() * 3600 * 1000
+        return daoFor(rule.metricType)
+            .fetch(rule.metricType.key, startMillis, endMillis)
+            .filter { (it.durationSec ?: 0) >= minDuration }
+            .map { it.value }
+    }
+
     private fun daoFor(metricType: MetricType): MetricReadingDao =
         if (isReproductiveMetric(metricType) && reproductiveReadingDao != null) {
             reproductiveReadingDao
@@ -463,7 +475,7 @@ class AnomalyDetector(
         rule: com.bios.app.alerts.SignalRule
     ): Pair<Double?, Boolean> {
         val representative: Double = if (rule.absoluteWindowHours > 0) {
-            val values = fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+            val values = fetchAbsoluteWindowValues(rule)
             if (values.size < rule.absoluteMinReadings) return null to false
             values.sorted().let { s ->
                 if (s.size % 2 == 0) (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0 else s[s.size / 2]
@@ -482,17 +494,3 @@ class AnomalyDetector(
         return representative to (above || below)
     }
 }
-
-// EVENT-unit metrics (tobacco_use, fall_event, …) are companion-written
-// SELF_REPORTED / DERIVED — CompanionConditionPatterns rules want those
-// rows, so the SENSOR-only baseline filter is branched off for them.
-// WOMENS_HEALTH metrics live in ReproductiveDatabase and are SELF_REPORTED
-// by design — same carve-out.
-internal fun readingKindFilterFor(metricType: MetricType): String? = when {
-    metricType.unit == MetricUnit.EVENT -> null
-    isReproductiveMetric(metricType) -> null
-    else -> ReadingKind.SENSOR.name
-}
-
-/** Reproductive raw readings live in [com.bios.app.data.ReproductiveDatabase]; baselines stay in the main DB as summary-only rows. */
-internal fun isReproductiveMetric(metricType: MetricType): Boolean = metricType.domain == MetricDomain.WOMENS_HEALTH
