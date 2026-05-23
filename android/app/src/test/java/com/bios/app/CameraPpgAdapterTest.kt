@@ -2,6 +2,7 @@ package com.bios.app
 
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgResult
+import com.bios.app.engine.PulseWaveformFeatures
 import com.bios.app.engine.RejectionReason
 import com.bios.app.ingest.CameraPpgAdapter
 import com.bios.app.model.ConfidenceTier
@@ -114,6 +115,135 @@ class CameraPpgAdapterTest {
         assertFalse(result.accepted)
         assertEquals(RejectionReason.IRREGULAR_RHYTHM, result.rejectionReason)
         assertTrue(result.readings.isEmpty())
+    }
+
+    @Test
+    fun `PPG with morphology features persists every PPG morphology MetricType`() {
+        // PR #256 wired the augmentation index; this PR completes the PPG
+        // morphology persistence — peak amplitude / rise time / decay
+        // asymmetry / dichrotic-notch position. The full block fires only
+        // when waveformFeatures is non-null.
+        val ppg = PpgResult(
+            rrIntervalsMs = listOf(820.0, 810.0, 830.0, 800.0, 815.0),
+            sqiScore = 78,
+            rejectionReason = null,
+            peakCount = 60,
+            durationSec = 60.0,
+            waveformFeatures = PulseWaveformFeatures(
+                peakAmplitudeTrimmedMean = 42.0,
+                peakAmplitudeCov = 0.12,
+                riseTimeMeanSec = 0.31,
+                riseTimeCov = 0.09,
+                decayAsymmetryIndex = 0.36,
+                dichroticNotchRelativePosition = 0.52,
+                augmentationIndexPercent = 48.0,
+                beatsMeasured = 55,
+            ),
+        )
+        val hrv = HrvAnalyzer.HrvResult(
+            rmssd = 18.5, sdnn = 24.0, pnn50 = 10.0,
+            lnRmssd = kotlin.math.ln(18.5),
+            stressIndex = 120.0,
+            lfHfRatio = 1.7,
+            lfPowerMs2 = 340.0, hfPowerMs2 = 200.0,
+            meanIbiMs = 815.0, meanHrBpm = 73.6,
+            cleanIbiCount = 5, artifactsRejected = 0,
+        )
+
+        val result = CameraPpgAdapter.toResult(ppg, hrv, sourceId, now)
+        assertTrue(result.accepted)
+
+        val byKey = result.readings.associateBy { it.metricType }
+        assertEquals(42.0, byKey.getValue(MetricType.PPG_PEAK_AMPLITUDE_MEAN.key).value, 1e-9)
+        assertEquals(0.12, byKey.getValue(MetricType.PPG_PEAK_AMPLITUDE_COV.key).value, 1e-9)
+        assertEquals(0.31, byKey.getValue(MetricType.PPG_RISE_TIME_MEAN.key).value, 1e-9)
+        assertEquals(0.09, byKey.getValue(MetricType.PPG_RISE_TIME_COV.key).value, 1e-9)
+        assertEquals(0.36, byKey.getValue(MetricType.PPG_DECAY_ASYMMETRY_INDEX.key).value, 1e-9)
+        assertEquals(0.52, byKey.getValue(MetricType.PPG_DICHROTIC_NOTCH_POSITION.key).value, 1e-9)
+        assertEquals(48.0, byKey.getValue(MetricType.AUGMENTATION_INDEX_PPG.key).value, 1e-9)
+    }
+
+    @Test
+    fun `null waveformFeatures skips the PPG morphology block`() {
+        // Existing pre-PR-256 behaviour: when PpgSignalProcessor cannot
+        // surface morphology (too few clean beats), none of the PPG_*
+        // morphology keys appear in the readings list. Guards against a
+        // future regression that would unconditionally emit zeros.
+        val ppg = PpgResult(
+            rrIntervalsMs = listOf(820.0, 810.0, 830.0, 800.0, 815.0),
+            sqiScore = 78,
+            rejectionReason = null,
+            peakCount = 60,
+            durationSec = 60.0,
+            waveformFeatures = null,
+        )
+        val hrv = HrvAnalyzer.HrvResult(
+            rmssd = 18.5, sdnn = 24.0, pnn50 = 10.0,
+            lnRmssd = kotlin.math.ln(18.5),
+            stressIndex = 120.0,
+            lfHfRatio = 1.7,
+            lfPowerMs2 = 340.0, hfPowerMs2 = 200.0,
+            meanIbiMs = 815.0, meanHrBpm = 73.6,
+            cleanIbiCount = 5, artifactsRejected = 0,
+        )
+
+        val result = CameraPpgAdapter.toResult(ppg, hrv, sourceId, now)
+        val morphologyKeys = setOf(
+            MetricType.PPG_PEAK_AMPLITUDE_MEAN.key,
+            MetricType.PPG_PEAK_AMPLITUDE_COV.key,
+            MetricType.PPG_RISE_TIME_MEAN.key,
+            MetricType.PPG_RISE_TIME_COV.key,
+            MetricType.PPG_DECAY_ASYMMETRY_INDEX.key,
+            MetricType.PPG_DICHROTIC_NOTCH_POSITION.key,
+            MetricType.AUGMENTATION_INDEX_PPG.key,
+        )
+        for (key in morphologyKeys) {
+            assertTrue(
+                "$key must not be written when waveformFeatures is null",
+                result.readings.none { it.metricType == key },
+            )
+        }
+    }
+
+    @Test
+    fun `null dichrotic notch position is the only morphology key skipped`() {
+        // dichroticNotchRelativePosition is the lone nullable scalar in
+        // PulseWaveformFeatures (notch detection is harder than peak/foot
+        // detection). Verify the other morphology keys still ship when
+        // only the notch field is null.
+        val ppg = PpgResult(
+            rrIntervalsMs = listOf(820.0, 810.0, 830.0, 800.0, 815.0),
+            sqiScore = 78,
+            rejectionReason = null,
+            peakCount = 60,
+            durationSec = 60.0,
+            waveformFeatures = PulseWaveformFeatures(
+                peakAmplitudeTrimmedMean = 42.0,
+                peakAmplitudeCov = 0.12,
+                riseTimeMeanSec = 0.31,
+                riseTimeCov = 0.09,
+                decayAsymmetryIndex = 0.36,
+                dichroticNotchRelativePosition = null,
+                augmentationIndexPercent = null,
+                beatsMeasured = 55,
+            ),
+        )
+        val hrv = HrvAnalyzer.HrvResult(
+            rmssd = 18.5, sdnn = 24.0, pnn50 = 10.0,
+            lnRmssd = kotlin.math.ln(18.5),
+            stressIndex = 120.0,
+            lfHfRatio = 1.7,
+            lfPowerMs2 = 340.0, hfPowerMs2 = 200.0,
+            meanIbiMs = 815.0, meanHrBpm = 73.6,
+            cleanIbiCount = 5, artifactsRejected = 0,
+        )
+
+        val result = CameraPpgAdapter.toResult(ppg, hrv, sourceId, now)
+        val keys = result.readings.map { it.metricType }.toSet()
+        assertTrue(MetricType.PPG_PEAK_AMPLITUDE_MEAN.key in keys)
+        assertTrue(MetricType.PPG_DECAY_ASYMMETRY_INDEX.key in keys)
+        assertFalse(MetricType.PPG_DICHROTIC_NOTCH_POSITION.key in keys)
+        assertFalse(MetricType.AUGMENTATION_INDEX_PPG.key in keys)
     }
 
     @Test
