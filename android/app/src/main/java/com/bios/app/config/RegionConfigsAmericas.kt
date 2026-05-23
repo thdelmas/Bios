@@ -85,6 +85,9 @@ internal object RegionConfigsAmericas {
                 "Alerts are informational and do not constitute medical advice.",
         ),
         emergencyNumber = "911",
+        climateZone = ClimateZone.TEMPERATE,
+        defaultLatitudeDeg = 39.5,
+        defaultElevationM = 250.0,
     )
 
     private fun ca() = RegionConfig(
@@ -102,6 +105,9 @@ internal object RegionConfigsAmericas {
                 "Alerts are informational and do not constitute medical advice.",
         ),
         emergencyNumber = "911",
+        climateZone = ClimateZone.COLD,
+        defaultLatitudeDeg = 56.0,
+        defaultElevationM = 200.0,
     )
 
     /**
