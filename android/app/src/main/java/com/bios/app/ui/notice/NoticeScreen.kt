@@ -123,6 +123,7 @@ fun NoticeScreen(
                             outcomeAccurate = input.outcomeAccurate,
                         )
                     },
+                    onOpenPattern = onNavigateToCondition,
                 )
             }
         }
@@ -153,6 +154,7 @@ fun NoticeScreen(
                             outcomeAccurate = input.outcomeAccurate,
                         )
                     },
+                    onOpenPattern = onNavigateToCondition,
                 )
             }
         }
