@@ -1,8 +1,13 @@
 package com.bios.app.ingest
 
+import android.app.NotificationManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -40,11 +45,22 @@ class PhoneSleepAdapter(private val context: Context) {
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val displayManager =
         context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+    // #243 Cut 1: read-only access to the corroborator signals. Each
+    // accessor is null-safe — adapters on devices that lack the
+    // service (rare) or with permissions revoked emit a null on the
+    // matching Sample field and the inference ignores it.
+    private val notificationManager: NotificationManager? =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+    private val bluetoothManager: BluetoothManager? =
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+    private val stepDelta = StepCounterDelta(context)
 
     private val accelerometer: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val lightSensor: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+    private val stepCounter: Sensor? =
+        sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
     /**
      * Returns true when the device has the minimum sensor surface needed
@@ -67,7 +83,66 @@ class PhoneSleepAdapter(private val context: Context) {
             charging = isPluggedIn(),
             ambientLightLux = readOnce(lightSensor, AMBIENT_LIGHT_TIMEOUT_MS),
             accelMagnitudeVar = sampleAccelVariance(accelWindowMs),
+            stepDelta = readStepDelta(),
+            dndEnabled = readDndEnabled(),
+            pairedBluetoothConnected = readPairedBluetoothConnected(),
         )
+    }
+
+    /**
+     * Step delta since the previous successful read on this device. Uses
+     * the shared [StepCounterDelta] so the sampler shares its cumulative
+     * checkpoint with [PhoneSensorAdapter] — reading the hardware
+     * counter twice would double-count walking. Returns null when the
+     * sensor is absent (most non-Pixel/-Samsung mid-tier phones) or
+     * when the listener never fires within the timeout.
+     */
+    private suspend fun readStepDelta(): Int? {
+        val sensor = stepCounter ?: return null
+        // Single-shot read of the cumulative counter. The OS treats it
+        // as a wake-up sensor on most devices, so the listener fires
+        // almost immediately; STEP_COUNTER_TIMEOUT_MS is a guard against
+        // silent failures (rare).
+        val cumulative = readOnce(sensor, STEP_COUNTER_TIMEOUT_MS)?.toLong() ?: return null
+        val delta = stepDelta.computeDelta(cumulative, sourceId = STEP_DELTA_SOURCE_ID)
+            ?: return 0
+        return delta.toInt()
+    }
+
+    /**
+     * True when the owner has any non-ALL interruption filter — DND
+     * scheduled, manually enabled, or in alarms-only / priority-only
+     * mode. A strong sleep-intent corroborator that survives the AOD-
+     * display-state ambiguity that confuses [isScreenInactive].
+     */
+    private fun readDndEnabled(): Boolean? {
+        val manager = notificationManager ?: return null
+        return manager.currentInterruptionFilter !=
+            NotificationManager.INTERRUPTION_FILTER_ALL
+    }
+
+    /**
+     * True when at least one paired Bluetooth peripheral is currently
+     * connected on the HEADSET or A2DP profile. The two profiles cover
+     * the home-life signal we care about: wearables, smart speakers,
+     * sleep-headphones, car systems. Returns null when the device
+     * lacks Bluetooth, has BT off, or the BLUETOOTH_CONNECT permission
+     * is missing (the manifest declares it, but the OS may revoke).
+     */
+    private fun readPairedBluetoothConnected(): Boolean? {
+        val manager = bluetoothManager ?: return null
+        val adapter: BluetoothAdapter = manager.adapter ?: return null
+        if (!adapter.isEnabled) return false
+        if (context.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
+            != PackageManager.PERMISSION_GRANTED
+        ) return null
+        return try {
+            val connected = manager.getConnectedDevices(BluetoothProfile.HEADSET) +
+                manager.getConnectedDevices(BluetoothProfile.A2DP)
+            connected.isNotEmpty()
+        } catch (_: SecurityException) {
+            null
+        }
     }
 
     /**
@@ -163,5 +238,14 @@ class PhoneSleepAdapter(private val context: Context) {
         private const val GRAVITY = 9.81f
         private const val DEFAULT_ACCEL_WINDOW_MS = 5_000L
         private const val AMBIENT_LIGHT_TIMEOUT_MS = 1_000L
+        /** Wake-up step-counter listener timeout; matches the ambient-
+         *  light read pattern. Single-shot read of the cumulative
+         *  counter. */
+        private const val STEP_COUNTER_TIMEOUT_MS = 1_500L
+        /** Source id for the shared [StepCounterDelta] checkpoint. Kept
+         *  distinct from PhoneSensorAdapter's so the two readers don't
+         *  cannibalise each other's last-seen cumulative across
+         *  back-to-back fires. */
+        private const val STEP_DELTA_SOURCE_ID = "phone_sleep_step_delta"
     }
 }

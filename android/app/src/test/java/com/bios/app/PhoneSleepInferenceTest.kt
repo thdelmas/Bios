@@ -239,4 +239,89 @@ class PhoneSleepInferenceTest {
         timestamp = t, screenOff = false, charging = false,
         ambientLightLux = 300f, accelMagnitudeVar = 3f
     )
+
+    // ---- #243 Cut 1: Tier-1 sensor-surface expansion ----
+
+    @Test
+    fun signal_breakdown_counts_new_signals_when_present() {
+        // 5 samples: 3 with stepDelta=0 + DND on + paired BT on,
+        // 2 with stepDelta=42 + DND off + no BT.
+        val samples = buildList {
+            repeat(3) { i ->
+                add(
+                    Sample(
+                        timestamp = i.toLong(),
+                        screenOff = true,
+                        charging = true,
+                        ambientLightLux = 0f,
+                        accelMagnitudeVar = 0f,
+                        stepDelta = 0,
+                        dndEnabled = true,
+                        pairedBluetoothConnected = true,
+                    )
+                )
+            }
+            repeat(2) { i ->
+                add(
+                    Sample(
+                        timestamp = (3 + i).toLong(),
+                        screenOff = true,
+                        charging = true,
+                        ambientLightLux = 0f,
+                        accelMagnitudeVar = 0f,
+                        stepDelta = 42,
+                        dndEnabled = false,
+                        pairedBluetoothConnected = false,
+                    )
+                )
+            }
+        }
+        val breakdown = PhoneSleepInference.signalBreakdown(samples)
+        assertEquals(5, breakdown.total)
+        assertEquals(3, breakdown.zeroStepDelta)
+        assertEquals(3, breakdown.dndOn)
+        assertEquals(3, breakdown.pairedBtConnected)
+        assertEquals(5, breakdown.sampledNewSignals)
+    }
+
+    @Test
+    fun signal_breakdown_treats_null_new_signals_as_uncounted() {
+        // No Tier-1 signals recorded — counts stay at 0.
+        val samples = List(4) { i ->
+            Sample(
+                timestamp = i.toLong(),
+                screenOff = true,
+                charging = true,
+                ambientLightLux = 0f,
+                accelMagnitudeVar = 0f,
+                // stepDelta / dndEnabled / pairedBluetoothConnected default null.
+            )
+        }
+        val breakdown = PhoneSleepInference.signalBreakdown(samples)
+        assertEquals(4, breakdown.total)
+        assertEquals(0, breakdown.zeroStepDelta)
+        assertEquals(0, breakdown.dndOn)
+        assertEquals(0, breakdown.pairedBtConnected)
+        assertEquals(0, breakdown.sampledNewSignals)
+    }
+
+    @Test
+    fun new_signal_defaults_do_not_change_inference_behaviour() {
+        // 6 hours of sleepy samples with null Tier-1 fields → inference
+        // still fires. Confirms the new defaults don't suppress the
+        // pre-#243 firing path.
+        val minute = 60_000L
+        val sleepy = List(6 * 60) { i ->
+            Sample(
+                timestamp = i * minute,
+                screenOff = true,
+                charging = true,
+                ambientLightLux = 0f,
+                accelMagnitudeVar = 0f,
+                // stepDelta / dndEnabled / pairedBluetoothConnected default null.
+            )
+        }
+        val readings = PhoneSleepInference.infer(sleepy, sourceId = "test")
+        assertTrue(readings.isNotEmpty())
+    }
 }
