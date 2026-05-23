@@ -125,6 +125,9 @@ class PhoneSleepCollectionService : Service() {
                         charging = sample.charging,
                         ambientLightLux = sample.ambientLightLux,
                         accelMagnitudeVar = sample.accelMagnitudeVar,
+                        stepDelta = sample.stepDelta,
+                        dndEnabled = sample.dndEnabled,
+                        pairedBluetoothConnected = sample.pairedBluetoothConnected,
                     )
                 )
             } catch (t: Throwable) {
