@@ -10,6 +10,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.concurrent.futures.await
 import androidx.lifecycle.LifecycleOwner
 import com.bios.app.engine.CaptureQuality
+import com.bios.app.engine.EctopyDetector
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
@@ -195,6 +196,24 @@ class CameraPpgAdapter(private val context: Context) {
                     confidence = ConfidenceTier.LOW.level
                 )
             }
+            // PVC-burden estimate (#216 / Triage #26). Skipped on rhythms
+            // the classifier scores irregularly-irregular — AFib's
+            // randomness inflates the short-long pair count and would
+            // confound the PVC interpretation.
+            val ectopyReading = if (rhythmVerdict.verdict != RhythmClassifier.WindowVerdict.REGULAR) {
+                null
+            } else {
+                EctopyDetector.analyse(ppg.rrIntervalsMs)?.let { result ->
+                    MetricReading(
+                        metricType = MetricType.ECTOPY_BURDEN_ESTIMATE.key,
+                        value = result.burdenPercent,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                }
+            }
             val readings = listOfNotNull(
                 MetricReading(
                     metricType = MetricType.HEART_RATE.key,
@@ -253,6 +272,7 @@ class CameraPpgAdapter(private val context: Context) {
                     confidence = ConfidenceTier.LOW.level
                 ),
                 burdenReading,
+                ectopyReading,
                 // PPG pulse-wave morphology (#181, CARDIOLOGY_POV.md §2.2).
                 // Statistical summaries that PpgSignalProcessor surfaces
                 // alongside HRV. Written only when waveformFeatures is

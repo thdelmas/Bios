@@ -12,9 +12,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Guards [AdvancedCardiologyPatterns]. v1 ships only the HRR pattern; the
- * three deferred members (POTS, ectopy burden, QT-prolongation) gate the
- * test surface here when they ship.
+ * Guards [AdvancedCardiologyPatterns]. HRR and ectopy-burden are
+ * shipped; POTS and QT-prolongation remain deferred.
  */
 class AdvancedCardiologyPatternsTest {
 
@@ -58,6 +57,49 @@ class AdvancedCardiologyPatternsTest {
     @Test
     fun hr_recovery_carries_explanation_action_and_references() {
         val p = AdvancedCardiologyPatterns.hrRecoveryImpaired
+        assertTrue("explanation blank", p.explanation.isNotBlank())
+        assertTrue("suggested action blank", p.suggestedAction!!.isNotBlank())
+        assertTrue("≥2 references", p.references.size >= 2)
+    }
+
+    // -- ectopy_burden_elevated --
+
+    @Test
+    fun ectopy_burden_pattern_is_registered_in_global_all_list() {
+        assertTrue(AdvancedCardiologyPatterns.ectopyBurdenElevated in ConditionPatterns.all)
+    }
+
+    @Test
+    fun ectopy_burden_fires_at_or_above_10_percent_cutoff() {
+        val rule = AdvancedCardiologyPatterns.ectopyBurdenElevated.signalRules.single()
+        assertEquals(MetricType.ECTOPY_BURDEN_ESTIMATE, rule.metricType)
+        assertEquals(DeviationDirection.ABOVE, rule.direction)
+        assertEquals(10.0, rule.absoluteAbove!!, 1e-9)
+        assertNull(rule.absoluteBelow)
+        // 7-day rolling window with ≥ 3 captures — matches the higher
+        // PPG-session cadence and Holter-burden averaging convention.
+        assertEquals(168, rule.absoluteWindowHours)
+        assertEquals(3, rule.absoluteMinReadings)
+        assertEquals(ThresholdSource.LITERATURE, rule.source)
+        assertTrue("citation must be non-empty", rule.citation.isNotBlank())
+        assertTrue("rule must be required", rule.required)
+    }
+
+    @Test
+    fun ectopy_burden_is_advisory_not_urgent() {
+        // Holter-referral trigger, not an acute event.
+        assertNull(AdvancedCardiologyPatterns.ectopyBurdenElevated.severityFloor)
+    }
+
+    @Test
+    fun ectopy_burden_passes_alert_content_policy() {
+        val violations = AlertContentPolicy.validate(AdvancedCardiologyPatterns.ectopyBurdenElevated)
+        assertTrue("$violations", violations.isEmpty())
+    }
+
+    @Test
+    fun ectopy_burden_carries_explanation_action_and_references() {
+        val p = AdvancedCardiologyPatterns.ectopyBurdenElevated
         assertTrue("explanation blank", p.explanation.isNotBlank())
         assertTrue("suggested action blank", p.suggestedAction!!.isNotBlank())
         assertTrue("≥2 references", p.references.size >= 2)

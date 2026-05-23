@@ -92,6 +92,9 @@ enum class MetricType(
     HR_RECOVERY_1MIN("hr_recovery_1min", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
     HR_RECOVERY_2MIN("hr_recovery_2min", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
 
+    // PVC-burden estimate from PPG IBI short-long-pair detection (Triage #26).
+    ECTOPY_BURDEN_ESTIMATE("ectopy_burden_estimate", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+
     // Respiratory
     RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
     // Administered supplemental O2 (cannula/mask). Contextualises SpO2:
