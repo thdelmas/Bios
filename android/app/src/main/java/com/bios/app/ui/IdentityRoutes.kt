@@ -56,4 +56,7 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("ecg_strips") {
         com.bios.app.ui.ecg.EcgStripsScreen(onBack = { navController.popBackStack() })
     }
+    composable("surgical_recovery") {
+        com.bios.app.ui.physiology.SurgicalRecoveryScreen(onBack = { navController.popBackStack() })
+    }
 }
