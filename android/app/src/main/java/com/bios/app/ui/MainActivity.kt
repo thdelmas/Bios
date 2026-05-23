@@ -305,6 +305,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToFastStroke = { navController.navigate("fast_stroke") },
                     onNavigateToEsasCapture = { navController.navigate("esas_capture") },
                     onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") },
+                    onNavigateToEnvironmentalContext = { navController.navigate("environmental_context") },
                     onNavigateToEmergencyContacts = { navController.navigate("emergency_contacts") },
                     onNavigateToEcgStrips = { navController.navigate("ecg_strips") },
                     onNavigateToSurgicalRecovery = { navController.navigate("surgical_recovery") },
