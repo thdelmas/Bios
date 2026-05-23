@@ -253,11 +253,76 @@ class CameraPpgAdapter(private val context: Context) {
                     confidence = ConfidenceTier.LOW.level
                 ),
                 burdenReading,
+                // PPG pulse-wave morphology (#181, CARDIOLOGY_POV.md §2.2).
+                // Statistical summaries that PpgSignalProcessor surfaces
+                // alongside HRV. Written only when waveformFeatures is
+                // populated (rejected recordings + sessions with too few
+                // clean beats skip every key in this block).
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_PEAK_AMPLITUDE_MEAN.key,
+                        value = feat.peakAmplitudeTrimmedMean,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_PEAK_AMPLITUDE_COV.key,
+                        value = feat.peakAmplitudeCov,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_RISE_TIME_MEAN.key,
+                        value = feat.riseTimeMeanSec,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_RISE_TIME_COV.key,
+                        value = feat.riseTimeCov,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_DECAY_ASYMMETRY_INDEX.key,
+                        value = feat.decayAsymmetryIndex,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                // Dichrotic-notch position is nullable in PulseWaveformFeatures
+                // — only surfaced when enough beats yield a detectable notch.
+                ppg.waveformFeatures?.dichroticNotchRelativePosition?.let { pos ->
+                    MetricReading(
+                        metricType = MetricType.PPG_DICHROTIC_NOTCH_POSITION.key,
+                        value = pos,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
                 // PPG-derived augmentation index (Blueprint audit §3.1 #8).
-                // Computed in PpgSignalProcessor when a diastolic rebound
-                // is detectable on enough beats; null on short or noisy
-                // recordings, in which case the metric is simply not
-                // written for this session.
+                // Computed when a diastolic rebound is detectable on enough
+                // beats; null on short or noisy recordings.
                 ppg.waveformFeatures?.augmentationIndexPercent?.let { aix ->
                     MetricReading(
                         metricType = MetricType.AUGMENTATION_INDEX_PPG.key,
