@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 import org.json.JSONObject
@@ -32,13 +34,19 @@ fun AlertCard(
     anomaly: Anomaly,
     onAcknowledge: () -> Unit,
     onSaveFeedback: (FeedbackInput) -> Unit = {},
-    onRequestReview: (() -> Unit)? = null
+    onRequestReview: (() -> Unit)? = null,
+    onOpenPattern: ((String) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showFeedback by remember { mutableStateOf(false) }
     val tier = AlertTier.fromLevel(anomaly.severity)
     val tierColor = tierColor(tier)
     val hasFeedback = anomaly.feedbackAt != null
+    val pattern = remember(anomaly.patternId) {
+        anomaly.patternId?.let { id ->
+            ConditionPatterns.all.firstOrNull { it.id == id }
+        }
+    }
 
     Card(
         modifier = Modifier
@@ -73,27 +81,47 @@ fun AlertCard(
             }
 
             AnimatedVisibility(visible = expanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Spacer(Modifier.height(8.dp))
 
-                    // Explanation
-                    Text(
-                        anomaly.explanation,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // What Bios noticed — the data statement that triggered the alert.
+                    // Rendered as paragraphs so longer explanations stay scannable.
+                    AlertSection(label = "What Bios noticed") {
+                        ParagraphText(anomaly.explanation)
+                    }
 
-                    // Deviation scores
+                    // Why this matters — pulled from the underlying ConditionPattern's
+                    // `risks` field when available. Surfacing the mechanism here is what
+                    // turns the data statement into something an owner can act on.
+                    pattern?.takeIf { it.risks.isNotBlank() }?.let { p ->
+                        AlertSection(label = "Why this matters") {
+                            ParagraphText(p.risks)
+                        }
+                    }
+
+                    // Deviation scores (signal-rule alerts only)
                     DeviationScoresList(anomaly.deviationScores)
 
-                    // Suggested action
+                    // Suggested next step
                     anomaly.suggestedAction?.let { action ->
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text("💡 ", style = MaterialTheme.typography.bodySmall)
-                            Text(
-                                action,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        AlertSection(label = "Suggested next step") {
+                            ParagraphText(action)
+                        }
+                    }
+
+                    // Full context — navigates to ConditionDetailScreen which renders
+                    // earlyDetection / prevention / healing / risks / clinical context.
+                    if (pattern != null && onOpenPattern != null) {
+                        TextButton(
+                            onClick = { onOpenPattern(pattern.id) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Read full context")
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -146,6 +174,36 @@ fun AlertCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AlertSection(label: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        content()
+    }
+}
+
+/** Renders body text split on blank lines so long explanations are scannable. */
+@Composable
+private fun ParagraphText(text: String) {
+    val paragraphs = remember(text) {
+        text.split("\n\n").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        paragraphs.forEach { para ->
+            Text(
+                para,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
