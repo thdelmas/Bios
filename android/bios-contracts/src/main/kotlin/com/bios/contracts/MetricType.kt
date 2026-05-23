@@ -334,6 +334,76 @@ enum class MetricType(
     NT_PRO_BNP_PG_PER_ML("nt_pro_bnp_pg_per_ml", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
     ABSOLUTE_NEUTROPHIL_COUNT("absolute_neutrophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    // Wave-1 biomarker expansion (docs/audits/BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
+    // Closes the highest-priority Blueprint-vs-Bios coverage gaps: independent
+    // ASCVD risk markers, full CMP, full liver panel, CBC indices + 5-cell
+    // differential, iron studies, and the reproductive-endocrine panel. All
+    // pure-additive enum entries — no engine work, FHIR import via LOINC.
+
+    // Lipoprotein(a) — independent ASCVD risk; ESC 2021 / NLA 2022 report in
+    // nmol/L because apo(a) isoform size makes the mg/dL conversion lossy.
+    LIPOPROTEIN_A("lipoprotein_a", MetricUnit.NMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Homocysteine — cardiovascular + cognitive risk, B-vitamin sufficiency
+    // proxy. Standard longevity panel marker.
+    HOMOCYSTEINE("homocysteine", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Comprehensive Metabolic Panel completion — the basic CMP markers Bios
+    // was missing. Electrolytes (Na/K/Cl/CO2) use mEq/L by US convention
+    // (numerically equal to mmol/L for these monovalent ions plus bicarbonate).
+    BUN("bun", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CALCIUM_SERUM("calcium_serum", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CARBON_DIOXIDE("carbon_dioxide", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CHLORIDE("chloride", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PHOSPHATE("phosphate", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    SODIUM("sodium", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    POTASSIUM("potassium", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    URIC_ACID("uric_acid", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Liver + pancreas panel completion — complements ALT/AST/GGT already
+    // shipped. Amylase + lipase ride alongside since labs typically order
+    // them on the same liver-function bundle.
+    ALBUMIN("albumin", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ALKALINE_PHOSPHATASE("alkaline_phosphatase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    BILIRUBIN_TOTAL("bilirubin_total", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TOTAL_PROTEIN("total_protein", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    AMYLASE("amylase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LIPASE("lipase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // CBC indices + leukocyte differential percentages. Absolute differential
+    // counts (abs neutrophil already present as ABSOLUTE_NEUTROPHIL_COUNT)
+    // can be added later if a clinical pattern requires them.
+    MCV("mcv", MetricUnit.FEMTOLITERS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MCH("mch", MetricUnit.PICOGRAMS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MCHC("mchc", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    RDW("rdw", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MPV("mpv", MetricUnit.FEMTOLITERS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    NEUTROPHILS_PCT("neutrophils_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LYMPHOCYTES_PCT("lymphocytes_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MONOCYTES_PCT("monocytes_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    EOSINOPHILS_PCT("eosinophils_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    BASOPHILS_PCT("basophils_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Iron panel — co-ordered with existing FERRITIN. Iron saturation % is a
+    // computed lab value most labs report directly; storing the reported
+    // value rather than recomputing matches the existing HOMA_IR pattern.
+    IRON_SERUM("iron_serum", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    IRON_SATURATION_PCT("iron_saturation_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TIBC("tibc", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Reproductive endocrine panel. Reference ranges are sex-specific and
+    // (for women) cycle-phase-specific — provider-supplied range travels
+    // with the FHIR import. TESTOSTERONE_TOTAL is already shipped; this
+    // adds the free fraction plus the surrounding hypothalamic-pituitary
+    // axis.
+    FSH("fsh", MetricUnit.MIU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LH("lh", MetricUnit.MIU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    SHBG("shbg", MetricUnit.NMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    AMH("amh", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TESTOSTERONE_FREE("testosterone_free", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PROLACTIN("prolactin", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    DHEA_SULFATE("dhea_sulfate", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
@@ -395,71 +465,4 @@ enum class MetricType(
     companion object {
         fun fromKey(key: String): MetricType? = entries.find { it.key == key }
     }
-}
-
-enum class MetricUnit(val symbol: String) {
-    BPM("bpm"),
-    MILLISECONDS("ms"),
-    MMHG("mmHg"),
-    PERCENT("%"),
-    BREATHS_PER_MIN("breaths/min"),
-    CELSIUS("°C"),
-    DELTA_CELSIUS("Δ°C"),
-    CATEGORY(""),
-    SECONDS("s"),
-    COUNT(""),
-    KCAL("kcal"),
-    KILOGRAMS("kg"),
-    MG_PER_DL("mg/dL"),
-    MG_PER_L("mg/L"),
-    NG_PER_ML("ng/mL"),
-    NG_PER_DL("ng/dL"),
-    UG_PER_DL("µg/dL"),
-    PG_PER_ML("pg/mL"),
-    MIU_PER_L("mIU/L"),
-    MICRO_IU_PER_ML("µIU/mL"),
-    G_PER_DL("g/dL"),
-    GIGA_PER_L("10⁹/L"),
-    TERA_PER_L("10¹²/L"),
-    SCORE(""),
-    EVENT(""),
-    LUX("lx"),
-    YEARS("yr"),
-    MS_SQUARED("ms²"),
-    ML_PER_KG_MIN("mL/kg/min"),
-    UG_PER_M3("µg/m³"),
-    PPM("ppm"),
-    PPB("ppb"),
-    LITERS_PER_MIN("L/min"),
-    LITERS("L"),
-    MILLIGRAMS("mg"),
-    GRAMS("g"),
-    /** Enzyme activity per litre — ALT, AST, GGT, etc. */
-    U_PER_L("U/L"),
-    /** Mass per litre — high-sensitivity troponin clinical convention. */
-    NG_PER_L("ng/L"),
-    /** Cell count per microlitre — absolute neutrophil count clinical convention. */
-    PER_MICRO_L("/µL"),
-    /** eGFR normalized to body surface area — KDIGO 2024 standard. */
-    ML_PER_MIN_PER_173("mL/min/1.73m²"),
-    /** Anthropometric length — height, head circumference. */
-    CENTIMETERS("cm"),
-    /** Body Mass Index — kg/m². */
-    KG_PER_M2("kg/m²"),
-    /** Linear distance — elevation above sea level. */
-    METERS("m"),
-    /** Time of day length — daylight hours computed from latitude + date. */
-    HOURS("h"),
-    /** Presence indicator — value=1.0 means "this artefact exists." */
-    BOOLEAN("")
-}
-
-enum class MetricDomain {
-    CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
-    ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, NEUROLOGICAL, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER,
-    /** Length / circumference measurements (height, head circumference, BMI). */
-    ANTHROPOMETRY,
-    /** Body composition (lean mass, fat mass) — distinct from METABOLIC weight/% scalars. */
-    BODY_COMPOSITION
 }
