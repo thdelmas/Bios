@@ -447,6 +447,19 @@ class MetricTypeTest {
     }
 
     @Test
+    fun neurology_urgent_primitives_are_neurological_events() {
+        // Audit §3.2 #24 — SEIZURE_EVENT and THUNDERCLAP_HEADACHE_SUSPECTED
+        // are owner-logged event-shape primitives that drive URGENT
+        // neurology patterns. Same shape as FAST_STROKE_SUSPECTED, FALL_EVENT.
+        for (t in setOf(MetricType.SEIZURE_EVENT, MetricType.THUNDERCLAP_HEADACHE_SUSPECTED)) {
+            assertEquals(MetricDomain.NEUROLOGICAL, t.domain)
+            assertEquals(MetricUnit.EVENT, t.unit)
+            assertTrue(t.allowsManualEntry, "${t.key} must allow manual entry — owner is the only producer")
+            assertEquals(t, MetricType.fromKey(t.key))
+        }
+    }
+
+    @Test
     fun augmentation_index_ppg_is_cardiovascular_percent() {
         // Blueprint audit §3.1 #8 — PPG-derived augmentation index. Lives on
         // the cardiovascular side (computed from camera-PPG morphology), not
