@@ -49,6 +49,8 @@ class MetricTypeKeysSnapshotTest {
         "ppg_rise_time_cov",
         "ppg_decay_asymmetry_index",
         "ppg_dichrotic_notch_position",
+        // PPG-derived augmentation index (Blueprint audit §3.1 #8)
+        "augmentation_index_ppg",
         // Respiratory
         "respiratory_rate",
         "oxygen_flow_rate",

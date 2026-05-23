@@ -253,6 +253,21 @@ class CameraPpgAdapter(private val context: Context) {
                     confidence = ConfidenceTier.LOW.level
                 ),
                 burdenReading,
+                // PPG-derived augmentation index (Blueprint audit §3.1 #8).
+                // Computed in PpgSignalProcessor when a diastolic rebound
+                // is detectable on enough beats; null on short or noisy
+                // recordings, in which case the metric is simply not
+                // written for this session.
+                ppg.waveformFeatures?.augmentationIndexPercent?.let { aix ->
+                    MetricReading(
+                        metricType = MetricType.AUGMENTATION_INDEX_PPG.key,
+                        value = aix,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
             )
             return CaptureResult(
                 readings = readings,
