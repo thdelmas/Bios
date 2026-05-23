@@ -21,14 +21,10 @@ import kotlin.math.min
 
 /**
  * Detects anomalies by scoring deviations from personal baselines and
- * cross-correlating multiple signals.
- *
- * `reproductiveReadingDao` (#142): optional DAO for the isolated
- * [com.bios.app.data.ReproductiveDatabase] — WOMENS_HEALTH metrics resolve
- * there; baselines stay in the main DB as summary-only rows.
- * `medicationRepo` (#154): appends "Annotated current medications" to alert
- * explanations, frozen at anomaly creation.
- * `physiologyState` (#159, CARDIOLOGY_POV §2.4): filters patterns via [appliesIn].
+ * cross-correlating multiple signals. `reproductiveReadingDao` (#142) routes
+ * WOMENS_HEALTH metrics to the isolated [com.bios.app.data.ReproductiveDatabase].
+ * `medicationRepo` (#154) freezes annotated medications on alert creation.
+ * `physiologyState` (#159, CARDIOLOGY_POV §2.4) filters patterns via [appliesIn].
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
@@ -37,11 +33,14 @@ class AnomalyDetector(
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
     private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
-    /** Active region config (#196); gates `requiresTropicalRegion` patterns. */
+    /** #196: region gates `requiresTropicalRegion`; ownerConditions gates `requiredOwnerConditions`. */
     private val regionConfig: RegionConfig = RegionConfigProvider.forCurrentLocale(),
-    /** Owner-declared known conditions (#196); gates `requiredOwnerConditions`. */
     private val ownerConditions: Set<OwnerCondition> = emptySet(),
-    /** Sub-window acute-event detector (#190). Null disables the acute path. */
+    /** Cancer-therapy drug class (#201); gates `requiredDrugClasses`. */
+    private val drugClass: com.bios.app.physiology.CancerTherapyDrugClass = com.bios.app.physiology.CancerTherapyDrugClass.NONE,
+    /** #197: modulates `elevationAdjustedBelow` thresholds when set. */
+    private val environmentalContext: com.bios.app.model.EnvironmentalContext? = null,
+    /** #190: sub-window acute-event detector. Null disables the acute path. */
     private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
 ) {
 
@@ -55,7 +54,7 @@ class AnomalyDetector(
     private fun applicablePatterns(): List<ConditionPattern> {
         val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
         return ConditionPatterns.all.filter {
-            it.appliesIn(physiologyState, regionConfig, ownerConditions) && it.id !in acuteIds
+            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) && it.id !in acuteIds
         }
     }
 
@@ -474,7 +473,12 @@ class AnomalyDetector(
                 ?: return null to false
         }
         val above = rule.absoluteAbove?.let { representative >= it } == true
-        val below = rule.absoluteBelow?.let { representative <= it } == true
+        // Elevation-adjusted "at or below" cutoff (#197). When the rule
+        // ships an `elevationAdjustedBelow` map and the owner has declared
+        // an environmental context, the band-specific value displaces the
+        // base cutoff. Sea-level / null contexts fall through unchanged.
+        val resolvedBelow = rule.resolvedAbsoluteBelow(environmentalContext?.elevationBand)
+        val below = resolvedBelow?.let { representative <= it } == true
         return representative to (above || below)
     }
 }
@@ -490,10 +494,5 @@ internal fun readingKindFilterFor(metricType: MetricType): String? = when {
     else -> ReadingKind.SENSOR.name
 }
 
-/**
- * Reproductive metrics whose raw readings live in
- * [com.bios.app.data.ReproductiveDatabase]; anomaly evaluation routes value
- * fetches there. Baselines for these metrics, when computed, are still
- * stored as summary-only rows in the main DB per the documented contract.
- */
+/** Reproductive raw readings live in [com.bios.app.data.ReproductiveDatabase]; baselines stay in the main DB as summary-only rows. */
 internal fun isReproductiveMetric(metricType: MetricType): Boolean = metricType.domain == MetricDomain.WOMENS_HEALTH

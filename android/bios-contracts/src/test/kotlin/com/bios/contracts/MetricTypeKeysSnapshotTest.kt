@@ -41,6 +41,8 @@ class MetricTypeKeysSnapshotTest {
         "blood_oxygen",
         // PPG-derived AFib screen (#180) + pulse-wave morphology (#181)
         "irregular_rhythm_burden",
+        // Single-lead ECG strip presence (#188)
+        "ecg_strip_available",
         "ppg_peak_amplitude_mean",
         "ppg_peak_amplitude_cov",
         "ppg_rise_time_mean",
@@ -104,6 +106,9 @@ class MetricTypeKeysSnapshotTest {
         // trigger context, heat-index, damp/dry pathogen overlays
         "ambient_humidity_pct",
         "ambient_temperature_c",
+        // Environmental context (#197) — elevation + daylight hours
+        "elevation_m",
+        "daylight_hours",
         // Biomarkers
         "hba1c",
         "hscrp",
@@ -139,6 +144,10 @@ class MetricTypeKeysSnapshotTest {
         "alt",
         "ast",
         "ggt",
+        // Cardio-oncology biomarkers (#201)
+        "troponin_ng_per_l",
+        "nt_pro_bnp_pg_per_ml",
+        "absolute_neutrophil_count",
         // Epigenetic age clocks
         "epigenetic_age_dunedin_pace",
         "epigenetic_age_grim",
@@ -162,6 +171,10 @@ class MetricTypeKeysSnapshotTest {
         "check_in_miss",
         // Reserved active-test result
         "reaction_time_ms",
+        // Neurology owner-PRO (#207)
+        "headache_intensity_nrs",
+        "migraine_attack_event",
+        "fast_stroke_suspected",
     )
 
     @Test

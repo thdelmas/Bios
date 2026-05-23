@@ -36,6 +36,12 @@ internal fun IdentityCard(
     onNavigateToFastStroke: () -> Unit = {},
     onNavigateToEsasCapture: () -> Unit = {},
     onNavigateToTraditionalMedicine: () -> Unit = {},
+    onNavigateToEnvironmentalContext: () -> Unit = {},
+    onNavigateToEmergencyContacts: () -> Unit = {},
+    onNavigateToEcgStrips: () -> Unit = {},
+    onNavigateToSurgicalRecovery: () -> Unit = {},
+    onNavigateToInterventionEvents: () -> Unit = {},
+    onNavigateToTreatmentCourses: () -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -47,12 +53,18 @@ internal fun IdentityCard(
                 "Preventive care" to onNavigateToPreventiveCare,
                 "Risk profile" to onNavigateToRiskProfile,
                 "Physiology state" to onNavigateToPhysiologyState,
+                "Environmental context" to onNavigateToEnvironmentalContext,
                 "FRAIL assessment" to onNavigateToFrailAssessment,
                 "Goals of care" to onNavigateToGoalsOfCare,
                 "Headache & migraine diary" to onNavigateToHeadacheDiary,
                 "FAST stroke check" to onNavigateToFastStroke,
                 "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
                 "Traditional medicine" to onNavigateToTraditionalMedicine,
+                "Emergency contacts" to onNavigateToEmergencyContacts,
+                "ECG strips" to onNavigateToEcgStrips,
+                "Surgical recovery" to onNavigateToSurgicalRecovery,
+                "Intervention events" to onNavigateToInterventionEvents,
+                "Treatment courses" to onNavigateToTreatmentCourses,
             ).forEachIndexed { idx, (label, action) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }
