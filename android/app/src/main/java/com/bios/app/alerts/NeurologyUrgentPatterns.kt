@@ -5,34 +5,35 @@ import com.bios.app.model.ConditionCategory
 import com.bios.contracts.MetricType
 
 /**
- * Neurology URGENT patterns (#216 / NEUROLOGY_POV.md §2.1+§2.3, Triage
- * Inventory #24). Hard-cutoff URGENT alerts that fire on a single owner-
- * logged event or single GCS reading crossing a literature-anchored
- * clinical threshold. Same shape as [EmergencyVitalPatterns] — `required`
- * absolute-threshold rules with `severityFloor = URGENT`.
+ * Neurology event-triggered alert patterns (#216 / NEUROLOGY_POV.md
+ * §2.1+§2.3, Triage Inventory #24). Owner-logged seizure / headache
+ * events plus GCS-reading thresholds, each gated by a literature-anchored
+ * `required` absolute rule. Same shape as [EmergencyVitalPatterns];
+ * severity floor is URGENT for the single-event acute patterns and
+ * ADVISORY for [seizureCluster] (chronic-pattern cluster signal).
  *
  * ## Scope discipline
  *
- * v1 ships event-presence URGENT patterns only. A duration-aware
- * `status_epilepticus_convulsive` pattern (single seizure ≥ 5 min per the
- * ILAE 2015 t1 operational definition) needs a per-rule duration filter
- * in [SignalRule] that today's evaluator does not express; the
- * conservative substitute below fires URGENT on **any** owner-logged
- * SEIZURE_EVENT, which is the safety-leaning default (a known epileptic
- * who logs a seizure still benefits from the notification surface
- * documenting the time). Duration-specific status-epilepticus
- * discrimination is a follow-up.
+ * v2 (#268) splits the seizure surface into two clinically-distinct
+ * patterns: [statusEpilepticusConvulsive] is the duration-aware URGENT
+ * gate (single SEIZURE_EVENT ≥ 5 min per the ILAE 2015 t1 operational
+ * definition), and [seizureCluster] is the count-aware ADVISORY gate
+ * (≥ 3 SEIZURE_EVENT rows in 24 h per Haut 2007). The duration filter
+ * lives in [SignalRule.durationAtLeastSec]; the count gate uses the
+ * existing [SignalRule.absoluteMinReadings].
  *
- * Similarly the wearable convulsive-pattern detector (band-pass 2–8 Hz
+ * The wearable convulsive-pattern detector (band-pass 2–8 Hz
  * accelerometer + ictal-tachycardia corroborator, Empatica Embrace2
- * shape) is deferred — the substrate exists but a calibrated detector
- * needs its own design pass.
+ * shape, #269) is deferred — the substrate exists but a calibrated
+ * detector needs its own design pass.
  *
  * ## References
  *
  * - Trinka E et al. (2015) — A definition and classification of status
  *   epilepticus. *Epilepsia* 56(10):1515–1523. (ILAE t1 = 5 min for
  *   convulsive SE.)
+ * - Haut SR (2007) — Seizure clustering: risks and outcomes.
+ *   *Epilepsia* 47(8):1267–1273.
  * - Jennett B, Teasdale G (1974) — Assessment of coma and impaired
  *   consciousness. *Lancet* 304:81–84. (GCS canonical.)
  * - International Headache Society (2018) — ICHD-3 §6.2.2: Headache
@@ -44,41 +45,76 @@ object NeurologyUrgentPatterns {
 
     val all by lazy {
         listOf(
-            seizureEventLogged,
+            statusEpilepticusConvulsive,
+            seizureCluster,
             acuteAlteredConsciousnessLowGcs,
             thunderclapHeadache,
         )
     }
 
     /**
-     * Any owner-logged SEIZURE_EVENT in the last hour escalates URGENT.
-     * v1 substitute for the ILAE 2015 status-epilepticus pattern — the
-     * conservative shape until duration-aware rules ship.
+     * Single SEIZURE_EVENT of duration ≥ 5 min within the last hour —
+     * meets the ILAE 2015 / Trinka 2015 operational definition of
+     * convulsive status epilepticus (t1 = 300 s). URGENT.
      */
-    val seizureEventLogged = ConditionPattern(
-        id = "neurology_seizure_event_logged",
-        title = "Seizure event logged",
+    val statusEpilepticusConvulsive = ConditionPattern(
+        id = "neurology_status_epilepticus_convulsive",
+        title = "Convulsive status epilepticus suspected",
         category = ConditionCategory.MENTAL_HEALTH,
         signalRules = listOf(
             SignalRule(
                 MetricType.SEIZURE_EVENT, DeviationDirection.ABOVE, 0.0, 0, 1.5,
                 ThresholdSource.LITERATURE,
-                "ILAE 2015 / Trinka 2015 — any acute seizure event warrants URGENT clinical evaluation pending duration classification (t1 = 5 min defines convulsive status epilepticus)",
+                "ILAE 2015 / Trinka 2015 — single convulsive seizure lasting ≥ 5 minutes (t1 = 300 s) defines convulsive status epilepticus and is a neurological emergency",
                 required = true,
                 absoluteAbove = 0.0,
                 absoluteWindowHours = 1,
                 absoluteMinReadings = 1,
+                durationAtLeastSec = 300,
             ),
         ),
         minActiveSignals = 1,
         severityFloor = AlertTier.URGENT,
-        explanation = "A seizure event was logged within the last hour. Acute seizures warrant prompt clinical evaluation: a single seizure of any duration is the threshold for an emergency-department visit when no prior diagnosis exists, and a single seizure lasting ≥5 minutes meets the ILAE 2015 operational definition of convulsive status epilepticus regardless of seizure history.",
-        suggestedAction = "Call emergency services or proceed to an emergency department immediately if the seizure lasted ≥5 minutes, repeated within an hour, occurred in an owner with no prior seizure diagnosis, or was followed by injury / sustained altered consciousness / breathing difficulty. For an owner with established epilepsy whose pattern matches their baseline, follow the seizure action plan from their neurologist; document the event for the next clinical visit.",
+        explanation = "A convulsive seizure lasting at least 5 minutes was logged within the last hour. This meets the ILAE 2015 (Trinka et al.) operational definition of convulsive status epilepticus (t1 = 300 s): the duration beyond which spontaneous termination is unlikely and at which morbidity and mortality begin to climb steeply. Status epilepticus is a time-critical emergency regardless of seizure history — established epilepsy does not exempt an owner from the duration-based escalation.",
+        suggestedAction = "Call emergency services immediately. While waiting: protect the head, do not place anything in the mouth, time the seizure, note onset and any focal features, place the person in the recovery position once convulsions stop. First-line in-hospital treatment is benzodiazepines (lorazepam IV / midazolam IM / diazepam rectal) per Glauser 2016.",
         references = listOf(
-            "Trinka E et al. (2015) — A definition and classification of status epilepticus. Epilepsia 56(10):1515-1523",
+            "Trinka E et al. (2015) — A definition and classification of status epilepticus — report of the ILAE task force. Epilepsia 56(10):1515-1523",
             "Glauser T et al. (2016) — Evidence-based guideline: treatment of convulsive status epilepticus in children and adults. Epilepsy Currents 16(1):48-61",
         ),
-        earlyDetection = "Owner-logged seizure events serve two purposes: (1) timestamp documentation for clinical review and (2) URGENT-tier surfacing for the cases where the seizure represents either a new diagnosis or a status-epilepticus emergency. Duration-aware discrimination (ILAE t1 = 5 min for convulsive SE) is a planned engine extension; until it ships, the conservative pattern surfaces all logged events at URGENT severity.",
+        earlyDetection = "The 5-minute cutoff is the clinically-actionable discriminator between a self-terminating seizure and convulsive status epilepticus. Bios's SEIZURE_EVENT log captures `durationSec`; the pattern keys off that column directly so a 2-minute event does not trigger URGENT escalation while a 6-minute event does. The pattern fires per-event without a known-epilepsy exemption — even for owners with established epilepsy, a 5-minute-plus seizure is the threshold for emergency intervention.",
+    )
+
+    /**
+     * Three or more SEIZURE_EVENT rows within the last 24 hours — the
+     * canonical seizure-cluster shape per Haut 2007. ADVISORY: clusters
+     * elevate the short-term risk of status epilepticus and warrant
+     * clinical follow-up, but a single non-prolonged event in a cluster
+     * is not itself an acute emergency.
+     */
+    val seizureCluster = ConditionPattern(
+        id = "neurology_seizure_cluster",
+        title = "Seizure cluster in last 24 hours",
+        category = ConditionCategory.MENTAL_HEALTH,
+        signalRules = listOf(
+            SignalRule(
+                MetricType.SEIZURE_EVENT, DeviationDirection.ABOVE, 0.0, 0, 1.5,
+                ThresholdSource.LITERATURE,
+                "Haut 2007 Epilepsia 47:1267 — three or more seizure events within 24 hours defines a cluster and elevates the short-term risk of status epilepticus",
+                required = true,
+                absoluteAbove = 0.0,
+                absoluteWindowHours = 24,
+                absoluteMinReadings = 3,
+            ),
+        ),
+        minActiveSignals = 1,
+        severityFloor = AlertTier.ADVISORY,
+        explanation = "Three or more seizure events were logged within the last 24 hours. The Haut 2007 cluster definition identifies this pattern as a marker of elevated short-term risk for status epilepticus and for prolonged post-ictal morbidity. Clusters most often reflect a transient destabiliser — missed medication, intercurrent illness, sleep deprivation, alcohol withdrawal, hormonal change — but they can also be the first sign of a progressive process.",
+        suggestedAction = "Contact the treating neurologist within 24 hours; if no neurologist is established, seek same-day urgent care or telehealth review. If any single event in the cluster lasted ≥ 5 minutes, treat as status epilepticus instead and call emergency services. Review the seizure action plan (rescue benzodiazepine if prescribed), medication-adherence log, sleep, and recent illness in the days leading up to the cluster.",
+        references = listOf(
+            "Haut SR (2007) — Seizure clustering: risks and outcomes. Epilepsia 47(8):1267-1273",
+            "Jafarpour S et al. (2019) — Seizure cluster: definition, prevalence, consequences, and management. Seizure 68:9-15",
+        ),
+        earlyDetection = "Seizure clustering is the most actionable short-horizon warning sign for status epilepticus in the established-epilepsy population. The pattern fires from the SEIZURE_EVENT log without a duration filter — clusters are defined by count and recency, not the length of any individual event.",
     )
 
     /**
