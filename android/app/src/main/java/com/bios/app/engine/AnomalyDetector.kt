@@ -46,13 +46,16 @@ class AnomalyDetector(
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
-    // Acute-window patterns (#190) fire on their own detector (rate-of-change
-    // semantics the slow engine cannot express); skip here. appliesIn honors
-    // excludedStates + requiredStates (#200) + region (#196) + owner-conditions (#196).
+    // Acute-window patterns (#190) and signalRules-less patterns (e.g. MOH #207,
+    // scored by a dedicated diary evaluator) bypass this pipeline; surfacing
+    // them here would render a misleading "Current Match Score: 0%" in the
+    // detail screen. appliesIn honors excludedStates + requiredStates (#200) +
+    // region (#196) + owner-conditions (#196).
     private fun applicablePatterns(): List<ConditionPattern> {
         val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
         return ConditionPatterns.all.filter {
-            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) && it.id !in acuteIds
+            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) &&
+                it.id !in acuteIds && it.signalRules.isNotEmpty()
         }
     }
 
