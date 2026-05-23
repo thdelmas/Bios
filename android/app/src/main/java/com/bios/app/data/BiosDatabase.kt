@@ -38,9 +38,11 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         FastStrokeEvent::class,
         EsasReport::class,
         TraditionalMedicineContext::class,
+        EmergencyContact::class,
+        EcgStrip::class,
         com.bios.app.physiology.PerioperativeBaseline::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 @androidx.room.TypeConverters(MigraineTriggerConverter::class)
@@ -70,6 +72,8 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun fastStrokeEventDao(): FastStrokeEventDao
     abstract fun esasReportDao(): EsasReportDao
     abstract fun traditionalMedicineContextDao(): TraditionalMedicineContextDao
+    abstract fun emergencyContactDao(): EmergencyContactDao
+    abstract fun ecgStripDao(): EcgStripDao
     abstract fun perioperativeBaselineDao(): PerioperativeBaselineDao
 
     companion object {
@@ -93,7 +97,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_21_22)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -462,38 +466,14 @@ abstract class BiosDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS professional_reviews (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        anomalyId TEXT NOT NULL,
-                        requestedAt INTEGER NOT NULL,
-                        status INTEGER NOT NULL,
-                        shareMethod TEXT,
-                        sharedMetrics TEXT,
-                        sharedWindowDays INTEGER,
-                        sharedExplanation INTEGER NOT NULL,
-                        sharedBaselines INTEGER NOT NULL,
-                        respondedAt INTEGER,
-                        professionalNotes TEXT,
-                        clinicallyRelevant INTEGER,
-                        recommendation TEXT,
-                        ownerFoundHelpful INTEGER,
-                        FOREIGN KEY (anomalyId) REFERENCES anomalies(id) ON DELETE CASCADE
-                    )
-                """)
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_anomalyId ON professional_reviews(anomalyId)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_status ON professional_reviews(status)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_requestedAt ON professional_reviews(requestedAt)")
-            }
-        }
-
         // Migrations live in sibling files to keep this one under 500 lines.
+        private val MIGRATION_4_5 = ProfessionalReviewMigrations.MIGRATION_4_5
         private val MIGRATION_16_17 = NeurologyMigrations.MIGRATION_16_17
         private val MIGRATION_17_18 = EsasMigrations.MIGRATION_17_18
         private val MIGRATION_18_19 = TraditionalMedicineMigrations.MIGRATION_18_19
-        private val MIGRATION_21_22 = PerioperativeMigrations.MIGRATION_21_22
+        private val MIGRATION_20_21 = EmergencyContactMigrations.MIGRATION_20_21
+        private val MIGRATION_21_22 = EcgStripMigrations.MIGRATION_21_22
+        private val MIGRATION_22_23 = PerioperativeMigrations.MIGRATION_22_23
         fun buildInMemory(context: Context): BiosDatabase =
             Room.inMemoryDatabaseBuilder(context.applicationContext, BiosDatabase::class.java).build()
     }
