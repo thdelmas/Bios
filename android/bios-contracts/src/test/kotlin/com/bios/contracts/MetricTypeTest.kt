@@ -355,6 +355,68 @@ class MetricTypeTest {
         assertNotNull(BiosIntentActions.ACTION_REQUEST_STOP)
     }
 
+    // -- Wave-1 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.1) --
+
+    @Test
+    fun wave1_biomarkers_use_canonical_per_assay_units() {
+        // Each new MetricType pairs with the unit its lab report uses by
+        // convention; locking the pair here prevents drift if the enum is
+        // reordered or a unit is renamed.
+        val expected = mapOf(
+            MetricType.LIPOPROTEIN_A to MetricUnit.NMOL_PER_L,
+            MetricType.HOMOCYSTEINE to MetricUnit.UMOL_PER_L,
+            MetricType.BUN to MetricUnit.MG_PER_DL,
+            MetricType.CALCIUM_SERUM to MetricUnit.MG_PER_DL,
+            MetricType.CARBON_DIOXIDE to MetricUnit.MEQ_PER_L,
+            MetricType.CHLORIDE to MetricUnit.MEQ_PER_L,
+            MetricType.PHOSPHATE to MetricUnit.MG_PER_DL,
+            MetricType.SODIUM to MetricUnit.MEQ_PER_L,
+            MetricType.POTASSIUM to MetricUnit.MEQ_PER_L,
+            MetricType.URIC_ACID to MetricUnit.MG_PER_DL,
+            MetricType.ALBUMIN to MetricUnit.G_PER_DL,
+            MetricType.ALKALINE_PHOSPHATASE to MetricUnit.U_PER_L,
+            MetricType.BILIRUBIN_TOTAL to MetricUnit.MG_PER_DL,
+            MetricType.TOTAL_PROTEIN to MetricUnit.G_PER_DL,
+            MetricType.AMYLASE to MetricUnit.U_PER_L,
+            MetricType.LIPASE to MetricUnit.U_PER_L,
+            MetricType.MCV to MetricUnit.FEMTOLITERS,
+            MetricType.MCH to MetricUnit.PICOGRAMS,
+            MetricType.MCHC to MetricUnit.G_PER_DL,
+            MetricType.RDW to MetricUnit.PERCENT,
+            MetricType.MPV to MetricUnit.FEMTOLITERS,
+            MetricType.NEUTROPHILS_PCT to MetricUnit.PERCENT,
+            MetricType.LYMPHOCYTES_PCT to MetricUnit.PERCENT,
+            MetricType.MONOCYTES_PCT to MetricUnit.PERCENT,
+            MetricType.EOSINOPHILS_PCT to MetricUnit.PERCENT,
+            MetricType.BASOPHILS_PCT to MetricUnit.PERCENT,
+            MetricType.IRON_SERUM to MetricUnit.UG_PER_DL,
+            MetricType.IRON_SATURATION_PCT to MetricUnit.PERCENT,
+            MetricType.TIBC to MetricUnit.UG_PER_DL,
+            MetricType.FSH to MetricUnit.MIU_PER_ML,
+            MetricType.LH to MetricUnit.MIU_PER_ML,
+            MetricType.SHBG to MetricUnit.NMOL_PER_L,
+            MetricType.AMH to MetricUnit.NG_PER_ML,
+            MetricType.TESTOSTERONE_FREE to MetricUnit.PG_PER_ML,
+            MetricType.PROLACTIN to MetricUnit.NG_PER_ML,
+            MetricType.DHEA_SULFATE to MetricUnit.UG_PER_DL,
+        )
+        for ((type, unit) in expected) {
+            assertEquals(MetricDomain.BIOMARKER, type.domain, "${type.key} must be a BIOMARKER")
+            assertEquals(unit, type.unit, "${type.key} must report in ${unit.name}")
+            assertTrue(type.allowsManualEntry, "${type.key} (biomarker) must allow manual entry")
+        }
+    }
+
+    @Test
+    fun wave1_new_units_carry_expected_symbols() {
+        assertEquals("nmol/L", MetricUnit.NMOL_PER_L.symbol)
+        assertEquals("µmol/L", MetricUnit.UMOL_PER_L.symbol)
+        assertEquals("mEq/L", MetricUnit.MEQ_PER_L.symbol)
+        assertEquals("fL", MetricUnit.FEMTOLITERS.symbol)
+        assertEquals("pg", MetricUnit.PICOGRAMS.symbol)
+        assertEquals("mIU/mL", MetricUnit.MIU_PER_ML.symbol)
+    }
+
     // -- ECG strip presence (#188, audit gap §2.8) --
 
     @Test
