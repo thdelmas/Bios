@@ -92,6 +92,48 @@ class CaptureQualityTest {
     }
 
     @Test
+    fun `medianJumpPercentiles returns null when the recording is shorter than one window`() {
+        // 15 samples at 20 Hz < 1 s of luminance → no window can be formed.
+        val short = List(15) { 60.0 + it * 0.5 }
+        assertEquals(null, CaptureQuality.medianJumpPercentiles(short, fs))
+    }
+
+    @Test
+    fun `medianJumpPercentiles on a calm signal yields a small p50 and p90`() {
+        // 3 s at 20 Hz of tiny noise + slow drift — both percentiles should
+        // sit well below MOTION_MEDIAN_JUMP_Y (= 6).
+        val samples = (0 until 60).map { 60.0 + (it % 3) * 0.5 }
+        val stats = CaptureQuality.medianJumpPercentiles(samples, fs)!!
+        assert(stats.p50 < CaptureQuality.MOTION_MEDIAN_JUMP_Y) {
+            "calm p50 should be tiny but was ${stats.p50}"
+        }
+        assert(stats.p90 <= stats.p50 * 2 + 1.0) {
+            "p90 should be in the same order as p50 for calm input — got p50=${stats.p50}, p90=${stats.p90}"
+        }
+    }
+
+    @Test
+    fun `medianJumpPercentiles on sustained motion yields a large p50`() {
+        // Square-wave motion across the whole 3-second recording.
+        val samples = (0 until 60).map { 60.0 + if (it % 2 == 0) 0.0 else 15.0 }
+        val stats = CaptureQuality.medianJumpPercentiles(samples, fs)!!
+        assert(stats.p50 > CaptureQuality.MOTION_MEDIAN_JUMP_Y) {
+            "sustained-motion p50 should exceed MOTION_MEDIAN_JUMP_Y — got ${stats.p50}"
+        }
+    }
+
+    @Test
+    fun `medianJumpPercentiles p90 catches a single bad second among calm seconds`() {
+        // 4 s of calm + 1 s of motion: p50 stays calm, p90 climbs.
+        val calm = (0 until 80).map { 60.0 + (it % 3) * 0.2 }
+        val noisy = (0 until 20).map { 60.0 + if (it % 2 == 0) 0.0 else 15.0 }
+        val stats = CaptureQuality.medianJumpPercentiles(calm + noisy, fs)!!
+        assert(stats.p50 < stats.p90) {
+            "p90 should exceed p50 when one second is much worse — got ${stats.p50} / ${stats.p90}"
+        }
+    }
+
+    @Test
     fun `messages are non-empty and isGood matches STEADY only`() {
         for (q in CaptureQuality.entries) {
             assert(q.message.isNotBlank()) { "$q has a blank message" }

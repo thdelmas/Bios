@@ -27,6 +27,15 @@ data class PpgResult(
      * Korean, Siddha, Unani, Ayurveda). See CARDIOLOGY_POV.md §2.2.
      */
     val waveformFeatures: PulseWaveformFeatures? = null,
+    /**
+     * Trimmed CoV of detected peak amplitudes — the same value compared
+     * against [PpgSignalProcessor.MAX_PEAK_AMPLITUDE_COV]. Non-null whenever
+     * the pipeline reached peak detection (accept + MOTION_ARTIFACT /
+     * IRREGULAR_RHYTHM rejections); null on early rejections that bailed
+     * before peak detection ran. Surfaced for [PpgCalibrationLogger] so the
+     * offline log captures the value even when accept paths discard it.
+     */
+    val peakAmplitudeCov: Double? = null,
 ) {
     val accepted: Boolean get() = rejectionReason == null
 
@@ -36,6 +45,7 @@ data class PpgResult(
             durationSec: Double,
             peakCount: Int = 0,
             sqiScore: Int = 0,
+            peakAmplitudeCov: Double? = null,
         ) = PpgResult(
             rrIntervalsMs = emptyList(),
             sqiScore = sqiScore,
@@ -43,6 +53,7 @@ data class PpgResult(
             peakCount = peakCount,
             durationSec = durationSec,
             waveformFeatures = null,
+            peakAmplitudeCov = peakAmplitudeCov,
         )
     }
 }
