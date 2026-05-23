@@ -73,6 +73,9 @@ internal object RegionConfigsPacific {
         ),
         emergencyNumber = "000",                                         // Triple-zero
         indigenousFlagged = true,                                        // NACCHO
+        climateZone = ClimateZone.SUBTROPICAL,
+        defaultLatitudeDeg = -33.5,                                      // Sydney–Melbourne band
+        defaultElevationM = 50.0,
     )
 
     private fun nz() = RegionConfig(
