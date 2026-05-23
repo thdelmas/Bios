@@ -54,6 +54,8 @@ class MetricTypeKeysSnapshotTest {
         // Heart-rate recovery (Triage Inventory #26)
         "hr_recovery_1min",
         "hr_recovery_2min",
+        // PVC-burden estimate (Triage Inventory #26)
+        "ectopy_burden_estimate",
         // Respiratory
         "respiratory_rate",
         "oxygen_flow_rate",
