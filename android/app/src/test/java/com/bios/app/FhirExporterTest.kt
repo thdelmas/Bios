@@ -375,6 +375,8 @@ class FhirExporterTest {
             MetricUnit.PER_MICRO_L -> "/uL"
             MetricUnit.METERS -> "m"
             MetricUnit.HOURS -> "h"
+            MetricUnit.CENTIMETERS -> "cm"
+            MetricUnit.KG_PER_M2 -> "kg/m2"
             MetricUnit.BOOLEAN -> "{boolean}"
         }
     }

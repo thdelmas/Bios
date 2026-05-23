@@ -42,6 +42,7 @@ internal fun IdentityCard(
     onNavigateToSurgicalRecovery: () -> Unit = {},
     onNavigateToInterventionEvents: () -> Unit = {},
     onNavigateToTreatmentCourses: () -> Unit = {},
+    onNavigateToAnthropometry: () -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -65,6 +66,7 @@ internal fun IdentityCard(
                 "Surgical recovery" to onNavigateToSurgicalRecovery,
                 "Intervention events" to onNavigateToInterventionEvents,
                 "Treatment courses" to onNavigateToTreatmentCourses,
+                "Anthropometry" to onNavigateToAnthropometry,
             ).forEachIndexed { idx, (label, action) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }

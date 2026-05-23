@@ -435,6 +435,8 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.PER_MICRO_L -> "/uL"
     MetricUnit.METERS -> "m"
     MetricUnit.HOURS -> "h"
+    MetricUnit.CENTIMETERS -> "cm"
+    MetricUnit.KG_PER_M2 -> "kg/m2"
     // Presence indicator (ECG_STRIP_AVAILABLE, #188). UCUM dimensionless
     // for boolean flags — the actual waveform is exported as a separate
     // FHIR Media resource by the ECG strip exporter, not as a quantity.
