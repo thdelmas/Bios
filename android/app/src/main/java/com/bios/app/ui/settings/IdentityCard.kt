@@ -49,6 +49,7 @@ internal fun IdentityCard(
             Text("Identity", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
             listOf(
+                "Anthropometry" to onNavigateToAnthropometry,
                 "Current medications" to onNavigateToMedications,
                 "Immunisation record" to onNavigateToImmunisations,
                 "Preventive care" to onNavigateToPreventiveCare,
@@ -66,7 +67,6 @@ internal fun IdentityCard(
                 "Surgical recovery" to onNavigateToSurgicalRecovery,
                 "Intervention events" to onNavigateToInterventionEvents,
                 "Treatment courses" to onNavigateToTreatmentCourses,
-                "Anthropometry" to onNavigateToAnthropometry,
             ).forEachIndexed { idx, (label, action) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }
