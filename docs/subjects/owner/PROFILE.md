@@ -124,7 +124,7 @@ Total `MetricType` keys: **~156** across 16 domains (post-expansion: PR #252 +36
 | irregular_rhythm_burden | DERIVED | Same — camera PPG → RhythmClassifier |
 | ecg_strip_available | MISSING | HC ECG record; Fitbit Sense / Apple Watch / KardiaMobile import |
 | augmentation_index_ppg | DERIVED-on-demand | Camera PPG capture; written when a diastolic rebound is detectable (PR #256) |
-| ppg_peak_amplitude_mean/cov, ppg_rise_time_mean/cov, ppg_decay_asymmetry_index, ppg_dichrotic_notch_position | COMPUTED-NOT-PERSISTED | `PpgSignalProcessor` produces these but `CameraPpgAdapter` does not yet write them as `MetricReadings` — follow-up to PR #256 |
+| ppg_peak_amplitude_mean/cov, ppg_rise_time_mean/cov, ppg_decay_asymmetry_index, ppg_dichrotic_notch_position | DERIVED-on-demand | `CameraPpgAdapter` persists all six as `MetricReadings` on every accepted capture (PR #258); the dichrotic notch position is nullable and only written when the detector finds enough beats |
 
 ### Respiratory
 
