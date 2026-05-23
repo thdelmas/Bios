@@ -38,6 +38,18 @@
     <!-- Background work -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!--
+      Phone-sleep collection foreground service (#241). FOREGROUND_SERVICE
+      is the base permission; FOREGROUND_SERVICE_HEALTH is required on
+      API 34+ for the documented "sleep / vitals" service category that
+      PhoneSleepCollectionService declares. WAKE_LOCK keeps the CPU
+      available so the per-minute sampling cadence does not drift under
+      Doze while the service is running.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Step counter. Android 10+ silently delivers zero events to
          Sensor.TYPE_STEP_COUNTER without this permission, even though
          the sensor itself reports `hasStepCounter = true`. Without this
@@ -189,5 +201,21 @@
                 <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- Phone-sleep collection foreground service (#241 Cut 1).
+             Started by PowerConnectionReceiver on ACTION_POWER_CONNECTED
+             during quiet-hours; stopped on ACTION_POWER_DISCONNECTED.
+             Not exported — only Bios itself starts it. The "health"
+             foregroundServiceType is documented for sleep / vitals
+             collection on API 34+; older releases ignore the attribute.
+
+             The PowerConnectionReceiver is registered at runtime in
+             BiosApplication.onCreate — ACTION_POWER_CONNECTED /
+             _DISCONNECTED are NOT on the API 26+ implicit-broadcast
+             allowlist, so manifest-declared receivers never fire. -->
+        <service
+            android:name=".ingest.PhoneSleepCollectionService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
     </application>
 </manifest>

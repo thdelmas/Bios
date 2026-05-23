@@ -4,6 +4,7 @@ import android.app.Application
 import com.bios.app.alerts.DailyDigestWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.ingest.GadgetbridgeReceiver
+import com.bios.app.ingest.PowerConnectionReceiver
 import com.bios.app.ingest.SyncWorker
 import com.bios.app.platform.HealthApiServer
 import com.bios.app.platform.LetheCompat
@@ -29,6 +30,7 @@ class BiosApplication : Application() {
 
     private var healthApiServer: HealthApiServer? = null
     private var gadgetbridgeReceiver: GadgetbridgeReceiver? = null
+    private var powerConnectionReceiver: PowerConnectionReceiver? = null
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -70,6 +72,23 @@ class BiosApplication : Application() {
         // self-skips otherwise).
         com.bios.app.ingest.PhoneSleepWorker.enqueuePeriodicWork(this)
 
+        // Register the charge-edge receiver for the new foreground
+        // collection service (#241). ACTION_POWER_CONNECTED /
+        // _DISCONNECTED are not on the API 26+ implicit-broadcast
+        // allowlist, so the receiver must be registered at runtime —
+        // a manifest declaration would never fire. RECEIVER_NOT_EXPORTED
+        // is correct: only the OS sends these broadcasts.
+        powerConnectionReceiver = PowerConnectionReceiver().also {
+            registerReceiver(
+                it,
+                android.content.IntentFilter().apply {
+                    addAction(android.content.Intent.ACTION_POWER_CONNECTED)
+                    addAction(android.content.Intent.ACTION_POWER_DISCONNECTED)
+                },
+                RECEIVER_NOT_EXPORTED,
+            )
+        }
+
         // Schedule daily digest notification (8 AM, user can disable in settings)
         if (DailyDigestWorker.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
@@ -93,6 +112,7 @@ class BiosApplication : Application() {
 
     override fun onTerminate() {
         gadgetbridgeReceiver?.let { unregisterReceiver(it) }
+        powerConnectionReceiver?.let { unregisterReceiver(it) }
         p2pTransport.stop()
         healthApiServer?.stop()
         letheCompat.unregisterWipeReceivers(this)
