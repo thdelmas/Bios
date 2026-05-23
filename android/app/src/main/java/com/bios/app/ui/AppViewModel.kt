@@ -74,6 +74,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker, reproductiveReadingDao,
         physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current(),
         ownerConditions = com.bios.app.physiology.OwnerConditionStore(application).current(),
+        drugClass = com.bios.app.physiology.PhysiologyStateStore(application).drugClass(),
         environmentalContext = com.bios.app.config.EnvironmentalContextProvider(application).current())
     val alertManager = AlertManager(application, db, latencyTracker)
 

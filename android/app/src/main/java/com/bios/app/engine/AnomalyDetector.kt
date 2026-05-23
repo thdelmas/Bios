@@ -36,6 +36,8 @@ class AnomalyDetector(
     /** #196: region gates `requiresTropicalRegion`; ownerConditions gates `requiredOwnerConditions`. */
     private val regionConfig: RegionConfig = RegionConfigProvider.forCurrentLocale(),
     private val ownerConditions: Set<OwnerCondition> = emptySet(),
+    /** Cancer-therapy drug class (#201); gates `requiredDrugClasses`. */
+    private val drugClass: com.bios.app.physiology.CancerTherapyDrugClass = com.bios.app.physiology.CancerTherapyDrugClass.NONE,
     /** #197: modulates `elevationAdjustedBelow` thresholds when set. */
     private val environmentalContext: com.bios.app.model.EnvironmentalContext? = null,
     /** #190: sub-window acute-event detector. Null disables the acute path. */
@@ -52,7 +54,7 @@ class AnomalyDetector(
     private fun applicablePatterns(): List<ConditionPattern> {
         val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
         return ConditionPatterns.all.filter {
-            it.appliesIn(physiologyState, regionConfig, ownerConditions) && it.id !in acuteIds
+            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) && it.id !in acuteIds
         }
     }
 
