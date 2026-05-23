@@ -28,13 +28,34 @@ import kotlin.math.min
  */
 object PhoneSleepInference {
 
-    /** One phone-state observation, typically aggregated over ~1 minute. */
+    /**
+     * One phone-state observation, typically aggregated over ~1 minute.
+     *
+     * Tier-1 nullable additions (#243 Cut 1) are collection-only —
+     * [signalBreakdown] counts them, but [isQuietSample] / [stageAt] /
+     * [confidenceFor] do NOT consume them yet. The decision-side weave
+     * lands in Cut 2 once field data confirms each signal's predictive
+     * value. Until then, a null on any new field means "sensor /
+     * signal absent on this device — ignore" and the inference behaves
+     * exactly as it did before this PR.
+     */
     data class Sample(
         val timestamp: Long,
         val screenOff: Boolean,
         val charging: Boolean,
         val ambientLightLux: Float?,
         val accelMagnitudeVar: Float?,
+        /** Step delta since the previous sample (TYPE_STEP_COUNTER).
+         *  Zero across a sample window is a strong sleep prior. */
+        val stepDelta: Int? = null,
+        /** True when the owner has enabled Do Not Disturb (any non-ALL
+         *  interruption filter). Strong sleep-intent corroborator. */
+        val dndEnabled: Boolean? = null,
+        /** True when at least one paired Bluetooth peripheral (typically
+         *  a wearable / smart speaker / car system) is connected. Lets
+         *  the inference distinguish "phone on nightstand at home" from
+         *  "phone on a bar table at night." */
+        val pairedBluetoothConnected: Boolean? = null,
     )
 
     /**
@@ -225,7 +246,14 @@ object PhoneSleepInference {
     }
 
     /** Per-signal breakdown of the buffer so owners can diagnose which
-     *  signal is keeping the inference from firing. */
+     *  signal is keeping the inference from firing.
+     *
+     *  Tier-1 additions (#243 Cut 1): [zeroStepDelta], [dndOn], and
+     *  [pairedBtConnected] are observability counts of the new optional
+     *  signals; samples where the signal is absent (`null`) are not
+     *  counted. The denominator for each new count is on
+     *  [SignalBreakdown.sampledNewSignals] (samples that carried at
+     *  least one non-null new signal). */
     data class SignalBreakdown(
         val total: Int,
         val screenInactive: Int,
@@ -233,6 +261,16 @@ object PhoneSleepInference {
         val dark: Int,
         val charging: Int,
         val quiet: Int,
+        /** Samples with stepDelta == 0 (owner not walking). */
+        val zeroStepDelta: Int = 0,
+        /** Samples with DND enabled. */
+        val dndOn: Int = 0,
+        /** Samples with at least one paired BT peripheral connected. */
+        val pairedBtConnected: Int = 0,
+        /** Samples that carried at least one non-null Tier-1 new signal.
+         *  Acts as the denominator for the new counts on devices /
+         *  builds where any of the signals weren't recorded. */
+        val sampledNewSignals: Int = 0,
     )
 
     fun signalBreakdown(samples: List<Sample>): SignalBreakdown {
@@ -246,6 +284,12 @@ object PhoneSleepInference {
         }
         val charging = samples.count { it.charging }
         val quiet = samples.count { isQuietSample(it) }
+        val zeroStepDelta = samples.count { it.stepDelta == 0 }
+        val dndOn = samples.count { it.dndEnabled == true }
+        val pairedBtConnected = samples.count { it.pairedBluetoothConnected == true }
+        val sampledNewSignals = samples.count {
+            it.stepDelta != null || it.dndEnabled != null || it.pairedBluetoothConnected != null
+        }
         return SignalBreakdown(
             total = total,
             screenInactive = screenInactive,
@@ -253,6 +297,10 @@ object PhoneSleepInference {
             dark = dark,
             charging = charging,
             quiet = quiet,
+            zeroStepDelta = zeroStepDelta,
+            dndOn = dndOn,
+            pairedBtConnected = pairedBtConnected,
+            sampledNewSignals = sampledNewSignals,
         )
     }
 

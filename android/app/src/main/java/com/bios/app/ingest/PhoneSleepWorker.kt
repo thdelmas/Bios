@@ -80,6 +80,9 @@ class PhoneSleepWorker(
                     charging = sample.charging,
                     ambientLightLux = sample.ambientLightLux,
                     accelMagnitudeVar = sample.accelMagnitudeVar,
+                    stepDelta = sample.stepDelta,
+                    dndEnabled = sample.dndEnabled,
+                    pairedBluetoothConnected = sample.pairedBluetoothConnected,
                 )
             )
             // One-line per-firing diagnostic so the failure mode is
@@ -121,6 +124,9 @@ class PhoneSleepWorker(
                         charging = it.charging,
                         ambientLightLux = it.ambientLightLux,
                         accelMagnitudeVar = it.accelMagnitudeVar,
+                        stepDelta = it.stepDelta,
+                        dndEnabled = it.dndEnabled,
+                        pairedBluetoothConnected = it.pairedBluetoothConnected,
                     )
                 }
             val breakdown = PhoneSleepInference.signalBreakdown(samples)
@@ -195,6 +201,9 @@ class PhoneSleepWorker(
                     charging = fresh.charging,
                     ambientLightLux = fresh.ambientLightLux,
                     accelMagnitudeVar = fresh.accelMagnitudeVar,
+                    stepDelta = fresh.stepDelta,
+                    dndEnabled = fresh.dndEnabled,
+                    pairedBluetoothConnected = fresh.pairedBluetoothConnected,
                 )
             )
 
@@ -207,6 +216,9 @@ class PhoneSleepWorker(
                     charging = it.charging,
                     ambientLightLux = it.ambientLightLux,
                     accelMagnitudeVar = it.accelMagnitudeVar,
+                    stepDelta = it.stepDelta,
+                    dndEnabled = it.dndEnabled,
+                    pairedBluetoothConnected = it.pairedBluetoothConnected,
                 )
             }
             if (samples.size < MIN_SAMPLES_FOR_INFERENCE) {
