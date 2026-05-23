@@ -19,16 +19,29 @@ self-directed health-baseline / improvement plan.
 
 ## Companion Apps Installed on Same Phone
 
+### Bios companions (writers via `BiosHealthProvider`)
+
 | Package | Role | Status |
 |---|---|---|
 | `com.w2f.app` | Mood / cognitive (typing cadence, mood drift, PVT) | Installed |
 | `com.virgil.app` | Safety (fall, near-miss, check-in) | Installed |
 | `com.smokless.smokeless` | Substance-use events (tobacco/cannabis) | Installed |
-| `com.fitbit.FitbitMobile` | Wearable → Health Connect upstream | Installed |
 
 Companion grants in Bios: confirm via Bios → Settings → Companion Apps. The
 provider permission is `signature`-protected, so `adb` cannot query the
 allowlist directly from outside the app.
+
+### Third-party health apps (data sources or adjacent context)
+
+| Package | Role | Bios relevance |
+|---|---|---|
+| `com.fitbit.FitbitMobile` | Wearable hub | **Primary upstream** — feeds HC, which Bios reads |
+| `com.google.android.apps.fitness` | Google Fit | Secondary HC writer (steps, activity); usually redundant with Fitbit |
+| `com.google.android.apps.healthdata` | Health Connect | The HC platform itself — Bios's main read surface |
+| `com.strava` | Activity (run/ride) | Writes workouts to HC if granted; feeds `exercise_session`, `active_minutes` |
+| `com.yazio.android` | Nutrition tracking | No HC bridge today; reference for `caffeine_intake`, `alcohol_intake` manual entry (will feed FuelLog once W2F integration ships) |
+| `com.technogym.mywellness.metropolitanwellness` | Gym equipment / strength workouts | No direct integration; reference for manual exercise logging |
+| `org.bryanjohnson.blueprint` | Blueprint protocol (Bryan Johnson) | **Not a Bios data source.** Triggered the [Blueprint protocol audit](audits/BLUEPRINT_PROTOCOL_AUDIT.md) that's shaping Bios's lab-panel roadmap. Bios's posture (instrument, owner-baseline) differs from Blueprint's (coach, population percentiles) — see audit for the philosophical delta |
 
 ## Active Ingestion Routes
 
