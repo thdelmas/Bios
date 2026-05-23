@@ -186,6 +186,7 @@ object PpgSignalProcessor {
         val riseTimesSec = mutableListOf<Double>()
         val decayTimesSec = mutableListOf<Double>()
         val notchRelativePositions = mutableListOf<Double>()
+        val augmentationIndices = mutableListOf<Double>()
 
         for (i in peakIndices.indices) {
             val peakIdx = peakIndices[i]
@@ -209,6 +210,9 @@ object PpgSignalProcessor {
                 if (beatPeriodSamples > 0) {
                     notchRelativePositions.add((notchOffsetSamples + (peakIdx - footBefore)) / beatPeriodSamples)
                 }
+                augmentationIndexForBeat(
+                    smoothed, peakIdx, footBefore, footAfter, notchOffsetSamples
+                )?.let { augmentationIndices.add(it) }
             }
         }
 
@@ -229,6 +233,15 @@ object PpgSignalProcessor {
         } else {
             null
         }
+        // Augmentation-index quorum is intentionally half the morphology quorum:
+        // the notch is the limiting factor (not always detectable beat-to-beat
+        // on peripheral PPG) so insisting on MIN_BEATS_FOR_MORPHOLOGY would
+        // suppress the metric on perfectly usable recordings.
+        val augmentationIndex = if (augmentationIndices.size * 2 >= MIN_BEATS_FOR_MORPHOLOGY) {
+            augmentationIndices.average()
+        } else {
+            null
+        }
 
         return PulseWaveformFeatures(
             peakAmplitudeTrimmedMean = trimmedAmpMean,
@@ -237,8 +250,54 @@ object PpgSignalProcessor {
             riseTimeCov = riseCov,
             decayAsymmetryIndex = decayAsymmetry,
             dichroticNotchRelativePosition = notchPosition,
+            augmentationIndexPercent = augmentationIndex,
             beatsMeasured = riseTimesSec.size
         )
+    }
+
+    /**
+     * Per-beat augmentation index from the diastolic rebound height.
+     * Locates the local maximum on the decay limb that follows the dichrotic
+     * notch (the diastolic peak / reflected wave) and returns
+     * (1 − h_diastolic / h_systolic) × 100, clamped to [0, 100]. Returns null
+     * when no rebound rises above the notch within the search window — a
+     * collapsed pulse contour or a noisy beat the caller should skip rather
+     * than fold into the average.
+     *
+     * Heights are measured from the beat's foot baseline so DC offset and
+     * detrend artefacts cancel. The result is *not* clinical SphygmoCor AIx
+     * — it is a peripheral-PPG proxy whose absolute calibration drifts with
+     * sensor distance from the heart. Useful for trend tracking against the
+     * owner's own baseline.
+     */
+    internal fun augmentationIndexForBeat(
+        smoothed: DoubleArray,
+        peakIdx: Int,
+        footBefore: Int,
+        footAfter: Int,
+        notchOffsetSamples: Int
+    ): Double? {
+        val notchIdx = peakIdx + notchOffsetSamples
+        if (notchIdx >= footAfter - 1) return null
+
+        var diastolicIdx = notchIdx + 1
+        var diastolicVal = smoothed[diastolicIdx]
+        for (j in notchIdx + 2 until footAfter) {
+            if (smoothed[j] > diastolicVal) {
+                diastolicVal = smoothed[j]
+                diastolicIdx = j
+            }
+        }
+        // Reject beats whose "rebound" does not actually rise above the notch
+        // amplitude — those are smooth decays, not a reflected wave.
+        if (diastolicVal <= smoothed[notchIdx]) return null
+
+        val systolicHeight = smoothed[peakIdx] - smoothed[footBefore]
+        if (systolicHeight <= 0.0) return null
+        val diastolicHeight = diastolicVal - smoothed[footBefore]
+        if (diastolicHeight <= 0.0) return null
+
+        return ((1.0 - diastolicHeight / systolicHeight) * 100.0).coerceIn(0.0, 100.0)
     }
 
     /** Index of the minimum sample in [from, to). Falls back to [from] when range empty. */
@@ -398,100 +457,3 @@ object PpgSignalProcessor {
     }
 }
 
-/** Outcome of processing a PPG waveform. */
-data class PpgResult(
-    /** RR intervals in ms between successive peaks. Empty when rejected. */
-    val rrIntervalsMs: List<Double>,
-    /** 0–100 composite signal quality. 0 when rejected. */
-    val sqiScore: Int,
-    /** Non-null when the recording was rejected; carries the user-facing reason. */
-    val rejectionReason: RejectionReason?,
-    /** Number of detected peaks (informational, even when rejected). */
-    val peakCount: Int,
-    /** Recording length the processor saw. */
-    val durationSec: Double,
-    /**
-     * Statistical summaries of pulse-wave morphology — peak-amplitude central
-     * tendency / dispersion, rise-time central tendency / dispersion,
-     * decay-asymmetry, dichrotic-notch position. Null when the recording was
-     * rejected or had too few clean beats to summarise. Never contains the raw
-     * waveform — only scalars suitable for persistence as
-     * `MetricType.PPG_WAVEFORM_*` derived metrics.
-     *
-     * Surfaced for downstream Western-cardiology arterial-stiffness views
-     * (Vlachopoulos 2010; Townsend 2015 AHA stiffness statement; ESC 2018)
-     * and traditional-medicine pulse-quality readers (TCM, Sowa Rigpa, Kampo,
-     * Korean, Siddha, Unani, Ayurveda). See CARDIOLOGY_POV.md §2.2.
-     */
-    val waveformFeatures: PulseWaveformFeatures? = null
-) {
-    val accepted: Boolean get() = rejectionReason == null
-
-    companion object {
-        fun rejected(
-            reason: RejectionReason,
-            durationSec: Double,
-            peakCount: Int = 0,
-            sqiScore: Int = 0
-        ) = PpgResult(
-            rrIntervalsMs = emptyList(),
-            sqiScore = sqiScore,
-            rejectionReason = reason,
-            peakCount = peakCount,
-            durationSec = durationSec,
-            waveformFeatures = null
-        )
-    }
-}
-
-/**
- * Statistical morphology of an accepted PPG recording. All fields are scalar
- * summaries — no raw waveform is ever stored, which keeps storage discipline
- * and the manifesto's "instrument-not-collector" stance.
- *
- * Field definitions:
- * - [peakAmplitudeTrimmedMean]: mean of systolic peak heights after dropping
- *   the lowest 25 % (dichrotic notches / noise the detector lets through).
- *   In raw luminance units of the smoothed signal.
- * - [peakAmplitudeCov]: coefficient-of-variation of the trimmed peak heights.
- *   Vasomotor / sympathetic-tone proxy (Selvaraj 2008).
- * - [riseTimeMeanSec]: mean foot-to-peak time. Inverse-related to
- *   pulse-wave-velocity / arterial stiffness (Mitchell 2010; Ben-Shlomo 2014).
- * - [riseTimeCov]: rise-time CoV. Beat-to-beat consistency proxy.
- * - [decayAsymmetryIndex]: (decayTime − riseTime) / (decayTime + riseTime),
- *   ∈ (−1, 1). Healthy compliant arteries → asymmetric pulse (positive index);
- *   stiffer beds → more symmetric pulse (toward 0). Related to augmentation
- *   index family (Vlachopoulos 2010).
- * - [dichroticNotchRelativePosition]: fraction of the foot-to-foot beat period
- *   at which the dichrotic notch (closure of the aortic valve) appears, averaged
- *   across beats with a detectable notch. Null if too few notches were found
- *   to summarise. Diastolic-function / vascular-tone proxy (Allen 2007;
- *   Elgendi 2012).
- * - [beatsMeasured]: number of complete foot→peak→foot triples used to compute
- *   the summaries above. Informational; lets downstream consumers gate display
- *   on a minimum sample size.
- *
- * These features are not exotic — Withings BPM Core, Aktiia, Empatica, and the
- * academic vascular-aging literature all surface a subset. Bios stores them so
- * later pull-side views (arterial-stiffness reference, traditional-medicine
- * pulse-quality readers) can consume them without a new sensor pass.
- */
-data class PulseWaveformFeatures(
-    val peakAmplitudeTrimmedMean: Double,
-    val peakAmplitudeCov: Double,
-    val riseTimeMeanSec: Double,
-    val riseTimeCov: Double,
-    val decayAsymmetryIndex: Double,
-    val dichroticNotchRelativePosition: Double?,
-    val beatsMeasured: Int
-)
-
-enum class RejectionReason(val userMessage: String) {
-    INSUFFICIENT_RECORDING_TIME("Recording was too short — try again and hold for the full countdown."),
-    INSUFFICIENT_SIGNAL("Finger not detected — place fingertip fully over the rear camera and flash."),
-    SATURATION("Too much light — lighten finger pressure or move away from bright light."),
-    MOTION_ARTIFACT("Motion detected — rest your hand on a surface and hold still."),
-    TOO_FEW_BEATS("Signal too weak to extract a heartbeat — check contact and retry."),
-    IRREGULAR_RHYTHM("Signal too irregular to score — retry with a steadier hand."),
-    HARDWARE_UNAVAILABLE("Camera or flash unavailable — this device may not support fingertip-PPG capture.")
-}

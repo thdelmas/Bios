@@ -446,6 +446,21 @@ class MetricTypeTest {
         assertEquals("IU/mL", MetricUnit.IU_PER_ML.symbol)
     }
 
+    @Test
+    fun augmentation_index_ppg_is_cardiovascular_percent() {
+        // Blueprint audit §3.1 #8 — PPG-derived augmentation index. Lives on
+        // the cardiovascular side (computed from camera-PPG morphology), not
+        // BIOMARKER. Manual entry stays false; the value is always
+        // PpgSignalProcessor-derived, never owner-typed.
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.AUGMENTATION_INDEX_PPG.domain)
+        assertEquals(MetricUnit.PERCENT, MetricType.AUGMENTATION_INDEX_PPG.unit)
+        assertEquals(false, MetricType.AUGMENTATION_INDEX_PPG.allowsManualEntry)
+        assertEquals(
+            MetricType.AUGMENTATION_INDEX_PPG,
+            MetricType.fromKey("augmentation_index_ppg"),
+        )
+    }
+
     // -- ECG strip presence (#188, audit gap §2.8) --
 
     @Test
