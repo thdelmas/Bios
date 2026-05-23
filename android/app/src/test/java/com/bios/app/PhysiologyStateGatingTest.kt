@@ -83,15 +83,52 @@ class PhysiologyStateGatingTest {
     }
 
     @Test
-    fun cardiovascular_stress_still_fires_in_standard_and_paediatric() {
-        // Paediatric doesn't have a known normative RHR-elevation pattern in
-        // this library yet — the cardiovascular-stress signal still applies.
-        // (Paediatric threshold-modifier work belongs to a future PR.)
-        // FRAILTY_FLAG is now excluded — see frailty_excludes_baseline_deviation_patterns.
-        for (state in listOf(PhysiologyState.STANDARD, PhysiologyState.PAEDIATRIC)) {
+    fun cardiovascular_stress_still_fires_in_standard_and_adolescent() {
+        // Adolescents (13–18y) approach adult physiology; the cardiovascular-
+        // stress trend pattern applies. Pre-adolescent paediatric bands and
+        // the coarse PAEDIATRIC parent are excluded — see
+        // cardiovascular_stress_is_suppressed_for_pre_adolescent_paediatric_bands.
+        // FRAILTY_FLAG is also excluded — see frailty_excludes_baseline_deviation_patterns.
+        for (state in listOf(PhysiologyState.STANDARD, PhysiologyState.ADOLESCENT_13Y_18Y)) {
             assertTrue(
                 "cardiovascular_stress should fire in $state",
                 applicable(state).any { it.id == "cardiovascular_stress" }
+            )
+        }
+    }
+
+    @Test
+    fun cardiovascular_stress_is_suppressed_for_pre_adolescent_paediatric_bands() {
+        // #198: adult z-score machinery is invalid against a growing child's
+        // non-stationary baseline. Adolescents (13–18) approach adult
+        // physiology and keep the pattern active (see prior test).
+        for (state in PhysiologyState.PAEDIATRIC_PRE_ADOLESCENT) {
+            assertFalse(
+                "cardiovascular_stress should be excluded for $state",
+                applicable(state).any { it.id == "cardiovascular_stress" }
+            )
+        }
+    }
+
+    @Test
+    fun cardiorespiratory_deconditioning_is_suppressed_for_pre_adolescent_paediatric_bands() {
+        for (state in PhysiologyState.PAEDIATRIC_PRE_ADOLESCENT) {
+            assertFalse(
+                "cardiorespiratory_deconditioning should be excluded for $state",
+                applicable(state).any { it.id == "cardiorespiratory_deconditioning" }
+            )
+        }
+    }
+
+    @Test
+    fun sepsis_screen_is_suppressed_for_every_paediatric_band() {
+        // NEWS2 is validated for adults only; PEWS uses age-banded
+        // thresholds. Suppression covers every paediatric band, not just
+        // the coarse PAEDIATRIC parent (#198).
+        for (state in PhysiologyState.PAEDIATRIC_ALL) {
+            assertFalse(
+                "sepsis_screen should be excluded for $state",
+                applicable(state).any { it.id == "sepsis_screen" }
             )
         }
     }
@@ -140,8 +177,13 @@ class PhysiologyStateGatingTest {
             PhysiologyState.POSTPARTUM,
         )
         val pregnancyPostpartumFrailty = pregnancyAndPostpartum + PhysiologyState.FRAILTY_FLAG
+        val paediatricPreAdolescentPlusParent = PhysiologyState.PAEDIATRIC_PRE_ADOLESCENT +
+            setOf(PhysiologyState.PAEDIATRIC)
         val cardiovascularStressGate = pregnancyAndPostpartum +
-            setOf(PhysiologyState.ATHLETE_HIGH_FITNESS, PhysiologyState.FRAILTY_FLAG)
+            setOf(PhysiologyState.ATHLETE_HIGH_FITNESS, PhysiologyState.FRAILTY_FLAG) +
+            paediatricPreAdolescentPlusParent
+        val cardiorespiratoryDeconditioningGate = pregnancyPostpartumFrailty +
+            paediatricPreAdolescentPlusParent
         val allStates = PhysiologyState.entries.toSet()
         val outsidePregnancyAndPostpartum = allStates - pregnancyAndPostpartum
         val outsidePostpartum = allStates - setOf(PhysiologyState.POSTPARTUM)
@@ -154,13 +196,15 @@ class PhysiologyStateGatingTest {
             "cardiovascular_stress" to cardiovascularStressGate,
             "overtraining" to pregnancyAndPostpartum,
             "metabolic_drift" to pregnancyAndPostpartum,
-            "cardiorespiratory_deconditioning" to pregnancyPostpartumFrailty,
+            "cardiorespiratory_deconditioning" to cardiorespiratoryDeconditioningGate,
             "chronic_inflammation" to pregnancyAndPostpartum,
             "recovery_deficit" to pregnancyPostpartumFrailty,
             "menstrual_cycle_anomaly" to pregnancyAndPostpartum,
-            "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "sepsis_screen" to PhysiologyState.PAEDIATRIC_ALL,
             "dka_screen" to setOf(PhysiologyState.PAEDIATRIC),
             "ciguatera_suggestive" to setOf(PhysiologyState.ATHLETE_HIGH_FITNESS),
+            "emergency_tachycardia_critical" to PhysiologyState.PAEDIATRIC_ALL,
+            "emergency_bradycardia_critical" to PhysiologyState.PAEDIATRIC_ALL,
             "gestational_hypertension_screen" to outsideT2T3,
             "severe_range_preeclampsia_screen" to outsidePregnancyAndPostpartum,
             "postpartum_pre_eclampsia_screen" to outsidePostpartum,

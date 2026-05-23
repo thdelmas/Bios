@@ -3,6 +3,7 @@ package com.bios.app.alerts
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
 import com.bios.app.model.ElevationBand
+import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 
 /**
@@ -46,7 +47,7 @@ object EmergencyVitalPatterns {
             hypoglycemiaCritical,
             tachycardiaCritical,
             bradycardiaCritical,
-        )
+        ) + PaediatricEmergencyVitalPatterns.all
     }
 
     /**
@@ -162,6 +163,12 @@ object EmergencyVitalPatterns {
             "Page RL et al. (2015) — ACC/AHA/HRS guideline for the management of adult patients with supraventricular tachycardia",
         ),
         earlyDetection = "Wearable resting-HR estimates are nightly averages, not transient readings — a single estimate at or above 130 bpm reflects sustained tachycardia at rest, not exertion. AFib with rapid ventricular response, SVT, hyperthyroidism, infection, and severe dehydration all present this way. Clinical confirmation (ECG, labs) is the next step.",
+        // Adult cutoff (≥130) is wrong for children — a healthy toddler's
+        // resting HR routinely sits at 120. PALS-anchored paediatric
+        // patterns ship in PaediatricEmergencyVitalPatterns with band-
+        // specific ceilings (NEONATE ≥220, INFANT ≥200, TODDLER ≥180,
+        // PRESCHOOL ≥160, SCHOOL ≥140, ADOLESCENT ≥135). Issue #198.
+        excludedStates = PhysiologyState.PAEDIATRIC_ALL,
     )
 
     /**
@@ -197,5 +204,12 @@ object EmergencyVitalPatterns {
             "Klein I, Ojamaa K (2001) — Thyroid hormone and the cardiovascular system",
         ),
         earlyDetection = "A wearable resting-HR estimate at or below 35 bpm is an unusual finding in adults outside elite endurance conditioning. Conduction-system disease often presents with this kind of asymptomatic-or-mildly-symptomatic bradycardia before progressing to symptomatic episodes; ECG is the definitive next step.",
+        // Adult floor (≤35) stays silent on real bradycardia in children
+        // — a neonate at 80 bpm is in bradycardia; the adult cutoff
+        // never triggers. PALS-anchored paediatric floors ship in
+        // PaediatricEmergencyVitalPatterns (NEONATE ≤80, INFANT ≤60,
+        // TODDLER ≤50, PRESCHOOL ≤45, SCHOOL ≤40, ADOLESCENT ≤40).
+        // Issue #198.
+        excludedStates = PhysiologyState.PAEDIATRIC_ALL,
     )
 }
