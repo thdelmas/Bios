@@ -42,7 +42,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.RiskProfileRepo
 import com.bios.app.data.ScreeningEntryRepo
+import com.bios.app.model.RiskProfile
 import com.bios.app.screening.Applicability
 import com.bios.app.screening.OwnerDemographicsStore
 import com.bios.app.screening.ScreeningCadenceEngine
@@ -72,12 +74,14 @@ import java.util.Locale
 fun PreventiveCareScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val repo = remember(context) { ScreeningEntryRepo(BiosDatabase.getInstance(context)) }
+    val riskRepo = remember(context) { RiskProfileRepo(BiosDatabase.getInstance(context)) }
     val demographicsStore = remember(context) { OwnerDemographicsStore(context) }
     val scope = rememberCoroutineScope()
 
     var birthYear by remember { mutableStateOf(demographicsStore.birthYear()) }
     var presentsAs by remember { mutableStateOf(demographicsStore.presentsAs()) }
     var entries by remember { mutableStateOf<Map<String, Long?>>(emptyMap()) }
+    var riskProfile by remember { mutableStateOf<RiskProfile?>(null) }
     var showRecordDialog by remember { mutableStateOf<ScreeningCatalogEntry?>(null) }
     var showDemographicsDialog by remember { mutableStateOf(false) }
 
@@ -88,6 +92,7 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
         // Group most-recent per key.
         entries = all.groupBy { it.screeningKey }
             .mapValues { (_, list) -> list.maxOfOrNull { it.performedDate } }
+        riskProfile = riskRepo.fetch()
     }
 
     LaunchedEffect(Unit) { refresh() }
@@ -133,7 +138,7 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
                 )
             } else {
                 val statuses = ScreeningCadenceEngine.evaluateAll(
-                    catalog = ScreeningCatalog.uspstf,
+                    catalog = ScreeningCatalog.combined,
                     demographics = demographics,
                     latestByKey = { key ->
                         entries[key]?.let { date ->
@@ -143,12 +148,24 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
                             )
                         }
                     },
+                    riskProfile = riskProfile,
                 )
+                // Hide risk-gated entries the owner doesn't qualify for —
+                // showing the entire NCCN hereditary list to every
+                // non-carrier owner would be noise. The owner's
+                // risk-profile screen is the entry point to surface
+                // these; once a syndrome flag is set, the engine
+                // returns a non-`Requires owner-recorded ...` status
+                // and the row appears here.
+                val visible = statuses.filterNot { (_, status) ->
+                    status is ScreeningStatus.NotEligible &&
+                        status.reason.startsWith("Requires owner-recorded")
+                }
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
-                    items(statuses, key = { it.first.key }) { (entry, status) ->
+                    items(visible, key = { it.first.key }) { (entry, status) ->
                         ScreeningRow(
                             entry = entry,
                             status = status,
