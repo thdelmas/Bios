@@ -74,6 +74,7 @@ object ConditionPatterns {
             HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all +
             TropicalDiseasePatterns.all + EnvironmentalPatterns.all +
             PerioperativePatterns.all + CardioOncologyPatterns.all +
-            GrowthAndCompositionPatterns.all + NeurologyUrgentPatterns.all
+            GrowthAndCompositionPatterns.all + NeurologyUrgentPatterns.all +
+            AdvancedCardiologyPatterns.all
     }
 }
