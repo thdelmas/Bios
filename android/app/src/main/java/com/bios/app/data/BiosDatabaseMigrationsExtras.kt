@@ -21,7 +21,7 @@ internal object BiosDatabaseMigrationsExtras {
      * All new columns default to 0 (false) so the previous row keeps
      * its existing risk flags intact across the upgrade.
      */
-    val MIGRATION_25_26: Migration = object : Migration(25, 26) {
+    val MIGRATION_23_24: Migration = object : Migration(23, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
             val newBooleans = listOf(
                 "lynchSyndrome",

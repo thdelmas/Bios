@@ -93,10 +93,27 @@ enum class PhysiologyState(val displayName: String) {
      * owner has affirmatively set this state. Manifesto guard: Bios never
      * infers HF — the owner picks.
      */
-    KNOWN_HF("Known heart failure");
+    KNOWN_HF("Known heart failure"),
+
+    /**
+     * Peri-operative states (#205, SURGICAL_POV §2.1-§2.6). Owner-set or
+     * auto-transitioned via [com.bios.app.physiology.PerioperativeStateTransitionWorker].
+     * Suppresses baseline-relative patterns whose deviations are normative
+     * post-op, and activates post-op-windowed surveillance patterns
+     * (SSI / VTE / anastomotic-leak) via `requiredStates`.
+     */
+    PREHAB_WINDOW("Pre-op prehabilitation window"),
+    POD_0_30("Post-op days 0–30"),
+    POD_30_90("Post-op days 30–90"),
+    POD_90_PLUS("Post-op 90+ days");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
         val PREGNANCY: Set<PhysiologyState> = setOf(PREGNANCY_T1, PREGNANCY_T2, PREGNANCY_T3)
+
+        /** All peri-operative states (SURGICAL_POV §2.1). */
+        val PERIOPERATIVE: Set<PhysiologyState> = setOf(
+            PREHAB_WINDOW, POD_0_30, POD_30_90, POD_90_PLUS,
+        )
     }
 }
