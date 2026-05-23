@@ -103,7 +103,9 @@ object HeadachePatterns {
         signalRules = emptyList(),
         minActiveSignals = 0,
         severityFloor = AlertTier.ADVISORY,
-        explanation = "Diary entries show 10 or more days per month of acute headache treatment (triptan, NSAID, paracetamol, ergot, opioid, or combination analgesic) across the most recent 3 calendar months. The IHS International Classification of Headache Disorders, 3rd edition (ICHD-3) §8.2 uses that threshold as the medication-overuse-headache screen. This is a data observation against the published clinical screen — not a medication-overuse-headache diagnosis. The owner is the one who decides whether to discuss this pattern with a neurologist or primary-care clinician.",
+        explanation = "Diary entries show 10 or more days per month of acute headache treatment (triptan, NSAID, paracetamol, ergot, opioid, or combination analgesic) across the most recent 3 calendar months.\n\n" +
+            "That frequency is the published IHS ICHD-3 §8.2 medication-overuse-headache (MOH) screening threshold. The mechanism behind the threshold: frequent acute-headache medication can paradoxically maintain or worsen the underlying primary headache — central pain pathways become more sensitised, attacks become more frequent and harder to abort, and the medication that initially worked stops working. The pattern is reversible on withdrawal, which is the literature's reason for surfacing it early.\n\n" +
+            "This is a data observation against the published clinical screen — not a medication-overuse-headache diagnosis. The owner decides whether to discuss the pattern with a neurologist or primary-care clinician.",
         suggestedAction = "If headache frequency has been rising despite acute treatment, a neurology or primary-care visit can review the medication pattern and discuss preventive options. Bring the diary entries — the full record of dates, intensities, and what was taken is the substrate the clinical conversation needs.",
         references = listOf(
             "IHS International Classification of Headache Disorders, 3rd edition (ICHD-3) §8.2 — Medication-overuse headache",
