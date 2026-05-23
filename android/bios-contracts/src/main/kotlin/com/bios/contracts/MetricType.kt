@@ -87,6 +87,13 @@ enum class MetricType(
     PPG_DECAY_ASYMMETRY_INDEX("ppg_decay_asymmetry_index", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     PPG_DICHROTIC_NOTCH_POSITION("ppg_dichrotic_notch_position", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
 
+    // PPG-derived augmentation index (Blueprint audit §3.1 #8). Computed in
+    // PpgSignalProcessor as (1 − h_diastolic/h_systolic) × 100 across beats
+    // with a detectable dichrotic notch; higher = stiffer arterial bed
+    // (matches the clinical SphygmoCor AIx direction). Peripheral PPG proxy
+    // for trend tracking, not the central-aortic gold standard.
+    AUGMENTATION_INDEX_PPG("augmentation_index_ppg", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+
     // Respiratory
     RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
     // Administered supplemental O2 (cannula/mask). Contextualises SpO2:
