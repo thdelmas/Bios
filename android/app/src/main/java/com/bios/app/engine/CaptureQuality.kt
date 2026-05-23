@@ -89,5 +89,55 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
 
             return STEADY
         }
+
+        /**
+         * Distribution of the live "median frame-to-frame jump" metric across a
+         * full capture, sampled in non-overlapping 1-second windows. Returned
+         * percentiles (p50 = typical session-wide steadiness; p90 = the worst
+         * sustained second the owner held through) let the calibration logger
+         * characterise the distribution that [MOTION_MEDIAN_JUMP_Y] is being
+         * thresholded against, on each device. Returns `null` when the
+         * recording is too short to produce a single window.
+         */
+        fun medianJumpPercentiles(
+            luminance: List<Double>,
+            samplingRateHz: Double,
+        ): MedianJumpStats? {
+            val windowSize = (samplingRateHz * MOTION_WINDOW_SEC).toInt().coerceAtLeast(5)
+            if (luminance.size < windowSize + 1) return null
+
+            val perWindowMedians = mutableListOf<Double>()
+            var start = 0
+            // Step in non-overlapping windows of [windowSize] samples; each
+            // window emits one median |diff|. Loop bound is inclusive — the
+            // last sample index used is start + windowSize - 1.
+            while (start + windowSize <= luminance.size) {
+                val diffs = (start until start + windowSize - 1).map { i ->
+                    abs(luminance[i + 1] - luminance[i])
+                }.sorted()
+                perWindowMedians.add(diffs[diffs.size / 2])
+                start += windowSize
+            }
+            if (perWindowMedians.isEmpty()) return null
+
+            val sorted = perWindowMedians.sorted()
+            return MedianJumpStats(
+                p50 = percentile(sorted, 0.5),
+                p90 = percentile(sorted, 0.9),
+            )
+        }
+
+        private fun percentile(sortedAscending: List<Double>, q: Double): Double {
+            if (sortedAscending.isEmpty()) return 0.0
+            val idx = (sortedAscending.size * q).toInt().coerceAtMost(sortedAscending.size - 1)
+            return sortedAscending[idx]
+        }
     }
 }
+
+/**
+ * Percentiles of the per-second median frame-to-frame Y jump observed during
+ * a full PPG capture. Surfaced to [PpgCalibrationLogger] so device-specific
+ * thresholds can be set from real distributions instead of eyeballed.
+ */
+data class MedianJumpStats(val p50: Double, val p90: Double)
