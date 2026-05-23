@@ -59,6 +59,18 @@ enum class MetricType(
     // derived from a PPG session, not something the owner can self-report.
     IRREGULAR_RHYTHM_BURDEN("irregular_rhythm_burden", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
 
+    // Single-lead ECG strip presence (#188, audit gap §2.8). The actual
+    // waveform is a binary blob in the `ecg_strips` table, not a scalar
+    // metric — this key is the presence indicator the pattern engine
+    // joins against ("is there an owner-captured ECG for this window?")
+    // so the AFib-screen confirmation surface can wire up without
+    // re-discovering strips via cross-table joins on every pull.
+    // value = 1.0 (boolean true), durationSec = strip length. The
+    // companion ContentProvider exposes this key but never the raw
+    // waveform — that stays inside the encrypted DB until the owner
+    // exports it via FHIR.
+    ECG_STRIP_AVAILABLE("ecg_strip_available", MetricUnit.BOOLEAN, MetricDomain.CARDIOVASCULAR),
+
     // PPG pulse-wave morphology summaries (#181, CARDIOLOGY_POV §2.2 + TCM,
     // Sowa Rigpa, Kampo, Korean, Siddha, Unani, Ayurveda pulse-quality
     // audits). Statistical scalars only — raw waveforms are never persisted.
@@ -370,7 +382,9 @@ enum class MetricUnit(val symbol: String) {
     /** Enzyme activity per litre — ALT, AST, GGT, etc. */
     U_PER_L("U/L"),
     /** eGFR normalized to body surface area — KDIGO 2024 standard. */
-    ML_PER_MIN_PER_173("mL/min/1.73m²")
+    ML_PER_MIN_PER_173("mL/min/1.73m²"),
+    /** Presence indicator — value=1.0 means "this artefact exists." */
+    BOOLEAN("")
 }
 
 enum class MetricDomain {

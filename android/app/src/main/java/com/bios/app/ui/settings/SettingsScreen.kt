@@ -47,7 +47,8 @@ fun SettingsScreen(
     onNavigateToFastStroke: () -> Unit = {},
     onNavigateToEsasCapture: () -> Unit = {},
     onNavigateToTraditionalMedicine: () -> Unit = {},
-    onNavigateToEmergencyContacts: () -> Unit = {}
+    onNavigateToEmergencyContacts: () -> Unit = {},
+    onNavigateToEcgStrips: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -103,6 +104,7 @@ fun SettingsScreen(
             onNavigateToEsasCapture = onNavigateToEsasCapture,
             onNavigateToTraditionalMedicine = onNavigateToTraditionalMedicine,
             onNavigateToEmergencyContacts = onNavigateToEmergencyContacts,
+            onNavigateToEcgStrips = onNavigateToEcgStrips,
         )
 
         // Privacy — what can leave, and who can access. Highest-stakes surface.
