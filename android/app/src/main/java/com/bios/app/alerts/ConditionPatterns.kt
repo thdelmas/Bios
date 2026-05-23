@@ -4,7 +4,6 @@ import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
 import com.bios.app.physiology.OwnerCondition
 import com.bios.app.physiology.PhysiologyState
-import com.bios.contracts.MetricType
 
 data class ConditionPattern(
     val id: String,
@@ -65,6 +64,7 @@ object ConditionPatterns {
             AfibRhythmPattern.all + AutonomicPatternShiftPattern.all +
             PregnancyPatterns.all + HeadachePatterns.all +
             HeartFailureDecompensationPattern.all + AcuteWindowPatterns.all +
-            TropicalDiseasePatterns.all + EnvironmentalPatterns.all
+            TropicalDiseasePatterns.all + EnvironmentalPatterns.all +
+            PerioperativePatterns.all
     }
 }
