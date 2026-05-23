@@ -217,5 +217,21 @@
             android:name=".ingest.PhoneSleepCollectionService"
             android:exported="false"
             android:foregroundServiceType="health" />
+
+        <!-- Quick Settings tile for owner-asserted bedtime ↔ wake log
+             (#242). The tile is exported (the system Settings UI binds
+             to it to enumerate available tiles for the picker) and
+             gated by the BIND_QUICK_SETTINGS_TILE permission, which is
+             only granted to the SystemUI process. -->
+        <service
+            android:name=".ingest.SleepTileService"
+            android:exported="true"
+            android:icon="@android:drawable/ic_lock_idle_alarm"
+            android:label="Going to bed"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
