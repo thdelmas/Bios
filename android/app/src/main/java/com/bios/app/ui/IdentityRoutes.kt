@@ -23,6 +23,9 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("physiology_state") {
         com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
     }
+    composable("environmental_context") {
+        com.bios.app.ui.environmental.EnvironmentalContextScreen(onBack = { navController.popBackStack() })
+    }
     composable("frail_assessment") {
         com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
     }
@@ -41,6 +44,9 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("traditional_medicine_context") {
         com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })
     }
+    composable("emergency_contacts") {
+        com.bios.app.ui.emergency.EmergencyContactsScreen(onBack = { navController.popBackStack() })
+    }
     composable("medications") {
         com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
     }
@@ -49,5 +55,17 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     }
     composable("preventive_care") {
         com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
+    }
+    composable("ecg_strips") {
+        com.bios.app.ui.ecg.EcgStripsScreen(onBack = { navController.popBackStack() })
+    }
+    composable("surgical_recovery") {
+        com.bios.app.ui.physiology.SurgicalRecoveryScreen(onBack = { navController.popBackStack() })
+    }
+    composable("intervention_events") {
+        com.bios.app.ui.interventions.InterventionEventsScreen(onBack = { navController.popBackStack() })
+    }
+    composable("treatment_courses") {
+        com.bios.app.ui.interventions.TreatmentCoursesScreen(onBack = { navController.popBackStack() })
     }
 }

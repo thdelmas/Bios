@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.physiology.CancerTherapyDrugClass
 import com.bios.app.physiology.PaediatricBandCalculator
 import com.bios.app.physiology.PaediatricBandWorker
 import com.bios.app.physiology.PhysiologyState
@@ -71,6 +72,7 @@ fun PhysiologyStateScreen(onBack: () -> Unit) {
         mutableStateOf(store.birthDate()?.toString() ?: "")
     }
     var birthDateError by remember { mutableStateOf<String?>(null) }
+    var currentDrugClass by remember { mutableStateOf(store.drugClass()) }
 
     Scaffold(
         topBar = {
@@ -128,10 +130,70 @@ fun PhysiologyStateScreen(onBack: () -> Unit) {
                     onSelect = {
                         store.set(state)
                         current = state
+                        // Setting a non-cancer state clears the drug class
+                        // (PhysiologyStateStore.set handles this), so reflect
+                        // that in the UI state too.
+                        if (state !in PhysiologyState.CANCER_TREATMENT) {
+                            currentDrugClass = CancerTherapyDrugClass.NONE
+                        }
                     },
                 )
             }
+            // Cancer-therapy drug-class picker (#201). Shown only when the
+            // owner has selected a cancer-treatment state; most cardio-
+            // oncology patterns gate on the state AND the drug class.
+            if (current in PhysiologyState.CANCER_TREATMENT) {
+                DrugClassPickerCard()
+                for (drugClass in CancerTherapyDrugClass.entries) {
+                    DrugClassOption(
+                        drugClass = drugClass,
+                        selected = drugClass == currentDrugClass,
+                        onSelect = {
+                            store.setDrugClass(drugClass)
+                            currentDrugClass = drugClass
+                        },
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun DrugClassPickerCard() {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Cancer-therapy drug class", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Pick the drug class that matches your regimen. Cardio-oncology " +
+                    "surveillance patterns (anthracycline / trastuzumab cardiotoxicity, " +
+                    "ICI pneumonitis / colitis / thyroiditis) are class-specific — Bios " +
+                    "only runs the patterns that match what you're on. Default is " +
+                    "Not specified; nothing fires until you pick.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun DrugClassOption(
+    drugClass: CancerTherapyDrugClass,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onSelect,
+        modifier = Modifier.fillMaxWidth(),
+        colors = if (selected) {
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        } else ButtonDefaults.outlinedButtonColors(),
+    ) {
+        Text(if (selected) "✓ ${drugClass.displayName}" else drugClass.displayName)
     }
 }
 
