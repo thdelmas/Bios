@@ -1,13 +1,16 @@
 package com.bios.app
 
+import com.bios.app.model.RiskProfile
 import com.bios.app.model.ScreeningEntry
 import com.bios.app.screening.Applicability
 import com.bios.app.screening.OwnerDemographics
+import com.bios.app.screening.RiskGate
 import com.bios.app.screening.ScreeningCadenceEngine
 import com.bios.app.screening.ScreeningCatalog
 import com.bios.app.screening.ScreeningCatalogEntry
 import com.bios.app.screening.ScreeningStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -219,5 +222,208 @@ class ScreeningCadenceEngineTest {
         assertEquals(ScreeningCatalog.uspstf.size, results.size)
         assertEquals(ScreeningCatalog.uspstf.size, lookups.size)
         assertEquals(ScreeningCatalog.uspstf.map { it.key }, lookups)
+    }
+
+    // -- #191 extensions: risk-gated cadences (hereditary, IHS, ever-smoker) --
+
+    @Test
+    fun hereditary_entry_is_NotEligible_when_owner_has_not_recorded_the_syndrome() {
+        val lynch = ScreeningCatalog.hereditary.first { it.key == "lynch_colonoscopy" }
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = lynch,
+            demographics = OwnerDemographics(ageYears = 30),
+            latest = null,
+            riskProfile = RiskProfile(),  // no syndrome flag set
+            now = now,
+        )
+        assertTrue(status is ScreeningStatus.NotEligible)
+        status as ScreeningStatus.NotEligible
+        assertTrue(
+            "Risk-gated reason should start with 'Requires owner-recorded': ${status.reason}",
+            status.reason.startsWith("Requires owner-recorded"),
+        )
+    }
+
+    @Test
+    fun hereditary_entry_passes_when_owner_records_the_syndrome_flag() {
+        val lynch = ScreeningCatalog.hereditary.first { it.key == "lynch_colonoscopy" }
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = lynch,
+            demographics = OwnerDemographics(ageYears = 30),
+            latest = null,
+            riskProfile = RiskProfile(lynchSyndrome = true),
+            now = now,
+        )
+        // 30y is above the floor (20), no record on file → NoRecord.
+        assertEquals(ScreeningStatus.NoRecord, status)
+    }
+
+    @Test
+    fun hereditary_entry_age_band_still_applies_when_syndrome_flag_is_set() {
+        val fap = ScreeningCatalog.hereditary.first { it.key == "fap_colonoscopy" }
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = fap,
+            demographics = OwnerDemographics(ageYears = 8),  // below FAP floor of 10
+            latest = null,
+            riskProfile = RiskProfile(fapFamilialAdenomatousPolyposis = true),
+            now = now,
+        )
+        assertTrue(status is ScreeningStatus.NotEligible)
+        status as ScreeningStatus.NotEligible
+        assertTrue(
+            "Age-floor reason should mention age 10: ${status.reason}",
+            status.reason.contains("10"),
+        )
+    }
+
+    @Test
+    fun hereditary_cadence_renders_DueNow_when_overdue() {
+        val lynch = ScreeningCatalog.hereditary.first { it.key == "lynch_colonoscopy" }  // 18mo cadence
+        val latest = ScreeningEntry(screeningKey = lynch.key, performedDate = monthsAgo(24))
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = lynch,
+            demographics = OwnerDemographics(ageYears = 30),
+            latest = latest,
+            riskProfile = RiskProfile(lynchSyndrome = true),
+            now = now,
+        )
+        assertTrue("expected DueNow, got $status", status is ScreeningStatus.DueNow)
+        status as ScreeningStatus.DueNow
+        assertTrue("monthsOverdue ~6, got ${status.monthsOverdue}", status.monthsOverdue in 5..7)
+    }
+
+    @Test
+    fun ihs_hba1c_only_surfaces_for_owners_with_diabetic_aian_flag() {
+        val ihs = ScreeningCatalog.ihsPaho.first { it.key == "ihs_hba1c_diabetic_aian" }
+        val withoutFlag = ScreeningCadenceEngine.evaluate(
+            entry = ihs,
+            demographics = OwnerDemographics(ageYears = 45),
+            latest = null,
+            riskProfile = RiskProfile(),
+            now = now,
+        )
+        assertTrue(withoutFlag is ScreeningStatus.NotEligible)
+        val withFlag = ScreeningCadenceEngine.evaluate(
+            entry = ihs,
+            demographics = OwnerDemographics(ageYears = 45),
+            latest = null,
+            riskProfile = RiskProfile(ihsDiabeticAianStatus = true),
+            now = now,
+        )
+        assertEquals(ScreeningStatus.NoRecord, withFlag)
+    }
+
+    @Test
+    fun ihs_hba1c_renders_DueNow_at_7_months_with_6mo_cadence() {
+        val ihs = ScreeningCatalog.ihsPaho.first { it.key == "ihs_hba1c_diabetic_aian" }  // 6mo cadence
+        val latest = ScreeningEntry(screeningKey = ihs.key, performedDate = monthsAgo(7))
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = ihs,
+            demographics = OwnerDemographics(ageYears = 45),
+            latest = latest,
+            riskProfile = RiskProfile(ihsDiabeticAianStatus = true),
+            now = now,
+        )
+        assertTrue("expected DueNow, got $status", status is ScreeningStatus.DueNow)
+    }
+
+    @Test
+    fun aaa_one_time_only_surfaces_for_owners_with_any_smoking_history() {
+        val aaa = ScreeningCatalog.uspstf.first { it.key == "aaa_one_time" }
+        val nonSmoker = ScreeningCadenceEngine.evaluate(
+            entry = aaa,
+            demographics = OwnerDemographics(ageYears = 68, presentsAs = Applicability.PRESENTS_AS_MALE),
+            latest = null,
+            riskProfile = RiskProfile(),  // no tobacco years on file
+            now = now,
+        )
+        assertTrue(nonSmoker is ScreeningStatus.NotEligible)
+        val everSmoker = ScreeningCadenceEngine.evaluate(
+            entry = aaa,
+            demographics = OwnerDemographics(ageYears = 68, presentsAs = Applicability.PRESENTS_AS_MALE),
+            latest = null,
+            riskProfile = RiskProfile(personalTobaccoYears = 20),
+            now = now,
+        )
+        assertEquals(ScreeningStatus.NoRecord, everSmoker)
+    }
+
+    @Test
+    fun lpa_once_in_lifetime_is_Current_indefinitely_after_one_record() {
+        val lpa = ScreeningCatalog.cardiology.first { it.key == "lpa_one_time" }
+        val latest = ScreeningEntry(screeningKey = lpa.key, performedDate = monthsAgo(120))  // 10 years ago
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = lpa,
+            demographics = OwnerDemographics(ageYears = 50),
+            latest = latest,
+            riskProfile = RiskProfile(),
+            now = now,
+        )
+        // Cadence is Int.MAX_VALUE → "current" effectively forever once
+        // one measurement is on file.
+        assertTrue("expected Current, got $status", status is ScreeningStatus.Current)
+    }
+
+    @Test
+    fun acs_mammogram_surfaces_alongside_uspstf_in_combined_catalog() {
+        val keys = ScreeningCatalog.combined.map { it.key }.toSet()
+        assertTrue("ACS mammogram should be in combined catalog", "acs_mammogram" in keys)
+        assertTrue("USPSTF mammogram should still be in combined catalog", "mammogram" in keys)
+    }
+
+    @Test
+    fun combined_catalog_has_no_duplicate_keys() {
+        val keys = ScreeningCatalog.combined.map { it.key }
+        assertEquals(
+            "Duplicate keys in combined catalog: ${keys - keys.toSet()}",
+            keys.size, keys.toSet().size,
+        )
+    }
+
+    @Test
+    fun every_combined_entry_carries_a_citation() {
+        for (entry in ScreeningCatalog.combined) {
+            assertTrue(
+                "${entry.key} should ship a citation",
+                entry.citation.isNotBlank(),
+            )
+        }
+    }
+
+    @Test
+    fun every_hereditary_entry_is_risk_gated() {
+        // Hereditary entries should always be syndrome-gated — surfacing
+        // a non-gated NCCN cadence to non-carriers would be noise.
+        for (entry in ScreeningCatalog.hereditary) {
+            assertTrue(
+                "${entry.key} should carry a non-NONE riskGate",
+                entry.riskGate != RiskGate.NONE,
+            )
+        }
+    }
+
+    @Test
+    fun ever_smoker_gate_treats_packYears_as_smoking_history() {
+        assertTrue(
+            ScreeningCadenceEngine.satisfiesRiskGate(
+                RiskGate.EVER_SMOKER,
+                RiskProfile(personalTobaccoPackYears = 10),
+            )
+        )
+        assertFalse(
+            ScreeningCadenceEngine.satisfiesRiskGate(
+                RiskGate.EVER_SMOKER,
+                RiskProfile(),
+            )
+        )
+    }
+
+    @Test
+    fun risk_gate_is_unsatisfied_when_profile_is_null() {
+        // No risk-profile row on disk yet → every gated entry hidden.
+        assertFalse(ScreeningCadenceEngine.satisfiesRiskGate(RiskGate.LYNCH_SYNDROME, null))
+        assertFalse(ScreeningCadenceEngine.satisfiesRiskGate(RiskGate.IHS_DIABETIC_AIAN, null))
+        // Non-gated entries pass through regardless.
+        assertTrue(ScreeningCadenceEngine.satisfiesRiskGate(RiskGate.NONE, null))
     }
 }

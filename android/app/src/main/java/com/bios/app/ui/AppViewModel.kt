@@ -73,7 +73,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val mlModel = TFLiteAnomalyModel.load(application)
     val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker, reproductiveReadingDao,
         physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current(),
-        ownerConditions = com.bios.app.physiology.OwnerConditionStore(application).current())
+        ownerConditions = com.bios.app.physiology.OwnerConditionStore(application).current(),
+        drugClass = com.bios.app.physiology.PhysiologyStateStore(application).drugClass(),
+        environmentalContext = com.bios.app.config.EnvironmentalContextProvider(application).current())
     val alertManager = AlertManager(application, db, latencyTracker)
 
     private val _isInitialized = MutableStateFlow(false)
@@ -493,8 +495,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshRecentBiomarkers(limit: Int = 20) = biomarkers.refreshRecent(limit)
     fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) =
         biomarkers.addManual(metricType, value, timestamp, context)
-
-    // MARK: - General manual-reading entry (clinical vitals)
 
     val manualReadingRepo: ManualReadingRepo = ManualReadingRepo(db)
 }
