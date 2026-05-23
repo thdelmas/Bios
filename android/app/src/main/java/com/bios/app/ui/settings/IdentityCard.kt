@@ -40,6 +40,8 @@ internal fun IdentityCard(
     onNavigateToEmergencyContacts: () -> Unit = {},
     onNavigateToEcgStrips: () -> Unit = {},
     onNavigateToSurgicalRecovery: () -> Unit = {},
+    onNavigateToInterventionEvents: () -> Unit = {},
+    onNavigateToTreatmentCourses: () -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -61,6 +63,8 @@ internal fun IdentityCard(
                 "Emergency contacts" to onNavigateToEmergencyContacts,
                 "ECG strips" to onNavigateToEcgStrips,
                 "Surgical recovery" to onNavigateToSurgicalRecovery,
+                "Intervention events" to onNavigateToInterventionEvents,
+                "Treatment courses" to onNavigateToTreatmentCourses,
             ).forEachIndexed { idx, (label, action) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }
