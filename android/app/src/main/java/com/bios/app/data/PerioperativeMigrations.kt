@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * after normalisation. Wiped alongside everything else by [DataDestroyer].
  */
 internal object PerioperativeMigrations {
-    val MIGRATION_21_22 = object : Migration(21, 22) {
+    val MIGRATION_22_23 = object : Migration(22, 23) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """
