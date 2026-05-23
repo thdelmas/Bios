@@ -404,6 +404,31 @@ enum class MetricType(
     PROLACTIN("prolactin", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
     DHEA_SULFATE("dhea_sulfate", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT.md §3.2) — medium-
+    // priority additions: thyroid autoimmunity, prostate screening, imaging-
+    // derived risk modifiers, plasma neurology, fat-soluble vitamins, and
+    // a cellular-aging clock. Manual entry + FHIR where a stable LOINC exists.
+    THYROID_PEROXIDASE_AB("thyroid_peroxidase_ab", MetricUnit.IU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    THYROGLOBULIN_AB("thyroglobulin_ab", MetricUnit.IU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PSA_TOTAL("psa_total", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PSA_FREE("psa_free", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Telomere length stored as SCORE — every vendor (TeloYears, SpectraCell)
+    // ships a proprietary scale; no stable LOINC, manual entry only.
+    TELOMERE_LENGTH("telomere_length", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Agatston CAC score (CT-derived, dimensionless) and DEXA bone-density
+    // T-score (WHO osteoporosis: ≤ -2.5). Anatomical site for the T-score
+    // rides in event_payloads when the import provides it.
+    CORONARY_CALCIUM_SCORE("coronary_calcium_score", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    BONE_DENSITY_T_SCORE("bone_density_t_score", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // pTau-217 (Quanterix Simoa / Lilly C2N) — emerging Alzheimer's plasma
+    // marker that tracks amyloid PET positivity.
+    PTAU_217("ptau_217", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Fat-soluble vitamin auxiliaries. Vitamin K2 (MK-7) lacks a stable
+    // canonical LOINC so the FHIR path is manual only.
+    VITAMIN_K2("vitamin_k2", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    VITAMIN_A_RETINOL("vitamin_a_retinol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    VITAMIN_E_ALPHA_TOCOPHEROL("vitamin_e_alpha_tocopherol", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age

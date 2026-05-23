@@ -69,6 +69,13 @@ class BiomarkerEntrySelectorsTest {
             MetricType.FSH, MetricType.LH, MetricType.SHBG,
             MetricType.AMH, MetricType.TESTOSTERONE_FREE,
             MetricType.PROLACTIN, MetricType.DHEA_SULFATE,
+            // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2).
+            MetricType.THYROID_PEROXIDASE_AB, MetricType.THYROGLOBULIN_AB,
+            MetricType.PSA_TOTAL, MetricType.PSA_FREE,
+            MetricType.TELOMERE_LENGTH, MetricType.CORONARY_CALCIUM_SCORE,
+            MetricType.BONE_DENSITY_T_SCORE, MetricType.PTAU_217,
+            MetricType.VITAMIN_K2, MetricType.VITAMIN_A_RETINOL,
+            MetricType.VITAMIN_E_ALPHA_TOCOPHEROL,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
