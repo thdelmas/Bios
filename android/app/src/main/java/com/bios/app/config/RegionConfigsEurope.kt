@@ -38,6 +38,9 @@ internal object RegionConfigsEurope {
                 "Alerts are informational and do not constitute medical advice.",
         ),
         emergencyNumber = "999",  // 112 also accepted EU-wide
+        climateZone = ClimateZone.TEMPERATE,
+        defaultLatitudeDeg = 54.0,
+        defaultElevationM = 80.0,
     )
 
     private fun eu() = RegionConfig(
@@ -58,5 +61,8 @@ internal object RegionConfigsEurope {
                 "Alerts are informational and do not constitute medical advice.",
         ),
         emergencyNumber = "112",
+        climateZone = ClimateZone.TEMPERATE,
+        defaultLatitudeDeg = 50.5,
+        defaultElevationM = 150.0,
     )
 }

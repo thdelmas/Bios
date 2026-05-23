@@ -168,6 +168,17 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+        <!-- URGENT-alert notification-action handler (#179). Owner taps
+             "I'm OK" → cancels the pending UrgentAckTimeoutWorker so no
+             SMS-compose prompt fires. Not exported — only Bios itself
+             builds PendingIntents pointing here. -->
+        <receiver
+            android:name=".alerts.AlertActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.bios.app.alerts.ACTION_ACKNOWLEDGE" />
+            </intent-filter>
+        </receiver>
         <!-- UnifiedPush service for Google-free push notifications.
              The connector library's internal receiver forwards events here.
              Not exported — only the library binds to it. -->

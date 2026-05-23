@@ -373,6 +373,9 @@ class FhirExporterTest {
             MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
             MetricUnit.NG_PER_L -> "ng/L"
             MetricUnit.PER_MICRO_L -> "/uL"
+            MetricUnit.METERS -> "m"
+            MetricUnit.HOURS -> "h"
+            MetricUnit.BOOLEAN -> "{boolean}"
         }
     }
 }

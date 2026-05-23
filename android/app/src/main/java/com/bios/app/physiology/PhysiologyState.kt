@@ -103,7 +103,19 @@ enum class PhysiologyState(val displayName: String) {
      */
     ON_ACTIVE_CHEMOTHERAPY("Active chemotherapy"),
     ON_IMMUNE_CHECKPOINT_INHIBITOR("Immune-checkpoint inhibitor (ICI) therapy"),
-    ON_CAR_T_RECOVERY("CAR-T cell therapy recovery");
+    ON_CAR_T_RECOVERY("CAR-T cell therapy recovery"),
+
+    /**
+     * Peri-operative states (#205, SURGICAL_POV §2.1-§2.6). Owner-set or
+     * auto-transitioned via [com.bios.app.physiology.PerioperativeStateTransitionWorker].
+     * Suppresses baseline-relative patterns whose deviations are normative
+     * post-op, and activates post-op-windowed surveillance patterns
+     * (SSI / VTE / anastomotic-leak) via `requiredStates`.
+     */
+    PREHAB_WINDOW("Pre-op prehabilitation window"),
+    POD_0_30("Post-op days 0–30"),
+    POD_30_90("Post-op days 30–90"),
+    POD_90_PLUS("Post-op 90+ days");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
@@ -112,6 +124,11 @@ enum class PhysiologyState(val displayName: String) {
         /** All cardio-oncology treatment states (#201). */
         val CANCER_TREATMENT: Set<PhysiologyState> = setOf(
             ON_ACTIVE_CHEMOTHERAPY, ON_IMMUNE_CHECKPOINT_INHIBITOR, ON_CAR_T_RECOVERY,
+        )
+
+        /** All peri-operative states (SURGICAL_POV §2.1). */
+        val PERIOPERATIVE: Set<PhysiologyState> = setOf(
+            PREHAB_WINDOW, POD_0_30, POD_30_90, POD_90_PLUS,
         )
     }
 }
