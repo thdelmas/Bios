@@ -62,10 +62,7 @@ class PhoneSleepWorker(
         val context = applicationContext
         val adapter = PhoneSleepAdapter(context)
         if (!adapter.isAvailable) {
-            // No accelerometer → no inference possible. Succeed quietly so
-            // WorkManager keeps the periodic schedule (cheaper than
-            // re-enqueueing on every retry).
-            Log.d(TAG, "Accelerometer unavailable; skipping sample")
+            Log.i(TAG, "diag: no accelerometer; skipping firing")
             return Result.success()
         }
 
@@ -75,7 +72,6 @@ class PhoneSleepWorker(
         val sourceDao = db.dataSourceDao()
 
         return try {
-            // 1. Sample + persist.
             val sample = adapter.sample()
             sampleDao.insert(
                 PhoneSleepSample(
@@ -86,10 +82,19 @@ class PhoneSleepWorker(
                     accelMagnitudeVar = sample.accelMagnitudeVar,
                 )
             )
+            // One-line per-firing diagnostic so the failure mode is
+            // observable from `adb logcat -s PhoneSleepWorker` without
+            // having to decrypt SQLCipher rows. See #240.
+            val quiet = PhoneSleepInference.isQuietSample(sample)
+            Log.i(
+                TAG,
+                "diag: sample screenOff=${sample.screenOff} " +
+                    "charging=${sample.charging} " +
+                    "lux=${sample.ambientLightLux} " +
+                    "accelVar=${sample.accelMagnitudeVar} " +
+                    "quiet=$quiet"
+            )
 
-            // 2. Morning trigger? Bail early if not — keeps the common
-            //    path (sample-only) cheap. Dedupe key is the most-recent
-            //    phone-derived sleep midpoint; null on first run.
             val zone = ZoneId.systemDefault()
             val phoneSourceId = sourceDao.findByType(SourceType.PHONE_SENSOR_DERIVED.key)?.id
             val lastMidpoint = phoneSourceId?.let { sid ->
@@ -103,11 +108,10 @@ class PhoneSleepWorker(
                 lastInferredMidpointMs = lastMidpoint,
             )
             if (decision !is PhoneSleepScheduler.TriggerDecision.Fire) {
+                Log.i(TAG, "diag: decision=Skip (preWakeHour or alreadyInferred)")
                 return Result.success()
             }
 
-            // 3. Inference window — read buffered samples, run inference,
-            //    write results under a stable PHONE_SENSOR_DERIVED source.
             val samples = sampleDao
                 .fetchInRange(decision.windowStartMs, decision.windowEndMs)
                 .map {
@@ -119,8 +123,16 @@ class PhoneSleepWorker(
                         accelMagnitudeVar = it.accelMagnitudeVar,
                     )
                 }
+            val breakdown = PhoneSleepInference.signalBreakdown(samples)
+            val longestQuietMin = PhoneSleepInference.longestScreenOffMs(samples) / 60_000L
+            Log.i(
+                TAG,
+                "diag: decision=Fire window=${decision.windowStartMs}..${decision.windowEndMs} " +
+                    "samples=${samples.size} breakdown=$breakdown " +
+                    "longestQuietMin=$longestQuietMin"
+            )
             if (samples.size < MIN_SAMPLES_FOR_INFERENCE) {
-                Log.d(TAG, "Only ${samples.size} samples in window; skipping inference")
+                Log.i(TAG, "diag: ${samples.size} samples < $MIN_SAMPLES_FOR_INFERENCE; skip infer")
                 return Result.success()
             }
 
@@ -128,10 +140,11 @@ class PhoneSleepWorker(
             val readings = adapter.infer(samples, sourceId)
             if (readings.isNotEmpty()) {
                 readingDao.insertAll(readings)
-                Log.i(TAG, "Inferred phone sleep: ${readings.size} readings written")
+                Log.i(TAG, "diag: inferred readings=${readings.size}")
+            } else {
+                Log.i(TAG, "diag: inferred readings=0 (no viable window in buffer)")
             }
 
-            // 4. Prune old samples so the buffer can't grow unbounded.
             sampleDao.deleteOlderThan(
                 PhoneSleepScheduler.pruneCutoffMs(System.currentTimeMillis())
             )

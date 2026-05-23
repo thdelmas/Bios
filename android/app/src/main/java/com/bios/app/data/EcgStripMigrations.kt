@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * BLOB-inline so the waveform stays inside Bios's single encryption envelope.
  */
 internal object EcgStripMigrations {
-    val MIGRATION_22_23 = object : Migration(22, 23) {
+    val MIGRATION_21_22 = object : Migration(21, 22) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """
