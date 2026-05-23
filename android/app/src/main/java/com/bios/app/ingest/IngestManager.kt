@@ -4,6 +4,7 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.CircadianEngine
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.GlucoseVariability
+import com.bios.app.engine.HrRecoveryPersister
 import com.bios.app.engine.PipelineStage
 import com.bios.app.engine.SignalQualityFilter
 import com.bios.app.engine.SleepDerivations
@@ -377,6 +378,7 @@ class IngestManager(
         if (sessions.isEmpty()) return
         readingDao.insertAll(sessions.map { it.reading })
         payloadDao.insertAll(sessions.flatMap { it.payload })
+        HrRecoveryPersister.persistFor(sessions, readingDao)
     }
 
     // MARK: - Helpers
