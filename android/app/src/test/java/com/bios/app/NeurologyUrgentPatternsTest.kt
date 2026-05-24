@@ -6,6 +6,7 @@ import com.bios.app.alerts.DeviationDirection
 import com.bios.app.alerts.NeurologyUrgentPatterns
 import com.bios.app.alerts.ThresholdSource
 import com.bios.app.model.AlertTier
+import com.bios.app.model.SeizureEventFields
 import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -103,6 +104,46 @@ class NeurologyUrgentPatternsTest {
         assertEquals(3, rule.absoluteMinReadings)
         // No duration filter — Haut 2007 cluster definition is count-based.
         assertNull(rule.durationAtLeastSec)
+    }
+
+    // -- #269 Cut 2 safety gate: both seizure patterns exclude
+    // wearable-inferred rows from the escalation paths --
+
+    @Test
+    fun status_epilepticus_excludes_wearable_inferred_detection_source() {
+        val rule = NeurologyUrgentPatterns.statusEpilepticusConvulsive.signalRules.single()
+        val gate = rule.excludePayloadFieldValue
+        assertNotNull(
+            "URGENT seizure pattern must drop wearable-inferred rows",
+            gate,
+        )
+        assertEquals(SeizureEventFields.DETECTION_SOURCE, gate!!.first)
+        assertEquals(SeizureEventFields.DETECTION_SOURCE_WEARABLE_INFERRED, gate.second)
+    }
+
+    @Test
+    fun seizure_cluster_excludes_wearable_inferred_detection_source() {
+        val rule = NeurologyUrgentPatterns.seizureCluster.signalRules.single()
+        val gate = rule.excludePayloadFieldValue
+        assertNotNull(
+            "Cluster pattern must drop wearable-inferred rows",
+            gate,
+        )
+        assertEquals(SeizureEventFields.DETECTION_SOURCE, gate!!.first)
+        assertEquals(SeizureEventFields.DETECTION_SOURCE_WEARABLE_INFERRED, gate.second)
+    }
+
+    @Test
+    fun non_seizure_neurology_patterns_do_not_apply_the_payload_gate() {
+        // The payload gate is seizure-specific. GCS / thunderclap have no
+        // wearable-inferred equivalent (yet) and adding the field on them
+        // would silently lock out future detectors that haven't shipped.
+        val gcsRule = NeurologyUrgentPatterns.acuteAlteredConsciousnessLowGcs
+            .signalRules.single()
+        val thunderclapRule = NeurologyUrgentPatterns.thunderclapHeadache
+            .signalRules.single()
+        assertNull(gcsRule.excludePayloadFieldValue)
+        assertNull(thunderclapRule.excludePayloadFieldValue)
     }
 
     // -- acute_altered_consciousness_gcs_le_8 --
