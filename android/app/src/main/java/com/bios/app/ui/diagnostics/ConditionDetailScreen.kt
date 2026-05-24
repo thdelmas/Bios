@@ -18,6 +18,7 @@ import com.bios.app.alerts.BiomarkerReference
 import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
+import com.bios.app.ui.reference.CitationText
 import com.bios.app.ui.AppViewModel
 import kotlin.math.abs
 
@@ -443,10 +444,9 @@ private fun BiomarkerReferenceCard(biomarker: BiomarkerReference) {
                         fontWeight = FontWeight.Bold
                     )
                     biomarker.citations.forEach { citation ->
-                        Text(
-                            citation,
+                        CitationText(
+                            citation = citation,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
