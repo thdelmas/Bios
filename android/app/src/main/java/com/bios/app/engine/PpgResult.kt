@@ -29,7 +29,7 @@ data class PpgResult(
     val waveformFeatures: PulseWaveformFeatures? = null,
     /**
      * Trimmed CoV of detected peak amplitudes — the same value compared
-     * against [PpgSignalProcessor.MAX_PEAK_AMPLITUDE_COV]. Non-null whenever
+     * against [PpgSignalProcessor.MAX_PEAK_AMPLITUDE_COV_DEFAULT]. Non-null whenever
      * the pipeline reached peak detection (accept + MOTION_ARTIFACT /
      * IRREGULAR_RHYTHM rejections); null on early rejections that bailed
      * before peak detection ran. Surfaced for [PpgCalibrationLogger] so the

@@ -9,10 +9,12 @@ import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.concurrent.futures.await
 import androidx.lifecycle.LifecycleOwner
+import android.os.Build
 import com.bios.app.engine.CaptureQuality
 import com.bios.app.engine.EctopyDetector
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgCalibrationLogger
+import com.bios.app.engine.PpgDeviceProfiles
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
@@ -74,6 +76,14 @@ class CameraPpgAdapter(private val context: Context) {
             return@withContext CaptureResult.error(RejectionReason.HARDWARE_UNAVAILABLE)
         }
 
+        // #266 Cut 2: per-device motion-rejection thresholds. Unknown
+        // models fall back to PpgDeviceProfiles.DEFAULT which preserves
+        // pre-Cut-2 behaviour — no regression on the device set that
+        // currently works. As calibration-log distribution data lands
+        // (Cut 1 toggle), specific models can be added to
+        // PpgDeviceProfiles.PROFILES.
+        val deviceProfile = PpgDeviceProfiles.forDevice(Build.MODEL)
+
         val luminance = Collections.synchronizedList(mutableListOf<Double>())
         val executor = Executors.newSingleThreadExecutor()
         val frameCounter = java.util.concurrent.atomic.AtomicInteger(0)
@@ -91,7 +101,7 @@ class CameraPpgAdapter(private val context: Context) {
                             luminance.takeLast(QUALITY_WINDOW_FRAMES)
                         }
                         qualityFlow.value = CaptureQuality.classify(
-                            window, ASSUMED_SAMPLING_HZ
+                            window, ASSUMED_SAMPLING_HZ, deviceProfile,
                         )
                     }
                 }
@@ -126,7 +136,7 @@ class CameraPpgAdapter(private val context: Context) {
         }
 
         val samplingRateHz = snapshot.size / actualDurationSec
-        val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz)
+        val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz, deviceProfile)
         val hrv = if (ppg.accepted) HrvAnalyzer.analyze(ppg.rrIntervalsMs) else null
 
         if (PpgCalibrationLogger.isEnabled(context)) {
