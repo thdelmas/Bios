@@ -7,19 +7,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-val BiosPink = Color(0xFFE91E63)
-val BiosPinkDark = Color(0xFFF48FB1)
+// Bios identity hue is Material teal — the quiet, instrument-room register
+// for the ecosystem hub (docs/design-tokens/colors.yaml: apps.bios).
+val BiosTeal = Color(0xFF009688)
+val BiosTealDark = Color(0xFF26A69A)
 
 private val DarkColorScheme = darkColorScheme(
-    primary = BiosPinkDark,
-    secondary = Color(0xFFCE93D8),
-    tertiary = Color(0xFF80CBC4)
+    primary = BiosTealDark,
+    secondary = Color(0xFF80CBC4),
+    tertiary = Color(0xFF4DD0E1)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = BiosPink,
-    secondary = Color(0xFF9C27B0),
-    tertiary = Color(0xFF009688)
+    primary = BiosTeal,
+    secondary = Color(0xFF26A69A),
+    tertiary = Color(0xFF00BCD4)
 )
 
 @Composable

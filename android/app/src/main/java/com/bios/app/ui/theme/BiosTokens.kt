@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.em
+import com.bios.app.model.AlertTier
 
 /**
  * Compose mappings of the ecosystem semantic tokens
@@ -23,6 +24,12 @@ object BiosTokens {
 
     private val Success = Color(0xFF00E5A0)
     private val Warning = Color(0xFFFFB830)
+    // Bios-specific extension of the canonical role set: a deep amber for the
+    // tier between warning and error. Lets the 4-tier AlertTier and 4-band
+    // probability gradients stay legible without collapsing two tiers onto
+    // one color. The design system permits app-level role additions
+    // (docs/DESIGN_SYSTEM.md §2).
+    private val Attention = Color(0xFFFF8A00)
     private val Pending = Color(0xFFFFF4DA)
 
     val success: Color
@@ -34,6 +41,11 @@ object BiosTokens {
         @Composable
         @ReadOnlyComposable
         get() = Warning
+
+    val attention: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = Attention
 
     val error: Color
         @Composable
@@ -63,4 +75,31 @@ object BiosTokens {
             fontFamily = FontFamily.Monospace,
             letterSpacing = 0.04.em,
         )
+
+    /**
+     * Canonical color for an AlertTier. Shared by AlertCard and TimelineScreen
+     * so the same anomaly reads the same wherever it surfaces.
+     */
+    @Composable
+    @ReadOnlyComposable
+    fun tierColor(tier: AlertTier): Color = when (tier) {
+        AlertTier.OBSERVATION -> muted
+        AlertTier.NOTICE -> warning
+        AlertTier.ADVISORY -> attention
+        AlertTier.URGENT -> error
+    }
+
+    /**
+     * Canonical color for a diagnostic match probability. Shared by
+     * DiagnosticCard and ConditionDetailScreen so a given probability
+     * reads the same on the card and on the detail screen.
+     */
+    @Composable
+    @ReadOnlyComposable
+    fun probabilityColor(probability: Double): Color = when {
+        probability >= 0.75 -> error
+        probability >= 0.50 -> attention
+        probability >= 0.25 -> warning
+        else -> success
+    }
 }
