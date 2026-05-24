@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -28,15 +29,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.SeizureEntryRepo
 import com.bios.app.engine.SeizureDetectionPrefs
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -65,18 +69,21 @@ import java.util.Locale
 fun SeizureTimelineScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val db = remember(context) { BiosDatabase.getInstance(context) }
+    val entryRepo = remember(db) { SeizureEntryRepo(db) }
+    val scope = rememberCoroutineScope()
     var readings by remember { mutableStateOf<List<MetricReading>>(emptyList()) }
     var payloadsById by remember { mutableStateOf<Map<String, List<com.bios.app.model.EventPayloadField>>>(emptyMap()) }
+    var showLogDialog by remember { mutableStateOf(false) }
     val detectorOn = remember(context) { SeizureDetectionPrefs.isEnabled(context) }
 
-    LaunchedEffect(Unit) {
-        // Fetch a wide window — SEIZURE_EVENT rows are rare; the cost of
-        // scanning 90 days is negligible and the owner-visible
-        // timeline benefits from showing historical context.
+    suspend fun refresh() {
         val end = System.currentTimeMillis()
         val start = end - 90L * 24 * 60 * 60 * 1000
         val readingDao = db.metricReadingDao()
         val payloadDao = db.eventPayloadFieldDao()
+        // Fetch a wide window — SEIZURE_EVENT rows are rare; the cost of
+        // scanning 90 days is negligible and the owner-visible timeline
+        // benefits from showing historical context.
         val rows = readingDao
             .fetch(MetricType.SEIZURE_EVENT.key, start, end)
             .sortedByDescending { it.timestamp }
@@ -85,6 +92,8 @@ fun SeizureTimelineScreen(onBack: () -> Unit) {
             .fetchForReadings(rows.map { it.id })
             .groupBy { it.readingId }
     }
+
+    LaunchedEffect(Unit) { refresh() }
 
     Scaffold(
         topBar = {
@@ -108,7 +117,12 @@ fun SeizureTimelineScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { SeizureTimelineHeader(detectorOn) }
+            item {
+                SeizureTimelineHeader(
+                    detectorOn = detectorOn,
+                    onLogEvent = { showLogDialog = true },
+                )
+            }
             if (readings.isEmpty()) {
                 item { SeizureTimelineEmpty(detectorOn) }
             } else {
@@ -122,10 +136,23 @@ fun SeizureTimelineScreen(onBack: () -> Unit) {
             }
         }
     }
+
+    if (showLogDialog) {
+        SeizureManualLogDialog(
+            onDismiss = { showLogDialog = false },
+            onSubmit = { timestampMs, durationSec, notes ->
+                scope.launch {
+                    entryRepo.add(timestampMs, durationSec, notes)
+                    refresh()
+                }
+                showLogDialog = false
+            },
+        )
+    }
 }
 
 @Composable
-private fun SeizureTimelineHeader(detectorOn: Boolean) {
+private fun SeizureTimelineHeader(detectorOn: Boolean, onLogEvent: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -154,6 +181,11 @@ private fun SeizureTimelineHeader(detectorOn: Boolean) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(4.dp))
+            OutlinedButton(
+                onClick = onLogEvent,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Log a seizure event") }
         }
     }
 }
@@ -168,12 +200,12 @@ private fun SeizureTimelineEmpty(detectorOn: Boolean) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 if (detectorOn) {
-                    "No detections yet. The detector is watching while charging-independent " +
-                        "background sensing is active."
+                    "No detections yet. The detector is watching; you can also log an " +
+                        "owner-observed event from the header above."
                 } else {
                     "No detections yet. Enable the wearable detector from Settings to start " +
-                        "background watching, or log a seizure event manually from a future " +
-                        "owner-entry surface."
+                        "background watching, or log an owner-observed event from the header " +
+                        "above."
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
