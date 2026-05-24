@@ -380,7 +380,15 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("sleep_dashboard") {
                 com.bios.app.ui.sleep.SleepDashboardScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSeeWearableRecommendations = {
+                        navController.navigate("wearable_recommendations")
+                    },
+                )
+            }
+            composable("wearable_recommendations") {
+                com.bios.app.ui.sleep.WearableRecommendationScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("active_substances") {
