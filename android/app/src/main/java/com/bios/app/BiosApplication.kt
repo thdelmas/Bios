@@ -122,6 +122,14 @@ class BiosApplication : Application() {
         // headache-event metric_readings rows the #293 writer mirrors.
         com.bios.app.alerts.ChronicMigraineWorker.schedule(this)
 
+        // Schedule the nightly sleep-regularity derivation worker (#135
+        // deliverable 2 — closes the gap between SleepRegularityCalculator
+        // existing and rows actually landing on the bus). Pull-side
+        // metric only — no alert. The worker is a no-op when fewer than
+        // the minimum nights are available, so it's safe to enqueue
+        // unconditionally.
+        com.bios.app.engine.SleepRegularityWorker.schedule(this)
+
         // Schedule daily paediatric-band recompute (#198). Idempotent and
         // a no-op when no birth date is on file — safe to enqueue on every
         // launch.
