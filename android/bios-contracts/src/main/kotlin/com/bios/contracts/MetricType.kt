@@ -137,14 +137,15 @@ enum class MetricType(
     PAIN_SCORE("pain_score", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     CONSCIOUSNESS_LEVEL("consciousness_level", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
 
-    // Neurology owner-symptom logging (#207, NEUROLOGY_POV §2.6 / §2.5 /
-    // §2.15). Owner-input only — manifesto §3.3 prohibits automated voice /
-    // face stroke detection. HEADACHE_INTENSITY_NRS is the flat-metric
-    // shadow of the structured HeadacheLog / MigraineAttack entities;
-    // sidecar fields (aura, triggers, treatment, FAST item) live on the
-    // structured row, not in event_payloads.
+    // Neurology owner-symptom logging (#207 + #283 Cut 1, NEUROLOGY_POV §2.5+§2.6+§2.15).
+    // Owner-input only — manifesto §3.3 prohibits automated voice / face stroke detection.
+    // HEADACHE_INTENSITY_NRS is the flat-metric shadow of the structured HeadacheLog /
+    // MigraineAttack entities. Headache / cluster / migraine event payload fields land
+    // on event_payloads via com.bios.app.model.HeadacheEventFields.
     HEADACHE_INTENSITY_NRS("headache_intensity_nrs", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     MIGRAINE_ATTACK_EVENT("migraine_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    HEADACHE_ATTACK_EVENT("headache_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    CLUSTER_HEADACHE_ATTACK_EVENT("cluster_headache_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     FAST_STROKE_SUSPECTED("fast_stroke_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
 
     // Neurology URGENT primitives (audit §3.2 #24 / NEUROLOGY_POV §2.1+§2.3).
