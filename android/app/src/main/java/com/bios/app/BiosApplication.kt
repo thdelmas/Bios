@@ -81,6 +81,15 @@ class BiosApplication : Application() {
         // hub is already tracking when the first sample is taken.
         com.bios.app.ingest.WakeUpMotionTracker.attach(this)
 
+        // Start the wearable seizure-detection foreground service if
+        // the owner has opted in via Settings (#269 Cut 3b). No-op
+        // when the opt-in is off — the service self-stops in
+        // onStartCommand even if start is mis-triggered. The privacy
+        // gate (SeizureDetectionPrefs) and the safety gate (#287
+        // payload-exclusion on URGENT seizure patterns) are both
+        // independent of this start call.
+        com.bios.app.ingest.SeizureDetectionService.startIfOptedIn(this)
+
         // Register the charge-edge receiver for the new foreground
         // collection service (#241). ACTION_POWER_CONNECTED /
         // _DISCONNECTED are not on the API 26+ implicit-broadcast
