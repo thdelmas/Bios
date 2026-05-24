@@ -15,6 +15,12 @@ interface DataSourceDao {
     @Query("SELECT * FROM data_sources WHERE sourceType = :sourceType LIMIT 1")
     suspend fun findByType(sourceType: String): DataSource?
 
+    @Query(
+        "SELECT * FROM data_sources " +
+            "WHERE sourceType = :sourceType AND deviceName = :deviceName LIMIT 1"
+    )
+    suspend fun findByTypeAndDeviceName(sourceType: String, deviceName: String): DataSource?
+
     @Query("SELECT * FROM data_sources")
     suspend fun getAll(): List<DataSource>
 
