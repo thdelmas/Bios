@@ -33,7 +33,15 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
         com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
     }
     composable("headache_diary") {
-        com.bios.app.ui.headache.HeadacheDiaryScreen(onBack = { navController.popBackStack() })
+        com.bios.app.ui.headache.HeadacheDiaryScreen(
+            onBack = { navController.popBackStack() },
+            onNavigateToClusterPeriodicity = { navController.navigate("cluster_periodicity") },
+        )
+    }
+    composable("cluster_periodicity") {
+        com.bios.app.ui.headache.ClusterPeriodicityScreen(
+            onBack = { navController.popBackStack() },
+        )
     }
     composable("fast_stroke") {
         com.bios.app.ui.stroke.FastStrokeScreen(onBack = { navController.popBackStack() })
