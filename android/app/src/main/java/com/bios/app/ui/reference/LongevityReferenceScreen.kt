@@ -18,6 +18,7 @@ import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.alerts.Citation
 import com.bios.app.config.BiomarkerBand
 import com.bios.app.config.RegionConfigProvider
+import com.bios.app.ui.theme.BiosTokens
 import com.bios.contracts.MetricType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -140,10 +141,13 @@ private fun CoverageSummaryCard(trackedMetrics: Set<MetricType>) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                val countStyle = MaterialTheme.typography.headlineMedium.merge(
+                    BiosTokens.instrument
+                )
                 Column {
                     Text(
                         "${covered.size}",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = countStyle,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -155,7 +159,7 @@ private fun CoverageSummaryCard(trackedMetrics: Set<MetricType>) {
                 Column {
                     Text(
                         "${missing.size}",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = countStyle,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -167,7 +171,7 @@ private fun CoverageSummaryCard(trackedMetrics: Set<MetricType>) {
                 Column {
                     Text(
                         "${BiomarkerReferences.all.size}",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = countStyle,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -206,10 +210,10 @@ private fun BiomarkerCard(
     val someTracked = proxyStatus.any { it.second }
 
     val statusColor = when {
-        directTracked -> Color(0xFF4CAF50)
-        allTracked -> Color(0xFF4CAF50)
-        someTracked -> Color(0xFFFFC107)
-        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        directTracked -> BiosTokens.success
+        allTracked -> BiosTokens.success
+        someTracked -> BiosTokens.warning
+        else -> BiosTokens.muted
     }
     val statusLabel = when {
         directTracked -> "Direct lab reading"
@@ -237,7 +241,7 @@ private fun BiomarkerCard(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Circle,
@@ -280,7 +284,7 @@ private fun BiomarkerCard(
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.padding(vertical = 2.dp),
+                        modifier = Modifier.padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -288,7 +292,7 @@ private fun BiomarkerCard(
                             else Icons.Default.RadioButtonUnchecked,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = if (directTracked) Color(0xFF4CAF50) else Color.Gray
+                            tint = if (directTracked) BiosTokens.success else BiosTokens.muted
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(directMetric.readableName, style = MaterialTheme.typography.bodySmall)
@@ -302,13 +306,28 @@ private fun BiomarkerCard(
                     }
                     if (directTracked && latestDirectValue != null && biomarkerBands != null) {
                         val band = biomarkerBands.classify(latestDirectValue)
-                        Spacer(Modifier.height(2.dp))
+                        val bandTone = bandColor(band)
+                        Spacer(Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Spacer(Modifier.width(24.dp))
                             Text(
-                                "Latest: ${"%.2f".format(latestDirectValue)} ${directMetric.unit.symbol} → ${band.label}",
+                                "Latest: ",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = band.color,
+                                color = bandTone,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                "${"%.2f".format(latestDirectValue)} ${directMetric.unit.symbol}",
+                                style = MaterialTheme.typography.bodySmall.merge(
+                                    BiosTokens.instrument
+                                ),
+                                color = bandTone,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                " → ${band.label}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = bandTone,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -325,7 +344,7 @@ private fun BiomarkerCard(
                 Spacer(Modifier.height(4.dp))
                 proxyStatus.forEach { (metric, tracked) ->
                     Row(
-                        modifier = Modifier.padding(vertical = 2.dp),
+                        modifier = Modifier.padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -333,7 +352,7 @@ private fun BiomarkerCard(
                             else Icons.Default.RadioButtonUnchecked,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = if (tracked) Color(0xFF4CAF50) else Color.Gray
+                            tint = if (tracked) BiosTokens.success else BiosTokens.muted
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -424,9 +443,9 @@ private val BiomarkerBand.label: String
         BiomarkerBand.CONCERNING -> "Concerning"
     }
 
-private val BiomarkerBand.color: Color
-    get() = when (this) {
-        BiomarkerBand.NORMAL -> Color(0xFF4CAF50)
-        BiomarkerBand.BORDERLINE -> Color(0xFFFFA000)
-        BiomarkerBand.CONCERNING -> Color(0xFFD32F2F)
-    }
+@Composable
+private fun bandColor(band: BiomarkerBand): Color = when (band) {
+    BiomarkerBand.NORMAL -> BiosTokens.success
+    BiomarkerBand.BORDERLINE -> BiosTokens.warning
+    BiomarkerBand.CONCERNING -> BiosTokens.error
+}
