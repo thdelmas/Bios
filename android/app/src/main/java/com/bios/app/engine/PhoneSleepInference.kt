@@ -120,20 +120,24 @@ object PhoneSleepInference {
     private data class Segment(val stage: SleepStage, val startMs: Long, val durationMs: Long)
 
     /**
-     * Walk the [start, end] index range and merge consecutive samples that
-     * share the same coarse activity label (AWAKE if accel variance is
-     * above [ACTIVITY_THRESHOLD], LIGHT otherwise) into contiguous segments.
+     * Walk the [startIdx, endIdx] index range and merge consecutive samples
+     * that share the same coarse activity label into contiguous segments.
+     * The per-sample label comes from the 7-tap Cole-Kripke classifier
+     * (#244 Cut 1) which reads a centered 7-wide window of accelerometer
+     * variances — meaningfully smoother than the prior 1-tap threshold
+     * and matched to the published actigraphy baseline since 1992.
      */
     private fun segmentByActivity(
         samples: List<Sample>,
         startIdx: Int,
         endIdx: Int
     ): List<Segment> {
+        val variances: List<Float?> = samples.map { it.accelMagnitudeVar }
         val out = mutableListOf<Segment>()
         var segStart = samples[startIdx].timestamp
-        var currentStage = stageAt(samples[startIdx])
+        var currentStage = stageAt(variances, startIdx)
         for (i in (startIdx + 1)..endIdx) {
-            val stage = stageAt(samples[i])
+            val stage = stageAt(variances, i)
             if (stage != currentStage) {
                 out += Segment(currentStage, segStart, samples[i].timestamp - segStart)
                 segStart = samples[i].timestamp
@@ -164,9 +168,22 @@ object PhoneSleepInference {
         return out
     }
 
-    private fun stageAt(sample: Sample): SleepStage {
-        val variance = sample.accelMagnitudeVar ?: 0f
-        return if (variance > ACTIVITY_THRESHOLD) SleepStage.AWAKE else SleepStage.LIGHT
+    /**
+     * Score sample `index` against the Cole-Kripke 7-tap FIR filter
+     * over a centered window of accelerometer variances. `LIGHT` when
+     * the windowed sleep index is below the wake threshold; `AWAKE`
+     * otherwise. Boundary samples reuse the edge value (see
+     * [ColeKripkeClassifier.centeredWindow]).
+     *
+     * Replaces the prior 1-tap variance threshold (`variance > 0.5 →
+     * AWAKE`) with the published 1992 baseline. Single isolated
+     * variance spikes no longer fire AWAKE on their own — Cole-Kripke
+     * requires the surrounding context to corroborate, which matches
+     * the actigraphy literature's "sustained motion = wake" stance.
+     */
+    private fun stageAt(variances: List<Float?>, index: Int): SleepStage {
+        val window = ColeKripkeClassifier.centeredWindow(variances, index)
+        return if (ColeKripkeClassifier.isAwake(window)) SleepStage.AWAKE else SleepStage.LIGHT
     }
 
     /**
@@ -367,8 +384,15 @@ object PhoneSleepInference {
     // After subtracting AWAKE bouts, demand at least 1h of actual sleep
     // before publishing anything. Floors out clearly-bad windows.
     internal const val MIN_SLEEP_DURATION_MS: Long = 1L * 60L * 60L * 1000L
-    // Brief movement bouts (< 5 min) are posture shifts, not wake events.
-    internal const val AWAKE_BOUT_MIN_MS: Long = 5L * 60L * 1000L
+    // Brief movement bouts (< 10 min) are posture shifts, not wake events.
+    // Bumped from 5 → 10 min when the Cole-Kripke 7-tap classifier
+    // landed (#244 Cut 1): the smoother windowed classifier extends a
+    // brief activity spike's AWAKE footprint ~3 min on each side via
+    // the FIR convolution, so a 1-2 min posture shift now produces a
+    // ~7-8 min AWAKE region. Bumping the collapse threshold keeps the
+    // "posture shift, not wake" semantic intact under the new
+    // classifier while still catching genuine 10+ min wake events.
+    internal const val AWAKE_BOUT_MIN_MS: Long = 10L * 60L * 1000L
     // Single notification waking the screen, AOD, or a "lift to wake" event
     // shouldn't bisect an otherwise clean overnight stretch. ~20 min covers
     // one missed sample at the 15-min cadence plus a small buffer for clock
