@@ -1,5 +1,6 @@
 package com.bios.app.data
 
+import com.bios.app.model.HeadacheEventFields
 import com.bios.app.model.MigraineAttack
 import com.bios.app.model.MigraineTrigger
 
@@ -48,16 +49,56 @@ class MigraineAttackRepo(private val db: BiosDatabase) {
             notes = notes?.trim()?.takeIf { it.isNotBlank() },
         )
         dao.insert(attack)
+        writeMetricReadingMirror(attack)
         return attack.id
     }
 
     /** Mark an in-progress attack as resolved at the given [endTimestamp]. */
     suspend fun close(id: String, endTimestamp: Long = System.currentTimeMillis()) {
         val existing = dao.fetchById(id) ?: return
-        dao.update(existing.copy(endTimestamp = endTimestamp))
+        val updated = existing.copy(endTimestamp = endTimestamp)
+        dao.update(updated)
+        // Refresh the metric_readings mirror so the parent row's
+        // durationSec is up to date for the chronic-migraine evaluator
+        // (Cut 3). Cheapest path: delete-then-rewrite.
+        clearMetricReadingMirror(existing)
+        writeMetricReadingMirror(updated)
     }
 
-    suspend fun remove(id: String) = dao.deleteById(id)
+    suspend fun remove(id: String) {
+        val existing = dao.fetchById(id)
+        dao.deleteById(id)
+        existing?.let { clearMetricReadingMirror(it) }
+    }
+
+    private suspend fun writeMetricReadingMirror(attack: MigraineAttack) {
+        val sourceId = resolveSelfReportedSource(db)
+        val writeSet = HeadacheEventWriter.fromMigraineAttack(attack, sourceId)
+        db.metricReadingDao().insert(writeSet.parent)
+        db.eventPayloadFieldDao().insertAll(writeSet.payload)
+        writeSet.abortiveIntake?.let {
+            db.metricReadingDao().insert(it)
+            db.eventPayloadFieldDao().insertAll(writeSet.abortivePayload)
+        }
+    }
+
+    private suspend fun clearMetricReadingMirror(attack: MigraineAttack) {
+        // Walk the parent payload to find any linked MEDICATION_INTAKE
+        // child id, then cascade. Two DAO calls — the payload table is
+        // small per reading so the round-trips are cheap.
+        val payloadDao = db.eventPayloadFieldDao()
+        val readingDao = db.metricReadingDao()
+        val parentPayload = payloadDao.fetchForReading(attack.id)
+        val intakeId = parentPayload
+            .firstOrNull { it.fieldKey == HeadacheEventFields.ABORTIVE_MEDICATION_INTAKE_ID }
+            ?.stringValue
+        payloadDao.deleteForReading(attack.id)
+        readingDao.deleteById(attack.id)
+        if (intakeId != null) {
+            payloadDao.deleteForReading(intakeId)
+            readingDao.deleteById(intakeId)
+        }
+    }
 
     suspend fun fetchAll(): List<MigraineAttack> = dao.fetchAll()
 

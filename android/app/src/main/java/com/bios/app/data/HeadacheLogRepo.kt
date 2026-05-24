@@ -1,5 +1,6 @@
 package com.bios.app.data
 
+import com.bios.app.model.HeadacheEventFields
 import com.bios.app.model.HeadacheLog
 import com.bios.app.model.HeadacheType
 
@@ -44,10 +45,41 @@ class HeadacheLogRepo(private val db: BiosDatabase) {
             notes = notes?.trim()?.takeIf { it.isNotBlank() },
         )
         dao.insert(log)
+        writeMetricReadingMirror(log)
         return log.id
     }
 
-    suspend fun remove(id: String) = dao.deleteById(id)
+    suspend fun remove(id: String) {
+        val existing = dao.fetchById(id)
+        dao.deleteById(id)
+        existing?.let { clearMetricReadingMirror(it) }
+    }
+
+    private suspend fun writeMetricReadingMirror(log: HeadacheLog) {
+        val sourceId = resolveSelfReportedSource(db)
+        val writeSet = HeadacheEventWriter.fromHeadacheLog(log, sourceId)
+        db.metricReadingDao().insert(writeSet.parent)
+        db.eventPayloadFieldDao().insertAll(writeSet.payload)
+        writeSet.abortiveIntake?.let {
+            db.metricReadingDao().insert(it)
+            db.eventPayloadFieldDao().insertAll(writeSet.abortivePayload)
+        }
+    }
+
+    private suspend fun clearMetricReadingMirror(log: HeadacheLog) {
+        val payloadDao = db.eventPayloadFieldDao()
+        val readingDao = db.metricReadingDao()
+        val parentPayload = payloadDao.fetchForReading(log.id)
+        val intakeId = parentPayload
+            .firstOrNull { it.fieldKey == HeadacheEventFields.ABORTIVE_MEDICATION_INTAKE_ID }
+            ?.stringValue
+        payloadDao.deleteForReading(log.id)
+        readingDao.deleteById(log.id)
+        if (intakeId != null) {
+            payloadDao.deleteForReading(intakeId)
+            readingDao.deleteById(intakeId)
+        }
+    }
 
     suspend fun fetchAll(): List<HeadacheLog> = dao.fetchAll()
 

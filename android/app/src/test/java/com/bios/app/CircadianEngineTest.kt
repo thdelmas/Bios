@@ -225,6 +225,7 @@ private class FakeMetricReadingDao(
     override suspend fun sourceCountsForMetric(metricType: String): List<MetricReadingDao.SourceCountRow> = notUsed()
     override suspend fun fetchCreatedAfter(sinceMillis: Long): List<MetricReading> = notUsed()
     override suspend fun deleteBefore(beforeMillis: Long): Int = notUsed()
+    override suspend fun deleteById(readingId: String): Int = notUsed()
     override suspend fun deleteAll(): Unit = notUsed()
 
     private fun <T> notUsed(): T = error("FakeMetricReadingDao: method not exercised by CircadianEngineTest")
