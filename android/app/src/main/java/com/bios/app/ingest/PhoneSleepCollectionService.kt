@@ -13,6 +13,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.BaselinedActivityThreshold
 import com.bios.app.model.PhoneSleepSample
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +133,15 @@ class PhoneSleepCollectionService : Service() {
                         stationary = sample.stationary,
                     )
                 )
+                // #244 Cut 2: feed the variance sample into the per-owner
+                // baseline. The service only runs during quiet hours (the
+                // PhoneSleepQuietHours gate runs in onStartCommand), so
+                // every sample here qualifies as a quiet-hour observation.
+                sample.accelMagnitudeVar?.let {
+                    BaselinedActivityThreshold.recordSample(
+                        applicationContext, it, sample.timestamp,
+                    )
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "sample iteration failed: ${t.message}", t)
             }

@@ -15,6 +15,7 @@ import android.hardware.SensorManager
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.view.Display
+import com.bios.app.engine.BaselinedActivityThreshold
 import com.bios.app.engine.PhoneSleepInference
 import com.bios.app.model.MetricReading
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -193,10 +194,17 @@ class PhoneSleepAdapter(private val context: Context) {
 
     /**
      * Hand the collected samples to the pure inference layer and emit
-     * `SLEEP_DURATION` (+ optional `SLEEP_STAGE`) readings.
+     * `SLEEP_DURATION` (+ optional `SLEEP_STAGE`) readings. Uses the
+     * per-owner-learned activity threshold (#244 Cut 2) when the
+     * baseline has accumulated enough quiet-hour samples, falling
+     * back to [PhoneSleepInference.ACTIVITY_THRESHOLD] otherwise.
      */
     fun infer(samples: List<PhoneSleepInference.Sample>, sourceId: String): List<MetricReading> =
-        PhoneSleepInference.infer(samples, sourceId)
+        PhoneSleepInference.infer(
+            samples,
+            sourceId,
+            BaselinedActivityThreshold.currentThreshold(context),
+        )
 
     private suspend fun sampleAccelVariance(durationMs: Long): Float? {
         val sensor = accelerometer ?: return null
