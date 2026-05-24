@@ -3,6 +3,7 @@ package com.bios.app.alerts
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
 import com.bios.app.model.HeadacheLog
+import com.bios.app.model.MetricReading
 import com.bios.app.model.MigraineAttack
 import java.time.Instant
 import java.time.ZoneId
@@ -206,14 +207,40 @@ object MedicationOveruseHeadacheEvaluator {
     /**
      * Evaluate the MOH screen across the given diary records.
      *
-     * @param migraineAttacks records to count
-     * @param headacheLogs records to count
+     * Two parallel sources feed the per-day treatment count:
+     *  - The legacy path reads the freetext `medicationTaken` field
+     *    on each [MigraineAttack] / [HeadacheLog]. This was the only
+     *    surface available before #283 Cut 2; it remains the source
+     *    of truth for any row written by an entry path that doesn't
+     *    yet write the structured intake row.
+     *  - The structured path reads
+     *    [com.bios.contracts.MetricType.MEDICATION_INTAKE] rows
+     *    written by [com.bios.app.data.HeadacheEventWriter] (#293).
+     *    Caller pre-filters these to rows that carry the
+     *    `parent_headache_event_id` payload back-link so non-headache
+     *    intake rows (supplements, caffeine, etc.) don't poison the
+     *    count.
+     *
+     * Both paths converge on the distinct-date set per month, so a
+     * row that lands via both surfaces (the Cut 2 writer populates
+     * both simultaneously) counts as exactly one treatment day for
+     * that date. Forward-looking: an entry path that drops the
+     * legacy freetext field but keeps the structured intake row
+     * still feeds MOH correctly.
+     *
+     * @param migraineAttacks legacy-path records
+     * @param headacheLogs legacy-path records
+     * @param headacheLinkedIntakes structured-path MEDICATION_INTAKE
+     *   rows pre-filtered by the caller to those linked to a headache
+     *   event. Defaults to empty for backward compatibility with
+     *   pre-#283 Cut 3 callers.
      * @param nowMillis "now" for picking the most-recent 3 calendar months
      * @param zoneId timezone for calendar-month boundaries (defaults to system default)
      */
     fun evaluate(
         migraineAttacks: List<MigraineAttack>,
         headacheLogs: List<HeadacheLog>,
+        headacheLinkedIntakes: List<MetricReading> = emptyList(),
         nowMillis: Long = System.currentTimeMillis(),
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): Verdict {
@@ -230,6 +257,9 @@ object MedicationOveruseHeadacheEvaluator {
             if (!log.medicationTaken.isNullOrBlank()) {
                 treatmentDates += treatmentDate(log.timestamp, zoneId)
             }
+        }
+        for (intake in headacheLinkedIntakes) {
+            treatmentDates += treatmentDate(intake.timestamp, zoneId)
         }
 
         val targetMonths = recentCalendarMonths(
