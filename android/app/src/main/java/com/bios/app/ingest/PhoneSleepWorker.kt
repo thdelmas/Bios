@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.WorkerParameters
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.BaselinedActivityThreshold
 import com.bios.app.engine.PhoneSleepInference
 import com.bios.app.model.DataSource
 import com.bios.app.model.PhoneSleepSample
@@ -87,10 +88,23 @@ class PhoneSleepWorker(
                     stationary = sample.stationary,
                 )
             )
+            // #244 Cut 2: feed the variance sample into the per-owner
+            // baseline when we're inside quiet hours. The 15-min
+            // worker cadence is lower-volume than the FG service but
+            // still adds samples on devices where the service hasn't
+            // started (no charging trigger today, etc.).
+            if (PhoneSleepQuietHours.isInQuietHoursNow()) {
+                sample.accelMagnitudeVar?.let {
+                    BaselinedActivityThreshold.recordSample(context, it, sample.timestamp)
+                }
+            }
+            // Use the learned threshold for diagnostic logging so the
+            // "quiet=" log line reflects what the inference will see.
+            val threshold = BaselinedActivityThreshold.currentThreshold(context)
             // One-line per-firing diagnostic so the failure mode is
             // observable from `adb logcat -s PhoneSleepWorker` without
             // having to decrypt SQLCipher rows. See #240.
-            val quiet = PhoneSleepInference.isQuietSample(sample)
+            val quiet = PhoneSleepInference.isQuietSample(sample, threshold)
             Log.i(
                 TAG,
                 "diag: sample screenOff=${sample.screenOff} " +
@@ -133,8 +147,9 @@ class PhoneSleepWorker(
                         stationary = it.stationary,
                     )
                 }
-            val breakdown = PhoneSleepInference.signalBreakdown(samples)
-            val longestQuietMin = PhoneSleepInference.longestScreenOffMs(samples) / 60_000L
+            val breakdown = PhoneSleepInference.signalBreakdown(samples, threshold)
+            val longestQuietMin =
+                PhoneSleepInference.longestScreenOffMs(samples, threshold) / 60_000L
             Log.i(
                 TAG,
                 "diag: decision=Fire window=${decision.windowStartMs}..${decision.windowEndMs} " +
