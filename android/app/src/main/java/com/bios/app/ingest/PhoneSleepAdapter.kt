@@ -77,6 +77,11 @@ class PhoneSleepAdapter(private val context: Context) {
      */
     suspend fun sample(accelWindowMs: Long = DEFAULT_ACCEL_WINDOW_MS): PhoneSleepInference.Sample {
         val now = System.currentTimeMillis()
+        // #243 Cut 2: defensive attach so test contexts and any future
+        // entry path that bypasses BiosApplication still get a live
+        // tracker. The attach is idempotent.
+        WakeUpMotionTracker.attach(context)
+        val motion = WakeUpMotionTracker.snapshot(now)
         return PhoneSleepInference.Sample(
             timestamp = now,
             screenOff = isScreenInactive(),
@@ -86,6 +91,8 @@ class PhoneSleepAdapter(private val context: Context) {
             stepDelta = readStepDelta(),
             dndEnabled = readDndEnabled(),
             pairedBluetoothConnected = readPairedBluetoothConnected(),
+            significantMotionFired = motion.significantMotionFired,
+            stationary = motion.stationary,
         )
     }
 

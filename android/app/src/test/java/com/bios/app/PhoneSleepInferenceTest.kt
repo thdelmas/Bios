@@ -305,6 +305,144 @@ class PhoneSleepInferenceTest {
         assertEquals(0, breakdown.sampledNewSignals)
     }
 
+    // ---- #243 Cut 2: wake-up motion sensors + stationary weave ----
+
+    @Test
+    fun signal_breakdown_counts_wake_up_motion_signals() {
+        // 4 samples: 2 with sigMotion fired + stationary false, 2 with
+        // sigMotion not fired + stationary true. Counts must split.
+        val samples = buildList {
+            repeat(2) { i ->
+                add(
+                    Sample(
+                        timestamp = i.toLong(),
+                        screenOff = true,
+                        charging = true,
+                        ambientLightLux = 0f,
+                        accelMagnitudeVar = 0f,
+                        significantMotionFired = true,
+                        stationary = false,
+                    )
+                )
+            }
+            repeat(2) { i ->
+                add(
+                    Sample(
+                        timestamp = (2 + i).toLong(),
+                        screenOff = true,
+                        charging = true,
+                        ambientLightLux = 0f,
+                        accelMagnitudeVar = 0f,
+                        significantMotionFired = false,
+                        stationary = true,
+                    )
+                )
+            }
+        }
+        val breakdown = PhoneSleepInference.signalBreakdown(samples)
+        assertEquals(4, breakdown.total)
+        assertEquals(2, breakdown.sigMotionFired)
+        assertEquals(2, breakdown.stationaryDetected)
+        assertEquals(4, breakdown.sampledNewSignals)
+    }
+
+    @Test
+    fun signal_breakdown_treats_null_wake_up_signals_as_uncounted() {
+        // No wake-up sensors recorded — counts stay at 0 and the
+        // denominator excludes these samples too.
+        val samples = List(3) { i ->
+            Sample(
+                timestamp = i.toLong(),
+                screenOff = true,
+                charging = true,
+                ambientLightLux = 0f,
+                accelMagnitudeVar = 0f,
+                // significantMotionFired / stationary default null.
+            )
+        }
+        val breakdown = PhoneSleepInference.signalBreakdown(samples)
+        assertEquals(3, breakdown.total)
+        assertEquals(0, breakdown.sigMotionFired)
+        assertEquals(0, breakdown.stationaryDetected)
+        assertEquals(0, breakdown.sampledNewSignals)
+    }
+
+    @Test
+    fun stationary_plus_charging_passes_isQuietSample_even_when_screen_on_and_lit() {
+        // The AOD-on-nightstand failure mode the Cut 2 weave specifically
+        // targets: screen reads on (AOD), room is lit (streetlight,
+        // partner's lamp), accel-variance proxy might disagree — but
+        // hardware-confirmed stillness + charging is strong enough.
+        val s = Sample(
+            timestamp = 0L,
+            screenOff = false,
+            charging = true,
+            ambientLightLux = 80f, // lit room
+            accelMagnitudeVar = 1.0f, // high enough to fail lowMotion proxy
+            stationary = true,
+        )
+        assertTrue(PhoneSleepInference.isQuietSample(s))
+    }
+
+    @Test
+    fun stationary_without_charging_does_not_pass_isQuietSample() {
+        // Without the plugged-in confirmation we won't accept the
+        // single stationary signal — a phone left still on a meeting
+        // table for an hour must not read as sleep.
+        val s = Sample(
+            timestamp = 0L,
+            screenOff = false,
+            charging = false,
+            ambientLightLux = 80f,
+            accelMagnitudeVar = 1.0f,
+            stationary = true,
+        )
+        assertFalse(PhoneSleepInference.isQuietSample(s))
+    }
+
+    @Test
+    fun stationary_null_falls_back_to_the_three_way_fallback() {
+        // Devices missing TYPE_STATIONARY_DETECT must keep using the
+        // pre-Cut-2 charging + lowMotion + dark fallback — the stationary
+        // shortcut is a strict additive path, never a regression.
+        val sampleQuietByFallback = Sample(
+            timestamp = 0L,
+            screenOff = false,
+            charging = true,
+            ambientLightLux = 0f, // dark
+            accelMagnitudeVar = 0f, // low motion
+            stationary = null,
+        )
+        assertTrue(PhoneSleepInference.isQuietSample(sampleQuietByFallback))
+
+        val sampleNotQuiet = Sample(
+            timestamp = 0L,
+            screenOff = false,
+            charging = true,
+            ambientLightLux = 200f, // lit — fails dark
+            accelMagnitudeVar = 0f,
+            stationary = null,
+        )
+        assertFalse(PhoneSleepInference.isQuietSample(sampleNotQuiet))
+    }
+
+    @Test
+    fun stationary_false_does_not_force_quiet_when_fallback_would_pass() {
+        // stationary = false (device is actively moving) shouldn't poison
+        // an otherwise-clean dark-charging-still window. The Cut 2 weave
+        // is purely additive (stationary == true opens a path); a false
+        // here lets the existing fallback decide.
+        val s = Sample(
+            timestamp = 0L,
+            screenOff = true, // screenOff short-circuit
+            charging = false,
+            ambientLightLux = 0f,
+            accelMagnitudeVar = 0f,
+            stationary = false,
+        )
+        assertTrue(PhoneSleepInference.isQuietSample(s))
+    }
+
     @Test
     fun new_signal_defaults_do_not_change_inference_behaviour() {
         // 6 hours of sleepy samples with null Tier-1 fields → inference
