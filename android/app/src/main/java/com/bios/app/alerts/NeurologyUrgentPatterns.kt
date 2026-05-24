@@ -2,6 +2,7 @@ package com.bios.app.alerts
 
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
+import com.bios.app.model.SeizureEventFields
 import com.bios.contracts.MetricType
 
 /**
@@ -24,8 +25,13 @@ import com.bios.contracts.MetricType
  *
  * The wearable convulsive-pattern detector (band-pass 2–8 Hz
  * accelerometer + ictal-tachycardia corroborator, Empatica Embrace2
- * shape, #269) is deferred — the substrate exists but a calibrated
- * detector needs its own design pass.
+ * shape, #269 Cut 1) ships at [com.bios.app.model.ConfidenceTier.LOW]
+ * and writes `detection_source = "wearable_inferred"` on the payload.
+ * Both seizure patterns here apply [SignalRule.excludePayloadFieldValue]
+ * to keep those rows out of the URGENT / ADVISORY paths — automation
+ * alone must not page the owner for emergency services. Wearable-
+ * inferred events stay visible in the timeline; escalation waits for
+ * owner confirmation (#269 Cut 2).
  *
  * ## References
  *
@@ -71,6 +77,16 @@ object NeurologyUrgentPatterns {
                 absoluteWindowHours = 1,
                 absoluteMinReadings = 1,
                 durationAtLeastSec = 300,
+                // #269 Cut 2 safety gate: URGENT escalation must require
+                // owner confirmation. The wearable convulsive-pattern
+                // detector (SeizureDetector) writes LOW-confidence rows
+                // with detection_source = "wearable_inferred"; those
+                // rows are kept in the timeline but excluded here so
+                // automation alone cannot trigger an emergency-services
+                // prompt. Bare owner-logged rows (no payload) pass
+                // through unchanged.
+                excludePayloadFieldValue = SeizureEventFields.DETECTION_SOURCE to
+                    SeizureEventFields.DETECTION_SOURCE_WEARABLE_INFERRED,
             ),
         ),
         minActiveSignals = 1,
@@ -104,6 +120,14 @@ object NeurologyUrgentPatterns {
                 absoluteAbove = 0.0,
                 absoluteWindowHours = 24,
                 absoluteMinReadings = 3,
+                // #269 Cut 2 safety gate: a "cluster" of wearable-inferred
+                // LOW-confidence detections is detector noise, not a
+                // clinical signal. The cluster pattern's ADVISORY action
+                // ("contact treating neurologist within 24 h") is owner-
+                // facing and demands confirmation that the events
+                // happened — same reasoning as the URGENT gate above.
+                excludePayloadFieldValue = SeizureEventFields.DETECTION_SOURCE to
+                    SeizureEventFields.DETECTION_SOURCE_WEARABLE_INFERRED,
             ),
         ),
         minActiveSignals = 1,

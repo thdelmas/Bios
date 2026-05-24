@@ -400,20 +400,6 @@ class AnomalyDetector(
         )
     }
 
-    private fun classifySeverity(
-        activeSignals: Int,
-        combinedScore: Double,
-        totalRules: Int
-    ): AlertTier {
-        val signalRatio = activeSignals.toDouble() / totalRules.toDouble()
-
-        return when {
-            combinedScore > 3.0 || signalRatio > 0.8 -> AlertTier.ADVISORY
-            combinedScore > 2.0 || signalRatio > 0.5 -> AlertTier.NOTICE
-            else -> AlertTier.OBSERVATION
-        }
-    }
-
     private fun buildExplanation(
         pattern: ConditionPattern,
         deviations: Map<MetricType, Double>
@@ -444,18 +430,28 @@ class AnomalyDetector(
         )
     }
 
-    // Window-mode values for the absolute-rule path; row-fetch + duration
-    // filter when SignalRule.durationAtLeastSec is set (#268), otherwise
-    // the value-only fast path.
+    // Absolute-rule window values. Fast value-only path unless the
+    // rule needs row-level columns: durationAtLeastSec (#268) requires
+    // durationSec; excludePayloadFieldValue (#269 Cut 2 safety gate)
+    // requires a payload lookup to drop wearable_inferred SEIZURE_EVENT
+    // rows from the URGENT path.
     private suspend fun fetchAbsoluteWindowValues(rule: com.bios.app.alerts.SignalRule): List<Double> {
         val minDuration = rule.durationAtLeastSec
-            ?: return fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+        val excludePayload = rule.excludePayloadFieldValue
+        if (minDuration == null && excludePayload == null) {
+            return fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+        }
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - rule.absoluteWindowHours.toLong() * 3600 * 1000
-        return daoFor(rule.metricType)
-            .fetch(rule.metricType.key, startMillis, endMillis)
-            .filter { (it.durationSec ?: 0) >= minDuration }
-            .map { it.value }
+        var rows = daoFor(rule.metricType).fetch(rule.metricType.key, startMillis, endMillis)
+        if (minDuration != null) rows = rows.filter { (it.durationSec ?: 0) >= minDuration }
+        if (excludePayload != null) {
+            val payloads = db.eventPayloadFieldDao()
+                .fetchForReadings(rows.map { it.id })
+                .groupBy { it.readingId }
+            rows = applyPayloadExclusion(rows, payloads, excludePayload)
+        }
+        return rows.map { it.value }
     }
 
     private fun daoFor(metricType: MetricType): MetricReadingDao =
