@@ -52,14 +52,20 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
         const val FINGER_OFF_MIN_VARIANCE = 0.5
 
         /**
-         * Motion threshold on the *median* frame-to-frame Y jump over the
-         * recent window. Heart-beats produce a few large diffs per second
-         * (systolic peaks) on top of mostly small diffs, so a single max
-         * value is a poor discriminator — devices with strong PPG amplitude
-         * would always classify as MOTION. Median-of-diffs is robust to
-         * those spikes: sustained motion lifts the whole distribution.
+         * Default motion threshold on the *median* frame-to-frame Y
+         * jump over the recent window. Heart-beats produce a few
+         * large diffs per second (systolic peaks) on top of mostly
+         * small diffs, so a single max value is a poor discriminator
+         * — devices with strong PPG amplitude would always classify
+         * as MOTION. Median-of-diffs is robust to those spikes:
+         * sustained motion lifts the whole distribution.
+         *
+         * Per-device overrides ([PpgDeviceProfile.motionMedianJumpY])
+         * land once the [PpgCalibrationLogger] distribution data is
+         * in (#266 Cut 2). The default preserves pre-Cut-2
+         * behaviour for devices not yet in [PpgDeviceProfiles.PROFILES].
          */
-        const val MOTION_MEDIAN_JUMP_Y = 6.0
+        const val MOTION_MEDIAN_JUMP_Y_DEFAULT = 6.0
 
         /** Window for the motion check (seconds). */
         const val MOTION_WINDOW_SEC = 1.0
@@ -67,8 +73,17 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
         /**
          * Classify the most recent frames. [window] is mean-Y values oldest
          * first; [samplingRateHz] is the analyzer's current frame rate.
+         *
+         * @param profile per-device thresholds (#266 Cut 2). Default
+         *   = [PpgDeviceProfiles.DEFAULT] so any caller that hasn't
+         *   yet plumbed a device profile through gets the pre-Cut-2
+         *   behaviour.
          */
-        fun classify(window: List<Double>, samplingRateHz: Double): CaptureQuality {
+        fun classify(
+            window: List<Double>,
+            samplingRateHz: Double,
+            profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT,
+        ): CaptureQuality {
             if (window.size < MIN_FRAMES_FOR_CLASSIFICATION) return WAITING
 
             val mean = window.average()
@@ -85,7 +100,7 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
                 .sorted()
             if (recentDiffs.isEmpty()) return STEADY
             val median = recentDiffs[recentDiffs.size / 2]
-            if (median > MOTION_MEDIAN_JUMP_Y) return MOTION
+            if (median > profile.motionMedianJumpY) return MOTION
 
             return STEADY
         }
@@ -95,7 +110,7 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
          * full capture, sampled in non-overlapping 1-second windows. Returned
          * percentiles (p50 = typical session-wide steadiness; p90 = the worst
          * sustained second the owner held through) let the calibration logger
-         * characterise the distribution that [MOTION_MEDIAN_JUMP_Y] is being
+         * characterise the distribution that [MOTION_MEDIAN_JUMP_Y_DEFAULT] is being
          * thresholded against, on each device. Returns `null` when the
          * recording is too short to produce a single window.
          */
