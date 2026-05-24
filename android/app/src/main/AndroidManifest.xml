@@ -218,6 +218,16 @@
             android:exported="false"
             android:foregroundServiceType="health" />
 
+        <!-- Wearable convulsive-seizure detector foreground service
+             (#269 Cut 3b). Owner opt-in via SeizureDetectionPrefs;
+             SettingsSeizureDetectionCard starts / stops the service
+             when the toggle flips. Same FOREGROUND_SERVICE_TYPE_HEALTH
+             category as the sleep collector. -->
+        <service
+            android:name=".ingest.SeizureDetectionService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
         <!-- Quick Settings tile for owner-asserted bedtime ↔ wake log
              (#242). The tile is exported (the system Settings UI binds
              to it to enumerate available tiles for the picker) and
