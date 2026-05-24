@@ -129,10 +129,15 @@ class PhoneSleepInferenceTest {
         }
         val readings = PhoneSleepInference.infer(samples, sourceId)
         val duration = readings.first { it.metricType == MetricType.SLEEP_DURATION.key }
-        // 8h - ~1h awake ≈ 7h sleep. Allow ±2 min tolerance.
+        // 8h - ~1h awake ≈ 7h sleep. Tolerance bumped from ±2 min to
+        // ±15 min when the Cole-Kripke 7-tap classifier landed (#244
+        // Cut 1): the smoother FIR extends the AWAKE classification
+        // ~3 min into each quiet neighbour at the activity boundary,
+        // so a 60-min raw bout reads as ~66-74 min of AWAKE end-to-end.
+        // The behaviour matches published Cole-Kripke characterisation.
         val expected = (7 * 3600).toDouble()
         assertTrue("expected ~7h, got ${duration.value}",
-            kotlin.math.abs(duration.value - expected) < 120.0)
+            kotlin.math.abs(duration.value - expected) < 900.0)
     }
 
     @Test
