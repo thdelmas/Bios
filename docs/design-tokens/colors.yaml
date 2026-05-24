@@ -1,0 +1,164 @@
+# Bios Ecosystem — color tokens (canonical)
+#
+# Two layers:
+#   1. ROLES  — semantic, hue-independent. Every app maps these.
+#   2. APPS   — per-app concrete mappings, for reference.
+#
+# When you change ROLES, every app's colors.xml needs a re-sync pass.
+# When you add a new app, append its mapping to APPS.
+
+version: 1
+updated: 2026-05-24
+
+roles:
+  primary:
+    description: App's identity color. Toolbar, FAB, primary buttons.
+  on_primary:
+    description: Foreground on primary background.
+  primary_container:
+    description: Soft variant of primary. Tonal buttons, chips, container tints.
+  on_primary_container:
+    description: Foreground on primary container.
+  secondary:
+    description: |
+      Optional second accent. Cross-app suggestion — borrow another ecosystem
+      app's primary as your secondary. Idun uses W2F-cyan as secondary; this
+      kinship is encouraged.
+  on_secondary:
+    description: Foreground on secondary.
+  background:
+    description: Window background. Specialists choose dark or light per identity.
+  surface:
+    description: Cards, sheets. Often same as background, sometimes slightly elevated.
+  surface_variant:
+    description: Subtle elevation, dividers, alternating list rows.
+  text_primary:
+    description: Body text.
+  text_secondary:
+    description: Meta text, captions, secondary labels.
+  divider:
+    description: Hairline outlines. Usually text_secondary at 30-40% alpha.
+  success:
+    description: Positive state. Universal mint suggested (#00E5A0).
+    universal: "#00E5A0"
+  warning:
+    description: Caution. Universal amber suggested (#FFB830).
+    universal: "#FFB830"
+  error:
+    description: Failure. Universal red suggested (#F43F5E).
+    universal: "#F43F5E"
+  pending:
+    description: Awaiting external state. Used by Bios PENDING_APPROVAL banner.
+    universal: "#FFF4DA"
+
+apps:
+  bios:
+    mode: light
+    primary: "#009688"          # Material teal
+    primary_dark: "#26A69A"
+    background: "#FFFFFF"
+    notes: "Hub. Intentionally quiet visual identity."
+
+  smokeless:
+    mode: dark
+    primary: "#00E5A0"          # Electric mint
+    secondary: "#FFB830"        # Golden hour amber
+    tertiary: "#00D4C8"         # Teal
+    background: "#080810"       # Deep space
+    surface: "#15131F"
+    surface_elevated: "#1C1A28"
+    text_primary: "#F5F5FA"
+    text_secondary: "#9896A8"
+    notes: "Most-developed ecosystem palette. Reference dark-mode implementation."
+
+  w2f:
+    mode: dark
+    primary: "#00BCD4"          # Flow cyan
+    background: "#0D1B2A"       # Deep navy
+    notes: |
+      "Flow" is the canonical W2F identity color and the ecosystem's
+      cross-app cyan accent. Other apps may borrow it as secondary
+      (Idun does).
+
+  idun:
+    mode: light  # locked
+    primary: "#B33A3A"          # Apple red
+    primary_dark: "#5C1A1A"
+    primary_soft: "#F4D5D5"
+    secondary: "#00BCD4"        # Borrowed from W2F (Flow cyan)
+    secondary_dark: "#0A5560"
+    secondary_soft: "#D6F0F4"
+    background: "#FAF6EE"       # Parchment
+    surface_variant: "#F0EAD8"
+    text_primary: "#1A1A1A"
+    text_secondary: "#5C5C5C"
+    divider: "#E0DACE"
+    card_background: "#FFFCF6"
+    notes: "Locked light. Norse-mythology + Mediterranean register."
+
+  virgil:
+    mode: tbd
+    primary: "#F4A261"          # Safety orange
+    surface: "#E0E1DD"          # Sand
+    notes: "Guide / safety register. Mode TBD on next ship."
+
+  soulradio:
+    mode: dark
+    primary: "#D4AF37"          # Broadcast gold
+    background: "#000000"
+    notes: "Black + gold. Most reduced palette in the ecosystem."
+
+  fil:
+    mode: tbd
+    primary: "#FFFFFF"
+    notes: "Minimal. Identity unfinished — pick a hue before next release."
+
+  rooster:
+    mode: dark  # locked
+    primary: "#FF8E53"          # Sunrise coral
+    primary_dark: "#FF6B35"     # Sunrise (light-mode primary)
+    secondary: "#FFB86C"        # Golden hour
+    tertiary: "#FFD89C"         # Day sky
+    background: "#000000"       # Solid black canvas
+    surface: "#000000"
+    surface_variant: "#0A0A0A"
+    text_primary: "#FFB86C"     # Warm-on-black; arcs trace cosmic journey
+    text_secondary: "#FF8E53"
+    divider: "#FF8E53"          # Sun-colored stroke (0.5dp)
+    notes: |
+      Sun-tracking alarm app. Astral journey palette (deep space → twilight →
+      golden hour → sunrise) drives all theming. Sits next to Smokeless on the
+      ecosystem palette wheel (orange family); Rooster trends coral/golden,
+      Smokeless trends pure orange — separation preserved.
+      Identity-locked divergences from spec: card corner radius 4-8dp (not
+      12/14dp) and card elevation 0dp + sun-colored stroke (not 1dp elevation).
+      See /home/mia/Rooster/docs/DESIGN.md "Compliance with the Bios ecosystem
+      spec" for rationale.
+
+  carnet:
+    mode: dark  # locked
+    primary: "#78A06E"          # Sage green (botanical / instrument register)
+    primary_container: "#1F2D1E"
+    secondary: "#009688"        # Borrowed from Bios (teal — kinship as the Bios-spine camera writer)
+    background: "#080E0A"       # Near-black with sage undertone
+    surface: "#0C140F"          # Slightly elevated panel
+    surface_variant: "#15201A"
+    text_primary: "#E6EFD6"     # Cream HUD text
+    text_secondary: "#B4C8A0"   # Dimmed sage
+    divider: "#66B4C8A0"        # text_secondary @ 40% alpha
+    accent_rec: "#FF3030"       # Identity-specific: HUD REC indicator. Not a role token.
+    notes: |
+      Scientific-instrument camera app for longitudinal self-as-subject video.
+      Dark glass + sage + cream HUD; identity hue is sage green, distinct from
+      W2F cyan, Bios teal, Smokeless orange, Idun red, Rooster coral. Borrows
+      Bios teal as secondary to mark its role as the Bios-spine camera writer.
+      carnet_rec stays separate from role.error because the HUD's red is
+      hand-tuned for burn-in legibility, not error semantics.
+
+# Validation rules:
+# - Every app MUST define: primary, on_primary, background, surface,
+#   text_primary, text_secondary, divider.
+# - Every app SHOULD define: primary_container, on_primary_container,
+#   secondary, on_secondary, surface_variant.
+# - Universal tokens (success/warning/error/pending) may be overridden but
+#   should not be without a documented reason in the app's CLAUDE.md.

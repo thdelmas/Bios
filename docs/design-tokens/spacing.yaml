@@ -1,0 +1,25 @@
+# Bios Ecosystem — spacing tokens (canonical)
+#
+# Fixed scale. Every padding/margin/inset MUST come from this set.
+# No 5dp, no 10dp, no 20dp anywhere in the ecosystem.
+
+version: 1
+updated: 2026-05-24
+
+scale:
+  xxs: 4dp
+  xs: 8dp
+  sm: 12dp
+  md: 16dp
+  lg: 24dp
+  xl: 32dp
+  xxl: 48dp
+
+uses:
+  touch_target_minimum: 48dp     # xxl
+  screen_edge_default: 16dp      # md
+  list_item_vertical_gap: 8dp    # xs
+  list_item_horizontal_inset: 4dp # xxs
+  card_inner_padding: [12, 14]   # sm or sm+2 — pick once per app
+  section_block_gap: 24dp        # lg
+  major_separator: 32dp          # xl
