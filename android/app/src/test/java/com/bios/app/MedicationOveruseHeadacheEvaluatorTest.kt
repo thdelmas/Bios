@@ -2,9 +2,12 @@ package com.bios.app
 
 import com.bios.app.alerts.HeadachePatterns
 import com.bios.app.alerts.MedicationOveruseHeadacheEvaluator
+import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.HeadacheLog
 import com.bios.app.model.HeadacheType
+import com.bios.app.model.MetricReading
 import com.bios.app.model.MigraineAttack
+import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -225,4 +228,119 @@ class MedicationOveruseHeadacheEvaluatorTest {
 
     private fun millisAt(year: Int, month: Int, day: Int, hour: Int = 12): Long =
         ZonedDateTime.of(year, month, day, hour, 0, 0, 0, UTC).toInstant().toEpochMilli()
+
+    // -- #283 Cut 3 follow-up: structured MEDICATION_INTAKE path --
+
+    private fun intake(year: Int, month: Int, day: Int): MetricReading = MetricReading(
+        metricType = MetricType.MEDICATION_INTAKE.key,
+        value = 1.0,
+        timestamp = millisAt(year, month, day),
+        sourceId = "self-reported",
+        confidence = ConfidenceTier.HIGH.level,
+    )
+
+    @Test
+    fun `evaluator fires from structured intakes alone when freetext path is empty`() {
+        // Forward-looking case: a future entry surface writes only the
+        // structured MEDICATION_INTAKE row (no entity freetext). MOH
+        // must still count those days.
+        val intakes = buildList {
+            for (month in listOf(3, 4, 5)) {
+                for (day in 1..10) add(intake(2026, month, day))
+            }
+        }
+        val verdict = MedicationOveruseHeadacheEvaluator.evaluate(
+            migraineAttacks = emptyList(),
+            headacheLogs = emptyList(),
+            headacheLinkedIntakes = intakes,
+            nowMillis = millisAt(2026, 5, 15),
+            zoneId = UTC,
+        )
+        assertTrue("expected threshold met from intakes alone", verdict.meetsScreeningThreshold)
+    }
+
+    @Test
+    fun `same-day entity row and structured intake count as one day not two`() {
+        // The #293 writer populates both surfaces simultaneously. The
+        // distinct-date set guarantees no double counting.
+        val attacks = buildList {
+            for (month in listOf(3, 4, 5)) {
+                for (day in 1..10) add(
+                    MigraineAttack(
+                        onsetTimestamp = millisAt(2026, month, day),
+                        peakIntensity = 5,
+                        medicationTaken = "sumatriptan",
+                    )
+                )
+            }
+        }
+        // Mirror intakes on the same dates — what #293 actually writes.
+        val intakes = buildList {
+            for (month in listOf(3, 4, 5)) {
+                for (day in 1..10) add(intake(2026, month, day))
+            }
+        }
+        val verdict = MedicationOveruseHeadacheEvaluator.evaluate(
+            migraineAttacks = attacks,
+            headacheLogs = emptyList(),
+            headacheLinkedIntakes = intakes,
+            nowMillis = millisAt(2026, 5, 15),
+            zoneId = UTC,
+        )
+        assertTrue(verdict.meetsScreeningThreshold)
+        // Each month should report exactly 10 days — not 20 from double counting.
+        verdict.perMonthCounts.forEach { assertEquals(10, it.treatmentDays) }
+    }
+
+    @Test
+    fun `structured intake on a day with no entity row still counts that day`() {
+        // Mixed case: entity rows cover 9 days/month, intakes cover one
+        // additional day/month. Combined distinct-date count = 10 → fires.
+        val attacks = buildList {
+            for (month in listOf(3, 4, 5)) {
+                for (day in 1..9) add(
+                    MigraineAttack(
+                        onsetTimestamp = millisAt(2026, month, day),
+                        peakIntensity = 5,
+                        medicationTaken = "ibuprofen",
+                    )
+                )
+            }
+        }
+        val intakes = listOf(intake(2026, 3, 10), intake(2026, 4, 10), intake(2026, 5, 10))
+        val verdict = MedicationOveruseHeadacheEvaluator.evaluate(
+            migraineAttacks = attacks,
+            headacheLogs = emptyList(),
+            headacheLinkedIntakes = intakes,
+            nowMillis = millisAt(2026, 5, 15),
+            zoneId = UTC,
+        )
+        assertTrue(verdict.meetsScreeningThreshold)
+        verdict.perMonthCounts.forEach { assertEquals(10, it.treatmentDays) }
+    }
+
+    @Test
+    fun `default empty intakes list keeps legacy-only call sites unchanged`() {
+        // Backward-compat: the pre-follow-up signature still resolves
+        // (no headacheLinkedIntakes argument) and produces the same
+        // verdict as before.
+        val attacks = buildList {
+            for (month in listOf(3, 4, 5)) {
+                for (day in 1..10) add(
+                    MigraineAttack(
+                        onsetTimestamp = millisAt(2026, month, day),
+                        peakIntensity = 5,
+                        medicationTaken = "triptan",
+                    )
+                )
+            }
+        }
+        val verdict = MedicationOveruseHeadacheEvaluator.evaluate(
+            migraineAttacks = attacks,
+            headacheLogs = emptyList(),
+            nowMillis = millisAt(2026, 5, 15),
+            zoneId = UTC,
+        )
+        assertTrue(verdict.meetsScreeningThreshold)
+    }
 }

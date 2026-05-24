@@ -7,10 +7,13 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.HeadacheEventWriter
 import com.bios.app.data.HeadacheLogRepo
 import com.bios.app.data.MigraineAttackRepo
-import com.bios.app.model.Anomaly
 import com.bios.app.model.AlertTier
+import com.bios.app.model.Anomaly
+import com.bios.app.model.MetricReading
+import com.bios.contracts.MetricType
 import java.util.concurrent.TimeUnit
 
 /**
@@ -66,10 +69,16 @@ class MohScreeningWorker(
         val windowStart = now - HeadachePatterns.MOH_WINDOW_DAYS * MS_PER_DAY
         val attacks = migraineRepo.fetchInRange(windowStart, now)
         val logs = headacheRepo.fetchInRange(windowStart, now)
+        // #283 Cut 3 follow-up: structured MEDICATION_INTAKE rows the
+        // HeadacheEventWriter mirror produces. Filter to rows linked
+        // to a parent headache event so non-headache intake (future
+        // supplements / caffeine / etc.) doesn't count toward MOH.
+        val headacheLinkedIntakes = fetchHeadacheLinkedIntakes(db, windowStart, now)
 
         val verdict = MedicationOveruseHeadacheEvaluator.evaluate(
             migraineAttacks = attacks,
             headacheLogs = logs,
+            headacheLinkedIntakes = headacheLinkedIntakes,
             nowMillis = now,
         )
 
@@ -93,6 +102,31 @@ class MohScreeningWorker(
             }
         }
         return Result.success()
+    }
+
+    /**
+     * Read MEDICATION_INTAKE rows in the window that carry the
+     * [HeadacheEventWriter.PARENT_HEADACHE_EVENT_FIELD] payload
+     * back-link. The back-link is the unambiguous "this intake was
+     * for a headache event" signal that lets us count toward MOH
+     * without sweeping up unrelated dosed-intake rows.
+     */
+    private suspend fun fetchHeadacheLinkedIntakes(
+        db: BiosDatabase,
+        startMs: Long,
+        endMs: Long,
+    ): List<MetricReading> {
+        val intakeRows = db.metricReadingDao()
+            .fetch(MetricType.MEDICATION_INTAKE.key, startMs, endMs)
+        if (intakeRows.isEmpty()) return emptyList()
+        val payloads = db.eventPayloadFieldDao()
+            .fetchForReadings(intakeRows.map { it.id })
+            .groupBy { it.readingId }
+        return intakeRows.filter { row ->
+            payloads[row.id]?.any {
+                it.fieldKey == HeadacheEventWriter.PARENT_HEADACHE_EVENT_FIELD
+            } == true
+        }
     }
 
     companion object {
