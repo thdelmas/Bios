@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.model.ActionItem
@@ -23,6 +22,7 @@ import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
 import com.bios.app.ui.components.HealthEventCard
 import com.bios.app.ui.components.eventTypeColor
+import com.bios.app.ui.theme.BiosTokens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -159,7 +159,7 @@ private fun TimelineAlertEntry(
             Icon(
                 Icons.Default.Circle,
                 contentDescription = null,
-                tint = tierColor(tier),
+                tint = BiosTokens.tierColor(tier),
                 modifier = Modifier.size(10.dp)
             )
             HorizontalDivider(
@@ -332,11 +332,3 @@ private fun EmptyTimeline(onLogSymptom: () -> Unit) {
     }
 }
 
-private fun tierColor(tier: AlertTier): Color {
-    return when (tier) {
-        AlertTier.OBSERVATION -> Color.Gray
-        AlertTier.NOTICE -> Color(0xFFFFC107)
-        AlertTier.ADVISORY -> Color(0xFFFF9800)
-        AlertTier.URGENT -> Color(0xFFF44336)
-    }
-}

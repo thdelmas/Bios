@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
+import com.bios.app.ui.theme.BiosTokens
 import org.json.JSONObject
 import kotlin.math.abs
 
@@ -40,7 +41,7 @@ fun AlertCard(
     var expanded by remember { mutableStateOf(false) }
     var showFeedback by remember { mutableStateOf(false) }
     val tier = AlertTier.fromLevel(anomaly.severity)
-    val tierColor = tierColor(tier)
+    val tierColor = BiosTokens.tierColor(tier)
     val hasFeedback = anomaly.feedbackAt != null
     val pattern = remember(anomaly.patternId) {
         anomaly.patternId?.let { id ->
@@ -74,7 +75,7 @@ fun AlertCard(
                     Icon(
                         Icons.Default.CheckCircle,
                         contentDescription = "Feedback given",
-                        tint = Color(0xFF4CAF50),
+                        tint = BiosTokens.success,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -328,9 +329,10 @@ private fun YesNoQuestion(
 
 @Composable
 private fun FeedbackSummary(anomaly: Anomaly) {
+    val tint = BiosTokens.success
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = Color(0xFF4CAF50).copy(alpha = 0.08f)
+        color = tint.copy(alpha = 0.08f)
     ) {
         Column(
             modifier = Modifier.padding(8.dp),
@@ -340,7 +342,7 @@ private fun FeedbackSummary(anomaly: Anomaly) {
                 "Your Journal Entry",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF4CAF50)
+                color = tint
             )
 
             anomaly.feltSick?.let {
@@ -425,7 +427,7 @@ private fun DeviationScoresList(scoresJson: String) {
                     Text(
                         String.format("%+.1fσ", zScore),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (abs(zScore) > 2) Color(0xFFFF9800) else Color(0xFFFFC107)
+                        color = if (abs(zScore) > 2) BiosTokens.attention else BiosTokens.warning
                     )
                 }
             }
@@ -433,11 +435,3 @@ private fun DeviationScoresList(scoresJson: String) {
     }
 }
 
-private fun tierColor(tier: AlertTier): Color {
-    return when (tier) {
-        AlertTier.OBSERVATION -> Color.Gray
-        AlertTier.NOTICE -> Color(0xFFFFC107)
-        AlertTier.ADVISORY -> Color(0xFFFF9800)
-        AlertTier.URGENT -> Color(0xFFF44336)
-    }
-}
