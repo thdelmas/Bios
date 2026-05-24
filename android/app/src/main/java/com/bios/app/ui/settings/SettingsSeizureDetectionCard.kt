@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.SeizureDetectionPrefs
+import com.bios.app.ingest.SeizureDetectionService
 
 /**
  * Settings → Seizure detection card. Single toggle that gates the
@@ -69,6 +70,14 @@ internal fun SettingsSeizureDetectionCard() {
                     onCheckedChange = {
                         enabled = it
                         SeizureDetectionPrefs.setEnabled(context, it)
+                        // Flip the foreground service in real time so the
+                        // owner doesn't need to restart the app for the
+                        // toggle to take effect.
+                        if (it) {
+                            SeizureDetectionService.startIfOptedIn(context)
+                        } else {
+                            SeizureDetectionService.stop(context)
+                        }
                     },
                 )
             }
