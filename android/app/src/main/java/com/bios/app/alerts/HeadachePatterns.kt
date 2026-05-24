@@ -62,7 +62,7 @@ import java.time.ZonedDateTime
  */
 object HeadachePatterns {
 
-    val all by lazy { listOf(medicationOveruseHeadacheScreen) }
+    val all by lazy { listOf(medicationOveruseHeadacheScreen, chronicMigraineThreshold) }
 
     /**
      * IHS ICHD-3 §8.2 MOH screening threshold: acute-headache-medication
@@ -86,6 +86,45 @@ object HeadachePatterns {
      * even when the current date is on the first of the month.
      */
     const val MOH_WINDOW_DAYS: Int = 100
+
+    /**
+     * Chronic migraine threshold (IHS ICHD-3 §1.3): headache on ≥15
+     * days per month for >3 months, of which at least 8 days per month
+     * meet criteria for migraine (with or without aura) or respond to
+     * migraine-specific acute treatment.
+     */
+    const val CHRONIC_MIGRAINE_HEADACHE_DAYS_PER_MONTH_THRESHOLD: Int = 15
+    const val CHRONIC_MIGRAINE_MIGRAINE_DAYS_PER_MONTH_THRESHOLD: Int = 8
+
+    /**
+     * Chronic migraine pattern (IHS ICHD-3 §1.3). Same registration
+     * shape as [medicationOveruseHeadacheScreen]: empty signalRules,
+     * evaluated by the dedicated [ChronicMigraineEvaluator] on a daily
+     * worker, ADVISORY severity (chronic-pattern condition, not acute
+     * event), manifesto-clean text — data statement, no diagnostic
+     * claim.
+     */
+    val chronicMigraineThreshold = ConditionPattern(
+        id = "chronic_migraine_threshold",
+        title = "Headache + migraine days meet chronic-migraine threshold",
+        category = ConditionCategory.MENTAL_HEALTH,
+        signalRules = emptyList(),
+        minActiveSignals = 0,
+        severityFloor = AlertTier.ADVISORY,
+        explanation = "Diary entries show 15 or more headache days per month, of which 8 or more were logged as migraine attacks, across the most recent 3 calendar months.\n\n" +
+            "That pattern is the published IHS ICHD-3 §1.3 chronic-migraine threshold. Chronic migraine is the diagnostic term the headache-medicine literature uses for migraine that has crossed from episodic into a near-constant background headache state, with the migraine-specific features (aura, autonomic disturbance, photophobia / phonophobia, response to triptans) persisting on a subset of days. Crossing the threshold matters because the preventive-therapy options — and the urgency of starting one — change with the diagnostic class.\n\n" +
+            "This is a data observation against the published clinical screen — not a chronic-migraine diagnosis. The owner decides whether to discuss the pattern with a neurologist or primary-care clinician.",
+        suggestedAction = "If headache frequency has been climbing into the 15+ days/month range, a neurology or primary-care visit can review the diary pattern and discuss whether a preventive medication is indicated (CGRP-class monoclonal antibodies, topiramate, beta-blockers, botulinum toxin per the relevant guideline). Bring the diary — the full record of dates, intensities, migraine vs non-migraine classification, and acute-treatment use is the substrate the clinical conversation needs.",
+        references = listOf(
+            "IHS International Classification of Headache Disorders, 3rd edition (ICHD-3) §1.3 — Chronic migraine",
+            "Goadsby PJ et al. (2017) — Pathophysiology of migraine: a disorder of sensory processing. Physiological Reviews 97(2):553-622",
+            "Lipton RB et al. (2007) — Migraine in the United States: a review of epidemiology and patient care from the AMPP study. Headache 47(3):353-365",
+        ),
+        earlyDetection = "Chronic migraine develops gradually from episodic migraine — typically over months to a few years — as headache frequency climbs through the 5-9 / 10-14 days-per-month bands before crossing into the 15+ range that meets the IHS ICHD-3 §1.3 threshold. The structured headache diary records every attack the owner logs, with the type (migraine vs non-migraine) and acute treatment captured per entry. The screen runs over a 90-day window and surfaces only when the threshold holds across every one of the most-recent 3 calendar months.",
+        prevention = "Episodic migraine progressing to chronic migraine is associated in the headache-medicine literature with: frequent acute-medication use (the medication-overuse-headache pathway — see the separate MOH screen), untreated comorbid conditions (anxiety, depression, obstructive sleep apnea), sustained stress, poor sleep, and undiagnosed primary-headache disorder going untreated. Each of these is owner-modifiable upstream of the chronic-migraine threshold. The diary plus the MOH screen plus the regular cardiovascular / sleep instrumentation Bios already collects gives the owner the full picture to take to a clinician.",
+        healing = "Preventive medication is the literature's first-line response — CGRP-class monoclonal antibodies, topiramate, beta-blockers, candesartan, and (for chronic migraine specifically) botulinum toxin per the PREEMPT trials. Lifestyle modification of identified triggers, treatment of comorbid sleep / mood disorders, and managed withdrawal of overused acute medication if MOH is also present all contribute. The diary continues to be useful through any preventive trial — clinicians read the headache-day count trajectory across weeks as the primary efficacy signal.",
+        risks = "Chronic migraine carries a higher risk of progressing to medication-overuse headache (the two often coexist), more frequent disability from individual attacks, and reduced response to acute treatment as the central pain pathways become more sensitised. Chronic migraine is also associated with elevated rates of depression and anxiety in the headache-medicine literature. The reversibility of chronic migraine on adequate preventive treatment is the main reason the threshold matters — early surfacing of the pattern lets the owner and clinician intervene before sensitisation deepens.",
+    )
 
     /**
      * MOH screen pattern. Severity ADVISORY (chronic pattern, not acute
