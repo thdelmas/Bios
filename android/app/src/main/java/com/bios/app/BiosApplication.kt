@@ -73,6 +73,14 @@ class BiosApplication : Application() {
         // self-skips otherwise).
         com.bios.app.ingest.PhoneSleepWorker.enqueuePeriodicWork(this)
 
+        // Arm the wake-up motion tracker so SIGNIFICANT_MOTION /
+        // STATIONARY_DETECT listeners are live before the periodic
+        // worker fires (#243 Cut 2). The short-lived adapter the worker
+        // builds per firing wouldn't otherwise give the sensors time to
+        // observe a state transition; attaching here means the sensor-
+        // hub is already tracking when the first sample is taken.
+        com.bios.app.ingest.WakeUpMotionTracker.attach(this)
+
         // Register the charge-edge receiver for the new foreground
         // collection service (#241). ACTION_POWER_CONNECTED /
         // _DISCONNECTED are not on the API 26+ implicit-broadcast

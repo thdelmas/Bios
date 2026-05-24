@@ -31,13 +31,15 @@ object PhoneSleepInference {
     /**
      * One phone-state observation, typically aggregated over ~1 minute.
      *
-     * Tier-1 nullable additions (#243 Cut 1) are collection-only —
-     * [signalBreakdown] counts them, but [isQuietSample] / [stageAt] /
-     * [confidenceFor] do NOT consume them yet. The decision-side weave
-     * lands in Cut 2 once field data confirms each signal's predictive
-     * value. Until then, a null on any new field means "sensor /
-     * signal absent on this device — ignore" and the inference behaves
-     * exactly as it did before this PR.
+     * Tier-1 nullable additions (#243 Cut 1) are collection-only with
+     * one exception: [stationary] is consumed by [isQuietSample] (#243
+     * Cut 2) because hardware-confirmed multi-second stillness is much
+     * stronger than the accelerometer-variance proxy and crucially
+     * bypasses the AOD-display-state ambiguity. The remaining new
+     * fields stay observability-only until field data confirms their
+     * predictive value; a null on any new field means "sensor / signal
+     * absent on this device — ignore" and the inference behaves
+     * exactly as before for that field.
      */
     data class Sample(
         val timestamp: Long,
@@ -56,6 +58,16 @@ object PhoneSleepInference {
          *  the inference distinguish "phone on nightstand at home" from
          *  "phone on a bar table at night." */
         val pairedBluetoothConnected: Boolean? = null,
+        /** True when SIGNIFICANT_MOTION fired within the recency window
+         *  before this sample (#243 Cut 2). Collection-only for now;
+         *  observability via [signalBreakdown]. */
+        val significantMotionFired: Boolean? = null,
+        /** Hardware-confirmed stillness from TYPE_STATIONARY_DETECT
+         *  (#243 Cut 2). When `true` AND charging, [isQuietSample]
+         *  accepts the sample regardless of screen / lux state — this
+         *  is the AOD-on-nightstand signature with the strongest
+         *  primary sensor we have. */
+        val stationary: Boolean? = null,
     )
 
     /**
@@ -175,6 +187,13 @@ object PhoneSleepInference {
      */
     internal fun isQuietSample(s: Sample): Boolean {
         if (s.screenOff) return true
+        // #243 Cut 2: hardware-confirmed stillness + charging is the
+        // AOD-on-nightstand signature with the strongest primary signal
+        // we have. STATIONARY_DETECT requires multi-second stillness in
+        // the sensor hub — much stronger than the variance proxy, and
+        // bypasses the lux check (streetlight through a window must
+        // not disqualify a clearly-stationary plugged-in device).
+        if (s.stationary == true && s.charging) return true
         val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
         val dark = (s.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
         return s.charging && lowMotion && dark
@@ -248,12 +267,12 @@ object PhoneSleepInference {
     /** Per-signal breakdown of the buffer so owners can diagnose which
      *  signal is keeping the inference from firing.
      *
-     *  Tier-1 additions (#243 Cut 1): [zeroStepDelta], [dndOn], and
-     *  [pairedBtConnected] are observability counts of the new optional
-     *  signals; samples where the signal is absent (`null`) are not
-     *  counted. The denominator for each new count is on
-     *  [SignalBreakdown.sampledNewSignals] (samples that carried at
-     *  least one non-null new signal). */
+     *  Tier-1 additions (#243 Cut 1 + Cut 2): [zeroStepDelta], [dndOn],
+     *  [pairedBtConnected], [sigMotionFired], and [stationaryDetected]
+     *  are observability counts of the new optional signals; samples
+     *  where the signal is absent (`null`) are not counted. The
+     *  denominator for each new count is on [sampledNewSignals]
+     *  (samples that carried at least one non-null new signal). */
     data class SignalBreakdown(
         val total: Int,
         val screenInactive: Int,
@@ -267,6 +286,12 @@ object PhoneSleepInference {
         val dndOn: Int = 0,
         /** Samples with at least one paired BT peripheral connected. */
         val pairedBtConnected: Int = 0,
+        /** Samples where SIGNIFICANT_MOTION fired in the recency
+         *  window (#243 Cut 2). */
+        val sigMotionFired: Int = 0,
+        /** Samples where STATIONARY_DETECT confirms the device is
+         *  currently still (#243 Cut 2). */
+        val stationaryDetected: Int = 0,
         /** Samples that carried at least one non-null Tier-1 new signal.
          *  Acts as the denominator for the new counts on devices /
          *  builds where any of the signals weren't recorded. */
@@ -287,8 +312,12 @@ object PhoneSleepInference {
         val zeroStepDelta = samples.count { it.stepDelta == 0 }
         val dndOn = samples.count { it.dndEnabled == true }
         val pairedBtConnected = samples.count { it.pairedBluetoothConnected == true }
+        val sigMotionFired = samples.count { it.significantMotionFired == true }
+        val stationaryDetected = samples.count { it.stationary == true }
         val sampledNewSignals = samples.count {
-            it.stepDelta != null || it.dndEnabled != null || it.pairedBluetoothConnected != null
+            it.stepDelta != null || it.dndEnabled != null ||
+                it.pairedBluetoothConnected != null ||
+                it.significantMotionFired != null || it.stationary != null
         }
         return SignalBreakdown(
             total = total,
@@ -300,6 +329,8 @@ object PhoneSleepInference {
             zeroStepDelta = zeroStepDelta,
             dndOn = dndOn,
             pairedBtConnected = pairedBtConnected,
+            sigMotionFired = sigMotionFired,
+            stationaryDetected = stationaryDetected,
             sampledNewSignals = sampledNewSignals,
         )
     }
