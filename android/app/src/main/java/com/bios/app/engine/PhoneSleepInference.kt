@@ -75,10 +75,14 @@ object PhoneSleepInference {
      * reading plus optional [MetricType.SLEEP_STAGE] rows for LIGHT / AWAKE
      * segments inside the sleep window. Empty when no viable window is found.
      */
-    fun infer(samples: List<Sample>, sourceId: String): List<MetricReading> {
+    fun infer(
+        samples: List<Sample>,
+        sourceId: String,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): List<MetricReading> {
         if (samples.size < 2) return emptyList()
         val sorted = samples.sortedBy { it.timestamp }
-        val window = longestScreenOffStretch(sorted) ?: return emptyList()
+        val window = longestScreenOffStretch(sorted, activityThreshold) ?: return emptyList()
         val (startIdx, endIdx) = window
         val windowMs = sorted[endIdx].timestamp - sorted[startIdx].timestamp
         if (windowMs < MIN_SLEEP_WINDOW_MS) return emptyList()
@@ -203,7 +207,10 @@ object PhoneSleepInference {
      * fails the stationary check the moment the owner adjusts position.
      * "Phone on nightstand showing AOD" passes all three.
      */
-    internal fun isQuietSample(s: Sample): Boolean {
+    internal fun isQuietSample(
+        s: Sample,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): Boolean {
         if (s.screenOff) return true
         // #243 Cut 2: hardware-confirmed stillness + charging is the
         // AOD-on-nightstand signature with the strongest primary signal
@@ -212,7 +219,7 @@ object PhoneSleepInference {
         // bypasses the lux check (streetlight through a window must
         // not disqualify a clearly-stationary plugged-in device).
         if (s.stationary == true && s.charging) return true
-        val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+        val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < activityThreshold
         val dark = (s.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
         return s.charging && lowMotion && dark
     }
@@ -227,13 +234,16 @@ object PhoneSleepInference {
      *
      * Returns null when no quiet stretch exists at all.
      */
-    private fun longestScreenOffStretch(samples: List<Sample>): Pair<Int, Int>? {
+    private fun longestScreenOffStretch(
+        samples: List<Sample>,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): Pair<Int, Int>? {
         var best: Pair<Int, Int>? = null
         var bestLen = 0L
         var runStart = -1
         var i = 0
         while (i < samples.size) {
-            if (isQuietSample(samples[i])) {
+            if (isQuietSample(samples[i], activityThreshold)) {
                 if (runStart == -1) runStart = i
                 if (i == samples.lastIndex) {
                     val len = samples[i].timestamp - samples[runStart].timestamp
@@ -245,7 +255,7 @@ object PhoneSleepInference {
                 // quiet stretch resume after? If the gap is brief, treat it
                 // as a flicker and keep the run going.
                 val gapStart = i
-                while (i < samples.size && !isQuietSample(samples[i])) i++
+                while (i < samples.size && !isQuietSample(samples[i], activityThreshold)) i++
                 val gapEndExclusive = i
                 val gapDurMs = if (gapEndExclusive < samples.size) {
                     samples[gapEndExclusive].timestamp - samples[gapStart].timestamp
@@ -275,10 +285,13 @@ object PhoneSleepInference {
      * no stretch exists. Used by the dashboard diagnostic so the owner can
      * see how close the buffer is to crossing the 4h floor.
      */
-    fun longestScreenOffMs(samples: List<Sample>): Long {
+    fun longestScreenOffMs(
+        samples: List<Sample>,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): Long {
         if (samples.size < 2) return 0L
         val sorted = samples.sortedBy { it.timestamp }
-        val range = longestScreenOffStretch(sorted) ?: return 0L
+        val range = longestScreenOffStretch(sorted, activityThreshold) ?: return 0L
         return sorted[range.second].timestamp - sorted[range.first].timestamp
     }
 
@@ -316,17 +329,20 @@ object PhoneSleepInference {
         val sampledNewSignals: Int = 0,
     )
 
-    fun signalBreakdown(samples: List<Sample>): SignalBreakdown {
+    fun signalBreakdown(
+        samples: List<Sample>,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): SignalBreakdown {
         val total = samples.size
         val screenInactive = samples.count { it.screenOff }
         val lowMotion = samples.count {
-            (it.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+            (it.accelMagnitudeVar ?: Float.MAX_VALUE) < activityThreshold
         }
         val dark = samples.count {
             (it.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
         }
         val charging = samples.count { it.charging }
-        val quiet = samples.count { isQuietSample(it) }
+        val quiet = samples.count { isQuietSample(it, activityThreshold) }
         val zeroStepDelta = samples.count { it.stepDelta == 0 }
         val dndOn = samples.count { it.dndEnabled == true }
         val pairedBtConnected = samples.count { it.pairedBluetoothConnected == true }
