@@ -36,4 +36,9 @@ data class PhoneSleepSample(
     val stepDelta: Int? = null,
     val dndEnabled: Boolean? = null,
     val pairedBluetoothConnected: Boolean? = null,
+    // #243 Cut 2 — wake-up motion sensors (SIGNIFICANT_MOTION +
+    // STATIONARY_DETECT). Read from the process-scoped
+    // WakeUpMotionTracker; null on devices missing either sensor.
+    val significantMotionFired: Boolean? = null,
+    val stationary: Boolean? = null,
 )

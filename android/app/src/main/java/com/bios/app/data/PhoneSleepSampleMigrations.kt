@@ -28,4 +28,19 @@ internal object PhoneSleepSampleMigrations {
             db.execSQL("ALTER TABLE phone_sleep_samples ADD COLUMN pairedBluetoothConnected INTEGER")
         }
     }
+
+    // Tier-1 phone-sleep wake-up motion sensors (#243 Cut 2). Two more
+    // nullable columns: significantMotionFired (TYPE_SIGNIFICANT_MOTION
+    // recency flag) and stationary (TYPE_STATIONARY_DETECT current
+    // state). Nullable so devices missing either wake-up sensor keep
+    // recording other signals unchanged; the inference treats null as
+    // "ignore." The stationary field is consumed by isQuietSample
+    // because hardware-confirmed multi-second stillness bypasses the
+    // AOD-display-state ambiguity that the variance proxy can't.
+    val MIGRATION_29_30 = object : Migration(29, 30) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE phone_sleep_samples ADD COLUMN significantMotionFired INTEGER")
+            db.execSQL("ALTER TABLE phone_sleep_samples ADD COLUMN stationary INTEGER")
+        }
+    }
 }
