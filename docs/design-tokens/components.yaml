@@ -1,0 +1,137 @@
+# Bios Ecosystem — component anatomy (canonical)
+#
+# Cross-app component specs. Anatomy is shared; identity colors are
+# substituted per-app via the role tokens in colors.yaml.
+
+version: 1
+updated: 2026-05-24
+
+app_bar:
+  type: com.google.android.material.appbar.MaterialToolbar
+  background: role.background
+  title_color: role.text_primary
+  height: "?attr/actionBarSize"
+  status_bar:
+    color: role.background
+    light_icons: "depends on mode (true for light themes, false for dark)"
+
+card:
+  type: com.google.android.material.card.MaterialCardView
+  corner_radius: [12dp, 14dp]            # pick once per app, use everywhere
+  elevation_strategy:
+    option_a:
+      mode: light
+      elevation: 0dp
+      stroke_width: 1dp
+      stroke_color: role.divider
+    option_b:
+      mode: dark
+      elevation: 1dp
+      stroke_width: 0dp
+  inner_padding: 12dp_to_14dp
+  list_margin:
+    vertical: 4dp
+    horizontal: 4dp
+
+list_row:
+  leading:
+    type: [checkbox, icon]
+    size: 24dp
+    end_margin: 6dp
+  body:
+    layout: LinearLayout vertical, weight=1
+    lines:
+      title:
+        size_sp: 16
+        weight: bold
+        color: role.text_primary
+        max_lines: 2
+        ellipsize: end
+      meta:
+        size_sp: 12
+        color: role.text_secondary
+        margin_top: 2dp
+      tags:
+        size_sp: 11
+        color: role.text_secondary
+        alpha: 0.75
+        max_lines: 1
+        ellipsize: end
+        visibility: gone_when_empty
+  click:
+    whole_row: true
+    leading_checkbox_independent: true
+
+fab:
+  type: com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+  color: role.primary
+  position: bottom_end
+  margin: 16dp
+  visibility_pattern: show_when_actionable
+  notes: |
+    Hide when the action has nothing to act on (empty selection, no plan,
+    no items). Surface when state becomes actionable. Avoids dead UI.
+
+section_header:
+  layout: LinearLayout horizontal
+  label:
+    size_sp: 14
+    weight: medium
+    color: role.text_primary
+  count:
+    size_sp: 12
+    color: role.text_secondary
+    format: "%d items"
+
+chip:
+  type: com.google.android.material.chip.Chip
+  style: Widget.Material3.Chip.Filter
+  background: role.primary_container
+  text_color: role.text_secondary
+  min_height: 48dp
+  corner_radius: 18dp
+  text_size_sp: 13
+
+# === Bios integration UI (cross-app required) ===
+
+bios_status_pill:
+  states:
+    not_installed:
+      style: dimmed
+      color: role.text_secondary
+      copy_key: settings_bios_status_not_installed
+    not_enabled:
+      style: outlined
+      color: role.text_secondary
+      copy_key: settings_bios_status_not_enabled
+    connected:
+      style: filled
+      color: role.success
+      copy_key: settings_bios_status_connected
+
+bios_pending_banner:
+  shown_when: "BiosClient.lastPushOutcome == PENDING_APPROVAL"
+  background: role.pending
+  text_color: role.text_primary
+  copy_key: settings_bios_pending_approval
+  action:
+    label_key: bios_open_app
+    behavior: deep_link_to_bios_companion_settings
+
+bios_open_app_button:
+  visibility: shown_when_bios_installed
+  intent_strategy: |
+    val launch = packageManager.getLaunchIntentForPackage(BiosClient.BIOS_PACKAGE)
+    launch?.putExtra(BiosClient.BIOS_EXTRA_NAVIGATE_TO_COMPANIONS, true)
+    launch?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    startActivity(launch)
+
+settings_bios_section:
+  required_in_every_specialist: true
+  anatomy:
+    - section_header: "Bios integration"
+    - switch:
+        label_pattern: "Send <noun> events to Bios"
+    - status_pill: ref bios_status_pill
+    - pending_banner_conditional: ref bios_pending_banner
+    - open_bios_button_conditional: ref bios_open_app_button
