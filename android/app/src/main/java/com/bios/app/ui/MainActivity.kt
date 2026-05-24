@@ -390,10 +390,16 @@ fun BiosApp(viewModel: AppViewModel) {
                     onSeeWearableRecommendations = {
                         navController.navigate("wearable_recommendations")
                     },
+                    onOpenSleepGuide = { navController.navigate("guide_sleep") },
                 )
             }
             composable("wearable_recommendations") {
                 com.bios.app.ui.sleep.WearableRecommendationScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("guide_sleep") {
+                com.bios.app.ui.sleep.GuideSleepScreen(
                     onBack = { navController.popBackStack() },
                 )
             }
