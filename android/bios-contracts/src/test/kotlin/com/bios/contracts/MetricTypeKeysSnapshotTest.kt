@@ -230,6 +230,12 @@ class MetricTypeKeysSnapshotTest {
         // Neurology owner-PRO (#207)
         "headache_intensity_nrs",
         "migraine_attack_event",
+        // ICHD-3 structured event surface (#283 Cut 1) — generic headache +
+        // cluster split from migraine so the chronic-migraine pattern
+        // (#283 Cut 3, IHS ICHD-3 §1.3) can count migraine-days separately
+        // and #284's cluster periodicity histogram has its own row stream.
+        "headache_attack_event",
+        "cluster_headache_attack_event",
         "fast_stroke_suspected",
         // Neurology URGENT primitives (#216, audit §3.2 #24)
         "seizure_event",
