@@ -95,6 +95,22 @@ data class SignalRule(
      * column. Default null = no duration filter.
      */
     val durationAtLeastSec: Int? = null,
+    /**
+     * #269 Cut 2 safety gate: when set, the rule drops any reading whose
+     * `event_payloads` sidecar contains a row with `fieldKey == first` and
+     * `stringValue == second`. Used by [com.bios.app.alerts.NeurologyUrgentPatterns]
+     * to exclude wearable-inferred SEIZURE_EVENT rows (`detection_source =
+     * "wearable_inferred"`) from the URGENT path — automated convulsive-
+     * pattern detection ships at LOW confidence and must not escalate
+     * without owner confirmation. Bare rows with no payload pass through
+     * unchanged (the historical owner-logged shape predates the payload
+     * surface).
+     *
+     * Only meaningful for absolute-rule rows ([absoluteWindowHours] > 0);
+     * the detector consults [com.bios.app.data.dao.EventPayloadFieldDao]
+     * for the matching readings when this field is non-null.
+     */
+    val excludePayloadFieldValue: Pair<String, String>? = null,
 ) {
     /** True when this rule is evaluated as an absolute clinical threshold. */
     val isAbsolute: Boolean get() = absoluteAbove != null || absoluteBelow != null
