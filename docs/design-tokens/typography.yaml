@@ -1,0 +1,61 @@
+# Bios Ecosystem — typography tokens (canonical)
+#
+# Base scale follows Material 3. The ecosystem extension is the
+# instrument-readout monospace, mandatory for data-bearing text across
+# every app.
+
+version: 1
+updated: 2026-05-24
+
+base_font_family: roboto
+
+scale:
+  # Material 3 roles — apps inherit these as-is.
+  display_large: { size_sp: 57, weight: regular }
+  display_medium: { size_sp: 45, weight: regular }
+  display_small: { size_sp: 36, weight: regular }
+  headline_large: { size_sp: 32, weight: regular }
+  headline_medium: { size_sp: 28, weight: regular }
+  headline_small: { size_sp: 24, weight: regular }
+  title_large: { size_sp: 22, weight: medium }
+  title_medium: { size_sp: 16, weight: medium }
+  title_small: { size_sp: 14, weight: medium }
+  body_large: { size_sp: 16, weight: regular }
+  body_medium: { size_sp: 14, weight: regular }
+  body_small: { size_sp: 12, weight: regular }
+  label_large: { size_sp: 14, weight: medium }
+  label_medium: { size_sp: 12, weight: medium }
+  label_small: { size_sp: 11, weight: medium }
+
+# === Ecosystem extension: instrument readout ===
+#
+# Origin: W2F's cockpit typography. Mandatory across the ecosystem for
+# data-bearing text — times, durations, quantities, biomarker values,
+# eating windows, distances, scores.
+#
+# Rule: apply to MEASUREMENTS only. Never to body copy, recipe names,
+# mood labels, or anything humans wrote.
+
+instrument:
+  family: monospace
+  letter_spacing: 0.04
+  base_size_sp: 14
+  base_color: text_primary
+
+  variants:
+    default:
+      style_name: "TextAppearance.<App>.Instrument"
+      parent: "TextAppearance.Material3.BodyMedium"
+      size_sp: 14
+      color: text_primary
+    small:
+      style_name: "TextAppearance.<App>.Instrument.Small"
+      size_sp: 13
+      color: text_secondary
+    large:
+      style_name: "TextAppearance.<App>.Instrument.Large"
+      size_sp: 16
+      color: text_primary
+
+# Each app names the style with its own namespace (TextAppearance.Idun.Instrument,
+# TextAppearance.Smokeless.Instrument, etc.) but the spec MUST match.
