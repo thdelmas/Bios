@@ -122,10 +122,19 @@ object PhoneSleepInference {
     /**
      * Walk the [startIdx, endIdx] index range and merge consecutive samples
      * that share the same coarse activity label into contiguous segments.
-     * The per-sample label comes from the 7-tap Cole-Kripke classifier
-     * (#244 Cut 1) which reads a centered 7-wide window of accelerometer
-     * variances — meaningfully smoother than the prior 1-tap threshold
-     * and matched to the published actigraphy baseline since 1992.
+     *
+     * The per-sample label is the result of a two-phase classification
+     * (#244 Cuts 1 + 1b):
+     *  1. **Cole-Kripke 7-tap FIR** scores each sample's centered window
+     *     of accelerometer variances — the published 1992 baseline.
+     *  2. **Webster rescoring rules a-e** clean up the canonical
+     *     post-FIR misclassifications: wake-bout forward extension
+     *     (rules a/b/c) + brief-sleep absorption between long wake
+     *     runs (rules d/e).
+     *
+     * Webster looks at the WHOLE sample range (not just [startIdx,
+     * endIdx]) so its preceding-wake-run lookbacks aren't truncated at
+     * the window boundary.
      */
     private fun segmentByActivity(
         samples: List<Sample>,
@@ -133,11 +142,16 @@ object PhoneSleepInference {
         endIdx: Int
     ): List<Segment> {
         val variances: List<Float?> = samples.map { it.accelMagnitudeVar }
+        val rawAwake = BooleanArray(samples.size) { i ->
+            ColeKripkeClassifier.isAwake(ColeKripkeClassifier.centeredWindow(variances, i))
+        }
+        val rescoredAwake = WebsterRescoring.rescore(rawAwake)
+
         val out = mutableListOf<Segment>()
         var segStart = samples[startIdx].timestamp
-        var currentStage = stageAt(variances, startIdx)
+        var currentStage = stageFor(rescoredAwake[startIdx])
         for (i in (startIdx + 1)..endIdx) {
-            val stage = stageAt(variances, i)
+            val stage = stageFor(rescoredAwake[i])
             if (stage != currentStage) {
                 out += Segment(currentStage, segStart, samples[i].timestamp - segStart)
                 segStart = samples[i].timestamp
@@ -147,9 +161,13 @@ object PhoneSleepInference {
         out += Segment(currentStage, segStart, samples[endIdx].timestamp - segStart)
         // Collapse very brief AWAKE flickers (< AWAKE_BOUT_MIN_MS) back into
         // the surrounding sleep — single-minute movement bouts during sleep
-        // are normal posture shifts, not wake events.
+        // are normal posture shifts, not wake events. Complementary to
+        // Webster's d/e rules which absorb in the opposite direction.
         return mergeBriefAwake(out)
     }
+
+    private fun stageFor(awake: Boolean): SleepStage =
+        if (awake) SleepStage.AWAKE else SleepStage.LIGHT
 
     private fun mergeBriefAwake(segments: List<Segment>): List<Segment> {
         if (segments.size <= 1) return segments
@@ -168,23 +186,6 @@ object PhoneSleepInference {
         return out
     }
 
-    /**
-     * Score sample `index` against the Cole-Kripke 7-tap FIR filter
-     * over a centered window of accelerometer variances. `LIGHT` when
-     * the windowed sleep index is below the wake threshold; `AWAKE`
-     * otherwise. Boundary samples reuse the edge value (see
-     * [ColeKripkeClassifier.centeredWindow]).
-     *
-     * Replaces the prior 1-tap variance threshold (`variance > 0.5 →
-     * AWAKE`) with the published 1992 baseline. Single isolated
-     * variance spikes no longer fire AWAKE on their own — Cole-Kripke
-     * requires the surrounding context to corroborate, which matches
-     * the actigraphy literature's "sustained motion = wake" stance.
-     */
-    private fun stageAt(variances: List<Float?>, index: Int): SleepStage {
-        val window = ColeKripkeClassifier.centeredWindow(variances, index)
-        return if (ColeKripkeClassifier.isAwake(window)) SleepStage.AWAKE else SleepStage.LIGHT
-    }
 
     /**
      * Per-sample "owner is likely quiet / not actively using the device"
