@@ -55,6 +55,7 @@ fun SettingsScreen(
     onNavigateToTreatmentCourses: () -> Unit = {},
     onNavigateToAnthropometry: () -> Unit = {},
     onNavigateToMetricReadingsDebug: () -> Unit = {},
+    onNavigateToSeizureTimeline: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -400,7 +401,7 @@ fun SettingsScreen(
 
         SettingsFeedbackCard()
 
-        SettingsSeizureDetectionCard()
+        SettingsSeizureDetectionCard(onViewDetections = onNavigateToSeizureTimeline)
 
         SettingsDiagnosticsCard()
 
