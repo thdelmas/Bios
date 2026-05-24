@@ -189,6 +189,19 @@ interface MetricReadingDao {
     @Query("DELETE FROM metric_readings WHERE timestamp < :beforeMillis")
     suspend fun deleteBefore(beforeMillis: Long): Int
 
+    /**
+     * Delete a single reading by id. Used by the headache / migraine
+     * entry repos (#283 Cut 2) so an entity-table delete also clears
+     * the parent HEADACHE/CLUSTER/MIGRAINE_ATTACK_EVENT row written
+     * alongside it. Callers are responsible for cascading to any
+     * linked MEDICATION_INTAKE child (via the
+     * [com.bios.app.model.HeadacheEventFields.ABORTIVE_MEDICATION_INTAKE_ID]
+     * payload field) and for clearing `event_payloads` via
+     * [EventPayloadFieldDao.deleteForReading].
+     */
+    @Query("DELETE FROM metric_readings WHERE id = :readingId")
+    suspend fun deleteById(readingId: String): Int
+
     @Query("DELETE FROM metric_readings")
     suspend fun deleteAll()
 }
