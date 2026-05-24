@@ -400,6 +400,8 @@ fun SettingsScreen(
 
         SettingsFeedbackCard()
 
+        SettingsSeizureDetectionCard()
+
         SettingsDiagnosticsCard()
 
         // About — long-press Version row opens the metric_readings debug screen (#253).
