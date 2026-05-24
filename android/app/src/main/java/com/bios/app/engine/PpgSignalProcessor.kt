@@ -49,14 +49,21 @@ object PpgSignalProcessor {
     private const val MIN_LUMINANCE_VARIANCE = 1.0      // < 1 = no finger
     private const val MAX_SATURATION_RATIO = 0.30       // >30% saturated = overexposed
     /**
-     * Coefficient-of-variation cap on peak amplitudes after trimming the
-     * lowest-amplitude quartile (those are dichrotic notches and noise the
-     * adaptive-threshold detector lets through). 0.80 is consistent with the
-     * amplitude variability seen in clean fingertip PPG due to respiratory
-     * modulation and vasomotor activity; tighter than that rejected real
-     * recordings in on-device testing.
+     * Default coefficient-of-variation cap on peak amplitudes after
+     * trimming the lowest-amplitude quartile (those are dichrotic
+     * notches and noise the adaptive-threshold detector lets
+     * through). 0.80 is consistent with the amplitude variability
+     * seen in clean fingertip PPG due to respiratory modulation and
+     * vasomotor activity; tighter than that rejected real recordings
+     * in on-device testing.
+     *
+     * Per-device overrides ([PpgDeviceProfile.maxPeakAmplitudeCov])
+     * land via [PpgDeviceProfiles] once the [PpgCalibrationLogger]
+     * distribution data is in (#266 Cut 2). The default preserves
+     * pre-Cut-2 behaviour for devices not yet in
+     * [PpgDeviceProfiles.PROFILES].
      */
-    private const val MAX_PEAK_AMPLITUDE_COV = 0.80     // higher = motion
+    const val MAX_PEAK_AMPLITUDE_COV_DEFAULT = 0.80     // higher = motion
     /**
      * Fraction of the smallest-amplitude peaks dropped before computing the
      * amplitude CoV — the adaptive-threshold detector picks up dichrotic
@@ -80,7 +87,11 @@ object PpgSignalProcessor {
      * sampled at [samplingRateHz]. Returns a [PpgResult] with either clean
      * RR intervals or a rejection reason.
      */
-    fun extract(luminanceSamples: List<Double>, samplingRateHz: Double): PpgResult {
+    fun extract(
+        luminanceSamples: List<Double>,
+        samplingRateHz: Double,
+        profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT,
+    ): PpgResult {
         val durationSec = luminanceSamples.size / samplingRateHz
 
         if (durationSec < MIN_RECORDING_SECONDS) {
@@ -129,7 +140,7 @@ object PpgSignalProcessor {
             peakIndices.map { smoothed[it] },
             PEAK_AMPLITUDE_TRIM_FRACTION
         )
-        if (peakAmpCov > MAX_PEAK_AMPLITUDE_COV) {
+        if (peakAmpCov > profile.maxPeakAmplitudeCov) {
             return PpgResult.rejected(
                 RejectionReason.MOTION_ARTIFACT,
                 durationSec = durationSec,
@@ -151,7 +162,7 @@ object PpgSignalProcessor {
             )
         }
 
-        val sqi = compositeSqi(variance, saturation, peakAmpCov, rrCov)
+        val sqi = compositeSqi(variance, saturation, peakAmpCov, rrCov, profile.maxPeakAmplitudeCov)
         val features = computeWaveformFeatures(smoothed, peakIndices, samplingRateHz, peakAmpCov)
         return PpgResult(
             rrIntervalsMs = rrMs,
@@ -448,12 +459,13 @@ object PpgSignalProcessor {
         variance: Double,
         saturationRatio: Double,
         peakAmpCov: Double,
-        rrCov: Double
+        rrCov: Double,
+        maxPeakAmplitudeCov: Double = MAX_PEAK_AMPLITUDE_COV_DEFAULT,
     ): Int {
         // Each term 0..1 (1 = perfect); combine by geometric mean, rescale to 100.
         val varianceTerm = (variance / 50.0).coerceIn(0.0, 1.0)
         val saturationTerm = (1.0 - saturationRatio / MAX_SATURATION_RATIO).coerceIn(0.0, 1.0)
-        val ampTerm = (1.0 - peakAmpCov / MAX_PEAK_AMPLITUDE_COV).coerceIn(0.0, 1.0)
+        val ampTerm = (1.0 - peakAmpCov / maxPeakAmplitudeCov).coerceIn(0.0, 1.0)
         val rrTerm = (1.0 - rrCov / MAX_RR_COV).coerceIn(0.0, 1.0)
         val geomMean = (varianceTerm * saturationTerm * ampTerm * rrTerm)
         return (sqrt(sqrt(geomMean)) * 100.0).toInt().coerceIn(0, 100)

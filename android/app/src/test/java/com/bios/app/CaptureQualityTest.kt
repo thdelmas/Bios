@@ -46,7 +46,7 @@ class CaptureQualityTest {
     fun `sustained large jumps classify as MOTION`() {
         // Square-wave-style motion: every frame jumps ±15 Y units alternately.
         // |diff| = 15 on every adjacent pair → median |diff| = 15, well above
-        // MOTION_MEDIAN_JUMP_Y (= 6). Heart-beats can't produce this pattern
+        // MOTION_MEDIAN_JUMP_Y_DEFAULT (= 6). Heart-beats can't produce this pattern
         // because the diff distribution is dominated by small flat regions.
         val window = (0 until 40).map { i ->
             60.0 + (if (i % 2 == 0) 0.0 else 15.0)
@@ -101,10 +101,10 @@ class CaptureQualityTest {
     @Test
     fun `medianJumpPercentiles on a calm signal yields a small p50 and p90`() {
         // 3 s at 20 Hz of tiny noise + slow drift — both percentiles should
-        // sit well below MOTION_MEDIAN_JUMP_Y (= 6).
+        // sit well below MOTION_MEDIAN_JUMP_Y_DEFAULT (= 6).
         val samples = (0 until 60).map { 60.0 + (it % 3) * 0.5 }
         val stats = CaptureQuality.medianJumpPercentiles(samples, fs)!!
-        assert(stats.p50 < CaptureQuality.MOTION_MEDIAN_JUMP_Y) {
+        assert(stats.p50 < CaptureQuality.MOTION_MEDIAN_JUMP_Y_DEFAULT) {
             "calm p50 should be tiny but was ${stats.p50}"
         }
         assert(stats.p90 <= stats.p50 * 2 + 1.0) {
@@ -117,8 +117,8 @@ class CaptureQualityTest {
         // Square-wave motion across the whole 3-second recording.
         val samples = (0 until 60).map { 60.0 + if (it % 2 == 0) 0.0 else 15.0 }
         val stats = CaptureQuality.medianJumpPercentiles(samples, fs)!!
-        assert(stats.p50 > CaptureQuality.MOTION_MEDIAN_JUMP_Y) {
-            "sustained-motion p50 should exceed MOTION_MEDIAN_JUMP_Y — got ${stats.p50}"
+        assert(stats.p50 > CaptureQuality.MOTION_MEDIAN_JUMP_Y_DEFAULT) {
+            "sustained-motion p50 should exceed MOTION_MEDIAN_JUMP_Y_DEFAULT — got ${stats.p50}"
         }
     }
 
