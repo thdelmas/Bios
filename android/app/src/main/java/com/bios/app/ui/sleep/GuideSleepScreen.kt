@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.alerts.Citation
+import com.bios.app.ui.reference.CitationText
 
 /**
  * Static evidence-anchored sleep-medicine reference (#303 / #135
@@ -203,7 +205,7 @@ private fun ReferencesCard() {
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 "References",
@@ -211,10 +213,9 @@ private fun ReferencesCard() {
                 fontWeight = FontWeight.Bold,
             )
             REFERENCES.forEach { ref ->
-                Text(
-                    ref,
+                CitationText(
+                    citation = ref,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -247,27 +248,59 @@ private fun GuideCard(title: String, body: String) {
 }
 
 private val REFERENCES = listOf(
-    "Phillips AJK et al. (2017) — Irregular sleep/wake patterns are " +
-        "associated with poorer academic performance and delayed circadian and " +
-        "sleep/wake timing. Scientific Reports 7:3216.",
-    "Windred DP et al. (2024) — Sleep regularity is a stronger predictor of " +
-        "mortality risk than sleep duration. Sleep 47(1).",
-    "Cho CH et al. (2015) — Effects of artificial light at night on melatonin " +
-        "secretion and cardiovascular regulation. Chronobiology International " +
-        "32(9):1294–1310.",
-    "Okamoto-Mizuno K, Mizuno K (2012) — Effects of thermal environment on " +
-        "sleep and circadian rhythm. Journal of Physiological Anthropology 31:14.",
-    "WHO Regional Office for Europe (2018) — Environmental Noise Guidelines " +
-        "for the European Region.",
-    "Chang AM et al. (2015) — Evening use of light-emitting eReaders " +
-        "negatively affects sleep, circadian timing, and next-morning alertness. " +
-        "PNAS 112(4):1232–1237.",
-    "Drake C et al. (2013) — Caffeine effects on sleep taken 0, 3, or 6 hours " +
-        "before going to bed. Journal of Clinical Sleep Medicine 9(11):1195–1200.",
-    "Roehrs T, Roth T (2001) — Sleep, sleepiness, sleep disorders and alcohol " +
-        "use and abuse. Sleep Medicine Reviews 5(4):287–297.",
-    "Cole RJ et al. (1992) — Automatic sleep/wake identification from wrist " +
-        "activity. Sleep 15(5):461–469.",
-    "Walker M (2017) — Why We Sleep: Unlocking the Power of Sleep and Dreams. " +
-        "Scribner.",
+    Citation.doi(
+        text = "Phillips AJK et al. (2017) — Irregular sleep/wake patterns are " +
+            "associated with poorer academic performance and delayed circadian " +
+            "and sleep/wake timing. Scientific Reports 7:3216.",
+        doi = "10.1038/s41598-017-03171-4",
+    ),
+    Citation.doi(
+        text = "Windred DP et al. (2024) — Sleep regularity is a stronger " +
+            "predictor of mortality risk than sleep duration. Sleep 47(1).",
+        doi = "10.1093/sleep/zsad253",
+    ),
+    Citation.doi(
+        text = "Cho CH et al. (2015) — Effects of artificial light at night on " +
+            "melatonin secretion and cardiovascular regulation. Chronobiology " +
+            "International 32(9):1294–1310.",
+        doi = "10.3109/07420528.2015.1073158",
+    ),
+    Citation.doi(
+        text = "Okamoto-Mizuno K, Mizuno K (2012) — Effects of thermal " +
+            "environment on sleep and circadian rhythm. Journal of " +
+            "Physiological Anthropology 31:14.",
+        doi = "10.1186/1880-6805-31-14",
+    ),
+    Citation(
+        text = "WHO Regional Office for Europe (2018) — Environmental Noise " +
+            "Guidelines for the European Region.",
+        url = "https://www.who.int/europe/publications/i/item/9789289053563",
+    ),
+    Citation.doi(
+        text = "Chang AM et al. (2015) — Evening use of light-emitting eReaders " +
+            "negatively affects sleep, circadian timing, and next-morning " +
+            "alertness. PNAS 112(4):1232–1237.",
+        doi = "10.1073/pnas.1418490112",
+    ),
+    Citation.doi(
+        text = "Drake C et al. (2013) — Caffeine effects on sleep taken 0, 3, " +
+            "or 6 hours before going to bed. Journal of Clinical Sleep " +
+            "Medicine 9(11):1195–1200.",
+        doi = "10.5664/jcsm.3170",
+    ),
+    Citation.doi(
+        text = "Roehrs T, Roth T (2001) — Sleep, sleepiness, sleep disorders " +
+            "and alcohol use and abuse. Sleep Medicine Reviews 5(4):287–297.",
+        doi = "10.1053/smrv.2001.0162",
+    ),
+    Citation.doi(
+        text = "Cole RJ et al. (1992) — Automatic sleep/wake identification " +
+            "from wrist activity. Sleep 15(5):461–469.",
+        doi = "10.1093/sleep/15.5.461",
+    ),
+    Citation(
+        text = "Walker M (2017) — Why We Sleep: Unlocking the Power of Sleep " +
+            "and Dreams. Scribner.",
+        url = "https://www.simonandschuster.com/books/Why-We-Sleep/Matthew-Walker/9781501144325",
+    ),
 )

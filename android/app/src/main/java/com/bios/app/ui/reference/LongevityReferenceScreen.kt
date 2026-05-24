@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.BiomarkerReference
 import com.bios.app.alerts.BiomarkerReferences
+import com.bios.app.alerts.Citation
 import com.bios.app.config.BiomarkerBand
 import com.bios.app.config.RegionConfigProvider
 import com.bios.contracts.MetricType
@@ -84,16 +85,27 @@ fun LongevityReferenceScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 val sources = listOf(
-                    "Blueprint protocol — publicly available at blueprint.bryanjohnson.com",
-                    "Levine ME (2018) — An epigenetic biomarker of aging (PhenoAge)",
-                    "Belsky DW et al. (2020) — DunedinPACE, a DNA methylation biomarker of the pace of aging",
-                    "Attia P (2023) — Outlive: The Science and Art of Longevity"
+                    Citation(
+                        text = "Blueprint protocol — publicly available at blueprint.bryanjohnson.com",
+                        url = "https://blueprint.bryanjohnson.com",
+                    ),
+                    Citation.doi(
+                        text = "Levine ME et al. (2018) — An epigenetic biomarker of aging for lifespan and healthspan (PhenoAge). Aging 10(4):573–591.",
+                        doi = "10.18632/aging.101414",
+                    ),
+                    Citation.doi(
+                        text = "Belsky DW et al. (2020) — Quantification of the pace of biological aging in humans (DunedinPACE precursor). eLife 9:e54870.",
+                        doi = "10.7554/eLife.54870",
+                    ),
+                    Citation(
+                        text = "Attia P (2023) — Outlive: The Science and Art of Longevity. Harmony.",
+                        url = "https://peterattiamd.com/outlive/",
+                    ),
                 )
                 sources.forEach { source ->
-                    Text(
-                        source,
+                    CitationText(
+                        citation = source,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.height(24.dp))
@@ -394,10 +406,9 @@ private fun BiomarkerCard(
                         fontWeight = FontWeight.Bold
                     )
                     biomarker.citations.forEach { citation ->
-                        Text(
-                            citation,
+                        CitationText(
+                            citation = citation,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
