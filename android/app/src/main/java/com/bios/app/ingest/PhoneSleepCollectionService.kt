@@ -128,6 +128,8 @@ class PhoneSleepCollectionService : Service() {
                         stepDelta = sample.stepDelta,
                         dndEnabled = sample.dndEnabled,
                         pairedBluetoothConnected = sample.pairedBluetoothConnected,
+                        significantMotionFired = sample.significantMotionFired,
+                        stationary = sample.stationary,
                     )
                 )
             } catch (t: Throwable) {
