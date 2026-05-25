@@ -80,7 +80,7 @@ fun TrendsScreen(
 
     LaunchedEffect(selectedMetric, entriesRefreshKey) {
         entriesLoaded = false
-        recentEntries = viewModel.getRecentReadings(selectedMetric, limit = 30)
+        recentEntries = viewModel.getRecentReadings(selectedMetric, limit = Int.MAX_VALUE)
         entriesLoaded = true
         // Pre-baked coverage map only covers TRACKED_METRICS (HR/HRV/etc.).
         // For everything else (Weight, BMI, biomarkers, ...) compute on demand.
