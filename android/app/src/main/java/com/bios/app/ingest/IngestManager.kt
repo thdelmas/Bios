@@ -247,7 +247,7 @@ class IngestManager(
             }
 
             deriveCircadianPhaseShift()
-
+            HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
@@ -307,7 +307,7 @@ class IngestManager(
             }
 
             deriveCircadianPhaseShift()
-
+            HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
