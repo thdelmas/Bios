@@ -74,6 +74,7 @@ class MetricTypeKeysSnapshotTest {
         // Sleep
         "sleep_stage",
         "sleep_duration",
+        "time_in_bed",
         "sleep_latency",
         "sleep_efficiency",
         "sleep_fragmentation_index",

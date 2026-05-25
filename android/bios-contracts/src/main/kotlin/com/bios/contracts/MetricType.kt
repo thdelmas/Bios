@@ -158,7 +158,7 @@ enum class MetricType(
 
     // Sleep
     SLEEP_STAGE("sleep_stage", MetricUnit.CATEGORY, MetricDomain.SLEEP),
-    SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true),
+    SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true), TIME_IN_BED("time_in_bed", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true), // in-bed window incl. quiet wake; SLEEP_DURATION <= TIME_IN_BED
     SLEEP_LATENCY("sleep_latency", MetricUnit.SECONDS, MetricDomain.SLEEP),
     SLEEP_EFFICIENCY("sleep_efficiency", MetricUnit.PERCENT, MetricDomain.SLEEP),
     SLEEP_FRAGMENTATION_INDEX("sleep_fragmentation_index", MetricUnit.COUNT, MetricDomain.SLEEP),
