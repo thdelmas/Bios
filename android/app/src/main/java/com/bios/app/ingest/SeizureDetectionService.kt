@@ -278,11 +278,27 @@ class SeizureDetectionService : Service() {
         const val SOURCE_DEVICE_NAME = "Wearable seizure detector"
 
         /** Start the service from app init / the Settings toggle. No-op
-         *  when the opt-in is off. */
+         *  when the opt-in is off.
+         *
+         *  Swallows [IllegalStateException] (and its API-31+ subclass
+         *  `ForegroundServiceStartNotAllowedException`) so a background
+         *  process spawn — e.g. WorkManager or a broadcast receiver
+         *  reviving Bios while the screen is locked — doesn't tear the
+         *  whole app down. The service is retried from
+         *  `MainActivity.onCreate` on the next foreground entry, which
+         *  always has a valid context for starting a foreground service. */
         fun startIfOptedIn(context: Context) {
             if (!SeizureDetectionPrefs.isEnabled(context)) return
             val intent = Intent(context, SeizureDetectionService::class.java)
-            ContextCompat.startForegroundService(context.applicationContext, intent)
+            try {
+                ContextCompat.startForegroundService(context.applicationContext, intent)
+            } catch (e: IllegalStateException) {
+                Log.w(
+                    TAG,
+                    "startForegroundService denied (likely background context); " +
+                        "will retry on next foreground entry: ${e.message}",
+                )
+            }
         }
 
         /** Stop the service. Safe to call when already stopped. */
