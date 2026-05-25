@@ -135,7 +135,7 @@ fun TrendsScreen(
 
         val selectedBaseline = baselines.find { it.metricType == selectedMetric.key }
         if (selectedBaseline != null) {
-            BaselineSummaryCard(selectedBaseline)
+            BaselineSummaryCard(selectedBaseline, selectedMetric.unit)
         } else {
             NoBaselineCard(
                 metricLabel = selectedMetric.readableName,
@@ -171,13 +171,12 @@ fun TrendsScreen(
     }
 
     pendingDelete?.let { entry ->
-        val unit = selectedMetric.unit.symbol.ifEmpty { "" }
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Delete this entry?") },
             text = {
                 Text(
-                    "${formatStat(entry.reading.value)} $unit on " +
+                    "${formatMetricValue(entry.reading.value, selectedMetric.unit)} on " +
                         "${formatEntryTimestamp(entry.reading.timestamp)} — " +
                         "this is permanent."
                 )
