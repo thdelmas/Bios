@@ -72,7 +72,6 @@ internal fun MetricChart(
             val firstTs = sorted.first().timestamp
             val lastTs = sorted.last().timestamp
             val spanMs = (lastTs - firstTs).coerceAtLeast(1L).toDouble()
-            val unit = metric.unit.symbol.ifEmpty { "" }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -84,13 +83,7 @@ internal fun MetricChart(
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(
-                    buildString {
-                        append(formatStat(values.last()))
-                        if (unit.isNotEmpty()) {
-                            append(' ')
-                            append(unit)
-                        }
-                    },
+                    formatMetricValue(values.last(), metric.unit),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -144,7 +137,7 @@ internal fun MetricChart(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    "min ${formatStat(minV)}${if (unit.isNotEmpty()) " $unit" else ""}",
+                    "min ${formatMetricValue(minV, metric.unit)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -154,7 +147,7 @@ internal fun MetricChart(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "max ${formatStat(maxV)}${if (unit.isNotEmpty()) " $unit" else ""}",
+                    "max ${formatMetricValue(maxV, metric.unit)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
