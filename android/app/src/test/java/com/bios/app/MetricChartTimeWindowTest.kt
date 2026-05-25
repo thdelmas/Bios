@@ -15,7 +15,13 @@ import org.junit.Test
 class MetricChartTimeWindowTest {
 
     private val now: Long = 1_700_000_000_000L
-    private val day: Long = 24L * 60L * 60L * 1000L
+    private val hour: Long = 60L * 60L * 1000L
+    private val day: Long = 24L * hour
+
+    @Test
+    fun hour_window_subtracts_one_hour() {
+        assertEquals(now - hour, MetricChartTimeWindow.HOUR.startMillis(now))
+    }
 
     @Test
     fun day_window_subtracts_24_hours() {
