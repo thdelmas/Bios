@@ -246,8 +246,9 @@ class IngestManager(
                 ingestBlock()
             }
 
-            deriveCircadianPhaseShift()
+            circadianEngine.derive()?.let { readingDao.insert(it) }
             HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
+            RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
@@ -306,24 +307,18 @@ class IngestManager(
                 _syncProgress.value = completedDays / totalDays
             }
 
-            deriveCircadianPhaseShift()
+            // Each derivation/backfill is idempotent and self-skips when
+            // preconditions aren't met (e.g. <4 days of sleep history),
+            // so this block is safe to call on every sync.
+            circadianEngine.derive()?.let { readingDao.insert(it) }
             HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
+            RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
             _isSyncing.value = false
             _syncProgress.value = 1f
         }
-    }
-
-    /**
-     * Run the circadian-phase-shift derivation against the readings now in DB.
-     * Self-skips when fewer than 4 days of SLEEP_DURATION exist or when today's
-     * shift has already been emitted, so this is safe to call on every sync.
-     */
-    private suspend fun deriveCircadianPhaseShift() {
-        val reading = circadianEngine.derive() ?: return
-        readingDao.insert(reading)
     }
 
     // MARK: - Derivations
