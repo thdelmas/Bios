@@ -27,7 +27,11 @@ suspend fun AppViewModel.getRecentReadings(
 ): List<RecentEntry> {
     val readings = db.metricReadingDao().fetchLatest(metricType.key, limit)
     if (readings.isEmpty()) return emptyList()
-    val payloads = db.eventPayloadFieldDao().fetchForReadings(readings.map { it.id })
+    // SQLite's SQLITE_MAX_VARIABLE_NUMBER is 999 on API 28/29 (raised to
+    // 32k on newer Android). Step histories blow that, so chunk the IN().
+    val payloads = readings.map { it.id }
+        .chunked(SQLITE_IN_CHUNK)
+        .flatMap { db.eventPayloadFieldDao().fetchForReadings(it) }
     val byReadingId = payloads.groupBy { it.readingId }
     return readings.map { r ->
         RecentEntry(
@@ -38,6 +42,8 @@ suspend fun AppViewModel.getRecentReadings(
         )
     }
 }
+
+private const val SQLITE_IN_CHUNK = 900
 
 suspend fun AppViewModel.deleteReading(readingId: String) {
     db.eventPayloadFieldDao().deleteForReading(readingId)
