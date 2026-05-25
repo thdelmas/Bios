@@ -50,6 +50,21 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!--
+      Exact-alarm permission for the receiver-launch relay (#315). A
+      background BroadcastReceiver cannot call startForegroundService
+      on Android 12+ for non-allowlisted broadcasts like
+      ACTION_POWER_CONNECTED. Alarms scheduled with
+      setExactAndAllowWhileIdle() are on the FGS launch-exemption list,
+      so PowerConnectionReceiver schedules a short-deferred alarm and
+      PhoneSleepAlarmReceiver issues the legal startForegroundService.
+
+      SCHEDULE_EXACT_ALARM is auto-granted on API 31–32 and
+      user-revocable on API 33+. When revoked, the receiver logs
+      honestly and falls back to the 15-min PhoneSleepWorker safety net.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <!-- Step counter. Android 10+ silently delivers zero events to
          Sensor.TYPE_STEP_COUNTER without this permission, even though
          the sensor itself reports `hasStepCounter = true`. Without this
@@ -217,6 +232,25 @@
             android:name=".ingest.PhoneSleepCollectionService"
             android:exported="false"
             android:foregroundServiceType="health" />
+
+        <!-- Alarm relay that legally starts PhoneSleepCollectionService
+             from the background (#315). PowerConnectionReceiver cannot
+             call startForegroundService itself on Android 12+, so it
+             schedules an exact alarm and this receiver — fired by the
+             alarm subsystem, which carries the FGS-launch exemption —
+             issues the real startForegroundService call.
+
+             Manifest-declared because the alarm PendingIntent targets
+             this class explicitly; explicit intents bypass the implicit-
+             broadcast restriction. Not exported: only our own
+             PendingIntent triggers it. -->
+        <receiver
+            android:name=".ingest.PhoneSleepAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.bios.app.ingest.action.START_SLEEP_COLLECTION" />
+            </intent-filter>
+        </receiver>
 
         <!-- Wearable convulsive-seizure detector foreground service
              (#269 Cut 3b). Owner opt-in via SeizureDetectionPrefs;
