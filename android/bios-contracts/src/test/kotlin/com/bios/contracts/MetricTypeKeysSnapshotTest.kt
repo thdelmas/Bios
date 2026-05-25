@@ -249,6 +249,22 @@ class MetricTypeKeysSnapshotTest {
         // Sedentary-load primitives (Anastasis companion)
         "sedentary_bout",
         "movement_break",
+        // Owner-rated subjective self-evaluation scales (#323) — universal
+        // substrate for cessation specialist (Smokeless) and future
+        // companions. 0–10 SCORE, owner-source-only; engine isolated.
+        "mood_self_rating",
+        "energy_self_rating",
+        "focus_self_rating",
+        "tobacco_craving_intensity",
+        "cannabis_craving_intensity",
+        "social_belonging_self_rating",
+        "smoker_identity_self_rating",
+        "change_agency_self_rating",
+        "smell_self_rating",
+        "taste_self_rating",
+        "cough_frequency_self_rating",
+        "sputum_self_rating",
+        "breath_ease_self_rating",
     )
 
     @Test
