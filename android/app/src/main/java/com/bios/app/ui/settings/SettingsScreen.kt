@@ -56,6 +56,7 @@ fun SettingsScreen(
     onNavigateToAnthropometry: () -> Unit = {},
     onNavigateToMetricReadingsDebug: () -> Unit = {},
     onNavigateToSeizureTimeline: () -> Unit = {},
+    onNavigateToMetricSources: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -276,6 +277,8 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(8.dp))
                 SettingsActionButton("Data coverage", onNavigateToDataCoverage)
+                Spacer(Modifier.height(4.dp))
+                SettingsActionButton("Per-metric sources", onNavigateToMetricSources)
             }
         }
 
