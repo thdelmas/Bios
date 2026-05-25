@@ -246,6 +246,9 @@ class MetricTypeKeysSnapshotTest {
         "bmi_kg_per_m2",
         "lean_body_mass_kg",
         "fat_mass_kg",
+        // Sedentary-load primitives (Anastasis companion)
+        "sedentary_bout",
+        "movement_break",
     )
 
     @Test

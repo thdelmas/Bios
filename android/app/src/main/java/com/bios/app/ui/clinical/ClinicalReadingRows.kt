@@ -202,21 +202,42 @@ internal data class ReadingRowState(
 }
 
 /**
- * Triage-default row order matches a Spanish ER chart's column layout
- * (TAS / TAD / Sat O2 / FC / Temp / FR / EVA / GCS / Flujo O2) — that's
- * the chart shape that motivated this surface.
+ * Pre-populated row sets the entry screen offers as chip-selectable presets.
+ * Each maps to a real owner workflow so the screen doesn't force a delete-
+ * then-re-add when the use case isn't triage.
+ *  - [TRIAGE] is the Spanish ER chart shape (TAS / TAD / Sat O2 / FC / Temp /
+ *    FR / EVA / GCS / Flujo O2) that originally motivated this surface.
+ *  - [BODY_COMPOSITION] is the pharmacy / scale shape (weight, height, BMI,
+ *    body fat %, lean + fat mass, blood pressure) — the bundle a body-
+ *    composition station prints at a weekly weigh-in.
  */
-internal fun defaultTriageRows(): List<ReadingRowState> = listOf(
-    ReadingRowState(metric = MetricType.BLOOD_PRESSURE_SYSTOLIC),
-    ReadingRowState(metric = MetricType.BLOOD_PRESSURE_DIASTOLIC),
-    ReadingRowState(metric = MetricType.BLOOD_OXYGEN),
-    ReadingRowState(metric = MetricType.HEART_RATE),
-    ReadingRowState(metric = MetricType.SKIN_TEMPERATURE),
-    ReadingRowState(metric = MetricType.RESPIRATORY_RATE),
-    ReadingRowState(metric = MetricType.PAIN_SCORE),
-    ReadingRowState(metric = MetricType.CONSCIOUSNESS_LEVEL),
-    ReadingRowState(metric = MetricType.OXYGEN_FLOW_RATE),
-)
+enum class MeasurementPreset { TRIAGE, BODY_COMPOSITION }
+
+internal fun defaultRowsFor(preset: MeasurementPreset): List<ReadingRowState> = when (preset) {
+    MeasurementPreset.TRIAGE -> listOf(
+        ReadingRowState(metric = MetricType.BLOOD_PRESSURE_SYSTOLIC),
+        ReadingRowState(metric = MetricType.BLOOD_PRESSURE_DIASTOLIC),
+        ReadingRowState(metric = MetricType.BLOOD_OXYGEN),
+        ReadingRowState(metric = MetricType.HEART_RATE),
+        ReadingRowState(metric = MetricType.SKIN_TEMPERATURE),
+        ReadingRowState(metric = MetricType.RESPIRATORY_RATE),
+        ReadingRowState(metric = MetricType.PAIN_SCORE),
+        ReadingRowState(metric = MetricType.CONSCIOUSNESS_LEVEL),
+        ReadingRowState(metric = MetricType.OXYGEN_FLOW_RATE),
+    )
+    MeasurementPreset.BODY_COMPOSITION -> listOf(
+        ReadingRowState(metric = MetricType.BODY_MASS),
+        ReadingRowState(metric = MetricType.HEIGHT_CM),
+        ReadingRowState(metric = MetricType.BMI_KG_PER_M2),
+        ReadingRowState(metric = MetricType.BODY_FAT_PCT),
+        ReadingRowState(metric = MetricType.LEAN_BODY_MASS_KG),
+        ReadingRowState(metric = MetricType.FAT_MASS_KG),
+        ReadingRowState(metric = MetricType.BLOOD_PRESSURE_SYSTOLIC),
+        ReadingRowState(metric = MetricType.BLOOD_PRESSURE_DIASTOLIC),
+    )
+}
+
+internal fun defaultTriageRows(): List<ReadingRowState> = defaultRowsFor(MeasurementPreset.TRIAGE)
 
 /**
  * Metrics offered in the clinical-reading picker: everything that opts in

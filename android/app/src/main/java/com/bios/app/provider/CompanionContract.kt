@@ -35,6 +35,9 @@ import com.bios.app.model.ReadingKind
  * - Smokeless (com.smokless.smokeless) writes INTAKE events (tobacco + cannabis,
  *   matching its Substance enum surface from Phase 2.1).
  * - Virgil (com.virgil.app) writes SAFETY events
+ * - Anastasis (com.anastasis.app) writes ACTIVITY sedentary-load primitives
+ *   (sedentary_bout + movement_break) — producer-by-capture-surface: the
+ *   sit-detector + foreground service is its unique capture path.
  */
 internal object CompanionContract {
 
@@ -123,6 +126,21 @@ internal object CompanionContract {
                 "near_miss_fall",
                 "check_in_miss",
             ),
+            defaultReadingKind = ReadingKind.DERIVED,
+            signingCertSha256 = emptySet(),
+        ),
+        Companion(
+            packageName = "com.anastasis.app",
+            displayName = "Anastasis",
+            sourceId = "companion_anastasis",
+            writableMetrics = setOf(
+                "sedentary_bout",
+                "movement_break",
+            ),
+            // Detector output (accelerometer stillness gated by step counter)
+            // is algorithmic. The owner's "Done" tap on a movement break
+            // confirms completion but does not change the kind of the underlying
+            // duration value — both are derived, not self-reported scalars.
             defaultReadingKind = ReadingKind.DERIVED,
             signingCertSha256 = emptySet(),
         ),
