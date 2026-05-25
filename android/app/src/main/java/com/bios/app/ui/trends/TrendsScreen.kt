@@ -2,14 +2,13 @@ package com.bios.app.ui.trends
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
@@ -101,49 +100,53 @@ fun TrendsScreen(
         chartLoaded = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { showBrowser = true }
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                selectedMetric.readableName,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Browse metrics")
+        item(key = "metric-header") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { showBrowser = true }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    selectedMetric.readableName,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Browse metrics")
+            }
         }
 
-        MetricChart(
-            metric = selectedMetric,
-            readings = chartReadings,
-            loaded = chartLoaded,
-            selectedWindow = chartWindow,
-            onSelectWindow = { chartWindow = it },
-        )
-
-        val selectedBaseline = baselines.find { it.metricType == selectedMetric.key }
-        if (selectedBaseline != null) {
-            BaselineSummaryCard(selectedBaseline, selectedMetric.unit)
-        } else {
-            NoBaselineCard(
-                metricLabel = selectedMetric.readableName,
-                coverage = liveCoverage ?: coverage[selectedMetric],
+        item(key = "metric-chart") {
+            MetricChart(
+                metric = selectedMetric,
+                readings = chartReadings,
+                loaded = chartLoaded,
+                selectedWindow = chartWindow,
+                onSelectWindow = { chartWindow = it },
             )
         }
 
-        RecentEntriesSection(
+        item(key = "metric-baseline") {
+            val selectedBaseline = baselines.find { it.metricType == selectedMetric.key }
+            if (selectedBaseline != null) {
+                BaselineSummaryCard(selectedBaseline, selectedMetric.unit)
+            } else {
+                NoBaselineCard(
+                    metricLabel = selectedMetric.readableName,
+                    coverage = liveCoverage ?: coverage[selectedMetric],
+                )
+            }
+        }
+
+        recentEntriesSection(
             metric = selectedMetric,
             entries = recentEntries,
             loaded = entriesLoaded,

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -30,8 +32,14 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.ui.RecentEntry
 import com.bios.contracts.MetricType
 
-@Composable
-internal fun RecentEntriesSection(
+/**
+ * Adds the "Recent entries" header + entry rows as LazyColumn items so the
+ * full per-metric history can render without composing every row eagerly.
+ * Lives as a LazyListScope extension because the per-metric screen needs
+ * virtualization — Steps can have tens of thousands of entries and the
+ * old Column(verticalScroll) implementation OOM'd at 256 MB.
+ */
+internal fun LazyListScope.recentEntriesSection(
     metric: MetricType,
     entries: List<RecentEntry>,
     loaded: Boolean,
@@ -44,13 +52,72 @@ internal fun RecentEntriesSection(
 ) {
     val inSelectMode = selectedIds.isNotEmpty()
 
+    item(key = "recent-entries-header") {
+        RecentEntriesHeader(
+            inSelectMode = inSelectMode,
+            selectedCount = selectedIds.size,
+            onRequestBatchDelete = onRequestBatchDelete,
+            onCancelSelection = onCancelSelection,
+        )
+    }
+
+    if (!loaded) {
+        item(key = "recent-entries-loading") { RecentEntriesPlaceholder("Loading…") }
+        return
+    }
+
+    if (entries.isEmpty()) {
+        item(key = "recent-entries-empty") {
+            RecentEntriesPlaceholder("No ${metric.readableName.lowercase()} entries yet.")
+        }
+        return
+    }
+
+    if (!inSelectMode) {
+        item(key = "recent-entries-hint") {
+            Text(
+                "Long-press a row to multi-select.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    itemsIndexed(
+        entries,
+        key = { _, entry -> entry.reading.id },
+    ) { index, entry ->
+        Column {
+            EntryRow(
+                metric = metric,
+                entry = entry,
+                inSelectMode = inSelectMode,
+                isSelected = entry.reading.id in selectedIds,
+                onLongPress = { onLongPress(entry.reading.id) },
+                onToggle = { onToggle(entry.reading.id) },
+                onDelete = { onDeleteOne(entry) },
+            )
+            if (index < entries.lastIndex) {
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentEntriesHeader(
+    inSelectMode: Boolean,
+    selectedCount: Int,
+    onRequestBatchDelete: () -> Unit,
+    onCancelSelection: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            if (inSelectMode) "${selectedIds.size} selected" else "Recent entries",
+            if (inSelectMode) "$selectedCount selected" else "Recent entries",
             style = MaterialTheme.typography.titleMedium,
         )
         if (inSelectMode) {
@@ -62,62 +129,20 @@ internal fun RecentEntriesSection(
             }
         }
     }
+}
 
-    if (!loaded) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Text(
-                "Loading…",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
-        return
-    }
-
-    if (entries.isEmpty()) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Text(
-                "No ${metric.readableName.lowercase()} entries yet.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
-        return
-    }
-
-    if (!inSelectMode) {
-        Text(
-            "Long-press a row to multi-select.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+@Composable
+private fun RecentEntriesPlaceholder(text: String) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
-    }
-
-    Card {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            entries.forEachIndexed { index, entry ->
-                EntryRow(
-                    metric = metric,
-                    entry = entry,
-                    inSelectMode = inSelectMode,
-                    isSelected = entry.reading.id in selectedIds,
-                    onLongPress = { onLongPress(entry.reading.id) },
-                    onToggle = { onToggle(entry.reading.id) },
-                    onDelete = { onDeleteOne(entry) },
-                )
-                if (index < entries.lastIndex) {
-                    HorizontalDivider()
-                }
-            }
-        }
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 
