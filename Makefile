@@ -10,6 +10,12 @@ SAMSUNG_ID := 616ecbcf
 PIXEL4A_ID := 0B201JECB13875
 PIXEL9A_ID := 59101JEBF02652
 
+# Where pre-install DB snapshots live. Each install pulls the encrypted
+# bios.db + WAL + SHM from the device and stores them here, named with
+# a UTC timestamp and the device model+serial. Restore is just a copy
+# back via `adb push` + `run-as cp`; see scripts/restore-db.md.
+DB_BACKUP_DIR := db-backups
+
 BUILD ?= debug
 FLAVOR ?= standalone
 ifeq ($(BUILD),prod)
@@ -29,13 +35,47 @@ assemble:
 	$(GRADLEW) assemble$(GRADLE_VARIANT)
 
 .PHONY: install
-install:
+install: db-backup
 	@if adb devices | grep -q 'device$$'; then \
 		$(GRADLEW) install$(GRADLE_VARIANT); \
 	else \
 		echo "No device connected. Building APK only."; \
 		$(GRADLEW) assemble$(GRADLE_VARIANT); \
 	fi
+
+# Pull bios.db (+ WAL + SHM) off the connected device into
+# $(DB_BACKUP_DIR) before any install. Filename embeds a UTC timestamp,
+# the device's ro.product.model, and its ADB serial — so a multi-device
+# workflow doesn't collide and a restore can pick the right snapshot
+# without ambiguity. Skips cleanly when no device is connected or Bios
+# isn't installed yet (fresh device case), so it never blocks a build.
+.PHONY: db-backup
+db-backup:
+	@mkdir -p $(DB_BACKUP_DIR)
+	@if ! adb get-state >/dev/null 2>&1; then \
+		echo "[db-backup] no device — skipping backup."; \
+		exit 0; \
+	fi; \
+	if ! adb shell pm path com.bios.app >/dev/null 2>&1; then \
+		echo "[db-backup] com.bios.app not installed — skipping backup."; \
+		exit 0; \
+	fi; \
+	TS=$$(date -u +%Y%m%dT%H%M%SZ); \
+	SERIAL=$$(adb get-serialno | tr -d '\r\n'); \
+	MODEL=$$(adb shell getprop ro.product.model | tr -d '\r\n' | tr ' ' '_'); \
+	OUT_BASE=$(DB_BACKUP_DIR)/bios-$${TS}-$${MODEL}-$${SERIAL}; \
+	echo "[db-backup] $${MODEL} ($${SERIAL}) → $${OUT_BASE}.db"; \
+	if ! adb exec-out run-as com.bios.app cat databases/bios.db > "$${OUT_BASE}.db" 2>/dev/null || [ ! -s "$${OUT_BASE}.db" ]; then \
+		echo "[db-backup] bios.db not readable (debug build only) or empty — skipping."; \
+		rm -f "$${OUT_BASE}.db"; \
+		exit 0; \
+	fi; \
+	adb exec-out run-as com.bios.app cat databases/bios.db-wal > "$${OUT_BASE}.db-wal" 2>/dev/null; \
+	[ -s "$${OUT_BASE}.db-wal" ] || rm -f "$${OUT_BASE}.db-wal"; \
+	adb exec-out run-as com.bios.app cat databases/bios.db-shm > "$${OUT_BASE}.db-shm" 2>/dev/null; \
+	[ -s "$${OUT_BASE}.db-shm" ] || rm -f "$${OUT_BASE}.db-shm"; \
+	SIZE=$$(stat -c %s "$${OUT_BASE}.db" 2>/dev/null || stat -f %z "$${OUT_BASE}.db"); \
+	echo "[db-backup] ok ($${SIZE} bytes)"
 
 .PHONY: check
 check:
@@ -97,7 +137,8 @@ help:
 	@echo ""
 	@echo "Build:"
 	@echo "  make assemble       - Build APK (no device needed). BUILD=prod for release."
-	@echo "  make install        - Build + install on connected device. BUILD=prod for release."
+	@echo "  make install        - Backup DB + build + install on connected device. BUILD=prod for release."
+	@echo "  make db-backup      - Snapshot bios.db (timestamped + device-identified) to $(DB_BACKUP_DIR)/."
 	@echo "  make check          - Run all Gradle checks (lint + tests)."
 	@echo "  make lint           - Run Android lint."
 	@echo "  make test           - Run unit tests."
