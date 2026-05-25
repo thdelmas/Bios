@@ -49,6 +49,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Retry the seizure foreground service from a foreground context;
+        // Application.onCreate's call no-ops on background process spawns.
+        com.bios.app.ingest.SeizureDetectionService.startIfOptedIn(this)
+
         setContent {
             BiosTheme {
                 BiosRoot()
