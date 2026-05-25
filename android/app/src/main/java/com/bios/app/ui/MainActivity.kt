@@ -28,6 +28,7 @@ import com.bios.app.ui.notice.NoticeScreen
 import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
+import com.bios.app.ui.clinical.AddReadingScreen
 import com.bios.app.ui.journal.HealthEventSheet
 import com.bios.app.ui.diagnostics.ConditionDetailScreen
 import androidx.navigation.NavType
@@ -155,8 +156,13 @@ fun BiosApp(viewModel: AppViewModel) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (selectedTab == 3) { // Journal tab
-                FloatingActionButton(onClick = {
+            when (selectedTab) {
+                // Read + Log tabs — quick-add a self-reported reading
+                0, 1 -> FloatingActionButton(onClick = { navController.navigate("add_reading") }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add reading")
+                }
+                // Journal tab — log a health event
+                3 -> FloatingActionButton(onClick = {
                     eventSheetParentId = null
                     eventSheetDefaultType = null
                     showEventSheet = true
@@ -264,7 +270,7 @@ fun BiosApp(viewModel: AppViewModel) {
                 val metricKey = backStackEntry.arguments?.getString("metric")
                 TrendsScreen(
                     viewModel = viewModel,
-                    initialMetric = metricKey?.let { com.bios.contracts.MetricType.fromKey(it) }
+                    initialMetric = metricKey?.let { com.bios.contracts.MetricType.fromKey(it) },
                 )
             }
             composable("notice") {
@@ -362,6 +368,16 @@ fun BiosApp(viewModel: AppViewModel) {
                 com.bios.app.ui.clinical.ClinicalReadingEntryScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = "add_reading?metric={metric}",
+                arguments = listOf(navArgument("metric") { type = NavType.StringType; nullable = true; defaultValue = null })
+            ) { backStackEntry ->
+                AddReadingScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    initialMetric = backStackEntry.arguments?.getString("metric")?.let { MetricType.fromKey(it) },
                 )
             }
             composable("bbt_entry") {
@@ -475,4 +491,5 @@ fun BiosApp(viewModel: AppViewModel) {
             defaultType = eventSheetDefaultType
         )
     }
+
 }
