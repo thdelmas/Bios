@@ -36,7 +36,7 @@ enum class MetricType(
 ) {
     // Cardiovascular
     HEART_RATE("heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
-    HEART_RATE_VARIABILITY("heart_rate_variability", MetricUnit.MILLISECONDS, MetricDomain.CARDIOVASCULAR),
+    HEART_RATE_VARIABILITY("heart_rate_variability", MetricUnit.MILLISECONDS, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     PARASYMPATHETIC_TONE("parasympathetic_tone", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     STRESS_SCORE("stress_score", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     LF_HF_RATIO("lf_hf_ratio", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
@@ -186,7 +186,7 @@ enum class MetricType(
     // utc, avg_hr_bpm, rpe) live in event_payloads keyed by reading id —
     // see docs/DATA_MODEL.md field-key vocabulary.
     EXERCISE_SESSION("exercise_session", MetricUnit.EVENT, MetricDomain.ACTIVITY),
-
+    SEDENTARY_BOUT("sedentary_bout", MetricUnit.SECONDS, MetricDomain.ACTIVITY), MOVEMENT_BREAK("movement_break", MetricUnit.SECONDS, MetricDomain.ACTIVITY), // Anastasis sedentary primitives
     // Metabolic
     BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC, allowsManualEntry = true),
     // CGM-derived variability keys (#28). Computed over the last 24h of

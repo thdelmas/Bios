@@ -288,8 +288,10 @@ class MetricTypeTest {
     fun allows_manual_entry_defaults_false_for_pure_sensor_keys() {
         // Spot-check: streaming sensor / derived signals must never opt in
         // to the manual-reading surface, or the picker fills with noise.
+        // HRV_LF_POWER / HRV_HF_POWER stay non-manual (PSD outputs of an IBI
+        // series), but HRV itself opts in — phone-PPG apps like HRV4Training
+        // give the owner a number to type. See manual_vital assertions.
         val notManual = listOf(
-            MetricType.HEART_RATE_VARIABILITY,
             MetricType.HRV_LF_POWER, MetricType.HRV_HF_POWER,
             MetricType.PARASYMPATHETIC_TONE, MetricType.STRESS_SCORE,
             MetricType.LF_HF_RATIO, MetricType.VO2_MAX,
@@ -312,6 +314,7 @@ class MetricTypeTest {
     fun allows_manual_entry_true_for_clinical_vitals() {
         val manual = listOf(
             MetricType.HEART_RATE, MetricType.RESTING_HEART_RATE,
+            MetricType.HEART_RATE_VARIABILITY,
             MetricType.BLOOD_PRESSURE_SYSTOLIC, MetricType.BLOOD_PRESSURE_DIASTOLIC,
             MetricType.BLOOD_OXYGEN, MetricType.RESPIRATORY_RATE,
             MetricType.SKIN_TEMPERATURE,
