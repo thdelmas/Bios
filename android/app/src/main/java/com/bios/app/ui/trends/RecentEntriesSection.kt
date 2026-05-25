@@ -132,7 +132,6 @@ private fun EntryRow(
     onToggle: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val unit = metric.unit.symbol.ifEmpty { "" }
     val rowBg = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.surface
     Row(
@@ -164,13 +163,7 @@ private fun EntryRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    buildString {
-                        append(formatStat(entry.reading.value))
-                        if (unit.isNotEmpty()) {
-                            append(' ')
-                            append(unit)
-                        }
-                    },
+                    formatMetricValue(entry.reading.value, metric.unit),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                 )

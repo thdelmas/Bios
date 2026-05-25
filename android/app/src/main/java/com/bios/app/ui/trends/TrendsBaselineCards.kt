@@ -19,9 +19,10 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.TrendDirection
+import com.bios.contracts.MetricUnit
 
 @Composable
-fun BaselineSummaryCard(baseline: PersonalBaseline) {
+fun BaselineSummaryCard(baseline: PersonalBaseline, unit: MetricUnit) {
     val trend = TrendDirection.valueOf(baseline.trend)
 
     Card(
@@ -44,9 +45,9 @@ fun BaselineSummaryCard(baseline: PersonalBaseline) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatCell("Mean", formatStat(baseline.mean))
-                StatCell("Std Dev", formatStat(baseline.stdDev))
-                StatCell("Range", "${formatStat(baseline.p5)} - ${formatStat(baseline.p95)}")
+                StatCell("Mean", formatMetricValue(baseline.mean, unit))
+                StatCell("Std Dev", formatMetricValue(baseline.stdDev, unit))
+                StatCell("Range", "${formatMetricValue(baseline.p5, unit)} – ${formatMetricValue(baseline.p95, unit)}")
             }
 
             Spacer(Modifier.height(12.dp))

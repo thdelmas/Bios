@@ -215,16 +215,10 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToActiveSubstances = { navController.navigate("active_substances") },
                     onNavigateToBodyLevels = { navController.navigate("body_levels") },
                     onNavigateToMetric = { metric ->
-                        // SLEEP_DURATION has a dedicated dashboard richer
-                        // than the generic trends view.
-                        if (metric == MetricType.SLEEP_DURATION) {
-                            navController.navigate("sleep_dashboard")
-                        } else {
-                            navController.navigate("trends?metric=${metric.key}") {
-                                popUpTo("home") { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                        navController.navigate("trends?metric=${metric.key}") {
+                            popUpTo("home") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
