@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
+import com.bios.app.model.MetricReading
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.RecentEntry
 import com.bios.app.ui.coverageFor
@@ -70,6 +71,11 @@ fun TrendsScreen(
     var selectedEntryIds by remember(selectedMetric) { mutableStateOf(emptySet<String>()) }
     var pendingBatchDelete by remember { mutableStateOf(false) }
     var liveCoverage by remember(selectedMetric) { mutableStateOf<BaselineEngine.Coverage?>(null) }
+    var chartWindow by remember(selectedMetric) {
+        mutableStateOf(MetricChartTimeWindow.DEFAULT)
+    }
+    var chartReadings by remember { mutableStateOf<List<MetricReading>>(emptyList()) }
+    var chartLoaded by remember(selectedMetric, chartWindow) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(selectedMetric, entriesRefreshKey) {
@@ -79,6 +85,20 @@ fun TrendsScreen(
         // Pre-baked coverage map only covers TRACKED_METRICS (HR/HRV/etc.).
         // For everything else (Weight, BMI, biomarkers, ...) compute on demand.
         liveCoverage = viewModel.coverageFor(selectedMetric)
+    }
+
+    LaunchedEffect(selectedMetric, chartWindow, entriesRefreshKey) {
+        chartLoaded = false
+        val now = System.currentTimeMillis()
+        val raw = viewModel.db.metricReadingDao().fetch(
+            metricType = selectedMetric.key,
+            startMillis = chartWindow.startMillis(now),
+            endMillis = now,
+        )
+        // Downsample on the UI thread is cheap — fetch already returns
+        // sorted ASC, and the helper preserves first + last.
+        chartReadings = downsampleForChart(raw)
+        chartLoaded = true
     }
 
     Column(
@@ -105,7 +125,13 @@ fun TrendsScreen(
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Browse metrics")
         }
 
-        MetricChart(metric = selectedMetric, entries = recentEntries, loaded = entriesLoaded)
+        MetricChart(
+            metric = selectedMetric,
+            readings = chartReadings,
+            loaded = chartLoaded,
+            selectedWindow = chartWindow,
+            onSelectWindow = { chartWindow = it },
+        )
 
         val selectedBaseline = baselines.find { it.metricType == selectedMetric.key }
         if (selectedBaseline != null) {
