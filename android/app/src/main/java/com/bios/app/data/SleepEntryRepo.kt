@@ -30,6 +30,7 @@ class SleepEntryRepo(private val db: BiosDatabase) {
                 metricType = MetricType.SLEEP_DURATION.key,
                 value = durationSeconds.toDouble(),
                 timestamp = timestamp,
+                durationSec = durationSeconds.toInt(),
                 sourceId = sourceId,
                 confidence = ConfidenceTier.HIGH.level
             )
