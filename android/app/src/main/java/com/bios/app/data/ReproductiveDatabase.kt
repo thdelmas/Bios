@@ -31,7 +31,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
  */
 @Database(
     entities = [MetricReading::class, DataSource::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ReproductiveDatabase : RoomDatabase() {
@@ -149,7 +149,7 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                 DB_NAME
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         }
 
@@ -165,6 +165,51 @@ abstract class ReproductiveDatabase : RoomDatabase() {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE metric_readings ADD COLUMN note TEXT")
+            }
+        }
+
+        // Mirrors BiosDatabase MetricReadingMigrations.MIGRATION_30_31: the
+        // shared MetricReading entity declares a UNIQUE INDEX on
+        // (sourceId, metricType, timestamp) so re-syncs collapse into
+        // in-place updates instead of growing parallel rows. The main DB
+        // got the index via v30_31; this DB didn't, so on-device repro DBs
+        // persisted at v2 fail Room's identity-hash check on first open
+        // ("Expected …, found …") and BiosSyncWorker can't read BBT /
+        // CYCLE_PHASE / CYCLE_DAY for baselines.
+        //
+        // Same two-step shape as the main-DB migration: pick-best dedupe
+        // (confidence DESC, createdAt DESC, id ASC) then UNIQUE INDEX. No
+        // destructive fallback — reproductive readings (BBT especially)
+        // are owner-entered and not re-fetchable from any wearable.
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    DELETE FROM metric_readings
+                    WHERE id NOT IN (
+                        SELECT r1.id
+                        FROM metric_readings r1
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM metric_readings r2
+                            WHERE r2.sourceId   = r1.sourceId
+                              AND r2.metricType = r1.metricType
+                              AND r2.timestamp  = r1.timestamp
+                              AND (
+                                  r2.confidence > r1.confidence
+                                  OR (r2.confidence = r1.confidence AND r2.createdAt > r1.createdAt)
+                                  OR (r2.confidence = r1.confidence AND r2.createdAt = r1.createdAt AND r2.id < r1.id)
+                              )
+                        )
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS
+                        index_metric_readings_sourceId_metricType_timestamp
+                    ON metric_readings (sourceId, metricType, timestamp)
+                    """.trimIndent()
+                )
             }
         }
 
