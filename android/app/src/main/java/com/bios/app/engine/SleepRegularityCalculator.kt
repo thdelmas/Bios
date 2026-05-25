@@ -71,21 +71,21 @@ object SleepRegularityCalculator {
             .asSequence()
             .filter { it.metricType == MetricType.SLEEP_DURATION.key }
             .filter { it.timestamp >= cutoff && it.timestamp <= nowMs }
-            .filter { (it.durationSec ?: 0) > 0 }
-            .sortedBy { it.timestamp }
+            .mapNotNull { reading -> effectiveDurationSec(reading)?.let { reading to it } }
+            .sortedBy { (r, _) -> r.timestamp }
             .toList()
         if (nights.size < MIN_NIGHTS) return null
 
-        val midpointVarMin = circularStdMinutes(nights.map { midnightAngle(it.timestamp) })
-        val bedtimeVarMin = circularStdMinutes(nights.map {
-            midnightAngle(it.timestamp - (it.durationSec!! * 1000L) / 2L)
+        val midpointVarMin = circularStdMinutes(nights.map { (r, _) -> midnightAngle(r.timestamp) })
+        val bedtimeVarMin = circularStdMinutes(nights.map { (r, d) ->
+            midnightAngle(r.timestamp - (d * 1000L) / 2L)
         })
-        val wakeVarMin = circularStdMinutes(nights.map {
-            midnightAngle(it.timestamp + (it.durationSec!! * 1000L) / 2L)
+        val wakeVarMin = circularStdMinutes(nights.map { (r, d) ->
+            midnightAngle(r.timestamp + (d * 1000L) / 2L)
         })
 
         val score = scoreFromMidpointVariance(midpointVarMin)
-        val confidence = nights.minOf { it.confidence }
+        val confidence = nights.minOf { (r, _) -> r.confidence }
 
         val reading = MetricReading(
             metricType = MetricType.SLEEP_REGULARITY.key,
@@ -114,6 +114,20 @@ object SleepRegularityCalculator {
             ),
         )
         return Result(reading, payload)
+    }
+
+    /**
+     * Session length in seconds for a SLEEP_DURATION reading. Wearable
+     * adapters (Health Connect, Gadgetbridge) populate `durationSec`
+     * alongside `value`; manual entries via SleepEntryRepo historically
+     * stored the duration only in `value`. For this metric the two carry
+     * the same quantity, so falling back to `value` keeps a month of
+     * manually-logged sleep from being filtered out of the calculation.
+     */
+    private fun effectiveDurationSec(reading: MetricReading): Int? {
+        reading.durationSec?.takeIf { it > 0 }?.let { return it }
+        val fromValue = reading.value.toLong()
+        return if (fromValue > 0) fromValue.toInt() else null
     }
 
     /** Epoch-ms timestamp → angle on the 24h unit circle, in radians. */
