@@ -21,6 +21,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +71,7 @@ import java.util.Locale
 fun ClinicalReadingEntryScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
+    initialPreset: MeasurementPreset = MeasurementPreset.TRIAGE,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -80,11 +82,12 @@ fun ClinicalReadingEntryScreen(
     var clinicName by remember { mutableStateOf("") }
     var visitNote by remember { mutableStateOf("") }
     var sourceUri by remember { mutableStateOf<Uri?>(null) }
+    var preset by remember { mutableStateOf(initialPreset) }
     val rows = remember { mutableStateListOf<ReadingRowState>() }
     var saveMessage by remember { mutableStateOf<String?>(null) }
 
     if (rows.isEmpty()) {
-        defaultTriageRows().forEach { rows.add(it) }
+        defaultRowsFor(preset).forEach { rows.add(it) }
     }
 
     val sourceLauncher = rememberLauncherForActivityResult(
@@ -136,11 +139,11 @@ fun ClinicalReadingEntryScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Vital signs you enter — from a cuff, pulse-ox, thermometer, or a triage " +
-                            "chart a clinician handed you — stay on your device. They show up in " +
-                            "trends and FHIR export, but the baseline engine and anomaly detector " +
-                            "ignore them. Single-point clinical readings would otherwise poison " +
-                            "sensor baselines.",
+                        "Readings you enter — from a cuff, pulse-ox, thermometer, scale, " +
+                            "body-composition station, or a triage chart a clinician handed you — " +
+                            "stay on your device. They show up in trends and FHIR export, but " +
+                            "the baseline engine and anomaly detector ignore them. Single-point " +
+                            "manual readings would otherwise poison sensor baselines.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -202,6 +205,31 @@ fun ClinicalReadingEntryScreen(
                 fontWeight = FontWeight.Bold,
             )
 
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = preset == MeasurementPreset.TRIAGE,
+                    onClick = {
+                        if (preset != MeasurementPreset.TRIAGE) {
+                            preset = MeasurementPreset.TRIAGE
+                            rows.clear()
+                            defaultRowsFor(MeasurementPreset.TRIAGE).forEach { rows.add(it) }
+                        }
+                    },
+                    label = { Text("Triage") },
+                )
+                FilterChip(
+                    selected = preset == MeasurementPreset.BODY_COMPOSITION,
+                    onClick = {
+                        if (preset != MeasurementPreset.BODY_COMPOSITION) {
+                            preset = MeasurementPreset.BODY_COMPOSITION
+                            rows.clear()
+                            defaultRowsFor(MeasurementPreset.BODY_COMPOSITION).forEach { rows.add(it) }
+                        }
+                    },
+                    label = { Text("Body composition") },
+                )
+            }
+
             rows.forEachIndexed { index, row ->
                 ReadingRowCard(
                     state = row,
@@ -240,7 +268,7 @@ fun ClinicalReadingEntryScreen(
                         )
                         saveMessage = "Saved ${bundle.size} reading${if (bundle.size == 1) "" else "s"}."
                         rows.clear()
-                        defaultTriageRows().forEach { rows.add(it) }
+                        defaultRowsFor(preset).forEach { rows.add(it) }
                         clinicName = ""
                         visitNote = ""
                         sourceUri = null

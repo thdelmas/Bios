@@ -392,7 +392,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _timelineEntries.value = db.anomalyDao().fetchAll()
     }
 
-    private suspend fun refreshBaselines() {
+    internal suspend fun refreshBaselines() {
         val allBaselines = db.personalBaselineDao().fetchAll()
         _baselines.value = allBaselines
         _trackedMetricTypes.value = allBaselines.mapNotNull { MetricType.fromKey(it.metricType) }.toSet()

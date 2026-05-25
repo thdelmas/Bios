@@ -30,8 +30,8 @@ class NeurologyAttackEventInvariantsTest {
             assertEquals(MetricDomain.NEUROLOGICAL, t.domain)
             assertEquals(MetricUnit.EVENT, t.unit)
             assertTrue(
-                "${t.key} must allow manual entry — owner is the only source",
                 t.allowsManualEntry,
+                "${t.key} must allow manual entry — owner is the only source",
             )
         }
     }

@@ -1,6 +1,10 @@
 package com.bios.app.ingest
 
 import android.content.Context
+import android.hardware.camera2.CaptureRequest
+import android.util.Range
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -63,6 +67,7 @@ class CameraPpgAdapter(private val context: Context) {
      *    are pushed during capture so the UI can coach the owner if the
      *    finger drifts or motion is detected. Updates ~2 Hz.
      */
+    @OptIn(ExperimentalCamera2Interop::class)
     suspend fun capture(
         lifecycleOwner: LifecycleOwner,
         durationSec: Int,
@@ -87,8 +92,23 @@ class CameraPpgAdapter(private val context: Context) {
         val luminance = Collections.synchronizedList(mutableListOf<Double>())
         val executor = Executors.newSingleThreadExecutor()
         val frameCounter = java.util.concurrent.atomic.AtomicInteger(0)
-        val analysis = ImageAnalysis.Builder()
+        // Pin AE to TARGET_FPS so a dark scene + torch can't push the
+        // sensor onto a long exposure and drop the frame rate to ~17 fps.
+        // At 17 fps each frame is ~60 ms apart but a systolic upstroke is
+        // ~80–120 ms, so peaks get sampled at random phase — amplitudes
+        // swing wildly (peakAmpCov ≈ 1.6, observed on Pixel 9a) and the
+        // adaptive-threshold detector misses alternating beats, producing
+        // a half-rate HR. Forcing a faster AE keeps exposure short enough
+        // that frame rate stays at TARGET_FPS; the torch is what lights
+        // the finger anyway, AE has nothing useful to optimise here.
+        val analysisBuilder = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        Camera2Interop.Extender(analysisBuilder)
+            .setCaptureRequestOption(
+                CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                Range(TARGET_FPS, TARGET_FPS),
+            )
+        val analysis = analysisBuilder
             .build()
             .also {
                 it.setAnalyzer(executor) { image ->
@@ -162,6 +182,15 @@ class CameraPpgAdapter(private val context: Context) {
     }
 
     companion object {
+        /** AE target frame rate (fps). Pinned via [Camera2Interop] on the
+         *  ImageAnalysis use case so a dark scene + torch can't push the
+         *  sensor onto a long exposure and drop the effective rate to the
+         *  point where systolic upstrokes alias between frames. 30 is a
+         *  range every CameraX-supported device advertises; the HAL may
+         *  still round to the closest supported pair if (30, 30) is
+         *  unsupported on a given device. */
+        private const val TARGET_FPS = 30
+
         /** Approximate analyzer frame rate, used by the real-time quality
          *  classifier. Actual rate is measured offline; this is just the
          *  scale for the motion-window heuristic. */

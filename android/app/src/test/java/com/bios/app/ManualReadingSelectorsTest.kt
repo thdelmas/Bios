@@ -3,6 +3,9 @@ package com.bios.app
 import com.bios.app.data.AvpuLevel
 import com.bios.app.data.GcsBounds
 import com.bios.app.data.ManualReadingContext
+import com.bios.app.ui.clinical.MeasurementPreset
+import com.bios.app.ui.clinical.defaultRowsFor
+import com.bios.app.ui.clinical.manualEntryUniverse
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.contracts.MetricUnit
@@ -44,6 +47,79 @@ class ManualReadingSelectorsTest {
             assertTrue(
                 "${t.key} must allow manual entry — triage chart column",
                 t.allowsManualEntry
+            )
+        }
+    }
+
+    @Test
+    fun add_reading_screen_universe_covers_every_clinical_manual_metric() {
+        // The FAB → AddReadingScreen search picker writes through
+        // ManualReadingRepo.add which require()s allowsManualEntry. The
+        // universe filter must cover every manual-entry metric outside the
+        // dedicated provenance-shaped domains (biomarker has its lab screen,
+        // women's health has the isolated reproductive DB). Sleep stays in —
+        // its dedicated screen writes the same shape; excluding it just
+        // buried the override path.
+        val universe = manualEntryUniverse().toSet()
+        val expected = MetricType.entries.filter {
+            it.allowsManualEntry &&
+                it.domain != MetricDomain.BIOMARKER &&
+                it.domain != MetricDomain.WOMENS_HEALTH
+        }.toSet()
+        assertEquals(expected, universe)
+        for (m in universe) {
+            assertTrue(
+                "${m.key} in add-reading universe must allow manual entry",
+                m.allowsManualEntry
+            )
+        }
+    }
+
+    @Test
+    fun add_reading_universe_includes_owner_typed_targets() {
+        // Pharmacy weigh-in shape + HRV4Training morning reading + cuff/
+        // pulse-ox vitals + sleep override must all be findable via the
+        // search picker.
+        val universe = manualEntryUniverse().toSet()
+        val mustFind = setOf(
+            MetricType.BODY_MASS, MetricType.HEIGHT_CM, MetricType.BMI_KG_PER_M2,
+            MetricType.BODY_FAT_PCT, MetricType.LEAN_BODY_MASS_KG, MetricType.FAT_MASS_KG,
+            MetricType.BLOOD_PRESSURE_SYSTOLIC, MetricType.BLOOD_PRESSURE_DIASTOLIC,
+            MetricType.HEART_RATE, MetricType.RESTING_HEART_RATE,
+            MetricType.HEART_RATE_VARIABILITY, MetricType.BLOOD_OXYGEN,
+            MetricType.SKIN_TEMPERATURE,
+            MetricType.SLEEP_DURATION,
+        )
+        for (m in mustFind) {
+            assertTrue(
+                "${m.key} must appear in the AddReadingScreen search universe",
+                m in universe
+            )
+        }
+    }
+
+    @Test
+    fun body_composition_preset_matches_pharmacy_weighin_shape() {
+        // A pharmacy / scale weigh-in prints weight, height, BMI, body fat %,
+        // fat mass, lean mass, plus blood pressure. The preset must cover that
+        // bundle so the owner doesn't delete triage rows and re-add body comp
+        // rows by hand every visit. Order matches the receipt printout.
+        val expected = listOf(
+            MetricType.BODY_MASS,
+            MetricType.HEIGHT_CM,
+            MetricType.BMI_KG_PER_M2,
+            MetricType.BODY_FAT_PCT,
+            MetricType.LEAN_BODY_MASS_KG,
+            MetricType.FAT_MASS_KG,
+            MetricType.BLOOD_PRESSURE_SYSTOLIC,
+            MetricType.BLOOD_PRESSURE_DIASTOLIC,
+        )
+        val actual = defaultRowsFor(MeasurementPreset.BODY_COMPOSITION).map { it.metric }
+        assertEquals(expected, actual)
+        for (m in expected) {
+            assertTrue(
+                "${m.key} must opt in to manual entry — body composition preset",
+                m.allowsManualEntry
             )
         }
     }

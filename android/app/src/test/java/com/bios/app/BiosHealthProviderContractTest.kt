@@ -143,6 +143,45 @@ class BiosHealthProviderContractTest {
     }
 
     @Test
+    fun `companion whitelist contains Anastasis sedentary-load keys`() {
+        // Anastasis is the producer-by-capture-surface for both sedentary bouts
+        // (foreground service consuming accelerometer + step counter) and the
+        // owner-acknowledged movement breaks that follow.
+        assertTrue("sedentary_bout" in CompanionContract.WRITABLE_METRICS)
+        assertTrue("movement_break" in CompanionContract.WRITABLE_METRICS)
+    }
+
+    @Test
+    fun `Anastasis may only write its own sedentary-load keys`() {
+        val a = "com.anastasis.app"
+        assertTrue(CompanionContract.canWrite(a, "sedentary_bout"))
+        assertTrue(CompanionContract.canWrite(a, "movement_break"))
+        // Cross-package isolation — Anastasis must not write any other
+        // companion's keys.
+        assertFalse(CompanionContract.canWrite(a, "tobacco_use"))
+        assertFalse(CompanionContract.canWrite(a, "mood_drift_score"))
+        assertFalse(CompanionContract.canWrite(a, "fall_event"))
+        assertFalse(CompanionContract.canWrite(a, "sleep_duration"))
+    }
+
+    @Test
+    fun `sedentary-load keys are ACTIVITY domain with SECONDS unit`() {
+        assertEquals(MetricDomain.ACTIVITY, MetricType.SEDENTARY_BOUT.domain)
+        assertEquals(MetricUnit.SECONDS, MetricType.SEDENTARY_BOUT.unit)
+        assertEquals(MetricDomain.ACTIVITY, MetricType.MOVEMENT_BREAK.domain)
+        assertEquals(MetricUnit.SECONDS, MetricType.MOVEMENT_BREAK.unit)
+    }
+
+    @Test
+    fun `Anastasis companion source is tagged DERIVED`() {
+        // Bout duration is sensor-derived; the owner's "Done" tap confirms
+        // the break happened but does not change the kind of the underlying
+        // duration value. Mirrors W2F / Virgil rather than Smokeless.
+        val anastasis = CompanionContract.sourceFor("com.anastasis.app")!!
+        assertEquals(ReadingKind.DERIVED, anastasis.defaultReadingKind)
+    }
+
+    @Test
     fun `safety metric types are SAFETY domain with EVENT unit`() {
         assertEquals(MetricDomain.SAFETY, MetricType.FALL_EVENT.domain)
         assertEquals(MetricUnit.EVENT, MetricType.FALL_EVENT.unit)

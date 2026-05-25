@@ -21,6 +21,9 @@ interface PersonalBaselineDao {
     @Query("SELECT * FROM personal_baselines ORDER BY metricType")
     suspend fun fetchAll(): List<PersonalBaseline>
 
+    @Query("DELETE FROM personal_baselines WHERE metricType = :metricType AND context = :context")
+    suspend fun delete(metricType: String, context: String = "ALL")
+
     @Query("DELETE FROM personal_baselines")
     suspend fun deleteAll()
 }
