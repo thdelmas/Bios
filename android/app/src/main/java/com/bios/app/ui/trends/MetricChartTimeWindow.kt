@@ -8,16 +8,17 @@ package com.bios.app.ui.trends
  * `ALL` queries from epoch to now; the DAO range filter is inclusive so
  * passing `0L` as start safely returns every reading on file.
  */
-enum class MetricChartTimeWindow(val label: String, val days: Int?) {
-    DAY("Day", 1),
-    WEEK("Week", 7),
-    MONTH("Month", 30),
-    YEAR("Year", 365),
+enum class MetricChartTimeWindow(val label: String, val durationMillis: Long?) {
+    HOUR("Hour", MILLIS_PER_HOUR),
+    DAY("Day", 24L * MILLIS_PER_HOUR),
+    WEEK("Week", 7L * 24L * MILLIS_PER_HOUR),
+    MONTH("Month", 30L * 24L * MILLIS_PER_HOUR),
+    YEAR("Year", 365L * 24L * MILLIS_PER_HOUR),
     ALL("All", null);
 
     /** Inclusive lower-bound timestamp (epoch ms) for this window. */
     fun startMillis(now: Long = System.currentTimeMillis()): Long =
-        days?.let { now - it.toLong() * MILLIS_PER_DAY } ?: 0L
+        durationMillis?.let { now - it } ?: 0L
 
     companion object {
         /** Default window — small enough to feel responsive on the first paint. */
@@ -29,10 +30,10 @@ enum class MetricChartTimeWindow(val label: String, val days: Int?) {
          * but the visual turns into spaghetti and the GPU bill climbs.
          */
         const val MAX_CHART_POINTS: Int = 500
-
-        private const val MILLIS_PER_DAY: Long = 24L * 60L * 60L * 1000L
     }
 }
+
+private const val MILLIS_PER_HOUR: Long = 60L * 60L * 1000L
 
 /**
  * Uniformly subsample [readings] when the count exceeds
