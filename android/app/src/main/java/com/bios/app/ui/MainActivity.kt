@@ -314,6 +314,13 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToAnthropometry = { navController.navigate("anthropometry") },
                     onNavigateToMetricReadingsDebug = { navController.navigate("metric_readings_debug") },
                     onNavigateToSeizureTimeline = { navController.navigate("seizure_timeline") },
+                    onNavigateToMetricSources = { navController.navigate("metric_sources") },
+                )
+            }
+            composable("metric_sources") {
+                com.bios.app.ui.settings.MetricSourcesScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("metric_readings_debug") {

@@ -52,6 +52,7 @@ class IngestManager(
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
     private val payloadDao = db.eventPayloadFieldDao()
+    private val toggleDao = db.sourceMetricToggleDao()
     private val circadianEngine = CircadianEngine(readingDao)
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
@@ -222,7 +223,7 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                readingDao.insertAll(quality + derived)
+                readingDao.insertAll(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
                 updateLastReadings(quality)
 
                 // Composite events (EXERCISE_SESSION) take a parallel path —
@@ -289,7 +290,7 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                readingDao.insertAll(quality + derived)
+                readingDao.insertAll(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
                 updateLastReadings(quality)
 
                 healthConnectSourceId?.let { id ->
