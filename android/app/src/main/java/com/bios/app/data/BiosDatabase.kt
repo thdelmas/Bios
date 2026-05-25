@@ -45,7 +45,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         TreatmentCourse::class,
         GrowthMeasurement::class,
     ],
-    version = 30,
+    version = 31,
     exportSchema = false
 )
 @androidx.room.TypeConverters(MigraineTriggerConverter::class)
@@ -103,7 +103,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, BiosDatabaseMigrationsExtras.MIGRATION_23_24, BiosDatabaseMigrations.MIGRATION_24_25, MigrationsAnthropometry.MIGRATION_25_26, EcgStripMigrations.MIGRATION_26_27, PerioperativeMigrations.MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, BiosDatabaseMigrationsExtras.MIGRATION_23_24, BiosDatabaseMigrations.MIGRATION_24_25, MigrationsAnthropometry.MIGRATION_25_26, EcgStripMigrations.MIGRATION_26_27, PerioperativeMigrations.MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MetricReadingMigrations.MIGRATION_30_31)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
