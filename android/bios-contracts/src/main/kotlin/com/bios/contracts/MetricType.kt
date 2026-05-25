@@ -120,7 +120,7 @@ enum class MetricType(
     // reading alongside Bios's wearable signals. Manual entry both — these
     // are owner-measured / clinician-measured values, not wearable-derived.
     PEAK_EXPIRATORY_FLOW_LMIN("peak_expiratory_flow_lmin", MetricUnit.LITERS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
-    FORCED_EXPIRATORY_VOLUME_1_LITERS("forced_expiratory_volume_1_liters", MetricUnit.LITERS, MetricDomain.RESPIRATORY, allowsManualEntry = true),
+    FORCED_EXPIRATORY_VOLUME_1_LITERS("forced_expiratory_volume_1_liters", MetricUnit.LITERS, MetricDomain.RESPIRATORY, allowsManualEntry = true), COUGH_FREQUENCY_SELF_RATING("cough_frequency_self_rating", MetricUnit.SCORE, MetricDomain.RESPIRATORY, allowsManualEntry = true), SPUTUM_SELF_RATING("sputum_self_rating", MetricUnit.SCORE, MetricDomain.RESPIRATORY, allowsManualEntry = true), BREATH_EASE_SELF_RATING("breath_ease_self_rating", MetricUnit.SCORE, MetricDomain.RESPIRATORY, allowsManualEntry = true), // owner-rated subjective respiratory scales (#323), 0–10; polarity owner-interpreted
 
     // Temperature
     SKIN_TEMPERATURE("skin_temperature", MetricUnit.CELSIUS, MetricDomain.TEMPERATURE, allowsManualEntry = true),
@@ -154,7 +154,7 @@ enum class MetricType(
     // because the URGENT alert keys on onset velocity (IHS ICHD-3 §6.2.2
     // SAH screen — peak intensity within 60 s) not severity score.
     SEIZURE_EVENT("seizure_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
-    THUNDERCLAP_HEADACHE_SUSPECTED("thunderclap_headache_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    THUNDERCLAP_HEADACHE_SUSPECTED("thunderclap_headache_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true), SMELL_SELF_RATING("smell_self_rating", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true), TASTE_SELF_RATING("taste_self_rating", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true), // owner-rated chemosensory acuity (#323), 0–10
 
     // Sleep
     SLEEP_STAGE("sleep_stage", MetricUnit.CATEGORY, MetricDomain.SLEEP),
@@ -450,7 +450,7 @@ enum class MetricType(
     // mood_drift_score is a domain-specific ADA-1/HDA-1 composite. Both
     // pass the producer-by-capture-surface rule.
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
-    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
+    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH), MOOD_SELF_RATING("mood_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), ENERGY_SELF_RATING("energy_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), FOCUS_SELF_RATING("focus_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), TOBACCO_CRAVING_INTENSITY("tobacco_craving_intensity", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), CANNABIS_CRAVING_INTENSITY("cannabis_craving_intensity", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), SOCIAL_BELONGING_SELF_RATING("social_belonging_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), SMOKER_IDENTITY_SELF_RATING("smoker_identity_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), CHANGE_AGENCY_SELF_RATING("change_agency_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), // owner-rated subjective mental-health scales (#323), 0–10; *_INTENSITY pairs EVENT-shape TOBACCO_/CANNABIS_CRAVING
 
     // Substance-use events (injected by Smokeless via ContentProvider)
     // Timestamp + opaque event-id only — no dose, brand, or method.
