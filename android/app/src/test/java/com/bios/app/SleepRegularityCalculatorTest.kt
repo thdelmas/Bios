@@ -154,6 +154,28 @@ class SleepRegularityCalculatorTest {
     }
 
     @Test
+    fun `manual entries with duration only in value still contribute to regularity`() {
+        // SleepEntryRepo historically stored sleep duration solely in `value`
+        // (durationSec = null). The calculator must fall back to `value` so a
+        // month of manually-logged nights is not silently filtered out.
+        val nights = (1..7).map { i ->
+            val nightStart = now - i.toLong() * 24 * hour
+            val durSec = 8 * 3600
+            MetricReading(
+                metricType = MetricType.SLEEP_DURATION.key,
+                value = durSec.toDouble(),
+                timestamp = nightStart + 23 * hour + (durSec * 1000L) / 2L,
+                durationSec = null,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.HIGH.level
+            )
+        }
+        val result = SleepRegularityCalculator.derive(nights, sourceId, nowMs = now)
+        assertNotNull(result)
+        assertEquals(100.0, result!!.reading.value, 0.5)
+    }
+
+    @Test
     fun `output is a SLEEP_REGULARITY reading carrying the window as duration`() {
         val nights = (1..7).map { sleepNight(daysAgo = it, bedHour = 23, durationH = 8) }
         val result = SleepRegularityCalculator.derive(nights, sourceId, nowMs = now)!!
