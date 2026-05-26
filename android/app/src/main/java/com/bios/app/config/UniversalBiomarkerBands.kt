@@ -138,4 +138,23 @@ internal val universalBiomarkerBands: Map<MetricType, BiomarkerBands> = mapOf(
         concerningDirection = BandDirection.ABOVE,
         lowCeiling = 0.8,
     ),
+    // Absolute lymphocyte count (#353) — BELOW direction. Lymphopenia
+    // alarm thresholds: <1.0 ×10³/µL borderline lymphopenia, <0.5 ×10³/µL
+    // severe (CTCAE v5.0 grade ≥3; ASCO/IDSA neutropenic-fever workup).
+    // For BELOW direction: <normalCeiling = CONCERNING, [normalCeiling,
+    // borderlineCeiling) = BORDERLINE, ≥borderlineCeiling = NORMAL.
+    MetricType.ABSOLUTE_LYMPHOCYTE_COUNT to BiomarkerBands(
+        normalCeiling = 500.0, borderlineCeiling = 1000.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Absolute eosinophil count (#353) — ABOVE direction. Eosinophilia
+    // thresholds: ≥500/µL routine eosinophilia notice, ≥1500/µL is the
+    // hypereosinophilia / HES workup trigger (Valent 2012; Klion 2017).
+    MetricType.ABSOLUTE_EOSINOPHIL_COUNT to BiomarkerBands(
+        normalCeiling = 500.0, borderlineCeiling = 1500.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // AMC and ABC (#353) — no universal alarm threshold; reference range
+    // depends on whether the lab reports as part of a 5-cell or 6-cell
+    // differential. Banded as reference-range descriptive only.
 )

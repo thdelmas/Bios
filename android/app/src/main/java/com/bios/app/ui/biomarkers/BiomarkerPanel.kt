@@ -107,6 +107,13 @@ object BiomarkerPanels {
             MetricType.MONOCYTES_PCT,
             MetricType.EOSINOPHILS_PCT,
             MetricType.BASOPHILS_PCT,
+            // Absolute leukocyte differential (#353) — ANC stays on the
+            // cardio-oncology panel where it anchors the febrile-neutropenia
+            // signature; the four companion counts ride here.
+            MetricType.ABSOLUTE_LYMPHOCYTE_COUNT,
+            MetricType.ABSOLUTE_MONOCYTE_COUNT,
+            MetricType.ABSOLUTE_EOSINOPHIL_COUNT,
+            MetricType.ABSOLUTE_BASOPHIL_COUNT,
         ),
     )
 
