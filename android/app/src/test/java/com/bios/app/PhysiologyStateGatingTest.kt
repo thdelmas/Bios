@@ -172,6 +172,10 @@ class PhysiologyStateGatingTest {
         // Includes ciguatera_suggestive (#196): the bradycardia gate (RHR <50 bpm
         // sustained 48h) would false-fire on endurance athletes whose baseline
         // RHR is already below the threshold.
+        // menstrual_cycle_anomaly (#209) adds MENOPAUSE_TRANSITION on top of
+        // pregnancy + postpartum — cycle-length variability is the defining
+        // STRAW+10 marker of the menopausal transition, so flagging it as
+        // anomaly in peri/post-menopause owners would misread the physiology.
         val pregnancyAndPostpartum = setOf(
             PhysiologyState.PREGNANCY_T1,
             PhysiologyState.PREGNANCY_T2,
@@ -201,7 +205,7 @@ class PhysiologyStateGatingTest {
             "cardiorespiratory_deconditioning" to cardiorespiratoryDeconditioningGate,
             "chronic_inflammation" to pregnancyAndPostpartum,
             "recovery_deficit" to pregnancyPostpartumFrailty,
-            "menstrual_cycle_anomaly" to pregnancyAndPostpartum,
+            "menstrual_cycle_anomaly" to pregnancyAndPostpartum + PhysiologyState.MENOPAUSE_TRANSITION,
             "sepsis_screen" to PhysiologyState.PAEDIATRIC_ALL,
             "dka_screen" to setOf(PhysiologyState.PAEDIATRIC),
             "ciguatera_suggestive" to setOf(PhysiologyState.ATHLETE_HIGH_FITNESS),

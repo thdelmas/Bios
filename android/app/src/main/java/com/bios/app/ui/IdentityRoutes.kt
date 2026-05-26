@@ -3,6 +3,7 @@ package com.bios.app.ui
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.bios.app.ui.reproductive.reproductiveCompletenessRoutes
 
 /**
  * Navigation routes for the "Self" surfaces wired through [SettingsScreen]'s
@@ -85,4 +86,5 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("tremor_trend") {
         com.bios.app.ui.tremor.TremorTrendScreen(onBack = { navController.popBackStack() })
     }
+    reproductiveCompletenessRoutes(navController)
 }

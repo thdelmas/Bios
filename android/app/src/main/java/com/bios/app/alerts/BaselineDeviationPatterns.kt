@@ -392,6 +392,13 @@ internal object BaselineDeviationPatterns {
         prevention = "Menstrual cycle regularity is supported by consistent sleep, regular moderate exercise, adequate nutrition (especially iron and B vitamins), stress management, and maintaining a healthy weight. Extreme caloric restriction, excessive exercise, and chronic stress are common causes of cycle disruption. Tracking your cycle pattern over time helps establish what is normal for you — individual variation is wide, and population averages are less useful than personal baselines.",
         healing = "If a cycle deviation is detected, note any associated symptoms and continue tracking for 2-3 cycles to distinguish a one-time variation from a persistent change. Common causes of temporary irregularity include stress, travel, illness, medication changes, and weight fluctuation. Persistent changes (>3 cycles) warrant gynecological evaluation — possibilities include thyroid dysfunction, PCOS, premature ovarian insufficiency, or structural causes. Your tracked BBT and cycle data can be exported and shared with your provider.",
         risks = "Menstrual cycle irregularities can indicate underlying hormonal or metabolic conditions. Anovulatory cycles (no ovulation) affect fertility and may indicate PCOS or thyroid dysfunction. Shortened luteal phases can impair implantation. Irregular cycles are also associated with higher cardiovascular risk and lower bone density long-term. Early detection of pattern changes — when they're subtle shifts rather than dramatic disruptions — allows earlier investigation and treatment.",
-        excludedStates = PhysiologyState.PREGNANCY + setOf(PhysiologyState.POSTPARTUM),
+        // Cycle variability IS the perimenopausal physiology — STRAW+10
+        // names variable cycle length as the defining marker of the
+        // menopausal transition (#209, OBGYN audit §2.12). Flagging it as
+        // anomaly in peri/post-menopause owners would be exactly the kind
+        // of normative misread the audit calls out.
+        excludedStates = PhysiologyState.PREGNANCY +
+            setOf(PhysiologyState.POSTPARTUM) +
+            PhysiologyState.MENOPAUSE_TRANSITION,
     )
 }

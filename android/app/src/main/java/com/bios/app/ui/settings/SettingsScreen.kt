@@ -56,7 +56,7 @@ fun SettingsScreen(
     onNavigateToAnthropometry: () -> Unit = {},
     onNavigateToMetricReadingsDebug: () -> Unit = {},
     onNavigateToSeizureTimeline: () -> Unit = {},
-    onNavigateToMetricSources: () -> Unit = {}, onNavigateToGeriatricTrajectory: () -> Unit = {}, onNavigateToTremorTrend: () -> Unit = {},
+    onNavigateToMetricSources: () -> Unit = {}, onNavigateToGeriatricTrajectory: () -> Unit = {}, onNavigateToTremorTrend: () -> Unit = {}, onNavigateToReproductive: (route: String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -118,7 +118,7 @@ fun SettingsScreen(
             onNavigateToInterventionEvents = onNavigateToInterventionEvents,
             onNavigateToTreatmentCourses = onNavigateToTreatmentCourses,
             onNavigateToAnthropometry = onNavigateToAnthropometry,
-            onNavigateToGeriatricTrajectory = onNavigateToGeriatricTrajectory, onNavigateToTremorTrend = onNavigateToTremorTrend,
+            onNavigateToGeriatricTrajectory = onNavigateToGeriatricTrajectory, onNavigateToTremorTrend = onNavigateToTremorTrend, onNavigateToReproductive = onNavigateToReproductive,
         )
 
         // Privacy — what can leave, and who can access. Highest-stakes surface.
