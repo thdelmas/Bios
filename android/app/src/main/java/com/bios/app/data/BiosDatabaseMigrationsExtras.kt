@@ -43,4 +43,18 @@ internal object BiosDatabaseMigrationsExtras {
             }
         }
     }
+
+    /**
+     * Optional clinical coding on `health_events` (#357). Three nullable
+     * columns so a coded diagnosis (ICD-10 / SNOMED CT / other vocabulary)
+     * can travel alongside the free-text title. Default null preserves all
+     * existing rows untouched.
+     */
+    val MIGRATION_32_33: Migration = object : Migration(32, 33) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE health_events ADD COLUMN codeSystem TEXT")
+            db.execSQL("ALTER TABLE health_events ADD COLUMN code TEXT")
+            db.execSQL("ALTER TABLE health_events ADD COLUMN codeDisplay TEXT")
+        }
+    }
 }
