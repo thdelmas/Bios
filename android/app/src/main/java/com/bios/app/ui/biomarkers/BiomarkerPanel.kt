@@ -55,6 +55,7 @@ object BiomarkerPanels {
         title = "Inflammation & Iron",
         metrics = listOf(
             MetricType.HSCRP,
+            MetricType.CRP,
             MetricType.FERRITIN,
             MetricType.IRON_SERUM,
             MetricType.IRON_SATURATION_PCT,
