@@ -155,10 +155,21 @@ object FhirImporter {
                 SkippedObservation("valueQuantity missing numeric value", loincCode = loinc)
             )
         }
-        val value = valueQuantity.optDouble("value", Double.NaN)
-        if (value.isNaN() || value <= 0.0) {
+        val rawValue = valueQuantity.optDouble("value", Double.NaN)
+        if (rawValue.isNaN() || rawValue <= 0.0) {
             return ParseOutcome.Skipped(
                 SkippedObservation("Non-positive or non-numeric value", loincCode = loinc)
+            )
+        }
+
+        val value = when (val conversion = normaliseUnit(metric, valueQuantity, rawValue)) {
+            is UnitConversion.Same -> conversion.value
+            is UnitConversion.Converted -> conversion.value
+            is UnitConversion.Mismatch -> return ParseOutcome.Skipped(
+                SkippedObservation(
+                    "Unit ${conversion.incoming} cannot be converted to ${conversion.target} for ${metric.key}",
+                    loincCode = loinc,
+                )
             )
         }
 
@@ -330,6 +341,57 @@ object FhirImporter {
     private sealed class ParseOutcome {
         data class Accepted(val reading: AcceptedReading) : ParseOutcome()
         data class Skipped(val skipped: SkippedObservation) : ParseOutcome()
+    }
+
+    /**
+     * Reconciles the FHIR `valueQuantity.unit` / `valueQuantity.code` with
+     * the canonical Bios unit for [metric]. Returns:
+     *  - [UnitConversion.Same] if the incoming unit matches (or the unit
+     *    field is absent — trust the LOINC mapping in that case).
+     *  - [UnitConversion.Converted] if a registered conversion factor applies.
+     *  - [UnitConversion.Mismatch] when no conversion is known. The caller
+     *    fails closed: better to skip than to store a value in the wrong unit.
+     *
+     * Issue #354 — added because hospital labs report standard CRP in
+     * mg/dL while Bios stores in mg/L; a naive import would underestimate
+     * by 10×. Conversions are intentionally small and explicit — Bios is
+     * not a general unit-conversion service.
+     */
+    private fun normaliseUnit(
+        metric: MetricType,
+        valueQuantity: JSONObject,
+        value: Double,
+    ): UnitConversion {
+        val targetUcum = ucumCode(metric)
+        val incoming = valueQuantity.optString("code").takeIf { it.isNotBlank() }
+            ?: valueQuantity.optString("unit").takeIf { it.isNotBlank() }
+            ?: return UnitConversion.Same(value)
+        if (incoming == targetUcum || incoming == metric.unit.symbol) {
+            return UnitConversion.Same(value)
+        }
+        val factor = conversionFactor(incoming, targetUcum)
+            ?: return UnitConversion.Mismatch(incoming, targetUcum)
+        return UnitConversion.Converted(value * factor)
+    }
+
+    /**
+     * Returns the multiplicative factor to convert [from] to [to], or null
+     * when no conversion is registered. Kept minimal on purpose: every
+     * entry here represents a unit pair Bios has seen in real FHIR imports.
+     */
+    private fun conversionFactor(from: String, to: String): Double? {
+        if (from == to) return 1.0
+        // mg/dL ↔ mg/L. UCUM canonical codes plus the `unit` text fallbacks
+        // that real labs emit. mg/dL × 10 = mg/L.
+        if ((from == "mg/dL" || from == "mg/dl") && to == "mg/L") return 10.0
+        if (from == "mg/L" && (to == "mg/dL" || to == "mg/dl")) return 0.1
+        return null
+    }
+
+    private sealed class UnitConversion {
+        data class Same(val value: Double) : UnitConversion()
+        data class Converted(val value: Double) : UnitConversion()
+        data class Mismatch(val incoming: String, val target: String) : UnitConversion()
     }
 }
 

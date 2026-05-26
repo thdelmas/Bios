@@ -278,6 +278,97 @@ class FhirImporterTest {
         assertNull(summary.accepted.single().labName)
     }
 
+    // -- Unit normalisation (#354) --
+
+    @Test
+    fun `CRP reported in mg per dL is scaled to mg per L`() {
+        // Sagrat Cor discharge: standard CRP reported as 0.1 mg/dL.
+        // Canonical Bios unit is mg/L; 0.1 mg/dL × 10 = 1.0 mg/L.
+        val json = """
+            {
+              "resourceType": "Observation",
+              "status": "final",
+              "code": {
+                "coding": [{ "system": "http://loinc.org", "code": "1988-5" }]
+              },
+              "effectiveDateTime": "2026-04-21T11:49:00Z",
+              "valueQuantity": { "value": 0.1, "unit": "mg/dL", "code": "mg/dL" }
+            }
+        """.trimIndent()
+        val summary = FhirImporter.parse(json)
+        assertEquals(1, summary.acceptedCount)
+        assertEquals(1.0, summary.accepted.single().value, 0.0001)
+    }
+
+    @Test
+    fun `CRP reported in mg per L passes through unchanged`() {
+        val json = """
+            {
+              "resourceType": "Observation",
+              "status": "final",
+              "code": {
+                "coding": [{ "system": "http://loinc.org", "code": "1988-5" }]
+              },
+              "effectiveDateTime": "2026-04-21T11:49:00Z",
+              "valueQuantity": { "value": 5.0, "unit": "mg/L", "code": "mg/L" }
+            }
+        """.trimIndent()
+        val summary = FhirImporter.parse(json)
+        assertEquals(1, summary.acceptedCount)
+        assertEquals(5.0, summary.accepted.single().value, 0.0001)
+    }
+
+    @Test
+    fun `observation with no unit field trusts the LOINC mapping`() {
+        // A FHIR producer that omits valueQuantity.unit is implicitly using
+        // the LOINC-canonical unit. We accept the value as-is rather than
+        // dropping the import — defensive but pragmatic.
+        val json = """
+            {
+              "resourceType": "Observation",
+              "status": "final",
+              "code": {
+                "coding": [{ "system": "http://loinc.org", "code": "1988-5" }]
+              },
+              "effectiveDateTime": "2026-04-21T11:49:00Z",
+              "valueQuantity": { "value": 5.0 }
+            }
+        """.trimIndent()
+        val summary = FhirImporter.parse(json)
+        assertEquals(1, summary.acceptedCount)
+        assertEquals(5.0, summary.accepted.single().value, 0.0001)
+    }
+
+    @Test
+    fun `unknown unit fails closed rather than storing the wrong value`() {
+        // If the lab sends an unrecognised unit (e.g. someone misconfigures
+        // mg/mL — three orders of magnitude off), we'd rather drop the
+        // observation than silently land the wrong number.
+        val json = """
+            {
+              "resourceType": "Observation",
+              "status": "final",
+              "code": {
+                "coding": [{ "system": "http://loinc.org", "code": "1988-5" }]
+              },
+              "effectiveDateTime": "2026-04-21T11:49:00Z",
+              "valueQuantity": { "value": 0.001, "unit": "mg/mL", "code": "mg/mL" }
+            }
+        """.trimIndent()
+        val summary = FhirImporter.parse(json)
+        assertEquals(0, summary.acceptedCount)
+        assertEquals(1, summary.skippedCount)
+        assertTrue(summary.skipped.single().reason.contains("mg/mL"))
+    }
+
+    @Test
+    fun `CRP and HSCRP route to distinct MetricTypes on import`() {
+        // Bios stores CRP and high-sensitivity CRP separately. Two
+        // observations with the two LOINCs should land on the right keys.
+        assertEquals(MetricType.CRP, FhirImporter.loincToMetricType["1988-5"])
+        assertEquals(MetricType.HSCRP, FhirImporter.loincToMetricType["30522-7"])
+    }
+
     // -- Fixture helpers --
 
     private fun observation(loinc: String, value: Double, instant: String) = """

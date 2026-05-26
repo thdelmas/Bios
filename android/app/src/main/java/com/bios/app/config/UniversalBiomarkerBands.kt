@@ -16,6 +16,14 @@ internal val universalBiomarkerBands: Map<MetricType, BiomarkerBands> = mapOf(
     // hsCRP (mg/L): <1.0 low, 1.0–3.0 moderate, ≥3.0 high
     // (Ridker 2003; Pearson AHA/CDC 2003)
     MetricType.HSCRP to BiomarkerBands(normalCeiling = 1.0, borderlineCeiling = 3.0),
+    // Standard-sensitivity CRP (#354), mg/L. Distinct assay from hsCRP —
+    // tracks acute inflammation / infection, not low-grade cardiovascular
+    // risk. Bands: <10 normal-ish, 10–50 inflammation notice, ≥50 marked
+    // inflammation (Pepys & Hirschfield 2003; Sproston & Ashworth 2018).
+    MetricType.CRP to BiomarkerBands(
+        normalCeiling = 10.0, borderlineCeiling = 50.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
     // HbA1c (%): <5.7 normal, 5.7–6.5 prediabetic, ≥6.5 diabetic (ADA 2024)
     MetricType.HBA1C to BiomarkerBands(normalCeiling = 5.7, borderlineCeiling = 6.5),
     // Total cholesterol (mg/dL): <200 desirable, 200–239 borderline, ≥240 high
