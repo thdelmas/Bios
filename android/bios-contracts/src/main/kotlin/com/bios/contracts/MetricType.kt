@@ -436,6 +436,8 @@ enum class MetricType(
     VITAMIN_A_RETINOL("vitamin_a_retinol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
     VITAMIN_E_ALPHA_TOCOPHEROL("vitamin_e_alpha_tocopherol", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    PROTHROMBIN_TIME("prothrombin_time", MetricUnit.SECONDS, MetricDomain.BIOMARKER, allowsManualEntry = true), INR("inr", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true), QUICK_INDEX("quick_index", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true), APTT("aptt", MetricUnit.SECONDS, MetricDomain.BIOMARKER, allowsManualEntry = true), APTT_RATIO("aptt_ratio", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true), // coagulation panel (#352) — PT/INR/Quick/aPTT/aPTT-ratio; INR and aPTT-ratio are dimensionless (SCORE per HOMA_IR precedent); Quick index is percent-of-normal-prothrombin per DACH/ES/FR convention
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age

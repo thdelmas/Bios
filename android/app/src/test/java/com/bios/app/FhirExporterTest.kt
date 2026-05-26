@@ -1,16 +1,17 @@
 package com.bios.app
 
+import com.bios.app.export.loincCode
+import com.bios.app.export.ucumCode
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
-import com.bios.contracts.MetricUnit
 import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Tests for FhirExporter LOINC and UCUM mapping logic.
- *
- * The mapping methods are private in FhirExporter, so we mirror them here
- * to validate correctness of clinical coding without needing a database.
+ * Tests for the FHIR LOINC and UCUM mapping tables (see
+ * [com.bios.app.export.loincCode] / [com.bios.app.export.ucumCode] in
+ * `FhirMetricCodings.kt`). The mapping functions are `internal`, so the
+ * test calls them directly.
  */
 class FhirExporterTest {
 
@@ -112,13 +113,13 @@ class FhirExporterTest {
 
     @Test
     fun `metric types with LOINC mappings include the AHI passthrough`() {
-        // 32 base + 5 wave-5 biomarkers (#158) + AHI (#157) + 36 Wave-1
+        // 32 base + 5 wave-5 biomarkers (#158) + AHI (#157) + 47 Wave-1
         // (audit §3.1) + 8 Wave-2 (audit §3.2 — telomere/bone-T/vit K2
-        // intentionally unmapped) = 82. The count assertion is maintained
-        // alongside the loincCode() table so any unmapped new MetricType is
-        // caught.
+        // intentionally unmapped) + 5 coagulation (#352) = 98. The count
+        // assertion is maintained alongside the loincCode() table so any
+        // unmapped new MetricType is caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(82, mapped)
+        assertEquals(98, mapped)
     }
 
     @Test
@@ -198,6 +199,29 @@ class FhirExporterTest {
         assertEquals("6690-2", loincCode(MetricType.WBC)!!.first)
         assertEquals("789-8", loincCode(MetricType.RBC)!!.first)
         assertEquals("777-3", loincCode(MetricType.PLATELETS)!!.first)
+    }
+
+    @Test
+    fun `coagulation panel maps to canonical LOINC codes`() {
+        // Issue #352. PT/aPTT plasma-tube LOINCs; Quick uses the percent-of-
+        // normal LOINC reported by DACH/ES/FR labs; INR is the warfarin
+        // monitoring standard.
+        assertEquals("5902-2", loincCode(MetricType.PROTHROMBIN_TIME)!!.first)
+        assertEquals("6301-6", loincCode(MetricType.INR)!!.first)
+        assertEquals("11149-6", loincCode(MetricType.QUICK_INDEX)!!.first)
+        assertEquals("14979-9", loincCode(MetricType.APTT)!!.first)
+        assertEquals("13488-2", loincCode(MetricType.APTT_RATIO)!!.first)
+    }
+
+    @Test
+    fun `coagulation panel units map to canonical UCUM codes`() {
+        // PT and aPTT are reported in seconds; INR and aPTT-ratio are
+        // dimensionless (SCORE per HOMA_IR precedent); Quick is percent.
+        assertEquals("s", ucumCode(MetricType.PROTHROMBIN_TIME))
+        assertEquals("{score}", ucumCode(MetricType.INR))
+        assertEquals("%", ucumCode(MetricType.QUICK_INDEX))
+        assertEquals("s", ucumCode(MetricType.APTT))
+        assertEquals("{score}", ucumCode(MetricType.APTT_RATIO))
     }
 
     @Test
@@ -285,100 +309,6 @@ class FhirExporterTest {
         }
     }
 
-    // --- Mirror methods from FhirExporter ---
-
-    private fun loincCode(metricType: MetricType): Pair<String, String>? {
-        return when (metricType) {
-            MetricType.HEART_RATE -> "8867-4" to "Heart rate"
-            MetricType.HEART_RATE_VARIABILITY -> "80404-7" to "R-R interval.standard deviation"
-            MetricType.RESTING_HEART_RATE -> "40443-4" to "Heart rate - resting"
-            MetricType.BLOOD_OXYGEN -> "2708-6" to "Oxygen saturation in Arterial blood"
-            MetricType.RESPIRATORY_RATE -> "9279-1" to "Respiratory rate"
-            MetricType.BLOOD_PRESSURE_SYSTOLIC -> "8480-6" to "Systolic blood pressure"
-            MetricType.BLOOD_PRESSURE_DIASTOLIC -> "8462-4" to "Diastolic blood pressure"
-            MetricType.BLOOD_GLUCOSE -> "2345-7" to "Glucose [Mass/volume] in Serum or Plasma"
-            MetricType.STEPS -> "55423-8" to "Number of steps in unspecified time Pedometer"
-            MetricType.SLEEP_DURATION -> "93832-4" to "Sleep duration"
-            MetricType.SKIN_TEMPERATURE -> "8310-5" to "Body temperature"
-            MetricType.BASAL_BODY_TEMPERATURE -> "8332-9" to "Oral temperature"
-            MetricType.BODY_MASS -> "29463-7" to "Body weight"
-            MetricType.BODY_FAT_PCT -> "41982-0" to "Percentage of body fat Measured"
-            MetricType.LEAN_MASS -> "91557-9" to "Body lean mass Measured by Bioelectrical impedance analysis"
-            MetricType.VO2_MAX -> "97090-9" to "Maximum oxygen consumption per unit time per unit body mass"
-            MetricType.HBA1C -> "4548-4" to "Hemoglobin A1c/Hemoglobin.total in Blood"
-            MetricType.HSCRP -> "30522-7" to "C reactive protein.high sensitivity [Mass/volume] in Serum or Plasma"
-            MetricType.TOTAL_CHOLESTEROL -> "2093-3" to "Cholesterol [Mass/volume] in Serum or Plasma"
-            MetricType.LDL_CHOLESTEROL -> "2089-1" to "Cholesterol in LDL [Mass/volume] in Serum or Plasma"
-            MetricType.HDL_CHOLESTEROL -> "2085-9" to "Cholesterol in HDL [Mass/volume] in Serum or Plasma"
-            MetricType.TRIGLYCERIDES -> "2571-8" to "Triglyceride [Mass/volume] in Serum or Plasma"
-            MetricType.APO_B -> "1884-6" to "Apolipoprotein B [Mass/volume] in Serum or Plasma"
-            MetricType.VITAMIN_D_25OH -> "14635-7" to "25-hydroxyvitamin D2+D3 [Mass/volume] in Serum or Plasma"
-            MetricType.TSH -> "3016-3" to "Thyrotropin [Units/volume] in Serum or Plasma"
-            MetricType.FREE_T4 -> "3024-7" to "Thyroxine (T4) free [Mass/volume] in Serum or Plasma"
-            MetricType.FREE_T3 -> "3051-0" to "Triiodothyronine (T3) free [Mass/volume] in Serum or Plasma"
-            MetricType.HEMOGLOBIN -> "718-7" to "Hemoglobin [Mass/volume] in Blood"
-            MetricType.HEMATOCRIT -> "4544-3" to "Hematocrit [Volume Fraction] of Blood by Automated count"
-            MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
-            MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
-            MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
-            // #158 — renal / hepatic.
-            MetricType.EGFR -> "62238-1" to "Glomerular filtration rate/1.73 sq M.predicted by Creatinine-based formula (CKD-EPI 2021)"
-            MetricType.CREATININE -> "2160-0" to "Creatinine [Mass/volume] in Serum or Plasma"
-            MetricType.ALT -> "1742-6" to "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
-            MetricType.AST -> "1920-8" to "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
-            MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
-            // #157 — apnea-hypopnea index.
-            MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
-            // Wave-1 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.1).
-            MetricType.LIPOPROTEIN_A -> "89594-4" to "Lipoprotein a [Moles/volume] in Serum or Plasma"
-            MetricType.HOMOCYSTEINE -> "13965-9" to "Homocysteine [Moles/volume] in Serum or Plasma"
-            MetricType.BUN -> "3094-0" to "Urea nitrogen [Mass/volume] in Serum or Plasma"
-            MetricType.CALCIUM_SERUM -> "17861-6" to "Calcium [Mass/volume] in Serum or Plasma"
-            MetricType.CARBON_DIOXIDE -> "2028-9" to "Carbon dioxide, total [Moles/volume] in Serum or Plasma"
-            MetricType.CHLORIDE -> "2075-0" to "Chloride [Moles/volume] in Serum or Plasma"
-            MetricType.PHOSPHATE -> "2777-1" to "Phosphate [Mass/volume] in Serum or Plasma"
-            MetricType.SODIUM -> "2951-2" to "Sodium [Moles/volume] in Serum or Plasma"
-            MetricType.POTASSIUM -> "2823-3" to "Potassium [Moles/volume] in Serum or Plasma"
-            MetricType.URIC_ACID -> "3084-1" to "Urate [Mass/volume] in Serum or Plasma"
-            MetricType.ALBUMIN -> "1751-7" to "Albumin [Mass/volume] in Serum or Plasma"
-            MetricType.ALKALINE_PHOSPHATASE -> "6768-6" to "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma"
-            MetricType.BILIRUBIN_TOTAL -> "1975-2" to "Bilirubin.total [Mass/volume] in Serum or Plasma"
-            MetricType.TOTAL_PROTEIN -> "2885-2" to "Protein [Mass/volume] in Serum or Plasma"
-            MetricType.AMYLASE -> "1798-8" to "Amylase [Enzymatic activity/volume] in Serum or Plasma"
-            MetricType.LIPASE -> "3040-3" to "Lipase [Enzymatic activity/volume] in Serum or Plasma"
-            MetricType.MCV -> "787-2" to "MCV [Entitic volume] by Automated count"
-            MetricType.MCH -> "785-6" to "MCH [Entitic mass] by Automated count"
-            MetricType.MCHC -> "786-4" to "MCHC [Mass/volume] by Automated count"
-            MetricType.RDW -> "788-0" to "Erythrocyte distribution width [Ratio] by Automated count"
-            MetricType.MPV -> "32623-1" to "Platelet mean volume [Entitic volume] in Blood by Automated count"
-            MetricType.NEUTROPHILS_PCT -> "770-8" to "Neutrophils/100 leukocytes in Blood by Automated count"
-            MetricType.LYMPHOCYTES_PCT -> "736-9" to "Lymphocytes/100 leukocytes in Blood by Automated count"
-            MetricType.MONOCYTES_PCT -> "5905-5" to "Monocytes/100 leukocytes in Blood by Automated count"
-            MetricType.EOSINOPHILS_PCT -> "713-8" to "Eosinophils/100 leukocytes in Blood by Automated count"
-            MetricType.BASOPHILS_PCT -> "706-2" to "Basophils/100 leukocytes in Blood by Automated count"
-            MetricType.IRON_SERUM -> "2498-4" to "Iron [Mass/volume] in Serum or Plasma"
-            MetricType.IRON_SATURATION_PCT -> "2502-3" to "Iron saturation [Mass Fraction] in Serum or Plasma"
-            MetricType.TIBC -> "2500-7" to "Iron binding capacity [Mass/volume] in Serum or Plasma"
-            MetricType.FSH -> "15067-2" to "Follitropin [Units/volume] in Serum or Plasma"
-            MetricType.LH -> "10501-5" to "Lutropin [Units/volume] in Serum or Plasma"
-            MetricType.SHBG -> "13967-5" to "Sex hormone binding globulin [Moles/volume] in Serum or Plasma"
-            MetricType.AMH -> "38476-0" to "Mullerian inhibiting substance [Mass/volume] in Serum or Plasma"
-            MetricType.TESTOSTERONE_FREE -> "2991-8" to "Testosterone.free [Mass/volume] in Serum or Plasma"
-            MetricType.PROLACTIN -> "2842-3" to "Prolactin [Mass/volume] in Serum or Plasma"
-            MetricType.DHEA_SULFATE -> "2191-5" to "Dehydroepiandrosterone sulfate [Mass/volume] in Serum or Plasma"
-            // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2).
-            MetricType.THYROID_PEROXIDASE_AB -> "8099-3" to "Thyroid peroxidase Ab [Units/volume] in Serum"
-            MetricType.THYROGLOBULIN_AB -> "8088-6" to "Thyroglobulin Ab [Units/volume] in Serum"
-            MetricType.PSA_TOTAL -> "2857-1" to "Prostate specific Ag [Mass/volume] in Serum or Plasma"
-            MetricType.PSA_FREE -> "10886-0" to "Prostate Specific Ag Free [Mass/volume] in Serum or Plasma"
-            MetricType.CORONARY_CALCIUM_SCORE -> "49595-2" to "Coronary artery calcium score by CT"
-            MetricType.PTAU_217 -> "102965-7" to "Phosphorylated tau 217 [Mass/volume] in Serum or Plasma"
-            MetricType.VITAMIN_A_RETINOL -> "2923-1" to "Retinol [Mass/volume] in Serum or Plasma"
-            MetricType.VITAMIN_E_ALPHA_TOCOPHEROL -> "1823-4" to "Tocopherol alpha [Mass/volume] in Serum or Plasma"
-            else -> null
-        }
-    }
-
     // --- Reproductive-data isolation guard ---
 
     @Test
@@ -411,63 +341,4 @@ class FhirExporterTest {
         )
     }
 
-    private fun ucumCode(metricType: MetricType): String {
-        return when (metricType.unit) {
-            MetricUnit.BPM -> "/min"
-            MetricUnit.MILLISECONDS -> "ms"
-            MetricUnit.PERCENT -> "%"
-            MetricUnit.MMHG -> "mm[Hg]"
-            MetricUnit.BREATHS_PER_MIN -> "/min"
-            MetricUnit.CELSIUS -> "Cel"
-            MetricUnit.DELTA_CELSIUS -> "Cel"
-            MetricUnit.SECONDS -> "s"
-            MetricUnit.COUNT -> "{count}"
-            MetricUnit.KCAL -> "kcal"
-            MetricUnit.KILOGRAMS -> "kg"
-            MetricUnit.MG_PER_DL -> "mg/dL"
-            MetricUnit.MG_PER_L -> "mg/L"
-            MetricUnit.NG_PER_ML -> "ng/mL"
-            MetricUnit.NG_PER_DL -> "ng/dL"
-            MetricUnit.UG_PER_DL -> "ug/dL"
-            MetricUnit.PG_PER_ML -> "pg/mL"
-            MetricUnit.MIU_PER_L -> "m[IU]/L"
-            MetricUnit.MICRO_IU_PER_ML -> "u[IU]/mL"
-            MetricUnit.G_PER_DL -> "g/dL"
-            MetricUnit.GIGA_PER_L -> "10*9/L"
-            MetricUnit.TERA_PER_L -> "10*12/L"
-            MetricUnit.SCORE -> "{score}"
-            MetricUnit.CATEGORY -> "{category}"
-            MetricUnit.EVENT -> "{event}"
-            MetricUnit.LUX -> "lx"
-            MetricUnit.YEARS -> "a"
-            MetricUnit.MS_SQUARED -> "ms2"
-            MetricUnit.ML_PER_KG_MIN -> "mL/(kg.min)"
-            MetricUnit.UG_PER_M3 -> "ug/m3"
-            MetricUnit.PPM -> "[ppm]"
-            MetricUnit.PPB -> "[ppb]"
-            MetricUnit.LITERS_PER_MIN -> "L/min"
-            MetricUnit.LITERS -> "L"
-            MetricUnit.MILLIGRAMS -> "mg"
-            MetricUnit.GRAMS -> "g"
-            MetricUnit.U_PER_L -> "U/L"
-            MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
-            MetricUnit.NG_PER_L -> "ng/L"
-            MetricUnit.PER_MICRO_L -> "/uL"
-            MetricUnit.METERS -> "m"
-            MetricUnit.HOURS -> "h"
-            MetricUnit.CENTIMETERS -> "cm"
-            MetricUnit.KG_PER_M2 -> "kg/m2"
-            MetricUnit.BOOLEAN -> "{boolean}"
-            MetricUnit.NMOL_PER_L -> "nmol/L"
-            MetricUnit.UMOL_PER_L -> "umol/L"
-            MetricUnit.MEQ_PER_L -> "meq/L"
-            MetricUnit.FEMTOLITERS -> "fL"
-            MetricUnit.PICOGRAMS -> "pg"
-            MetricUnit.MIU_PER_ML -> "m[IU]/mL"
-            MetricUnit.IU_PER_ML -> "[IU]/mL"
-            MetricUnit.PER_MINUTE -> "/min"
-            MetricUnit.M_PER_S_SQUARED -> "m/s2"
-            MetricUnit.HERTZ -> "Hz"
-        }
-    }
 }

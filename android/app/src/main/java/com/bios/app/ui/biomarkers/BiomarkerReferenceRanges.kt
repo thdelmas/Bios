@@ -80,6 +80,16 @@ object BiomarkerReferenceRanges {
         // (testosterone, estradiol, IGF-1) are deliberately absent here
         // because a sex/age-independent cutoff would be misleading.
         MetricType.CORTISOL to ReferenceRange(low = 6.0, high = 23.0, units = "µg/dL"),
+
+        // Coagulation panel (#352). Reference ranges are lab-dependent (reagent
+        // and analyzer specific); the values here match common adult ranges for
+        // dashboard colouring only — the lab's own range travels alongside the
+        // value when imported via FHIR.
+        MetricType.PROTHROMBIN_TIME to ReferenceRange(low = 9.0, high = 13.0, units = "s"),
+        MetricType.INR to ReferenceRange(low = 0.85, high = 1.20, units = "score"),
+        MetricType.QUICK_INDEX to ReferenceRange(low = 70.0, high = 130.0, units = "%"),
+        MetricType.APTT to ReferenceRange(low = 25.0, high = 40.0, units = "s"),
+        MetricType.APTT_RATIO to ReferenceRange(low = 0.86, high = 1.20, units = "score"),
     )
 
     fun forMetric(metric: MetricType): ReferenceRange? = ranges[metric]

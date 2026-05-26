@@ -117,6 +117,27 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.CONCERNING, bands.classify(10.0))
     }
 
+    // -- INR literature thresholds (#352) --
+
+    @Test
+    fun inr_bands_match_ACCP_2012_universal_alarms() {
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.INR]
+        assertNotNull("INR bands should be populated for US", bands)
+        // ACCP 2012 universal alarms (anticoagulant-context-free):
+        //   <0.8 low alarm (rare; usually lab artefact),
+        //   0.8-1.2 normal (healthy non-anticoagulated),
+        //   1.2-5.0 borderline (warfarin therapeutic range overlaps here),
+        //   ≥5.0 high bleed-risk alarm.
+        assertEquals(BiomarkerBand.CONCERNING, bands!!.classify(0.7))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(0.8))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(1.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(1.2))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(2.5))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(5.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(7.0))
+    }
+
     // -- HbA1c literature thresholds --
 
     @Test
@@ -144,6 +165,7 @@ class BiomarkerBandsTest {
             MetricType.TSH, MetricType.FREE_T4, MetricType.FREE_T3,
             MetricType.HEMOGLOBIN, MetricType.HEMATOCRIT, MetricType.WBC,
             MetricType.RBC, MetricType.PLATELETS,
+            MetricType.INR,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
