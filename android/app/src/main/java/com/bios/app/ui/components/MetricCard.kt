@@ -235,6 +235,8 @@ internal fun formatValue(value: Double, metricType: MetricType): String {
             val minutes = totalMinutes % 60
             "${hours}h ${minutes}m"
         }
+        MetricType.SLEEP_EFFICIENCY ->
+            "${value.toInt()}%"
         else -> String.format("%.1f", value)
     }
 }

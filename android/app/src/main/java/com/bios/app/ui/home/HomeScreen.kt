@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Thermostat
@@ -134,13 +135,14 @@ fun HomeScreen(
             Text("Today's Vitals", style = MaterialTheme.typography.titleMedium)
 
             val metrics = listOf(
+                Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
+                Triple(MetricType.SLEEP_EFFICIENCY, "Sleep Eff.", Icons.Default.Percent),
                 Triple(MetricType.HEART_RATE, "Heart Rate", Icons.Default.Favorite),
                 Triple(MetricType.HEART_RATE_VARIABILITY, "HRV", Icons.AutoMirrored.Filled.ShowChart),
                 Triple(MetricType.BLOOD_OXYGEN, "SpO2", Icons.Default.Air),
                 Triple(MetricType.RESPIRATORY_RATE, "Resp. Rate", Icons.Default.Air),
                 Triple(MetricType.STEPS, "Steps", Icons.AutoMirrored.Filled.DirectionsWalk),
                 Triple(MetricType.SKIN_TEMPERATURE_DEVIATION, "Skin Temp", Icons.Default.Thermostat),
-                Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
             )
 
             LazyVerticalGrid(
