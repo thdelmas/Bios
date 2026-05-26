@@ -119,4 +119,53 @@ internal object BiosDatabaseMigrationsExtras {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_imaging_studies_bodyRegion ON imaging_studies(bodyRegion)")
         }
     }
+
+    /**
+     * Clinical encounters + follow-up referrals (#358). Joins a visit's
+     * vitals / labs / diagnoses / prescriptions into one bundle so the
+     * owner can pull up "everything from this visit" as a unit. v1
+     * creates the two new tables; adding the cross-cutting encounterId
+     * column to existing entities (MetricReading, HealthEvent,
+     * MedicationAnnotation, etc.) is intentionally deferred to a
+     * separate migration so this PR stays focused.
+     */
+    val MIGRATION_35_36: Migration = object : Migration(35, 36) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS clinical_encounters (
+                    uuid TEXT PRIMARY KEY NOT NULL,
+                    facility TEXT,
+                    facilityKind TEXT NOT NULL,
+                    admissionAt INTEGER NOT NULL,
+                    dischargeAt INTEGER,
+                    reasonForVisit TEXT,
+                    dischargeSummaryText TEXT,
+                    dischargeSummaryLanguage TEXT,
+                    followUpInstructions TEXT,
+                    ownerNote TEXT,
+                    createdAt INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_clinical_encounters_admissionAt ON clinical_encounters(admissionAt)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_clinical_encounters_facilityKind ON clinical_encounters(facilityKind)")
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS follow_up_referrals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    encounterUuid TEXT NOT NULL,
+                    specialty TEXT NOT NULL,
+                    urgency TEXT NOT NULL,
+                    suggestedTimeframe TEXT,
+                    facility TEXT,
+                    reason TEXT,
+                    createdAt INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_follow_up_referrals_encounterUuid ON follow_up_referrals(encounterUuid)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_follow_up_referrals_urgency ON follow_up_referrals(urgency)")
+        }
+    }
 }
