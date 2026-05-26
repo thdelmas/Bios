@@ -77,4 +77,6 @@ enum class MetricUnit(val symbol: String) {
     MIU_PER_ML("mIU/mL"),
     /** Antibody titer per millilitre — TPO Ab, Tg Ab thyroid autoimmunity panel. */
     IU_PER_ML("IU/mL"),
+    /** Rate per minute — keystroke cadence, breaths-per-min style scalars where SCORE is too lossy. */
+    PER_MINUTE("/min"),
 }
