@@ -126,4 +126,16 @@ internal val universalBiomarkerBands: Map<MetricType, BiomarkerBands> = mapOf(
         normalCeiling = 2.0, borderlineCeiling = 2.5,
         concerningDirection = BandDirection.ABOVE,
     ),
+    // INR (#352) — bidirectional. Therapeutic windows depend on indication
+    // (warfarin: 2.0–3.0 for AFib/VTE, 2.5–3.5 for mechanical valves) and
+    // belong to the owner + clinician, not Bios — these bands flag the
+    // universal alarms only. Low INR <0.8 is rare and usually a lab artefact;
+    // high INR >5.0 is the over-anticoagulation bleed-risk alarm (ACCP 2012,
+    // ACC/AHA AFib 2019). Quick / PT / aPTT are reference-range descriptive
+    // only (no universal banding without anticoagulant context).
+    MetricType.INR to BiomarkerBands(
+        normalCeiling = 1.2, borderlineCeiling = 5.0,
+        concerningDirection = BandDirection.ABOVE,
+        lowCeiling = 0.8,
+    ),
 )
