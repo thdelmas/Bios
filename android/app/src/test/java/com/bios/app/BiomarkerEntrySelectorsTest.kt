@@ -84,6 +84,8 @@ class BiomarkerEntrySelectorsTest {
             MetricType.ABSOLUTE_MONOCYTE_COUNT,
             MetricType.ABSOLUTE_EOSINOPHIL_COUNT,
             MetricType.ABSOLUTE_BASOPHIL_COUNT,
+            // Standard CRP (#354) — distinct from HSCRP.
+            MetricType.CRP,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
