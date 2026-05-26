@@ -404,6 +404,8 @@ fun SettingsScreen(
 
         SettingsFeedbackCard()
 
+        SettingsPhoneSleepCard()
+
         SettingsSeizureDetectionCard(onViewDetections = onNavigateToSeizureTimeline)
 
         SettingsDiagnosticsCard()
