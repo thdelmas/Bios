@@ -99,14 +99,23 @@ class AlertManager(
             else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
         }
 
-        // Append regional disclaimer to explanation
+        // Append regional disclaimer to explanation. Disclaimer text is
+        // resolved through the localization overlay when available
+        // (issue #210) — falls back to the English source on the
+        // RegionConfig when no resource is declared for the active locale.
         val regionConfig = RegionConfigProvider.forCurrentLocale()
+        val disclaimerKey = regionConfig.regulatory.alertDisclaimerKey
+        val localizedDisclaimer = disclaimerKey?.let { key ->
+            val resId = context.resources.getIdentifier(key, "string", context.packageName)
+            if (resId != 0) context.resources.getString(resId).takeIf { it.isNotBlank() } else null
+        }
+        val disclaimer = localizedDisclaimer ?: regionConfig.regulatory.alertDisclaimer
         val baseExplanation = if (urgentEscalationSuppressed) {
             "${anomaly.explanation}\n\n$GOALS_OF_CARE_NOTE"
         } else {
             anomaly.explanation
         }
-        val fullExplanation = "$baseExplanation\n\n${regionConfig.regulatory.alertDisclaimer}"
+        val fullExplanation = "$baseExplanation\n\n$disclaimer"
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)

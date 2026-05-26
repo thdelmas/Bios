@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Kiswahili (Swahili) — Tier-B placeholder for issue #210.
+
+    PRIORITISATION: Swahili is Tier-B in the audit corpus (African
+    Traditional POV audit §2.7, Other Asian audit cross-reference for
+    East African diaspora). This PR delivers Tier-A locales (es, pt-BR,
+    mi-NZ, haw); Swahili will land in a follow-up PR commissioned with
+    the Baraza la Kiswahili la Taifa (BAKITA, Tanzania) and the
+    Chama cha Kiswahili cha Kenya (CHAKITA, Kenya).
+
+    Swahili reaches ~200M speakers as a lingua franca across East and
+    Central Africa, plus diaspora communities in the Gulf, UK, US,
+    Canada, Australia. It is an official language of Tanzania, Kenya,
+    Uganda, Rwanda, and the African Union. The audit specifically lists
+    it as a high-impact locale once Tier-A ships.
+
+    NO STRINGS in this file = Android falls back to English. Empty is
+    correct until qualified clinical translation is available — Bios
+    will not machine-translate.
+
+    Translation guidance for the follow-up:
+      * Use standard Swahili (Tanzanian/Kenyan koiné), not coastal
+        variants (Kiamu, Kimvita), unless commissioning multiple flavours.
+      * Clinical terminology: prefer BAKITA-published medical glossaries;
+        avoid English-origin loans unless they are settled in clinical
+        speech (e.g. "pressure" → "shinikizo la damu" not "preša").
+-->
+<resources>
+    <!-- TODO(#210 Tier-B): commission Kiswahili clinical translation. -->
+</resources>

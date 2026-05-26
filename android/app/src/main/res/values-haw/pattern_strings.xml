@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ʻŌlelo Hawaiʻi (Hawaiian) overlay — issue #210.
+
+    Statutory context:
+      * ʻŌlelo Hawaiʻi is a co-official language of the State of Hawaiʻi
+        under Article XV, Section 4 of the State Constitution
+        (1978 amendment): "English and Hawaiian shall be the official
+        languages of Hawaiʻi…"
+      * The 1896 Act 57 banning Hawaiian-language instruction was repealed
+        in 1986; the ʻAha Pūnana Leo and Hawaiian-medium schools have
+        rebuilt the speaker base. Software shipping to Hawaiʻi has an
+        affirmative obligation to support the language.
+
+    Honest scope statement:
+      This PR ships only the language-selector UI strings. They use
+      orthography from the Pukui–Elbert *Hawaiian Dictionary* with ʻokina
+      (glottal stop) and kahakō (long-vowel macron: ā ē ī ō ū) applied
+      correctly. The clinical pattern explanations are NOT translated in
+      this PR — translating sepsis criteria, NEWS2, AHI, ECG indications,
+      and mg/dL ↔ mmol/L thresholds into ʻōlelo Hawaiʻi without a fluent
+      reviewer who is also clinically trained would produce dangerously
+      register-mismatched text. Empty keys would shadow the English
+      default; absent keys fall back to English instead.
+
+      Future PR: commission Hawaiʻi-based clinical translators (ʻAha
+      Pūnana Leo network; Papa Ola Lōkahi for Native Hawaiian health
+      terminology) before translating pattern explanations.
+
+    ʻOkina (ʻ) and kahakō policy:
+      * ʻokina is the glottal-stop letter U+02BB (modifier letter turned
+        comma), not a straight apostrophe. Render in source as ʻ.
+      * kahakō are the standard combining macrons (ā ē ī ō ū).
+      * Examples used here: ʻōlelo, Hawaiʻi.
+
+    DO NOT machine-translate pattern_*_explanation / _suggested_action
+    keys into this file. Empty is correct.
+-->
+<resources>
+
+    <!-- == Settings UI strings (language selector) == -->
+    <string name="settings_language_title">ʻŌlelo</string>
+    <string name="settings_language_subtitle">E hoʻololi i ka ʻōlelo o ka ʻōnaehana no nā kikokikona o Bios. Pili kēia i nā leka makaʻala a me nā ʻōlelo o ka pakuhi. E hoʻokumu hou iā Bios ma hope o ka hoʻololi.</string>
+    <string name="settings_language_system_default">Hoʻonohonoho mau o ka ʻōnaehana</string>
+    <string name="settings_language_apply">E hoʻohana</string>
+</resources>

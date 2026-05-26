@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Spanish (es) overlay for ConditionPattern alert text — issue #210.
+
+    Register notes:
+      * Uses Spanish formal/neutral register — third-person descriptive, not
+        second-person imperatives. Avoids "deberías…" and "tú debes…" which
+        the AlertContentPolicy banlist forbids on the push side.
+      * Medical/clinical terms follow the Real Academia Nacional de Medicina
+        de España (RANM) glossary where there is a stable equivalent.
+      * Latin American variants (es-rMX, es-rAR) override only where the
+        regionalism is meaningful for register or vocabulary.
+
+    Translation coverage in this PR (honest scope statement):
+      Translated:
+        - infection_onset
+        - sleep_disruption
+        - cardiovascular_stress
+        - overtraining
+        - respiratory_infection
+        - mental_health_correlate
+        - emergency_spo2_critical
+        - emergency_hypoglycemia_critical
+        - emergency_tachycardia_critical
+        - emergency_bradycardia_critical
+        - hypertensive_urgency
+        - alert_disclaimer_us / _gb / _eu / _ca / _au (regulatory text)
+
+      Intentionally NOT translated (Android falls back to the English
+      default — empty keys would shadow the default):
+        - metabolic_drift, cardiorespiratory_deconditioning,
+          chronic_inflammation, recovery_deficit, menstrual_cycle_anomaly,
+          hypertension_emerging, sepsis_screen, paroxysmal_afib_screen,
+          sleep_apnea_screen, circadian_disruption, autonomic_pattern_shift
+        These contain dense clinical wording (NEWS2, AHI, qSOFA, ATPIII)
+        whose certified Spanish translations vary by country guideline —
+        translating them without a clinical reviewer would risk losing
+        the literature anchor. Tier-B PR will commission those.
+
+    See docs/audits/ (Hispanic / OBGYN multilingual audits) for the audit
+    requirements driving this overlay.
+-->
+<resources>
+
+    <!-- == Phase 1 core patterns == -->
+
+    <string name="pattern_infection_onset_explanation">Varios signos vitales se están desviando de la línea base personal en un patrón compatible con las primeras etapas de una enfermedad. La investigación muestra que estos cambios pueden aparecer 1 o 2 días antes de los síntomas.</string>
+    <string name="pattern_infection_onset_suggested_action">Descansar, mantener una buena hidratación y observar cómo se siente son respuestas razonables. Si aparecen síntomas, conviene consultar a un profesional sanitario.</string>
+
+    <string name="pattern_sleep_disruption_explanation">La calidad del sueño ha disminuido durante varios días. La reducción del sueño profundo combinada con marcadores de estrés fisiológico puede indicar fatiga o estrés acumulados.</string>
+    <string name="pattern_sleep_disruption_suggested_action">Mantener horarios constantes de sueño y vigilia, reducir el tiempo frente a pantallas antes de acostarse y gestionar el estrés son intervenciones con evidencia. Si persiste durante más de una semana, una consulta con un profesional sanitario puede ayudar.</string>
+
+    <string name="pattern_cardiovascular_stress_explanation">Los marcadores cardiovasculares muestran una elevación sostenida por encima de la línea base personal. Esto puede indicar estrés físico o emocional, sobreentrenamiento u otros factores que afectan al corazón.</string>
+    <string name="pattern_cardiovascular_stress_suggested_action">Reducir el ejercicio intenso, gestionar el estrés y asegurar un descanso adecuado son respuestas con evidencia. Ante dolor torácico, mareos o falta de aire, conviene buscar atención médica con prontitud.</string>
+
+    <string name="pattern_overtraining_explanation">El organismo muestra signos de recuperación insuficiente tras la actividad física reciente. Una frecuencia cardíaca en reposo elevada junto con HRV reducida y mala calidad del sueño pueden indicar síndrome de sobreentrenamiento.</string>
+    <string name="pattern_overtraining_suggested_action">1 o 2 días de descanso, priorizar el sueño y reducir la intensidad del entrenamiento son la respuesta con evidencia. Si la fatiga persiste tras varios días de descanso, conviene consultar con un profesional de la medicina deportiva.</string>
+
+    <!-- == Phase 4 expanded patterns (partial) == -->
+
+    <string name="pattern_respiratory_infection_explanation">La frecuencia respiratoria y el oxígeno en sangre se están desviando de la línea base en un patrón asociado a infección respiratoria. Estos cambios pueden aparecer antes de los síntomas de tos o congestión.</string>
+    <string name="pattern_respiratory_infection_suggested_action">Conviene vigilar la aparición de síntomas respiratorios (tos, congestión, falta de aire). Si la SpO2 cae por debajo del 95 % o aparece dificultad respiratoria, contactar con un profesional sanitario.</string>
+
+    <string name="pattern_mental_health_correlate_explanation">Los patrones de sueño, el nivel de actividad y los marcadores autonómicos se han modificado durante la última semana. Estos cambios fisiológicos se correlacionan con estrés, fatiga o cambios de estado de ánimo en la literatura clínica. Esto es una observación de datos, no un diagnóstico.</string>
+    <string name="pattern_mental_health_correlate_suggested_action">Cambios vitales recientes, estrés o factores estacionales podrían estar afectando el bienestar. Si persisten un ánimo bajo, ansiedad o pérdida de interés, hablar con un profesional de la salud mental puede ayudar.</string>
+
+    <!-- == Emergency vital patterns == -->
+
+    <string name="pattern_emergency_spo2_critical_explanation">La lectura más reciente de oxígeno en sangre es igual o inferior al 85 %. Este nivel se asocia a hipoxia significativa y es el umbral clínico estándar para una evaluación inmediata. El artefacto por movimiento, los dedos fríos o el esmalte de uñas pueden producir lecturas falsamente bajas — conviene repetir la medición en un dedo cálido y limpio.</string>
+    <string name="pattern_emergency_spo2_critical_suggested_action">Repetir la medición en un dedo cálido y limpio, sin esmalte. Si se confirma por debajo del 90 %, o si se acompaña de falta de aire, dolor torácico, confusión o coloración azulada en labios o yemas de los dedos, conviene buscar atención médica inmediata o contactar con los servicios de emergencia.</string>
+
+    <string name="pattern_emergency_hypoglycemia_critical_explanation">La lectura más reciente de glucosa en sangre es igual o inferior a 54 mg/dL (3.0 mmol/L). La ADA clasifica este valor como hipoglucemia de nivel 2, el umbral de hipoglucemia clínicamente significativa que requiere corrección inmediata.</string>
+    <string name="pattern_emergency_hypoglycemia_critical_suggested_action">Tomar 15-20 g de carbohidratos de acción rápida (tabletas de glucosa, zumo o azúcar) y volver a medir a los 15 minutos. Repetir si la lectura sigue por debajo de 70 mg/dL. Si la persona no puede tragar, está confundida o no responde, hace falta glucagón o servicios de emergencia.</string>
+
+    <string name="pattern_emergency_tachycardia_critical_explanation">La frecuencia cardíaca en reposo más reciente es igual o superior a 130 lpm. Este valor está fuera de la variación normal en adultos y es el umbral clínico estándar para evaluar taquiarritmia (como fibrilación auricular con respuesta ventricular rápida o taquicardia supraventricular), tirotoxicosis, deshidratación grave, infección u otras causas sistémicas.</string>
+    <string name="pattern_emergency_tachycardia_critical_suggested_action">Si se acompaña de dolor torácico, falta de aire, mareos, desmayo o palpitaciones, conviene buscar atención médica inmediata. Sin síntomas agudos, repetir la medición en reposo tras unos minutos; una lectura sostenida en este nivel justifica una evaluación rápida por un profesional sanitario.</string>
+
+    <string name="pattern_emergency_bradycardia_critical_explanation">La frecuencia cardíaca en reposo más reciente es igual o inferior a 35 lpm. Este valor está por debajo del umbral en el que la bradicardia sintomática, la enfermedad del sistema de conducción (como el bloqueo AV de alto grado o el síndrome del seno enfermo) o el hipotiroidismo grave entran en la valoración clínica. Los atletas de resistencia muy entrenados pueden tener frecuencias cardíacas en reposo reales en este rango sin patología; la medicación documentada para el control de la frecuencia (betabloqueantes, ciertos calcioantagonistas) también puede explicar esta lectura.</string>
+    <string name="pattern_emergency_bradycardia_critical_suggested_action">Si se acompaña de mareos, desmayo, fatiga, falta de aire o dolor torácico, conviene buscar atención médica inmediata. Sin síntomas agudos, un ECG y una evaluación clínica son el paso estándar para distinguir el acondicionamiento atlético de un problema de conducción.</string>
+
+    <!-- == Hypertension == -->
+
+    <string name="pattern_hypertensive_urgency_explanation">Una lectura reciente de presión arterial es igual o superior al umbral de crisis hipertensiva (≥180 sistólica o ≥120 diastólica). Este es el límite universal en las guías ACC/AHA, NICE, ESC, JSH e Hypertension Canada. Una sola lectura con manguito en este nivel puede deberse a esfuerzo reciente, estrés o técnica de medición — el protocolo clínico es repetir la medición tras unos minutos de descanso antes de considerarla confirmada.</string>
+    <string name="pattern_hypertensive_urgency_suggested_action">Descansar 5 minutos y repetir la medición en el brazo contrario con el manguito a la altura del corazón. Si la lectura se confirma igual o superior a 180/120, o si se acompaña de dolor torácico, falta de aire, dolor de cabeza intenso, cambios en la visión o debilidad, conviene buscar atención médica inmediata o contactar con los servicios de emergencia. Sin síntomas agudos pero con una lectura confirmada en este nivel, una evaluación clínica urgente (el mismo día) es el estándar.</string>
+
+    <!-- == Regional alert disclaimers == -->
+    <string name="alert_disclaimer_us">Bios no es un dispositivo médico aprobado por la FDA. Las alertas son informativas y no constituyen asesoramiento médico.</string>
+    <string name="alert_disclaimer_gb">Bios no es un dispositivo médico registrado. Las alertas son informativas y no constituyen asesoramiento médico.</string>
+    <string name="alert_disclaimer_eu">Bios no es un dispositivo médico con marcado CE. Las alertas son informativas y no constituyen asesoramiento médico.</string>
+    <string name="alert_disclaimer_ca">Bios no es un dispositivo médico autorizado por Health Canada. Las alertas son informativas y no constituyen asesoramiento médico.</string>
+    <string name="alert_disclaimer_au">Bios no es un dispositivo médico registrado en la TGA. Las alertas son informativas y no constituyen asesoramiento médico.</string>
+
+    <!-- == Settings UI strings for language selector == -->
+    <string name="settings_language_title">Idioma</string>
+    <string name="settings_language_subtitle">Sobrescribe el idioma del sistema para los textos de Bios. Afecta a los mensajes de alerta y a las etiquetas de la interfaz. Reinicia Bios tras cambiarlo.</string>
+    <string name="settings_language_system_default">Predeterminado del sistema</string>
+    <string name="settings_language_apply">Aplicar</string>
+</resources>
