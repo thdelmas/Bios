@@ -275,7 +275,7 @@ enum class MetricType(
     // alerts/BiomarkerReference.kt — direct readings displace the wearable
     // proxies when an owner imports labs.
     HBA1C("hba1c", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
-    HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true), CRP("crp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true), // #354: standard-sensitivity CRP (acute inflammation / infection) distinct from HSCRP (cardiovascular risk); different LOINCs, same canonical UCUM
     TOTAL_CHOLESTEROL("total_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
     LDL_CHOLESTEROL("ldl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
     HDL_CHOLESTEROL("hdl_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),

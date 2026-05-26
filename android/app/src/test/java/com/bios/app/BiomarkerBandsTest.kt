@@ -198,6 +198,7 @@ class BiomarkerBandsTest {
             MetricType.INR,
             MetricType.ABSOLUTE_LYMPHOCYTE_COUNT,
             MetricType.ABSOLUTE_EOSINOPHIL_COUNT,
+            MetricType.CRP,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands

@@ -54,6 +54,8 @@ object BiomarkerReferenceRanges {
 
         // Inflammation — Ridker / AHA cardiovascular-risk bands.
         MetricType.HSCRP to ReferenceRange(low = null, high = 1.0, units = "mg/L"),
+        // Standard-sensitivity CRP (#354) — acute inflammation, not hsCRP cardiovascular risk.
+        MetricType.CRP to ReferenceRange(low = null, high = 10.0, units = "mg/L"),
         // Iron — sex-averaged adult range; the dashboard treats the
         // single number as descriptive only.
         MetricType.FERRITIN to ReferenceRange(low = 30.0, high = 300.0, units = "ng/mL"),

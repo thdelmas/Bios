@@ -116,11 +116,11 @@ class FhirExporterTest {
         // 32 base + 5 wave-5 biomarkers (#158) + AHI (#157) + 47 Wave-1
         // (audit §3.1) + 8 Wave-2 (audit §3.2 — telomere/bone-T/vit K2
         // intentionally unmapped) + 5 coagulation (#352) + 4 absolute
-        // leukocyte differential (#353) = 102. The count assertion is
-        // maintained alongside the loincCode() table so any unmapped new
-        // MetricType is caught.
+        // leukocyte differential (#353) + 1 standard CRP (#354) = 103.
+        // The count assertion is maintained alongside the loincCode() table
+        // so any unmapped new MetricType is caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(102, mapped)
+        assertEquals(103, mapped)
     }
 
     @Test
@@ -133,6 +133,20 @@ class FhirExporterTest {
     fun `hsCRP maps to LOINC 30522-7`() {
         val (code, _) = loincCode(MetricType.HSCRP)!!
         assertEquals("30522-7", code)
+    }
+
+    @Test
+    fun `CRP maps to LOINC 1988-5 distinct from hsCRP`() {
+        // Issue #354. Standard CRP and high-sensitivity CRP are different
+        // assays with different LOINCs — Bios stores them as separate keys
+        // so a routine ER CRP doesn't masquerade as a cardiovascular-risk
+        // hsCRP.
+        val (code, _) = loincCode(MetricType.CRP)!!
+        assertEquals("1988-5", code)
+        assertNotEquals(
+            loincCode(MetricType.HSCRP)!!.first,
+            loincCode(MetricType.CRP)!!.first,
+        )
     }
 
     @Test
