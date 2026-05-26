@@ -13,7 +13,9 @@ import androidx.work.WorkerParameters
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.BaselinedActivityThreshold
 import com.bios.app.engine.PhoneSleepInference
+import com.bios.app.engine.SleepDerivations
 import com.bios.app.model.DataSource
+import com.bios.app.model.MetricReading
 import com.bios.app.model.PhoneSleepSample
 import com.bios.app.model.ReadingKind
 import com.bios.app.model.SourceType
@@ -165,8 +167,12 @@ class PhoneSleepWorker(
             val sourceId = ensureSource(sourceDao)
             val readings = adapter.infer(samples, sourceId)
             if (readings.isNotEmpty()) {
-                readingDao.insertAll(readings)
-                Log.i(TAG, "diag: inferred readings=${readings.size}")
+                val derived = deriveSleep(readings, sourceId)
+                readingDao.insertAll(readings + derived)
+                Log.i(
+                    TAG,
+                    "diag: inferred readings=${readings.size} derived=${derived.size}"
+                )
             } else {
                 Log.i(TAG, "diag: inferred readings=0 (no viable window in buffer)")
             }
@@ -252,8 +258,30 @@ class PhoneSleepWorker(
             val sourceId = ensureSource(sourceDao)
             val readings = adapter.infer(samples, sourceId)
             if (readings.isEmpty()) return ImmediateResult.NoSleepWindow
-            readingDao.insertAll(readings)
-            return ImmediateResult.Written(readings.size)
+            val derived = deriveSleep(readings, sourceId)
+            readingDao.insertAll(readings + derived)
+            return ImmediateResult.Written(readings.size + derived.size)
+        }
+
+        /**
+         * Phone-inferred SLEEP_STAGE rows skip IngestManager.deriveAll, so
+         * efficiency / TIB / latency / WASO / fragmentation / score would
+         * never populate without this. Mirrors the per-source grouping
+         * IngestManager uses so derivations stay coherent against a single
+         * session's stage rows.
+         */
+        internal fun deriveSleep(
+            readings: List<MetricReading>,
+            sourceId: String,
+        ): List<MetricReading> {
+            val derived = mutableListOf<MetricReading>()
+            SleepDerivations.deriveSleepLatency(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepEfficiency(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveTimeInBed(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepFragmentation(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveWakeAfterSleepOnset(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepScore(readings, sourceId)?.let { derived += it }
+            return derived
         }
 
         private suspend fun ensureSource(dao: com.bios.app.data.dao.DataSourceDao): String {
