@@ -52,10 +52,63 @@ enum class PhysiologyState(val displayName: String) {
      * Owner-revocable instantly. No waiting period. No clinical
      * confirmation. The owner is final.
      */
-    HOSPICE_MODE("Hospice / end-of-life care");
+    HOSPICE_MODE("Hospice / end-of-life care"),
+
+    /**
+     * Perimenopause (#209, OBGYN_POV §2.12). STRAW+10 staging — early
+     * and late phases collapsed into one engine-facing state because
+     * the gating effect is the same: cycle-pattern variability IS the
+     * physiology. The `menstrual_cycle_anomaly` pattern (which assumes
+     * a stable personal cycle baseline) is suppressed here so the
+     * owner doesn't get false anomaly flags for what STRAW+10 calls
+     * normal perimenopausal cycle variability.
+     *
+     * Vasomotor symptoms (hot flashes, night sweats) also skew
+     * nighttime skin temperature and HR; future passes can add
+     * perimenopause-specific replacement patterns.
+     *
+     * Reference: Harlow SD et al. (2012) "Executive summary of the
+     * Stages of Reproductive Aging Workshop + 10," J Clin Endocrinol
+     * Metab 97(4):1159–1168.
+     */
+    PERIMENOPAUSE("Perimenopause"),
+
+    /**
+     * Postmenopause (#209). ≥12 months since last menstrual period
+     * (STRAW+10 stage +1 / +2). Cycle-anomaly patterns are obviously
+     * inapplicable; bone-density and cardiovascular risk profile shift
+     * — surface for future patterns to consult, currently used as the
+     * negative gate on cycle-related anomaly detection.
+     */
+    POSTMENOPAUSE("Postmenopause"),
+
+    /**
+     * Owner-recorded polycystic ovary syndrome (#209, OBGYN §2.13).
+     * Gates heightened glucose / HbA1c sensitivity — PCOS roughly
+     * doubles the lifetime risk of type-2 diabetes (Moran et al. 2010,
+     * Hum Reprod Update), so the metabolic-drift threshold is the
+     * place future passes will tighten. The owner sets the flag from
+     * Settings → PCOS / Endometriosis context; Bios never infers it.
+     */
+    KNOWN_PCOS("Known PCOS"),
+
+    /**
+     * Owner-recorded endometriosis (#209, OBGYN §2.14). Gates
+     * pelvic-pain symptom tracking on the ESAS-r framework. The owner
+     * sets the flag from Settings → PCOS / Endometriosis context;
+     * Bios never infers it.
+     */
+    KNOWN_ENDOMETRIOSIS("Known endometriosis");
 
     companion object {
         /** Convenience set: all pregnancy trimesters. */
         val PREGNANCY: Set<PhysiologyState> = setOf(PREGNANCY_T1, PREGNANCY_T2, PREGNANCY_T3)
+
+        /**
+         * Convenience set: any menopause-transition state where
+         * cycle-stability-based patterns become non-applicable.
+         */
+        val MENOPAUSE_TRANSITION: Set<PhysiologyState> =
+            setOf(PERIMENOPAUSE, POSTMENOPAUSE)
     }
 }

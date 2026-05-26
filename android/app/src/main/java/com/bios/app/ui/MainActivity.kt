@@ -35,6 +35,7 @@ import androidx.navigation.navArgument
 import com.bios.app.ui.ppg.PpgCaptureScreen
 import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.ui.reference.LongevityReferenceScreen
+import com.bios.app.ui.reproductive.reproductiveCompletenessRoutes
 import com.bios.contracts.MetricType
 import com.bios.app.ui.support.MonthlyAskPopup
 import com.bios.app.ui.support.MonthlyAskScheduler
@@ -341,7 +342,8 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
                     onNavigateToRiskProfile = { navController.navigate("risk_profile") },
                     onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
-                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") }
+                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
+                    onNavigateToReproductive = { route -> navController.navigate(route) },
                 )
             }
             composable("risk_profile") {
@@ -362,6 +364,7 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("preventive_care") {
                 com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
             }
+            reproductiveCompletenessRoutes(navController)
             composable("ble_pair") {
                 val bleVm = remember(viewModel) {
                     com.bios.app.ui.ble.BleAirQualityPairViewModel(
