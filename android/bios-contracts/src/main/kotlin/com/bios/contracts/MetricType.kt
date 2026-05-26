@@ -136,6 +136,8 @@ enum class MetricType(
     // value are preserved in the event_payloads sidecar for provenance.
     PAIN_SCORE("pain_score", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     CONSCIOUSNESS_LEVEL("consciousness_level", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    RBD_EVENT_FLAG("rbd_event_flag", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL),
+    REM_MOVEMENT_INDEX("rem_movement_index", MetricUnit.COUNT, MetricDomain.NEUROLOGICAL),
 
     // Neurology owner-symptom logging (#207 + #283 Cut 1, NEUROLOGY_POV §2.5+§2.6+§2.15).
     // Owner-input only — manifesto §3.3 prohibits automated voice / face stroke detection.
@@ -486,7 +488,6 @@ enum class MetricType(
 
     // Active-test results (reserved, no companion whitelisted yet — W2F PVT, Fil SDMT; see SELF_REPORTED_DATA_HOME.md decision 5).
     REACTION_TIME_MS("reaction_time_ms", MetricUnit.MILLISECONDS, MetricDomain.MENTAL_HEALTH),
-    // Geriatric trajectory substrate (#208) — producers in follow-up PRs (GaitAnalyzer, TypingSpeedReader).
     GAIT_VARIABILITY_COV("gait_variability_cov", MetricUnit.PERCENT, MetricDomain.NEUROLOGICAL),
     TYPING_SPEED_CHAR_PER_MIN("typing_speed_char_per_min", MetricUnit.PER_MINUTE, MetricDomain.MENTAL_HEALTH);
 

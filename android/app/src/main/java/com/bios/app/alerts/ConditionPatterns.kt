@@ -84,6 +84,6 @@ object ConditionPatterns {
             PerioperativePatterns.all + CardioOncologyPatterns.all +
             GrowthAndCompositionPatterns.all + NeurologyUrgentPatterns.all +
             AdvancedCardiologyPatterns.all + PsychiatryPatterns.all +
-            GeriatricTrajectoryPatterns.all
+            GeriatricTrajectoryPatterns.all + RbdScreenPattern.all
     }
 }
