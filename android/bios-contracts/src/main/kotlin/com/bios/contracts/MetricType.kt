@@ -484,12 +484,11 @@ enum class MetricType(
     NEAR_MISS_FALL("near_miss_fall", MetricUnit.EVENT, MetricDomain.SAFETY),
     CHECK_IN_MISS("check_in_miss", MetricUnit.EVENT, MetricDomain.SAFETY),
 
-    // Active-test results (reserved, no companion whitelisted yet).
-    // W2F has PVT data today (cognitive_probes); Fil plans SDMT. Reserving
-    // the key now commits the shape upfront so two companions don't ship
-    // divergent definitions of the same signal. See decision 5 in
-    // docs/SELF_REPORTED_DATA_HOME.md.
-    REACTION_TIME_MS("reaction_time_ms", MetricUnit.MILLISECONDS, MetricDomain.MENTAL_HEALTH);
+    // Active-test results (reserved, no companion whitelisted yet — W2F PVT, Fil SDMT; see SELF_REPORTED_DATA_HOME.md decision 5).
+    REACTION_TIME_MS("reaction_time_ms", MetricUnit.MILLISECONDS, MetricDomain.MENTAL_HEALTH),
+    // Geriatric trajectory substrate (#208) — producers in follow-up PRs (GaitAnalyzer, TypingSpeedReader).
+    GAIT_VARIABILITY_COV("gait_variability_cov", MetricUnit.PERCENT, MetricDomain.NEUROLOGICAL),
+    TYPING_SPEED_CHAR_PER_MIN("typing_speed_char_per_min", MetricUnit.PER_MINUTE, MetricDomain.MENTAL_HEALTH);
 
     val readableName: String
         get() = key.replace("_", " ").replaceFirstChar { it.uppercase() }

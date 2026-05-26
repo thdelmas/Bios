@@ -34,6 +34,14 @@ data class ConditionPattern(
     val requiredOwnerConditions: Set<OwnerCondition> = emptySet(),
     /** Drug-class gate (#201): when non-empty, fires only if owner's declared cancer-therapy drug class is in this set. */
     val requiredDrugClasses: Set<com.bios.app.physiology.CancerTherapyDrugClass> = emptySet(),
+    /**
+     * Notification gate (#208, geriatric trajectory advisories). When true,
+     * the anomaly is persisted for pull-side viewing but
+     * [com.bios.app.alerts.AlertManager.sendNotification] never raises a
+     * system notification. Manifesto guard for chronic-trajectory surfaces:
+     * Bios stays silent until the owner navigates into the trajectory view.
+     */
+    val pullSideOnly: Boolean = false,
 ) {
     /** True when the pattern passes all five gates (state both axes, region, owner conditions, drug class). */
     fun appliesIn(
@@ -75,6 +83,7 @@ object ConditionPatterns {
             TropicalDiseasePatterns.all + EnvironmentalPatterns.all +
             PerioperativePatterns.all + CardioOncologyPatterns.all +
             GrowthAndCompositionPatterns.all + NeurologyUrgentPatterns.all +
-            AdvancedCardiologyPatterns.all + PsychiatryPatterns.all
+            AdvancedCardiologyPatterns.all + PsychiatryPatterns.all +
+            GeriatricTrajectoryPatterns.all
     }
 }
