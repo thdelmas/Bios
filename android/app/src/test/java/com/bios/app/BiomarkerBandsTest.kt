@@ -117,6 +117,36 @@ class BiomarkerBandsTest {
         assertEquals(BiomarkerBand.CONCERNING, bands.classify(10.0))
     }
 
+    // -- Absolute leukocyte differential thresholds (#353) --
+
+    @Test
+    fun alc_bands_match_CTCAE_lymphopenia_thresholds() {
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.ABSOLUTE_LYMPHOCYTE_COUNT]
+        assertNotNull("ALC bands should be populated for US", bands)
+        // CTCAE v5.0 lymphopenia: <1000/µL borderline, <500/µL severe.
+        assertEquals(BiomarkerBand.NORMAL, bands!!.classify(2000.0))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(1000.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(999.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(500.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(499.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(100.0))
+    }
+
+    @Test
+    fun aec_bands_match_HES_workup_threshold() {
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.ABSOLUTE_EOSINOPHIL_COUNT]
+        assertNotNull("AEC bands should be populated for US", bands)
+        // Valent 2012 / Klion 2017: ≥500/µL eosinophilia notice,
+        // ≥1500/µL hypereosinophilia workup trigger.
+        assertEquals(BiomarkerBand.NORMAL, bands!!.classify(300.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(500.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(1499.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(1500.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(5000.0))
+    }
+
     // -- INR literature thresholds (#352) --
 
     @Test
@@ -166,6 +196,8 @@ class BiomarkerBandsTest {
             MetricType.HEMOGLOBIN, MetricType.HEMATOCRIT, MetricType.WBC,
             MetricType.RBC, MetricType.PLATELETS,
             MetricType.INR,
+            MetricType.ABSOLUTE_LYMPHOCYTE_COUNT,
+            MetricType.ABSOLUTE_EOSINOPHIL_COUNT,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
