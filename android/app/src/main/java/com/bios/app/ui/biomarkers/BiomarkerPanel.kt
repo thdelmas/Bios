@@ -259,6 +259,25 @@ object BiomarkerPanels {
         ),
     )
 
+    /**
+     * Coagulation panel (#352). PT/INR/aPTT plus the EU-convention Quick
+     * index and the aPTT ratio. Routine ER bloodwork bundle; INR is the
+     * load-bearing one for warfarin / vitamin-K-antagonist monitoring.
+     * Bands for INR are universal (ACCP 2012 alarm thresholds); the rest
+     * are descriptive-only because therapeutic windows depend on indication.
+     */
+    val coagulation = BiomarkerPanel(
+        id = "coagulation",
+        title = "Coagulation",
+        metrics = listOf(
+            MetricType.PROTHROMBIN_TIME,
+            MetricType.INR,
+            MetricType.QUICK_INDEX,
+            MetricType.APTT,
+            MetricType.APTT_RATIO,
+        ),
+    )
+
     /** Render order on the dashboard — order matches the typical lab-
      *  report layout (lipids first, then metabolic, then inflammation). */
     val all: List<BiomarkerPanel> = listOf(
@@ -268,6 +287,7 @@ object BiomarkerPanels {
         thyroid,
         vitamins,
         hematology,
+        coagulation,
         electrolytes,
         renal,
         hepatic,

@@ -76,6 +76,9 @@ class BiomarkerEntrySelectorsTest {
             MetricType.BONE_DENSITY_T_SCORE, MetricType.PTAU_217,
             MetricType.VITAMIN_K2, MetricType.VITAMIN_A_RETINOL,
             MetricType.VITAMIN_E_ALPHA_TOCOPHEROL,
+            // Coagulation panel (#352).
+            MetricType.PROTHROMBIN_TIME, MetricType.INR,
+            MetricType.QUICK_INDEX, MetricType.APTT, MetricType.APTT_RATIO,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
