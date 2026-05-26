@@ -22,6 +22,12 @@ enum class SourceType(val key: String) {
     // PHONE_SENSOR so DataSource provenance separates "raw accel reading"
     // from "sleep duration inferred from accel + screen + charge".
     PHONE_SENSOR_DERIVED("phone_sensor_derived"),
+    // Bios-internal inference that runs over already-ingested readings rather
+    // than capturing fresh sensor data. Currently used by the HR-gap →
+    // TIME_IN_BED backfill (owner removed the watch to sleep, so the only
+    // available signal is the absence of HR samples). Distinct from
+    // PHONE_SENSOR_DERIVED because the inputs aren't phone sensors.
+    BIOS_INFERRED("bios_inferred"),
     CAMERA_PPG("camera_ppg"),
     BLE_PERIPHERAL("ble_peripheral"),
     SELF_REPORTED("self_reported")
@@ -101,7 +107,11 @@ enum class AlertTier(val level: Int, val label: String) {
 
 enum class ConditionCategory {
     CARDIOVASCULAR, RESPIRATORY, METABOLIC, SLEEP,
-    MENTAL_HEALTH, INFECTIOUS, WOMENS_HEALTH, RECOVERY, SAFETY
+    MENTAL_HEALTH, INFECTIOUS, WOMENS_HEALTH, RECOVERY, SAFETY,
+    /** Environment-driven physiology screens — heat, cold, altitude, photoperiod (#197). */
+    ENVIRONMENTAL,
+    /** Movement / sleep-stage / cognitive-trajectory neurology screens (#206). */
+    NEUROLOGICAL,
 }
 
 // MARK: - Privacy

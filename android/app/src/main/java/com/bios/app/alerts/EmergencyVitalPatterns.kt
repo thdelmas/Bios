@@ -2,6 +2,8 @@ package com.bios.app.alerts
 
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConditionCategory
+import com.bios.app.model.ElevationBand
+import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
 
 /**
@@ -45,15 +47,26 @@ object EmergencyVitalPatterns {
             hypoglycemiaCritical,
             tachycardiaCritical,
             bradycardiaCritical,
-        )
+        ) + PaediatricEmergencyVitalPatterns.all
     }
 
     /**
-     * SpO2 ≤85 %. Below the level at which clinical hypoxia is unambiguous
-     * regardless of altitude, age, or fitness. Standard ED triage cutoff:
-     * a pulse oximetry reading at this level on a clean finger warrants
-     * immediate clinical evaluation. (Reference: WHO 2011 pulse oximetry
-     * guidance; ATS/ACCP pulmonary rehabilitation criteria.)
+     * SpO2 ≤85 % at sea level; elevation-adjusted by [ElevationBand] per
+     * West JB (2010) *High Altitude Medicine and Physiology* and the
+     * SOWA_RIGPA audit §2.1 (#197). At 4000 m an acclimatised herder may
+     * baseline at 84–86 % without pathology; firing URGENT on those
+     * readings would be clinically incorrect for the Sowa Rigpa catchment
+     * (Tibet, Bhutan, Mongolia, Nepal, Andean Peru/Bolivia/Ecuador). The
+     * adjusted floors below preserve a "this is true hypoxia regardless of
+     * acclimatisation" semantics at every band.
+     *
+     * Band-specific cutoffs (West 2010; Subudhi 2014 — military mountain
+     * medicine; Beall 2014 — Andean/Tibetan high-altitude adaptation):
+     *  - SEA_LEVEL       — ≤85 % (unchanged baseline)
+     *  - MODERATE        — ≤83 % (mild downward shift)
+     *  - HIGH            — ≤82 %
+     *  - VERY_HIGH       — ≤80 %
+     *  - EXTREME (>3500) — ≤78 % (Beall 2014 Tibetan natives baseline ~88 %)
      */
     val spo2Critical = ConditionPattern(
         id = "emergency_spo2_critical",
@@ -63,20 +76,29 @@ object EmergencyVitalPatterns {
             SignalRule(
                 MetricType.BLOOD_OXYGEN, DeviationDirection.BELOW, 0.0, 0, 1.5,
                 ThresholdSource.LITERATURE,
-                "WHO 2011 pulse oximetry guidance — SpO2 ≤85 % indicates significant hypoxia warranting prompt evaluation",
+                "WHO 2011 pulse oximetry guidance + West JB 2010 — SpO2 cutoff is elevation-adjusted: ≤85 % at sea level, ≤80 % at very-high altitude, ≤78 % above 3500 m (acclimatised resident baselines)",
                 required = true,
                 absoluteBelow = 85.0,
+                elevationAdjustedBelow = mapOf(
+                    ElevationBand.SEA_LEVEL to 85.0,
+                    ElevationBand.MODERATE to 83.0,
+                    ElevationBand.HIGH to 82.0,
+                    ElevationBand.VERY_HIGH to 80.0,
+                    ElevationBand.EXTREME to 78.0,
+                ),
             ),
         ),
         minActiveSignals = 1,
         severityFloor = AlertTier.URGENT,
-        explanation = "The most recent blood-oxygen reading is at or below 85 %. This level is associated with significant hypoxia and is the standard clinical cutoff for prompt evaluation. Motion artifact, cold fingers, or nail polish can produce false low readings — re-check on a warm, clean finger.",
-        suggestedAction = "Re-check the reading on a warm clean finger without nail polish. If confirmed below 90 %, or accompanied by shortness of breath, chest pain, confusion, bluish lips, or fingertips, seek immediate medical attention or contact emergency services.",
+        explanation = "The most recent blood-oxygen reading is at or below the elevation-adjusted clinical floor for the owner's recorded altitude. At sea level the floor is 85 %; above 3500 m it is 78 %, reflecting normal acclimatised resident baselines. Motion artifact, cold fingers, or nail polish can produce false low readings — re-check on a warm, clean finger.",
+        suggestedAction = "Re-check the reading on a warm clean finger without nail polish. If confirmed at or below the adjusted floor, or accompanied by shortness of breath, chest pain, confusion, bluish lips, or fingertips, seek immediate medical attention or contact emergency services.",
         references = listOf(
             "WHO (2011) — Pulse Oximetry Training Manual",
+            "West JB (2010) — High Altitude Medicine and Physiology, 5th ed.",
+            "Beall CM (2014) — Adaptation to high altitude: phenotypes and genotypes",
             "ATS/ACCP — Pulmonary rehabilitation: joint statement",
         ),
-        earlyDetection = "A single SpO2 reading at or below 85 % is the standard ED triage cutoff for severe hypoxia in adults at sea level. Wearable optical sensors can produce false-low readings under motion, cold, or poor perfusion — but a confirmed reading at this level warrants the same response as a clinical pulse-oximetry reading.",
+        earlyDetection = "A single SpO2 reading at or below the elevation-adjusted cutoff is the standard ED triage threshold for severe hypoxia. Wearable optical sensors can produce false-low readings under motion, cold, or poor perfusion — but a confirmed reading at this level warrants the same response as a clinical pulse-oximetry reading. The cutoff drops with elevation because acclimatised residents at altitude maintain steady-state oxygen delivery at lower saturations than sea-level residents.",
     )
 
     /**
@@ -141,6 +163,12 @@ object EmergencyVitalPatterns {
             "Page RL et al. (2015) — ACC/AHA/HRS guideline for the management of adult patients with supraventricular tachycardia",
         ),
         earlyDetection = "Wearable resting-HR estimates are nightly averages, not transient readings — a single estimate at or above 130 bpm reflects sustained tachycardia at rest, not exertion. AFib with rapid ventricular response, SVT, hyperthyroidism, infection, and severe dehydration all present this way. Clinical confirmation (ECG, labs) is the next step.",
+        // Adult cutoff (≥130) is wrong for children — a healthy toddler's
+        // resting HR routinely sits at 120. PALS-anchored paediatric
+        // patterns ship in PaediatricEmergencyVitalPatterns with band-
+        // specific ceilings (NEONATE ≥220, INFANT ≥200, TODDLER ≥180,
+        // PRESCHOOL ≥160, SCHOOL ≥140, ADOLESCENT ≥135). Issue #198.
+        excludedStates = PhysiologyState.PAEDIATRIC_ALL,
     )
 
     /**
@@ -176,5 +204,12 @@ object EmergencyVitalPatterns {
             "Klein I, Ojamaa K (2001) — Thyroid hormone and the cardiovascular system",
         ),
         earlyDetection = "A wearable resting-HR estimate at or below 35 bpm is an unusual finding in adults outside elite endurance conditioning. Conduction-system disease often presents with this kind of asymptomatic-or-mildly-symptomatic bradycardia before progressing to symptomatic episodes; ECG is the definitive next step.",
+        // Adult floor (≤35) stays silent on real bradycardia in children
+        // — a neonate at 80 bpm is in bradycardia; the adult cutoff
+        // never triggers. PALS-anchored paediatric floors ship in
+        // PaediatricEmergencyVitalPatterns (NEONATE ≤80, INFANT ≤60,
+        // TODDLER ≤50, PRESCHOOL ≤45, SCHOOL ≤40, ADOLESCENT ≤40).
+        // Issue #198.
+        excludedStates = PhysiologyState.PAEDIATRIC_ALL,
     )
 }

@@ -36,7 +36,7 @@ enum class MetricType(
 ) {
     // Cardiovascular
     HEART_RATE("heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
-    HEART_RATE_VARIABILITY("heart_rate_variability", MetricUnit.MILLISECONDS, MetricDomain.CARDIOVASCULAR),
+    HEART_RATE_VARIABILITY("heart_rate_variability", MetricUnit.MILLISECONDS, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     PARASYMPATHETIC_TONE("parasympathetic_tone", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     STRESS_SCORE("stress_score", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     LF_HF_RATIO("lf_hf_ratio", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
@@ -47,17 +47,24 @@ enum class MetricType(
     BLOOD_PRESSURE_SYSTOLIC("blood_pressure_systolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
-    // PPG-derived AFib screening burden (#180, audit gap §2.1). Percentage of
-    // recent valid PPG sessions whose RR-interval series the on-device rhythm
-    // classifier scored as irregularly irregular (Poincaré SD1/SD2 + sample
-    // entropy + turning-point ratio). Each PPG capture writes a per-session
-    // verdict as 0 % (regular) or 100 % (irregularly irregular); the rolling
-    // median over a 7-day window is what the AFib screen pattern reads. Apple
-    // Heart Study (Perez 2019), mAFA-II (Guo 2019), and Fitbit Heart Study
-    // (Lubitz 2022) all run an equivalent classifier over the IBI tachogram.
-    // See engine/RhythmClassifier.kt. Manual entry stays false — the value is
-    // derived from a PPG session, not something the owner can self-report.
+    // PPG AFib screening burden (#180, audit §2.1). Rolling 7-day median of
+    // per-PPG-session irregularly-irregular verdicts (Poincaré SD1/SD2 +
+    // sample entropy + turning-point ratio). Mirrors Apple Heart Study
+    // (Perez 2019), mAFA-II (Guo 2019), Fitbit Heart Study (Lubitz 2022)
+    // classifier shape. See engine/RhythmClassifier.kt.
     IRREGULAR_RHYTHM_BURDEN("irregular_rhythm_burden", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+
+    // Single-lead ECG strip presence (#188, audit gap §2.8). The actual
+    // waveform is a binary blob in the `ecg_strips` table, not a scalar
+    // metric — this key is the presence indicator the pattern engine
+    // joins against ("is there an owner-captured ECG for this window?")
+    // so the AFib-screen confirmation surface can wire up without
+    // re-discovering strips via cross-table joins on every pull.
+    // value = 1.0 (boolean true), durationSec = strip length. The
+    // companion ContentProvider exposes this key but never the raw
+    // waveform — that stays inside the encrypted DB until the owner
+    // exports it via FHIR.
+    ECG_STRIP_AVAILABLE("ecg_strip_available", MetricUnit.BOOLEAN, MetricDomain.CARDIOVASCULAR),
 
     // PPG pulse-wave morphology summaries (#181, CARDIOLOGY_POV §2.2 + TCM,
     // Sowa Rigpa, Kampo, Korean, Siddha, Unani, Ayurveda pulse-quality
@@ -75,6 +82,19 @@ enum class MetricType(
     PPG_DECAY_ASYMMETRY_INDEX("ppg_decay_asymmetry_index", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     PPG_DICHROTIC_NOTCH_POSITION("ppg_dichrotic_notch_position", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
 
+    // PPG-derived augmentation index (Blueprint audit §3.1 #8). Computed in
+    // PpgSignalProcessor as (1 − h_diastolic/h_systolic) × 100 across beats
+    // with a detectable dichrotic notch; higher = stiffer arterial bed
+    // (matches the clinical SphygmoCor AIx direction). Peripheral PPG proxy
+    // for trend tracking, not the central-aortic gold standard.
+    AUGMENTATION_INDEX_PPG("augmentation_index_ppg", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+
+    HR_RECOVERY_1MIN("hr_recovery_1min", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
+    HR_RECOVERY_2MIN("hr_recovery_2min", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR),
+
+    // PVC-burden estimate from PPG IBI short-long-pair detection (Triage #26).
+    ECTOPY_BURDEN_ESTIMATE("ectopy_burden_estimate", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
+
     // Respiratory
     RESPIRATORY_RATE("respiratory_rate", MetricUnit.BREATHS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
     // Administered supplemental O2 (cannula/mask). Contextualises SpO2:
@@ -91,6 +111,17 @@ enum class MetricType(
     SLEEP_APNEA_EVENT("sleep_apnea_event", MetricUnit.EVENT, MetricDomain.RESPIRATORY),
     AHI("ahi", MetricUnit.COUNT, MetricDomain.RESPIRATORY, allowsManualEntry = true),
 
+    // Asthma surveillance (#200, audit gap §2.9 from PAEDIATRICS_POV +
+    // MEDICAL_PROFESSIONAL_POV). Owner-measured peak expiratory flow from a
+    // standalone peak-flow meter is the canonical paediatric/adult asthma
+    // home-monitoring metric (GINA 2024 personal-best framing). FEV1 is the
+    // spirometry gold standard typically captured in clinic — owner-entered
+    // when an owner has a take-home spirometer or wants to log a clinic
+    // reading alongside Bios's wearable signals. Manual entry both — these
+    // are owner-measured / clinician-measured values, not wearable-derived.
+    PEAK_EXPIRATORY_FLOW_LMIN("peak_expiratory_flow_lmin", MetricUnit.LITERS_PER_MIN, MetricDomain.RESPIRATORY, allowsManualEntry = true),
+    FORCED_EXPIRATORY_VOLUME_1_LITERS("forced_expiratory_volume_1_liters", MetricUnit.LITERS, MetricDomain.RESPIRATORY, allowsManualEntry = true), COUGH_FREQUENCY_SELF_RATING("cough_frequency_self_rating", MetricUnit.SCORE, MetricDomain.RESPIRATORY, allowsManualEntry = true), SPUTUM_SELF_RATING("sputum_self_rating", MetricUnit.SCORE, MetricDomain.RESPIRATORY, allowsManualEntry = true), BREATH_EASE_SELF_RATING("breath_ease_self_rating", MetricUnit.SCORE, MetricDomain.RESPIRATORY, allowsManualEntry = true), // owner-rated subjective respiratory scales (#323), 0–10; polarity owner-interpreted
+
     // Temperature
     SKIN_TEMPERATURE("skin_temperature", MetricUnit.CELSIUS, MetricDomain.TEMPERATURE, allowsManualEntry = true),
     SKIN_TEMPERATURE_DEVIATION("skin_temperature_deviation", MetricUnit.DELTA_CELSIUS, MetricDomain.TEMPERATURE),
@@ -105,10 +136,29 @@ enum class MetricType(
     // value are preserved in the event_payloads sidecar for provenance.
     PAIN_SCORE("pain_score", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     CONSCIOUSNESS_LEVEL("consciousness_level", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    RBD_EVENT_FLAG("rbd_event_flag", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL),
+    REM_MOVEMENT_INDEX("rem_movement_index", MetricUnit.COUNT, MetricDomain.NEUROLOGICAL),
+    TREMOR_AMPLITUDE_G("tremor_amplitude_g", MetricUnit.M_PER_S_SQUARED, MetricDomain.NEUROLOGICAL),
+    TREMOR_FREQUENCY_HZ("tremor_frequency_hz", MetricUnit.HERTZ, MetricDomain.NEUROLOGICAL),
+
+    // Neurology owner-symptom logging (#207 + #283, NEUROLOGY_POV §2.5+§2.6+§2.15). Owner-input only — §3.3 prohibits automated voice/face stroke detection. HEADACHE_INTENSITY_NRS shadows the structured HeadacheLog/MigraineAttack entities; event-payload fields ride on com.bios.app.model.HeadacheEventFields.
+    HEADACHE_INTENSITY_NRS("headache_intensity_nrs", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    MIGRAINE_ATTACK_EVENT("migraine_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    HEADACHE_ATTACK_EVENT("headache_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    CLUSTER_HEADACHE_ATTACK_EVENT("cluster_headache_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    FAST_STROKE_SUSPECTED("fast_stroke_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+
+    // Neurology URGENT primitives (audit §3.2 #24 / NEUROLOGY_POV §2.1+§2.3).
+    // Owner-logged EVENTs with value=1.0 + optional structured sidecar in
+    // event_payloads. Thunderclap is separate from HEADACHE_INTENSITY_NRS
+    // because the URGENT alert keys on onset velocity (IHS ICHD-3 §6.2.2
+    // SAH screen — peak intensity within 60 s) not severity score.
+    SEIZURE_EVENT("seizure_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
+    THUNDERCLAP_HEADACHE_SUSPECTED("thunderclap_headache_suspected", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true), SMELL_SELF_RATING("smell_self_rating", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true), TASTE_SELF_RATING("taste_self_rating", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true), // owner-rated chemosensory acuity (#323), 0–10
 
     // Sleep
     SLEEP_STAGE("sleep_stage", MetricUnit.CATEGORY, MetricDomain.SLEEP),
-    SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true),
+    SLEEP_DURATION("sleep_duration", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true), TIME_IN_BED("time_in_bed", MetricUnit.SECONDS, MetricDomain.SLEEP, allowsManualEntry = true), // in-bed window incl. quiet wake; SLEEP_DURATION <= TIME_IN_BED
     SLEEP_LATENCY("sleep_latency", MetricUnit.SECONDS, MetricDomain.SLEEP),
     SLEEP_EFFICIENCY("sleep_efficiency", MetricUnit.PERCENT, MetricDomain.SLEEP),
     SLEEP_FRAGMENTATION_INDEX("sleep_fragmentation_index", MetricUnit.COUNT, MetricDomain.SLEEP),
@@ -136,7 +186,7 @@ enum class MetricType(
     // utc, avg_hr_bpm, rpe) live in event_payloads keyed by reading id —
     // see docs/DATA_MODEL.md field-key vocabulary.
     EXERCISE_SESSION("exercise_session", MetricUnit.EVENT, MetricDomain.ACTIVITY),
-
+    SEDENTARY_BOUT("sedentary_bout", MetricUnit.SECONDS, MetricDomain.ACTIVITY), MOVEMENT_BREAK("movement_break", MetricUnit.SECONDS, MetricDomain.ACTIVITY), // Anastasis sedentary primitives
     // Metabolic
     BLOOD_GLUCOSE("blood_glucose", MetricUnit.MG_PER_DL, MetricDomain.METABOLIC, allowsManualEntry = true),
     // CGM-derived variability keys (#28). Computed over the last 24h of
@@ -150,6 +200,28 @@ enum class MetricType(
     LEAN_MASS("lean_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC, allowsManualEntry = true),
     BODY_WATER_PCT("body_water_pct", MetricUnit.PERCENT, MetricDomain.METABOLIC, allowsManualEntry = true),
     BONE_MASS("bone_mass", MetricUnit.KILOGRAMS, MetricDomain.METABOLIC, allowsManualEntry = true),
+
+    // Anthropometry + body composition (#199, paediatric + geriatric audits).
+    //
+    // Paediatric growth tracking requires height + head circumference to plot
+    // WHO/CDC growth curves; failure-to-thrive surveillance is the canonical
+    // primary-paediatric-care signal. The adult-side trajectory primitives
+    // (lean mass + fat mass + BMI) feed the EWGSOP2 sarcopenia and Fearon-2011
+    // cachexia screens used by the Geriatrics and Oncology audits.
+    //
+    // BMI is stored as a derived value alongside its inputs (height + weight)
+    // rather than recomputed on every read — body-composition exporters
+    // (Withings, manual entry) commonly ship BMI directly, and storing the
+    // value lets historical trends survive a future change to the derivation
+    // formula. LEAN_BODY_MASS_KG / FAT_MASS_KG ride alongside the existing
+    // LEAN_MASS / BODY_FAT_PCT keys: LEAN_MASS is the legacy METABOLIC-domain
+    // entry kept for back-compat; LEAN_BODY_MASS_KG is the BODY_COMPOSITION
+    // canonical key used by the growth-and-composition surface.
+    HEIGHT_CM("height_cm", MetricUnit.CENTIMETERS, MetricDomain.ANTHROPOMETRY, allowsManualEntry = true),
+    HEAD_CIRCUMFERENCE_CM("head_circumference_cm", MetricUnit.CENTIMETERS, MetricDomain.ANTHROPOMETRY, allowsManualEntry = true),
+    BMI_KG_PER_M2("bmi_kg_per_m2", MetricUnit.KG_PER_M2, MetricDomain.ANTHROPOMETRY, allowsManualEntry = true),
+    LEAN_BODY_MASS_KG("lean_body_mass_kg", MetricUnit.KILOGRAMS, MetricDomain.BODY_COMPOSITION, allowsManualEntry = true),
+    FAT_MASS_KG("fat_mass_kg", MetricUnit.KILOGRAMS, MetricDomain.BODY_COMPOSITION, allowsManualEntry = true),
 
     // Recovery
     RECOVERY_SCORE("recovery_score", MetricUnit.SCORE, MetricDomain.RECOVERY),
@@ -165,6 +237,38 @@ enum class MetricType(
     AIR_PM25("air_pm25", MetricUnit.UG_PER_M3, MetricDomain.ENVIRONMENT),
     AIR_VOC("air_voc", MetricUnit.PPB, MetricDomain.ENVIRONMENT),
     AIR_CO2("air_co2", MetricUnit.PPM, MetricDomain.ENVIRONMENT),
+    // Ambient humidity + temperature (#200, audit gap §2.9). Phone barometers
+    // and most BLE ESS sensors emit relative humidity and ambient temperature.
+    // Asthma exacerbation triggers correlate with cold-dry and humid-warm
+    // conditions (GINA 2024 trigger list); heat-illness screening (#19) reads
+    // heat-index = f(temperature, humidity); damp/dry six-pathogens overlay
+    // (TCM_POV §2.7) and Ritucharya/six-paruvam patterns (Ayurveda, Siddha,
+    // Unani) all key off humidity + temperature. Phone-sensor sourced; not
+    // owner-set, so manual entry stays false.
+    // Environmental context (#197, audit gaps converge from SOWA_RIGPA_POV
+    // §2.1 altitude, INDIGENOUS_AMERICAS_POV Andes/Mesoamerica,
+    // OCEANIC_ARCTIC_POV cold + Pacific heat, AFRICAN_TRADITIONAL_POV climate,
+    // OTHER_ASIAN_SYSTEMS_POV, MODERN_NON_ALLOPATHIC_POV environmental
+    // medicine). Bios's SpO2 / HR / temperature / sleep thresholds were
+    // baselined as if the owner lives in a temperate Northern climate at
+    // sea level — clinically wrong for owners in the Andes, Tibet, the
+    // Sahel, or above 60° latitude. These keys carry owner-set context that
+    // modulates absolute clinical thresholds (the personal-baseline path
+    // self-corrects; the hard-cutoff path needs explicit context).
+    //
+    // ELEVATION_M is owner-entered metres above sea level; never derived
+    // from GPS without permission (manifesto: no hidden ingestion).
+    // AMBIENT_TEMPERATURE_C / AMBIENT_HUMIDITY_PCT can come from phone
+    // sensors (if available) or owner annotation. AMBIENT_HUMIDITY_PCT is
+    // also slated by issue #200 — if that PR lands first, this declaration
+    // will be a no-op duplicate the `fromKey()` resolver still handles.
+    // DAYLIGHT_HOURS is computed from owner latitude (RegionConfig) + date
+    // by EnvironmentalContextProvider; carries photoperiod for the SAAD
+    // (seasonal affective adjustment-disorder) screening pattern.
+    ELEVATION_M("elevation_m", MetricUnit.METERS, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
+    AMBIENT_TEMPERATURE_C("ambient_temperature_c", MetricUnit.CELSIUS, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
+    AMBIENT_HUMIDITY_PCT("ambient_humidity_pct", MetricUnit.PERCENT, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
+    DAYLIGHT_HOURS("daylight_hours", MetricUnit.HOURS, MetricDomain.ENVIRONMENT),
 
     // Biomarkers (lab-drawn or imported via FHIR; slow-moving, no streaming).
     // First wave matches the clinical concepts already described in
@@ -226,6 +330,112 @@ enum class MetricType(
     AST("ast", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
     GGT("ggt", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    // Cardio-oncology biomarker panel (#201, audit gap from ONCOLOGY_POV
+    // §2.3-2.5 + CARDIOLOGY_POV §2.3). Anchors the cardiotoxicity /
+    // neutropenic-fever surveillance patterns in
+    // alerts/CardioOncologyPatterns.kt. NT-proBNP and high-sensitivity
+    // troponin are the AHA 2018 / ASCO 2017 cardio-oncology cardiac
+    // biomarkers; absolute neutrophil count anchors the IDSA 2010
+    // febrile-neutropenia screen.
+    TROPONIN_NG_PER_L("troponin_ng_per_l", MetricUnit.NG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    NT_PRO_BNP_PG_PER_ML("nt_pro_bnp_pg_per_ml", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ABSOLUTE_NEUTROPHIL_COUNT("absolute_neutrophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Wave-1 biomarker expansion (docs/audits/BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
+    // Closes the highest-priority Blueprint-vs-Bios coverage gaps: independent
+    // ASCVD risk markers, full CMP, full liver panel, CBC indices + 5-cell
+    // differential, iron studies, and the reproductive-endocrine panel. All
+    // pure-additive enum entries — no engine work, FHIR import via LOINC.
+
+    // Lipoprotein(a) — independent ASCVD risk; ESC 2021 / NLA 2022 report in
+    // nmol/L because apo(a) isoform size makes the mg/dL conversion lossy.
+    LIPOPROTEIN_A("lipoprotein_a", MetricUnit.NMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Homocysteine — cardiovascular + cognitive risk, B-vitamin sufficiency
+    // proxy. Standard longevity panel marker.
+    HOMOCYSTEINE("homocysteine", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Comprehensive Metabolic Panel completion — the basic CMP markers Bios
+    // was missing. Electrolytes (Na/K/Cl/CO2) use mEq/L by US convention
+    // (numerically equal to mmol/L for these monovalent ions plus bicarbonate).
+    BUN("bun", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CALCIUM_SERUM("calcium_serum", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CARBON_DIOXIDE("carbon_dioxide", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    CHLORIDE("chloride", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PHOSPHATE("phosphate", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    SODIUM("sodium", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    POTASSIUM("potassium", MetricUnit.MEQ_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    URIC_ACID("uric_acid", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Liver + pancreas panel completion — complements ALT/AST/GGT already
+    // shipped. Amylase + lipase ride alongside since labs typically order
+    // them on the same liver-function bundle.
+    ALBUMIN("albumin", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ALKALINE_PHOSPHATASE("alkaline_phosphatase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    BILIRUBIN_TOTAL("bilirubin_total", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TOTAL_PROTEIN("total_protein", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    AMYLASE("amylase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LIPASE("lipase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // CBC indices + leukocyte differential percentages. Absolute differential
+    // counts (abs neutrophil already present as ABSOLUTE_NEUTROPHIL_COUNT)
+    // can be added later if a clinical pattern requires them.
+    MCV("mcv", MetricUnit.FEMTOLITERS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MCH("mch", MetricUnit.PICOGRAMS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MCHC("mchc", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    RDW("rdw", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MPV("mpv", MetricUnit.FEMTOLITERS, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    NEUTROPHILS_PCT("neutrophils_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LYMPHOCYTES_PCT("lymphocytes_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    MONOCYTES_PCT("monocytes_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    EOSINOPHILS_PCT("eosinophils_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    BASOPHILS_PCT("basophils_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Iron panel — co-ordered with existing FERRITIN. Iron saturation % is a
+    // computed lab value most labs report directly; storing the reported
+    // value rather than recomputing matches the existing HOMA_IR pattern.
+    IRON_SERUM("iron_serum", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    IRON_SATURATION_PCT("iron_saturation_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TIBC("tibc", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Reproductive endocrine panel. Reference ranges are sex-specific and
+    // (for women) cycle-phase-specific — provider-supplied range travels
+    // with the FHIR import. TESTOSTERONE_TOTAL is already shipped; this
+    // adds the free fraction plus the surrounding hypothalamic-pituitary
+    // axis.
+    FSH("fsh", MetricUnit.MIU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LH("lh", MetricUnit.MIU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    SHBG("shbg", MetricUnit.NMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    AMH("amh", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    TESTOSTERONE_FREE("testosterone_free", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PROLACTIN("prolactin", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    DHEA_SULFATE("dhea_sulfate", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT.md §3.2) — medium-
+    // priority additions: thyroid autoimmunity, prostate screening, imaging-
+    // derived risk modifiers, plasma neurology, fat-soluble vitamins, and
+    // a cellular-aging clock. Manual entry + FHIR where a stable LOINC exists.
+    THYROID_PEROXIDASE_AB("thyroid_peroxidase_ab", MetricUnit.IU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    THYROGLOBULIN_AB("thyroglobulin_ab", MetricUnit.IU_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PSA_TOTAL("psa_total", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    PSA_FREE("psa_free", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Telomere length stored as SCORE — every vendor (TeloYears, SpectraCell)
+    // ships a proprietary scale; no stable LOINC, manual entry only.
+    TELOMERE_LENGTH("telomere_length", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Agatston CAC score (CT-derived, dimensionless) and DEXA bone-density
+    // T-score (WHO osteoporosis: ≤ -2.5). Anatomical site for the T-score
+    // rides in event_payloads when the import provides it.
+    CORONARY_CALCIUM_SCORE("coronary_calcium_score", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    BONE_DENSITY_T_SCORE("bone_density_t_score", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // pTau-217 (Quanterix Simoa / Lilly C2N) — emerging Alzheimer's plasma
+    // marker that tracks amyloid PET positivity.
+    PTAU_217("ptau_217", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Fat-soluble vitamin auxiliaries. Vitamin K2 (MK-7) lacks a stable
+    // canonical LOINC so the FHIR path is manual only.
+    VITAMIN_K2("vitamin_k2", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    VITAMIN_A_RETINOL("vitamin_a_retinol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    VITAMIN_E_ALPHA_TOCOPHEROL("vitamin_e_alpha_tocopherol", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
@@ -240,7 +450,7 @@ enum class MetricType(
     // mood_drift_score is a domain-specific ADA-1/HDA-1 composite. Both
     // pass the producer-by-capture-surface rule.
     TYPING_CADENCE("typing_cadence", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
-    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH),
+    MOOD_DRIFT_SCORE("mood_drift_score", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH), MOOD_SELF_RATING("mood_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), ENERGY_SELF_RATING("energy_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), FOCUS_SELF_RATING("focus_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), TOBACCO_CRAVING_INTENSITY("tobacco_craving_intensity", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), CANNABIS_CRAVING_INTENSITY("cannabis_craving_intensity", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), SOCIAL_BELONGING_SELF_RATING("social_belonging_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), SMOKER_IDENTITY_SELF_RATING("smoker_identity_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), CHANGE_AGENCY_SELF_RATING("change_agency_self_rating", MetricUnit.SCORE, MetricDomain.MENTAL_HEALTH, allowsManualEntry = true), // owner-rated subjective mental-health scales (#323), 0–10; *_INTENSITY pairs EVENT-shape TOBACCO_/CANNABIS_CRAVING
 
     // Substance-use events (injected by Smokeless via ContentProvider)
     // Timestamp + opaque event-id only — no dose, brand, or method.
@@ -274,12 +484,10 @@ enum class MetricType(
     NEAR_MISS_FALL("near_miss_fall", MetricUnit.EVENT, MetricDomain.SAFETY),
     CHECK_IN_MISS("check_in_miss", MetricUnit.EVENT, MetricDomain.SAFETY),
 
-    // Active-test results (reserved, no companion whitelisted yet).
-    // W2F has PVT data today (cognitive_probes); Fil plans SDMT. Reserving
-    // the key now commits the shape upfront so two companions don't ship
-    // divergent definitions of the same signal. See decision 5 in
-    // docs/SELF_REPORTED_DATA_HOME.md.
-    REACTION_TIME_MS("reaction_time_ms", MetricUnit.MILLISECONDS, MetricDomain.MENTAL_HEALTH);
+    // Active-test results (reserved, no companion whitelisted yet — W2F PVT, Fil SDMT; see SELF_REPORTED_DATA_HOME.md decision 5).
+    REACTION_TIME_MS("reaction_time_ms", MetricUnit.MILLISECONDS, MetricDomain.MENTAL_HEALTH),
+    GAIT_VARIABILITY_COV("gait_variability_cov", MetricUnit.PERCENT, MetricDomain.NEUROLOGICAL),
+    TYPING_SPEED_CHAR_PER_MIN("typing_speed_char_per_min", MetricUnit.PER_MINUTE, MetricDomain.MENTAL_HEALTH);
 
     val readableName: String
         get() = key.replace("_", " ").replaceFirstChar { it.uppercase() }
@@ -287,52 +495,4 @@ enum class MetricType(
     companion object {
         fun fromKey(key: String): MetricType? = entries.find { it.key == key }
     }
-}
-
-enum class MetricUnit(val symbol: String) {
-    BPM("bpm"),
-    MILLISECONDS("ms"),
-    MMHG("mmHg"),
-    PERCENT("%"),
-    BREATHS_PER_MIN("breaths/min"),
-    CELSIUS("°C"),
-    DELTA_CELSIUS("Δ°C"),
-    CATEGORY(""),
-    SECONDS("s"),
-    COUNT(""),
-    KCAL("kcal"),
-    KILOGRAMS("kg"),
-    MG_PER_DL("mg/dL"),
-    MG_PER_L("mg/L"),
-    NG_PER_ML("ng/mL"),
-    NG_PER_DL("ng/dL"),
-    UG_PER_DL("µg/dL"),
-    PG_PER_ML("pg/mL"),
-    MIU_PER_L("mIU/L"),
-    MICRO_IU_PER_ML("µIU/mL"),
-    G_PER_DL("g/dL"),
-    GIGA_PER_L("10⁹/L"),
-    TERA_PER_L("10¹²/L"),
-    SCORE(""),
-    EVENT(""),
-    LUX("lx"),
-    YEARS("yr"),
-    MS_SQUARED("ms²"),
-    ML_PER_KG_MIN("mL/kg/min"),
-    UG_PER_M3("µg/m³"),
-    PPM("ppm"),
-    PPB("ppb"),
-    LITERS_PER_MIN("L/min"),
-    MILLIGRAMS("mg"),
-    GRAMS("g"),
-    /** Enzyme activity per litre — ALT, AST, GGT, etc. */
-    U_PER_L("U/L"),
-    /** eGFR normalized to body surface area — KDIGO 2024 standard. */
-    ML_PER_MIN_PER_173("mL/min/1.73m²")
-}
-
-enum class MetricDomain {
-    CARDIOVASCULAR, RESPIRATORY, TEMPERATURE, SLEEP,
-    ACTIVITY, METABOLIC, RECOVERY, WOMENS_HEALTH,
-    MENTAL_HEALTH, NEUROLOGICAL, INTAKE, SAFETY, ENVIRONMENT, BIOMARKER
 }

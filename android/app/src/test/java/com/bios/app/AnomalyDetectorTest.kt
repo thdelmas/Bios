@@ -1,6 +1,8 @@
 package com.bios.app
 
 import com.bios.app.model.AlertTier
+import com.bios.app.model.ConfidenceTier
+import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
@@ -248,4 +250,71 @@ class AnomalyDetectorTest {
         val readings = listOf(132.0, 138.0, 145.0, 128.0, 124.0)
         assertTrue("Median should be at or above 130", median(readings) >= 130.0)
     }
+
+    // --- durationAtLeastSec filter (#268) ---
+    //
+    // Mirrors the row-level filter in AnomalyDetector.fetchAbsoluteWindowValues.
+    // The status_epilepticus_convulsive pattern relies on this branch to
+    // honour the ILAE 2015 t1 = 300 s convulsive-SE definition: a 200 s
+    // SEIZURE_EVENT must drop out, a 320 s event must pass through.
+
+    private fun filterByDurationAtLeast(
+        rows: List<MetricReading>,
+        minDurationSec: Int,
+    ): List<Double> = rows
+        .filter { (it.durationSec ?: 0) >= minDurationSec }
+        .map { it.value }
+
+    @Test
+    fun `duration filter drops a sub-300s seizure event`() {
+        val rows = listOf(seizureEvent(durationSec = 200))
+        assertTrue(
+            "200 s seizure must not pass the 300 s gate",
+            filterByDurationAtLeast(rows, 300).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `duration filter passes a 320s seizure event`() {
+        val rows = listOf(seizureEvent(durationSec = 320))
+        val passed = filterByDurationAtLeast(rows, 300)
+        assertEquals(
+            "320 s seizure must pass the 300 s gate",
+            1,
+            passed.size,
+        )
+    }
+
+    @Test
+    fun `duration filter splits a mixed cohort at the cutoff`() {
+        // Three brief events + one prolonged event. The cluster pattern
+        // (no filter) sees four; the status-epilepticus pattern (filter at
+        // 300 s) sees one — exactly the discrimination the audit asked for.
+        val rows = listOf(
+            seizureEvent(durationSec = 60),
+            seizureEvent(durationSec = 90),
+            seizureEvent(durationSec = 120),
+            seizureEvent(durationSec = 360),
+        )
+        assertEquals(4, rows.size)
+        assertEquals(1, filterByDurationAtLeast(rows, 300).size)
+    }
+
+    @Test
+    fun `duration filter treats null durationSec as zero`() {
+        // Some adapters may emit SEIZURE_EVENT without a duration (e.g. an
+        // owner who logs "I had a seizure" without recording the length).
+        // These must not silently pass a duration-aware gate.
+        val rows = listOf(seizureEvent(durationSec = null))
+        assertTrue(filterByDurationAtLeast(rows, 300).isEmpty())
+    }
+
+    private fun seizureEvent(durationSec: Int?): MetricReading = MetricReading(
+        metricType = MetricType.SEIZURE_EVENT.key,
+        value = 1.0,
+        timestamp = 1_700_000_000_000L,
+        durationSec = durationSec,
+        sourceId = "owner-self-report",
+        confidence = ConfidenceTier.MEDIUM.level,
+    )
 }

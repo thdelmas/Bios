@@ -18,7 +18,9 @@ import com.bios.app.alerts.BiomarkerReference
 import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
+import com.bios.app.ui.reference.CitationText
 import com.bios.app.ui.AppViewModel
+import com.bios.app.ui.theme.BiosTokens
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,7 +94,7 @@ fun ConditionDetailScreen(
                 KnowledgeSection(
                     icon = Icons.Default.Visibility,
                     title = "Early Detection",
-                    color = Color(0xFF2196F3),
+                    color = MaterialTheme.colorScheme.tertiary,
                     content = pattern.earlyDetection
                 )
             }
@@ -101,7 +103,7 @@ fun ConditionDetailScreen(
                 KnowledgeSection(
                     icon = Icons.Default.Shield,
                     title = "Prevention",
-                    color = Color(0xFF4CAF50),
+                    color = BiosTokens.success,
                     content = pattern.prevention
                 )
             }
@@ -110,7 +112,7 @@ fun ConditionDetailScreen(
                 KnowledgeSection(
                     icon = Icons.Default.Healing,
                     title = "Healing",
-                    color = Color(0xFF009688),
+                    color = MaterialTheme.colorScheme.primary,
                     content = pattern.healing
                 )
             }
@@ -119,7 +121,7 @@ fun ConditionDetailScreen(
                 KnowledgeSection(
                     icon = Icons.Default.Warning,
                     title = "Risks If Untreated",
-                    color = Color(0xFFFF9800),
+                    color = BiosTokens.attention,
                     content = pattern.risks
                 )
             }
@@ -170,7 +172,7 @@ fun ConditionDetailScreen(
 @Composable
 private fun ProbabilityCard(result: DiagnosticResult) {
     val pct = (result.probability * 100).toInt()
-    val color = probabilityColor(result.probability)
+    val color = BiosTokens.probabilityColor(result.probability)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -293,11 +295,10 @@ private fun SignalDetailRow(signal: SignalStatus) {
     }
 
     val valueColor = when {
-        !signal.hasBaseline || signal.currentZScore == null ->
-            Color.Gray
-        signal.isActive -> Color(0xFFF44336)
-        abs(signal.currentZScore) > signal.thresholdSigma * 0.5 -> Color(0xFFFFC107)
-        else -> Color(0xFF4CAF50)
+        !signal.hasBaseline || signal.currentZScore == null -> BiosTokens.muted
+        signal.isActive -> BiosTokens.error
+        abs(signal.currentZScore) > signal.thresholdSigma * 0.5 -> BiosTokens.warning
+        else -> BiosTokens.success
     }
 
     Row(
@@ -329,17 +330,9 @@ private fun SignalDetailRow(signal: SignalStatus) {
                 else Icons.Default.RadioButtonUnchecked,
             contentDescription = if (signal.isActive) "Active" else "Inactive",
             modifier = Modifier.size(12.dp),
-            tint = if (signal.isActive) Color(0xFFF44336)
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            tint = if (signal.isActive) BiosTokens.error else BiosTokens.muted
         )
     }
-}
-
-private fun probabilityColor(probability: Double): Color = when {
-    probability >= 0.75 -> Color(0xFFF44336)
-    probability >= 0.50 -> Color(0xFFFF9800)
-    probability >= 0.25 -> Color(0xFFFFC107)
-    else -> Color(0xFF4CAF50)
 }
 
 @Composable
@@ -361,7 +354,7 @@ private fun BiomarkerReferenceCard(biomarker: BiomarkerReference) {
                     Icons.Default.Info,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF7C4DFF)
+                    tint = MaterialTheme.colorScheme.tertiary
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -443,10 +436,9 @@ private fun BiomarkerReferenceCard(biomarker: BiomarkerReference) {
                         fontWeight = FontWeight.Bold
                     )
                     biomarker.citations.forEach { citation ->
-                        Text(
-                            citation,
+                        CitationText(
+                            citation = citation,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

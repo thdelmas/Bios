@@ -99,8 +99,17 @@ class GadgetbridgeReceiver : BroadcastReceiver() {
 
                 val readings = adapter.fetchReadings(start, end, source.id)
                 if (readings.isNotEmpty()) {
-                    db.metricReadingDao().insertAll(readings)
-                    Log.d(TAG, "Pulled ${readings.size} readings from Gadgetbridge")
+                    // Route through the in-memory Deduplicator so a
+                    // batch of overlapping-timestamp readings collapses
+                    // before hitting the DAO. The disk-side unique index
+                    // on (sourceId, metricType, timestamp) is the
+                    // ultimate guard, but pre-collapsing avoids churning
+                    // the index for known no-ops and keeps the batch
+                    // size accurate in logs.
+                    val deduped = Deduplicator.deduplicate(readings)
+                    db.metricReadingDao().insertAll(deduped)
+                    Log.d(TAG, "Pulled ${readings.size} readings from Gadgetbridge " +
+                        "(${deduped.size} after in-memory dedup)")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to pull data from Gadgetbridge", e)

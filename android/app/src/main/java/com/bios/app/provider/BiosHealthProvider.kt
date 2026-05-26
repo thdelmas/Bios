@@ -186,6 +186,7 @@ class BiosHealthProvider : ContentProvider() {
             metricType = metricType,
             value = value,
             timestamp = timestamp,
+            durationSec = companionDurationSecFor(metricType, value),
             sourceId = companion.sourceId,
             confidence = ConfidenceTier.MEDIUM.level,
             isPrimary = true
@@ -299,3 +300,18 @@ class BiosHealthProvider : ContentProvider() {
     override fun delete(uri: Uri, sel: String?, args: Array<out String>?): Int =
         throw UnsupportedOperationException("Companion apps cannot delete Bios data")
 }
+
+/**
+ * Derives the `durationSec` column for a companion-written reading from
+ * its `value`. The companion-insert contract only carries `value` and
+ * `timestamp`, but consumers like `SleepRegularityCalculator` filter rows
+ * by `(durationSec ?: 0) > 0`. Without this derivation, every W2F-pushed
+ * `sleep_duration` row would land with `durationSec = null` and never
+ * feed regularity. Confined to keys whose unit is seconds and whose
+ * value-as-duration semantics are well-defined — currently sleep_duration.
+ *
+ * Top-level so unit tests exercise it without touching the provider's
+ * Android dependencies (UriMatcher / Uri / ContentResolver).
+ */
+internal fun companionDurationSecFor(metricType: String, value: Double): Int? =
+    if (metricType == MetricType.SLEEP_DURATION.key && value > 0.0) value.toInt() else null

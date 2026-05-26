@@ -97,7 +97,7 @@ fun LogScreen(
         HomeEntryCard(
             icon = Icons.Default.MedicalServices,
             title = "Clinical reading",
-            subtitle = "Blood pressure, SpO2, temperature",
+            subtitle = "Weight, height, BMI, BP, SpO2, body composition, HRV — bundle entry",
             onClick = onNavigateToClinicalEntry,
         )
         HomeEntryCard(

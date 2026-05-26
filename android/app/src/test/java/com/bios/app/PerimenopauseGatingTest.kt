@@ -1,6 +1,6 @@
 package com.bios.app
 
-import com.bios.app.alerts.ConditionPatterns
+import com.bios.app.alerts.BaselineDeviationPatterns
 import com.bios.app.physiology.PhysiologyState
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -25,7 +25,7 @@ class PerimenopauseGatingTest {
 
     @Test
     fun menstrual_cycle_anomaly_pattern_is_excluded_in_perimenopause() {
-        val pattern = ConditionPatterns.menstrualCycleAnomaly
+        val pattern = BaselineDeviationPatterns.menstrualCycleAnomaly
         assertTrue(
             "menstrual_cycle_anomaly must exclude PERIMENOPAUSE — cycle " +
                 "variability IS the perimenopausal physiology",
@@ -35,7 +35,7 @@ class PerimenopauseGatingTest {
 
     @Test
     fun menstrual_cycle_anomaly_pattern_is_excluded_in_postmenopause() {
-        val pattern = ConditionPatterns.menstrualCycleAnomaly
+        val pattern = BaselineDeviationPatterns.menstrualCycleAnomaly
         assertTrue(
             "menstrual_cycle_anomaly must exclude POSTMENOPAUSE — there " +
                 "is no cycle to flag anomalies on",
@@ -45,7 +45,7 @@ class PerimenopauseGatingTest {
 
     @Test
     fun menstrual_cycle_anomaly_still_fires_for_standard_adult() {
-        val pattern = ConditionPatterns.menstrualCycleAnomaly
+        val pattern = BaselineDeviationPatterns.menstrualCycleAnomaly
         assertFalse(
             "The pattern still applies to the default STANDARD adult state",
             PhysiologyState.STANDARD in pattern.excludedStates,

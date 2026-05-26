@@ -32,11 +32,24 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ScreeningEntry::class,
         RiskProfile::class,
         GoalsOfCare::class,
-        ClinicalDirective::class
+        ClinicalDirective::class,
+        MigraineAttack::class,
+        HeadacheLog::class,
+        FastStrokeEvent::class,
+        EsasReport::class,
+        TraditionalMedicineContext::class,
+        EmergencyContact::class,
+        EcgStrip::class,
+        com.bios.app.physiology.PerioperativeBaseline::class,
+        InterventionEvent::class,
+        TreatmentCourse::class,
+        GrowthMeasurement::class,
+        SourceMetricToggle::class,
     ],
-    version = 16,
+    version = 32,
     exportSchema = false
 )
+@androidx.room.TypeConverters(MigraineTriggerConverter::class)
 abstract class BiosDatabase : RoomDatabase() {
 
     abstract fun metricReadingDao(): MetricReadingDao
@@ -58,6 +71,18 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun riskProfileDao(): RiskProfileDao
     abstract fun goalsOfCareDao(): GoalsOfCareDao
     abstract fun clinicalDirectiveDao(): ClinicalDirectiveDao
+    abstract fun migraineAttackDao(): MigraineAttackDao
+    abstract fun headacheLogDao(): HeadacheLogDao
+    abstract fun fastStrokeEventDao(): FastStrokeEventDao
+    abstract fun esasReportDao(): EsasReportDao
+    abstract fun traditionalMedicineContextDao(): TraditionalMedicineContextDao
+    abstract fun emergencyContactDao(): EmergencyContactDao
+    abstract fun ecgStripDao(): EcgStripDao
+    abstract fun perioperativeBaselineDao(): PerioperativeBaselineDao
+    abstract fun interventionEventDao(): InterventionEventDao
+    abstract fun treatmentCourseDao(): TreatmentCourseDao
+    abstract fun growthMeasurementDao(): GrowthMeasurementDao
+    abstract fun sourceMetricToggleDao(): SourceMetricToggleDao
 
     companion object {
         @Volatile
@@ -80,7 +105,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, BiosDatabaseMigrationsExtras.MIGRATION_23_24, BiosDatabaseMigrations.MIGRATION_24_25, MigrationsAnthropometry.MIGRATION_25_26, EcgStripMigrations.MIGRATION_26_27, PerioperativeMigrations.MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MetricReadingMigrations.MIGRATION_30_31, SourceMetricToggleMigrations.MIGRATION_31_32)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged
@@ -396,12 +421,9 @@ abstract class BiosDatabase : RoomDatabase() {
         }
 
         // Owner-declared goals of care + clinical-directive metadata
-        // (#184). Two single-row tables holding the owner's standing
-        // preferences about CPR / hospitalisation / intervention level
-        // and the metadata of any advance-directive documents they
-        // have filed elsewhere. The AlertManager reads goals_of_care
-        // to decide whether to short-circuit URGENT-tier escalation
-        // when the owner has declared COMFORT_ONLY care.
+        // (#184) goals_of_care + clinical_directive: owner standing preferences
+        // (CPR / hospitalisation / intervention level) + advance-directive metadata.
+        // AlertManager reads these to short-circuit URGENT escalation under COMFORT_ONLY.
         private val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""
@@ -452,39 +474,18 @@ abstract class BiosDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS professional_reviews (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        anomalyId TEXT NOT NULL,
-                        requestedAt INTEGER NOT NULL,
-                        status INTEGER NOT NULL,
-                        shareMethod TEXT,
-                        sharedMetrics TEXT,
-                        sharedWindowDays INTEGER,
-                        sharedExplanation INTEGER NOT NULL,
-                        sharedBaselines INTEGER NOT NULL,
-                        respondedAt INTEGER,
-                        professionalNotes TEXT,
-                        clinicallyRelevant INTEGER,
-                        recommendation TEXT,
-                        ownerFoundHelpful INTEGER,
-                        FOREIGN KEY (anomalyId) REFERENCES anomalies(id) ON DELETE CASCADE
-                    )
-                """)
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_anomalyId ON professional_reviews(anomalyId)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_status ON professional_reviews(status)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_professional_reviews_requestedAt ON professional_reviews(requestedAt)")
-            }
-        }
+        // Migrations live in sibling files to keep this one under 500 lines.
+        private val MIGRATION_4_5 = ProfessionalReviewMigrations.MIGRATION_4_5
+        private val MIGRATION_16_17 = NeurologyMigrations.MIGRATION_16_17
+        private val MIGRATION_17_18 = EsasMigrations.MIGRATION_17_18
+        private val MIGRATION_18_19 = TraditionalMedicineMigrations.MIGRATION_18_19
+        private val MIGRATION_20_21 = EmergencyContactMigrations.MIGRATION_20_21
+        private val MIGRATION_21_22 = EcgStripMigrations.MIGRATION_21_22
+        private val MIGRATION_22_23 = PerioperativeMigrations.MIGRATION_22_23
+        private val MIGRATION_28_29 = PhoneSleepSampleMigrations.MIGRATION_28_29
+        private val MIGRATION_29_30 = PhoneSleepSampleMigrations.MIGRATION_29_30
 
-        /** In-memory instance for testing. */
-        fun buildInMemory(context: Context): BiosDatabase {
-            return Room.inMemoryDatabaseBuilder(
-                context.applicationContext,
-                BiosDatabase::class.java
-            ).build()
-        }
+        fun buildInMemory(context: Context): BiosDatabase =
+            Room.inMemoryDatabaseBuilder(context.applicationContext, BiosDatabase::class.java).build()
     }
 }

@@ -38,6 +38,33 @@ data class RiskProfile(
     val firstDegreeOsteoporosisHipFracture: Boolean = false,
     /** First-degree melanoma — skin-screening cadence input. */
     val firstDegreeMelanoma: Boolean = false,
+    // -- Hereditary cancer syndromes (#191). Owner-declared genetic-test
+    // outcomes or established clinical diagnoses. NCCN / ACS publish
+    // syndrome-specific surveillance cadences that diverge sharply from
+    // the general USPSTF schedule; the cadence engine reads these flags
+    // to gate the matching catalog entries.
+    /** Lynch syndrome (HNPCC) — colonoscopy 1–2y from 20–25, endometrial sampling annually 30–35 (NCCN). */
+    val lynchSyndrome: Boolean = false,
+    /** Li-Fraumeni syndrome — whole-body MRI annually, breast MRI from 20 (NCCN / Toronto protocol). */
+    val liFraumeni: Boolean = false,
+    /** Familial adenomatous polyposis (FAP) — annual colonoscopy from 10–15 (NCCN). */
+    val fapFamilialAdenomatousPolyposis: Boolean = false,
+    /** Cowden syndrome (PTEN hamartoma) — annual breast MRI from 30, thyroid US annually (NCCN). */
+    val cowdenSyndrome: Boolean = false,
+    /** Peutz-Jeghers syndrome — small-bowel MR enterography q2–3y from 8–10 (NCCN). */
+    val peutzJeghersSyndrome: Boolean = false,
+    /** von Hippel-Lindau — annual ophthalmology + abdominal MRI from 16 (VHL Alliance). */
+    val vhlVonHippelLindau: Boolean = false,
+    /** MEN1 — annual prolactin / calcium / fasting gastrin from age 5–10 (NCCN). */
+    val men1: Boolean = false,
+    /** MEN2A — prophylactic thyroidectomy by 5, annual calcitonin / metanephrines (NCCN / ATA). */
+    val men2A: Boolean = false,
+    /** MEN2B — prophylactic thyroidectomy in first year, annual surveillance (NCCN / ATA). */
+    val men2B: Boolean = false,
+    /** Hereditary diffuse gastric cancer (CDH1+) — prophylactic gastrectomy discussion, annual EGD if declined (NCCN). */
+    val hdgcHereditaryDiffuseGastric: Boolean = false,
+    /** Owner-declared diabetic-American-Indian / Alaska-Native status for IHS HbA1c twice-yearly cadence (IHS Diabetes Standards of Care). */
+    val ihsDiabeticAianStatus: Boolean = false,
     /** Owner's smoking duration in years; null = unknown / not applicable. */
     val personalTobaccoYears: Int? = null,
     /** Owner's pack-years (ASCVD + lung-cancer-screening input); null = unknown. */
