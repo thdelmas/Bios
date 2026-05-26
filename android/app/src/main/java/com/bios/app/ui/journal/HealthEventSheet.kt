@@ -13,7 +13,15 @@ data class HealthEventInput(
     val title: String,
     val description: String?,
     val parentEventId: String? = null,
-    val initialActionItems: List<String> = emptyList()
+    val initialActionItems: List<String> = emptyList(),
+    /**
+     * Optional clinical coding (#357) — populated only for DIAGNOSIS events
+     * when the owner expands the "clinical code" disclosure. All three move
+     * together: an entered code without a system is rejected at save time.
+     */
+    val codeSystem: String? = null,
+    val code: String? = null,
+    val codeDisplay: String? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +58,10 @@ private fun HealthEventForm(
     var description by remember { mutableStateOf("") }
     var actionItemTexts by remember { mutableStateOf(listOf<String>()) }
     var newActionText by remember { mutableStateOf("") }
+    var showCodeFields by remember { mutableStateOf(false) }
+    var codeSystem by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var codeDisplay by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -101,6 +113,37 @@ private fun HealthEventForm(
             minLines = 2,
             maxLines = 4
         )
+
+        // Clinical code (#357) — only for DIAGNOSIS events. Opt-in
+        // disclosure so the routine free-text path stays the default.
+        if (selectedType == HealthEventType.DIAGNOSIS) {
+            TextButton(onClick = { showCodeFields = !showCodeFields }) {
+                Text(if (showCodeFields) "Hide clinical code" else "Add clinical code (optional)")
+            }
+            if (showCodeFields) {
+                OutlinedTextField(
+                    value = codeSystem,
+                    onValueChange = { codeSystem = it },
+                    label = { Text("Coding system (e.g. ICD-10, SNOMED-CT)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    label = { Text("Code (e.g. G44.2)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = codeDisplay,
+                    onValueChange = { codeDisplay = it },
+                    label = { Text("Source-system display (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+            }
+        }
 
         // Action items section (for Treatment type or any type)
         if (selectedType == HealthEventType.TREATMENT || actionItemTexts.isNotEmpty()) {
@@ -165,7 +208,10 @@ private fun HealthEventForm(
                         title = title.trim(),
                         description = description.ifBlank { null },
                         parentEventId = parentEventId,
-                        initialActionItems = actionItemTexts.filter { it.isNotBlank() }
+                        initialActionItems = actionItemTexts.filter { it.isNotBlank() },
+                        codeSystem = codeSystem.trim().ifBlank { null },
+                        code = code.trim().ifBlank { null },
+                        codeDisplay = codeDisplay.trim().ifBlank { null },
                     )
                 )
             },

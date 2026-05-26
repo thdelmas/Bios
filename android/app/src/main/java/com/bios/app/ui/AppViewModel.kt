@@ -309,15 +309,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         description: String?,
         anomalyId: String? = null,
         parentEventId: String? = null,
-        initialActionItems: List<String> = emptyList()
+        initialActionItems: List<String> = emptyList(),
+        codeSystem: String? = null, code: String? = null, codeDisplay: String? = null, // #357 — optional clinical coding (ICD-10 / SNOMED CT / other)
     ) {
         viewModelScope.launch {
             val event = HealthEvent(
-                type = type.name,
-                title = title,
-                description = description,
-                anomalyId = anomalyId,
-                parentEventId = parentEventId
+                type = type.name, title = title, description = description,
+                anomalyId = anomalyId, parentEventId = parentEventId,
+                codeSystem = codeSystem, code = code, codeDisplay = codeDisplay,
             )
             db.healthEventDao().insert(event)
             for (desc in initialActionItems) {

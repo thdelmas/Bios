@@ -24,5 +24,15 @@ data class HealthEvent(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val anomalyId: String? = null,                      // optional link to an Anomaly
-    val parentEventId: String? = null                   // threading: symptom -> diagnosis -> treatment
+    val parentEventId: String? = null,                  // threading: symptom -> diagnosis -> treatment
+    /**
+     * Optional clinical coding for a coded diagnosis (#357). `title` stays
+     * the canonical display; these fields are opt-in metadata so a coded
+     * Spanish "Cefalea tensional" (ICD-10 G44.2) can travel through FHIR
+     * export and back. Bios never validates the code against an external
+     * catalogue.
+     */
+    val codeSystem: String? = null,                     // "ICD-10" | "ICD-11" | "SNOMED-CT" | other
+    val code: String? = null,                           // e.g. "G44.2"
+    val codeDisplay: String? = null,                    // canonical display in the source system's language
 )

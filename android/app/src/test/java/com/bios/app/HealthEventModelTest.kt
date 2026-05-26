@@ -1,11 +1,21 @@
 package com.bios.app
 
+import com.bios.app.data.BiosDatabaseMigrationsExtras
 import com.bios.app.model.*
 import com.bios.app.ui.timeline.TimelineItem
 import org.junit.Assert.*
 import org.junit.Test
 
 class HealthEventModelTest {
+
+    // --- HealthEvent v33 migration shape (#357) ---
+
+    @Test
+    fun `MIGRATION_32_33 covers the right schema versions`() {
+        val m = BiosDatabaseMigrationsExtras.MIGRATION_32_33
+        assertEquals(32, m.startVersion)
+        assertEquals(33, m.endVersion)
+    }
 
     // --- HealthEventType ---
 
@@ -51,6 +61,28 @@ class HealthEventModelTest {
         assertNull(event.description)
         assertNull(event.anomalyId)
         assertNull(event.parentEventId)
+        // Clinical coding (#357) is opt-in metadata.
+        assertNull(event.codeSystem)
+        assertNull(event.code)
+        assertNull(event.codeDisplay)
+    }
+
+    @Test
+    fun `health event with coded diagnosis preserves all three coding fields`() {
+        // Issue #357. Spanish "Cefalea tensional" → ICD-10 G44.2.
+        // The title stays the canonical display in the owner's language;
+        // the code travels as opt-in structured metadata.
+        val event = HealthEvent(
+            type = "DIAGNOSIS",
+            title = "Cefalea tensional",
+            codeSystem = "ICD-10",
+            code = "G44.2",
+            codeDisplay = "Tension-type headache",
+        )
+        assertEquals("Cefalea tensional", event.title)
+        assertEquals("ICD-10", event.codeSystem)
+        assertEquals("G44.2", event.code)
+        assertEquals("Tension-type headache", event.codeDisplay)
     }
 
     @Test
