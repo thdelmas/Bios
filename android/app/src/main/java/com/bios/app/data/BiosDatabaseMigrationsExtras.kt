@@ -57,4 +57,34 @@ internal object BiosDatabaseMigrationsExtras {
             db.execSQL("ALTER TABLE health_events ADD COLUMN codeDisplay TEXT")
         }
     }
+
+    /**
+     * Owner-recorded allergies and intolerances (#355). Audit gap surfaced
+     * by the Sagrat Cor discharge — every clinical encounter starts with an
+     * allergies line. Hard-delete is allowed for this table; no soft-delete
+     * columns.
+     */
+    val MIGRATION_33_34: Migration = object : Migration(33, 34) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS allergy_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    substance TEXT NOT NULL,
+                    substanceCode TEXT,
+                    substanceSource TEXT,
+                    reactionType TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    manifestation TEXT,
+                    onsetDate INTEGER,
+                    verifiedByClinician INTEGER NOT NULL,
+                    note TEXT,
+                    createdAt INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_allergy_records_substance ON allergy_records(substance)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_allergy_records_verifiedByClinician ON allergy_records(verifiedByClinician)")
+        }
+    }
 }
