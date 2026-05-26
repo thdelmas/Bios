@@ -312,6 +312,7 @@ class IngestManager(
             // so this block is safe to call on every sync.
             circadianEngine.derive()?.let { readingDao.insert(it) }
             HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
+            SleepDerivationsBackfill(readingDao).runForLookback(lookbackDays = 30)
             RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
