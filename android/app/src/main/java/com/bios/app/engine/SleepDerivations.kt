@@ -97,6 +97,44 @@ object SleepDerivations {
     }
 
     /**
+     * Time in bed (TIB): total session span as the sum of all SLEEP_STAGE
+     * durations. AWAKE rows at session boundaries and mid-session count
+     * toward TIB — matching the in-bed-but-awake semantics of the clinical
+     * definition. TIB >= SLEEP_DURATION is structurally guaranteed because
+     * the asleep span is a subset of the stage sum.
+     *
+     * Fallback derivation only: adapters that emit TIME_IN_BED natively
+     * (Oura, WHOOP, Garmin) still take precedence via Deduplicator. We
+     * derive here so nights from stage-only sources (Health Connect,
+     * Gadgetbridge) and HR-gap-uninferable nights (device worn through)
+     * still get a TIB row instead of leaving it null.
+     *
+     * Returns null when [readings] has no stage rows or all durations
+     * are zero — there is no session to bound.
+     */
+    fun deriveTimeInBed(
+        readings: List<MetricReading>,
+        sourceId: String
+    ): MetricReading? {
+        val stages = readings
+            .filter { it.metricType == MetricType.SLEEP_STAGE.key }
+            .sortedBy { it.timestamp }
+        if (stages.isEmpty()) return null
+
+        val total = stages.sumOf { it.durationSec ?: 0 }
+        if (total == 0) return null
+
+        return MetricReading(
+            metricType = MetricType.TIME_IN_BED.key,
+            value = total.toDouble(),
+            timestamp = stages.first().timestamp,
+            durationSec = total,
+            sourceId = sourceId,
+            confidence = stages.first().confidence
+        )
+    }
+
+    /**
      * Sleep fragmentation index: count of awakenings after initial sleep onset.
      * An awakening is a transition from a non-AWAKE stage to an AWAKE stage that
      * occurs after the first non-AWAKE row in the session. The initial AWAKE

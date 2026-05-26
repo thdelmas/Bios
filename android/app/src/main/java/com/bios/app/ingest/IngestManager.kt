@@ -333,6 +333,7 @@ class IngestManager(
         quality.groupBy { it.sourceId }.forEach { (sourceId, rows) ->
             SleepDerivations.deriveSleepLatency(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepEfficiency(rows, sourceId)?.let { derived += it }
+            SleepDerivations.deriveTimeInBed(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepFragmentation(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveWakeAfterSleepOnset(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepScore(rows, sourceId)?.let { derived += it }
