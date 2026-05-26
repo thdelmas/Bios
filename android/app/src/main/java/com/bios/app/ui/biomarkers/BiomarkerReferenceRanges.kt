@@ -90,6 +90,14 @@ object BiomarkerReferenceRanges {
         MetricType.QUICK_INDEX to ReferenceRange(low = 70.0, high = 130.0, units = "%"),
         MetricType.APTT to ReferenceRange(low = 25.0, high = 40.0, units = "s"),
         MetricType.APTT_RATIO to ReferenceRange(low = 0.86, high = 1.20, units = "score"),
+
+        // Absolute leukocyte differential (#353). Sex-averaged adult ranges
+        // (Williams Hematology 10th ed.); reference range is conservative
+        // — analyzer- and population-specific bands belong to the lab.
+        MetricType.ABSOLUTE_LYMPHOCYTE_COUNT to ReferenceRange(low = 1000.0, high = 4800.0, units = "/µL"),
+        MetricType.ABSOLUTE_MONOCYTE_COUNT to ReferenceRange(low = 100.0, high = 800.0, units = "/µL"),
+        MetricType.ABSOLUTE_EOSINOPHIL_COUNT to ReferenceRange(low = null, high = 500.0, units = "/µL"),
+        MetricType.ABSOLUTE_BASOPHIL_COUNT to ReferenceRange(low = null, high = 200.0, units = "/µL"),
     )
 
     fun forMetric(metric: MetricType): ReferenceRange? = ranges[metric]

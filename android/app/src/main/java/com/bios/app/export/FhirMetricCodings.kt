@@ -121,6 +121,11 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.QUICK_INDEX -> "11149-6" to "Prothrombin time actual/normal in Platelet poor plasma by Coagulation assay"
     MetricType.APTT -> "14979-9" to "aPTT in Platelet poor plasma by Coagulation assay"
     MetricType.APTT_RATIO -> "13488-2" to "Activated partial thromboplastin time/Normal Activated partial thromboplastin time"
+    // Absolute leukocyte differential (#353) — resolves the deferral noted at MetricType.kt CBC block. Companions to the existing *_PCT keys and ABSOLUTE_NEUTROPHIL_COUNT.
+    MetricType.ABSOLUTE_LYMPHOCYTE_COUNT -> "731-0" to "Lymphocytes [#/volume] in Blood by Automated count"
+    MetricType.ABSOLUTE_MONOCYTE_COUNT -> "742-7" to "Monocytes [#/volume] in Blood by Automated count"
+    MetricType.ABSOLUTE_EOSINOPHIL_COUNT -> "711-2" to "Eosinophils [#/volume] in Blood by Automated count"
+    MetricType.ABSOLUTE_BASOPHIL_COUNT -> "704-7" to "Basophils [#/volume] in Blood by Automated count"
     else -> null
 }
 
