@@ -87,4 +87,36 @@ internal object BiosDatabaseMigrationsExtras {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_allergy_records_verifiedByClinician ON allergy_records(verifiedByClinician)")
         }
     }
+
+    /**
+     * Owner-recorded imaging studies (#356). Stores radiology-report text
+     * (technique / findings / conclusion) plus modality and body region.
+     * DICOM blob storage is explicitly out of scope; this table is
+     * text-report-only. Hard-delete allowed.
+     */
+    val MIGRATION_34_35: Migration = object : Migration(34, 35) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS imaging_studies (
+                    uuid TEXT PRIMARY KEY NOT NULL,
+                    modality TEXT NOT NULL,
+                    bodyRegion TEXT NOT NULL,
+                    studyDate INTEGER NOT NULL,
+                    indication TEXT,
+                    facility TEXT,
+                    reportTechnique TEXT,
+                    reportFindings TEXT,
+                    reportConclusion TEXT,
+                    reportLanguage TEXT,
+                    ownerNote TEXT,
+                    createdAt INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_imaging_studies_studyDate ON imaging_studies(studyDate)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_imaging_studies_modality ON imaging_studies(modality)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_imaging_studies_bodyRegion ON imaging_studies(bodyRegion)")
+        }
+    }
 }
