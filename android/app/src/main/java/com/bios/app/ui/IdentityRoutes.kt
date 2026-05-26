@@ -82,4 +82,7 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("geriatric_trajectory") {
         com.bios.app.ui.geriatric.GeriatricTrajectoryScreen(onBack = { navController.popBackStack() })
     }
+    composable("tremor_trend") {
+        com.bios.app.ui.tremor.TremorTrendScreen(onBack = { navController.popBackStack() })
+    }
 }

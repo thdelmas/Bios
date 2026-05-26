@@ -138,12 +138,10 @@ enum class MetricType(
     CONSCIOUSNESS_LEVEL("consciousness_level", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     RBD_EVENT_FLAG("rbd_event_flag", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL),
     REM_MOVEMENT_INDEX("rem_movement_index", MetricUnit.COUNT, MetricDomain.NEUROLOGICAL),
+    TREMOR_AMPLITUDE_G("tremor_amplitude_g", MetricUnit.M_PER_S_SQUARED, MetricDomain.NEUROLOGICAL),
+    TREMOR_FREQUENCY_HZ("tremor_frequency_hz", MetricUnit.HERTZ, MetricDomain.NEUROLOGICAL),
 
-    // Neurology owner-symptom logging (#207 + #283 Cut 1, NEUROLOGY_POV §2.5+§2.6+§2.15).
-    // Owner-input only — manifesto §3.3 prohibits automated voice / face stroke detection.
-    // HEADACHE_INTENSITY_NRS is the flat-metric shadow of the structured HeadacheLog /
-    // MigraineAttack entities. Headache / cluster / migraine event payload fields land
-    // on event_payloads via com.bios.app.model.HeadacheEventFields.
+    // Neurology owner-symptom logging (#207 + #283, NEUROLOGY_POV §2.5+§2.6+§2.15). Owner-input only — §3.3 prohibits automated voice/face stroke detection. HEADACHE_INTENSITY_NRS shadows the structured HeadacheLog/MigraineAttack entities; event-payload fields ride on com.bios.app.model.HeadacheEventFields.
     HEADACHE_INTENSITY_NRS("headache_intensity_nrs", MetricUnit.SCORE, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     MIGRAINE_ATTACK_EVENT("migraine_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
     HEADACHE_ATTACK_EVENT("headache_attack_event", MetricUnit.EVENT, MetricDomain.NEUROLOGICAL, allowsManualEntry = true),
