@@ -377,9 +377,8 @@ enum class MetricType(
     AMYLASE("amylase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
     LIPASE("lipase", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
-    // CBC indices + leukocyte differential percentages. Absolute differential
-    // counts (abs neutrophil already present as ABSOLUTE_NEUTROPHIL_COUNT)
-    // can be added later if a clinical pattern requires them.
+    // CBC indices + leukocyte differential percentages. Absolute counts:
+    // ANC is in cardio-oncology above, ALC/AMC/AEC/ABC ship below (#353).
     MCV("mcv", MetricUnit.FEMTOLITERS, MetricDomain.BIOMARKER, allowsManualEntry = true),
     MCH("mch", MetricUnit.PICOGRAMS, MetricDomain.BIOMARKER, allowsManualEntry = true),
     MCHC("mchc", MetricUnit.G_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
@@ -436,7 +435,7 @@ enum class MetricType(
     VITAMIN_A_RETINOL("vitamin_a_retinol", MetricUnit.UG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
     VITAMIN_E_ALPHA_TOCOPHEROL("vitamin_e_alpha_tocopherol", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
-    PROTHROMBIN_TIME("prothrombin_time", MetricUnit.SECONDS, MetricDomain.BIOMARKER, allowsManualEntry = true), INR("inr", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true), QUICK_INDEX("quick_index", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true), APTT("aptt", MetricUnit.SECONDS, MetricDomain.BIOMARKER, allowsManualEntry = true), APTT_RATIO("aptt_ratio", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true), // coagulation panel (#352) — PT/INR/Quick/aPTT/aPTT-ratio; INR and aPTT-ratio are dimensionless (SCORE per HOMA_IR precedent); Quick index is percent-of-normal-prothrombin per DACH/ES/FR convention
+    PROTHROMBIN_TIME("prothrombin_time", MetricUnit.SECONDS, MetricDomain.BIOMARKER, allowsManualEntry = true), INR("inr", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true), QUICK_INDEX("quick_index", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true), APTT("aptt", MetricUnit.SECONDS, MetricDomain.BIOMARKER, allowsManualEntry = true), APTT_RATIO("aptt_ratio", MetricUnit.SCORE, MetricDomain.BIOMARKER, allowsManualEntry = true), ABSOLUTE_LYMPHOCYTE_COUNT("absolute_lymphocyte_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true), ABSOLUTE_MONOCYTE_COUNT("absolute_monocyte_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true), ABSOLUTE_EOSINOPHIL_COUNT("absolute_eosinophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true), ABSOLUTE_BASOPHIL_COUNT("absolute_basophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true), // coag panel (#352) PT/INR/Quick/aPTT/aPTT-ratio + abs leukocyte differential (#353) ALC/AMC/AEC/ABC — INR and aPTT-ratio are dimensionless (SCORE per HOMA_IR precedent); Quick is percent-of-normal-prothrombin per DACH/ES/FR; abs counts complete the 5-cell differential already present as *_PCT keys and ABSOLUTE_NEUTROPHIL_COUNT
 
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees

@@ -115,11 +115,12 @@ class FhirExporterTest {
     fun `metric types with LOINC mappings include the AHI passthrough`() {
         // 32 base + 5 wave-5 biomarkers (#158) + AHI (#157) + 47 Wave-1
         // (audit §3.1) + 8 Wave-2 (audit §3.2 — telomere/bone-T/vit K2
-        // intentionally unmapped) + 5 coagulation (#352) = 98. The count
-        // assertion is maintained alongside the loincCode() table so any
-        // unmapped new MetricType is caught.
+        // intentionally unmapped) + 5 coagulation (#352) + 4 absolute
+        // leukocyte differential (#353) = 102. The count assertion is
+        // maintained alongside the loincCode() table so any unmapped new
+        // MetricType is caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(98, mapped)
+        assertEquals(102, mapped)
     }
 
     @Test
@@ -222,6 +223,22 @@ class FhirExporterTest {
         assertEquals("%", ucumCode(MetricType.QUICK_INDEX))
         assertEquals("s", ucumCode(MetricType.APTT))
         assertEquals("{score}", ucumCode(MetricType.APTT_RATIO))
+    }
+
+    @Test
+    fun `absolute leukocyte differential maps to canonical LOINC codes`() {
+        // Issue #353. Companions to the existing *_PCT keys and the
+        // ABSOLUTE_NEUTROPHIL_COUNT that anchors the febrile-neutropenia
+        // signature.
+        assertEquals("731-0", loincCode(MetricType.ABSOLUTE_LYMPHOCYTE_COUNT)!!.first)
+        assertEquals("742-7", loincCode(MetricType.ABSOLUTE_MONOCYTE_COUNT)!!.first)
+        assertEquals("711-2", loincCode(MetricType.ABSOLUTE_EOSINOPHIL_COUNT)!!.first)
+        assertEquals("704-7", loincCode(MetricType.ABSOLUTE_BASOPHIL_COUNT)!!.first)
+        // All four use the /µL UCUM code shared with ABSOLUTE_NEUTROPHIL_COUNT.
+        assertEquals("/uL", ucumCode(MetricType.ABSOLUTE_LYMPHOCYTE_COUNT))
+        assertEquals("/uL", ucumCode(MetricType.ABSOLUTE_MONOCYTE_COUNT))
+        assertEquals("/uL", ucumCode(MetricType.ABSOLUTE_EOSINOPHIL_COUNT))
+        assertEquals("/uL", ucumCode(MetricType.ABSOLUTE_BASOPHIL_COUNT))
     }
 
     @Test
