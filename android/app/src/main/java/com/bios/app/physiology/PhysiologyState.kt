@@ -124,6 +124,52 @@ enum class PhysiologyState(val displayName: String) {
     KNOWN_HF("Known heart failure"),
 
     /**
+     * Owner-declared bipolar disorder (PSYCHIATRY_POV §2.1). Gates
+     * [com.bios.app.alerts.PsychiatryPatterns.bipolarManiaProdromeScreen] —
+     * the manic-prodrome physiological fingerprint (reduced sleep with
+     * maintained or increased activity) overlaps too much with everyday
+     * stress, jet lag, and short-term arousal in the general adult
+     * population to fire safely without an owner-declared context.
+     *
+     * Manifesto guard: Bios never infers bipolar disorder from sensor
+     * data. The owner declares the condition; Bios then watches for the
+     * pattern. Pull-side surface only — see
+     * [com.bios.app.alerts.AlertContentPolicy] for the person-evaluative
+     * push ban. Reference: Bauer et al. (2020), Seoul Nat'l Univ digital
+     * phenotyping (npj Digital Medicine 2024).
+     */
+    KNOWN_BIPOLAR_DISORDER("Bipolar disorder (owner-declared)"),
+
+    /**
+     * Owner-declared generalised anxiety disorder (PSYCHIATRY_POV §2.3).
+     * Gates [com.bios.app.alerts.PsychiatryPatterns.anxietyPanicScreen] —
+     * sympathetic-spike patterns (rapid HR rise, HRV collapse, RR
+     * elevation) are common to many transient states (caffeine, exertion,
+     * acute stress, vasovagal pre-syncope). Without an owner-declared GAD
+     * context the false-positive rate is far too high to surface as a
+     * standing alert.
+     *
+     * Manifesto guard: Bios never infers anxiety. The owner declares the
+     * condition; Bios reports physiological events that match the
+     * sympathetic-arousal shape the owner has already named.
+     */
+    KNOWN_GAD("Generalised anxiety disorder (owner-declared)"),
+
+    /**
+     * Owner-declared opioid-use-disorder treatment context (EMERGENCY
+     * MEDICINE OUD audit). Active medication-assisted treatment
+     * (methadone, buprenorphine, naltrexone) or recent recovery context
+     * where opioid-induced respiratory depression is a non-trivial risk.
+     * Gates [com.bios.app.alerts.PsychiatryPatterns.opioidUseRespiratoryPatternScreen]
+     * — sustained mild respiratory depression (RR ≤10 + SpO2 ≤92) is far
+     * more clinically meaningful when the owner has named the OUD
+     * context. The URGENT case (RR ≤8) is already covered by the
+     * NEWS2 / sepsis-screen and the dedicated `opioid_respiratory_
+     * depression_screen`. Reference: Nandakumar et al. (2019) UW SAFE.
+     */
+    KNOWN_OUD_TREATMENT("Opioid-use-disorder treatment (owner-declared)"),
+
+    /**
      * Cardio-oncology contexts (#201, ONCOLOGY_POV §2.3-2.5). Owner-declared
      * cancer therapy state; enables CardioOncologyPatterns surveillance via
      * the `requiredStates` axis. Drug-class annotation lives separately in
