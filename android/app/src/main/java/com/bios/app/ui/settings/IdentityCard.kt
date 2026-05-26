@@ -43,6 +43,7 @@ internal fun IdentityCard(
     onNavigateToInterventionEvents: () -> Unit = {},
     onNavigateToTreatmentCourses: () -> Unit = {},
     onNavigateToAnthropometry: () -> Unit = {},
+    onNavigateToGeriatricTrajectory: () -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -58,6 +59,7 @@ internal fun IdentityCard(
                 "Environmental context" to onNavigateToEnvironmentalContext,
                 "FRAIL assessment" to onNavigateToFrailAssessment,
                 "Goals of care" to onNavigateToGoalsOfCare,
+                "Geriatric trajectory" to onNavigateToGeriatricTrajectory,
                 "Headache & migraine diary" to onNavigateToHeadacheDiary,
                 "FAST stroke check" to onNavigateToFastStroke,
                 "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
