@@ -41,6 +41,15 @@ class MetricCardFormatTest {
     }
 
     @Test
+    fun `blood oxygen formats stored percentage value without rescaling`() {
+        // Canonical storage is percent (e.g. 99.0 = 99%), not fraction —
+        // see SignalQualityFilter bounds 70-100 and HealthConnect's
+        // record.percentage.value mapping.
+        assertEquals("99%", formatValue(99.0, MetricType.BLOOD_OXYGEN))
+        assertEquals("95%", formatValue(95.4, MetricType.BLOOD_OXYGEN))
+    }
+
+    @Test
     fun `relative time under 60 seconds is just now`() {
         assertEquals("just now", formatRelativeTime(0))
         assertEquals("just now", formatRelativeTime(30_000))

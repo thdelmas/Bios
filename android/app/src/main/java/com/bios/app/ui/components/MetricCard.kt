@@ -222,7 +222,7 @@ internal fun formatValue(value: Double, metricType: MetricType): String {
         MetricType.HEART_RATE_VARIABILITY ->
             "${value.toInt()} ms"
         MetricType.BLOOD_OXYGEN ->
-            "${(value * 100).toInt()}%"
+            "${value.toInt()}%"
         MetricType.STEPS ->
             "${value.toInt()}"
         MetricType.SKIN_TEMPERATURE_DEVIATION -> {
