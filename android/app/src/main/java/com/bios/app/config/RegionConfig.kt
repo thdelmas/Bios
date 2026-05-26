@@ -198,6 +198,19 @@ data class RegulatoryConfig(
     val fhirProfileUrl: String?,
     /** Regulatory body name for disclaimers (e.g., "FDA", "EMA", "TGA"). */
     val regulatoryBody: String,
-    /** Required disclaimer text for health alerts. */
-    val alertDisclaimer: String
+    /**
+     * Required disclaimer text for health alerts. English source-of-truth
+     * — the [com.bios.app.alerts.AlertTextResolver]-style lookup using
+     * [alertDisclaimerKey] takes precedence when an Android [android.content.Context]
+     * is available, so callers running outside the framework (tests, headless
+     * jobs) still receive the disclaimer in English.
+     */
+    val alertDisclaimer: String,
+    /**
+     * Resource name (in `values/pattern_strings.xml` and locale overlays)
+     * for the localized form of [alertDisclaimer]. Resolved at notification
+     * render time. Null when no localized resource exists yet — caller
+     * falls back to [alertDisclaimer]. See issue #210.
+     */
+    val alertDisclaimerKey: String? = null,
 )

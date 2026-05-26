@@ -402,7 +402,7 @@ fun SettingsScreen(
         }
 
         SettingsNotificationsCard()
-
+        SettingsLanguageCard()
         SettingsFeedbackCard()
 
         SettingsPhoneSleepCard()

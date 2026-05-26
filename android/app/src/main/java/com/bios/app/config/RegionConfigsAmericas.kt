@@ -83,6 +83,7 @@ internal object RegionConfigsAmericas {
             regulatoryBody = "FDA",
             alertDisclaimer = "Bios is not an FDA-cleared medical device. " +
                 "Alerts are informational and do not constitute medical advice.",
+            alertDisclaimerKey = "alert_disclaimer_us",
         ),
         emergencyNumber = "911",
         climateZone = ClimateZone.TEMPERATE,
