@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Davvisámegiella (Northern Sámi) — Tier-B placeholder for issue #210.
+
+    PRIORITISATION: Sámi locales are Tier-B in the audit corpus
+    (Indigenous Americas / Oceanic-Arctic audit recommendations). This PR
+    delivers Tier-A locales (es, pt-BR, mi-NZ, haw); Sámi will land in a
+    follow-up commissioned with the Sámediggi-Norga / Sametinget /
+    Sámediggi-Suopma language councils and Sámi clinical translators.
+
+    NO STRINGS in this file means Android falls back to the default
+    `values/strings.xml` (English) — which is the correct behaviour until
+    qualified translation is available. Do NOT add machine-translated
+    keys here; empty is better than wrong.
+
+    When translation is commissioned:
+      * Northern Sámi (se / smi) is the most widely spoken variant — ~25k
+        speakers; Lule (smj), Pite (sje), Southern (sma), Inari (smn),
+        Skolt (sms) follow.
+      * Macron / accent handling: Sámi orthography uses Latin script with
+        diacritics (á, č, đ, ŋ, š, ŧ, ž). All seven Sámi languages have
+        official status under the Sámi Language Act 1992 (Norway 1990,
+        Sweden 2000) — Bios's obligation parallels its mi-NZ obligation.
+-->
+<resources>
+    <!-- TODO(#210 Tier-B): commission Sámi clinical translation. -->
+</resources>

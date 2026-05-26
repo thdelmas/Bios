@@ -258,7 +258,8 @@ object RegionConfigProvider {
             explicitCommunityConsent = true,
             fhirProfileUrl = "http://hl7.org/fhir/us/core",
             regulatoryBody = "FDA",
-            alertDisclaimer = "Bios is not an FDA-cleared medical device. Alerts are informational and do not constitute medical advice."
+            alertDisclaimer = "Bios is not an FDA-cleared medical device. Alerts are informational and do not constitute medical advice.",
+            alertDisclaimerKey = "alert_disclaimer_us",
         )
     )
 
@@ -287,7 +288,8 @@ object RegionConfigProvider {
             explicitCommunityConsent = true,  // UK GDPR
             fhirProfileUrl = "https://fhir.hl7.org.uk",
             regulatoryBody = "MHRA",
-            alertDisclaimer = "Bios is not a registered medical device. Alerts are informational and do not constitute medical advice."
+            alertDisclaimer = "Bios is not a registered medical device. Alerts are informational and do not constitute medical advice.",
+            alertDisclaimerKey = "alert_disclaimer_gb",
         )
     )
 
@@ -314,7 +316,8 @@ object RegionConfigProvider {
             explicitCommunityConsent = true,  // GDPR
             fhirProfileUrl = null,            // varies by country
             regulatoryBody = "EMA",
-            alertDisclaimer = "Bios is not a CE-marked medical device. Alerts are informational and do not constitute medical advice."
+            alertDisclaimer = "Bios is not a CE-marked medical device. Alerts are informational and do not constitute medical advice.",
+            alertDisclaimerKey = "alert_disclaimer_eu",
         )
     )
 
@@ -343,7 +346,8 @@ object RegionConfigProvider {
             explicitCommunityConsent = true,  // PIPEDA
             fhirProfileUrl = "https://www.infoway-inforoute.ca/fhir",
             regulatoryBody = "Health Canada",
-            alertDisclaimer = "Bios is not a Health Canada licensed medical device. Alerts are informational and do not constitute medical advice."
+            alertDisclaimer = "Bios is not a Health Canada licensed medical device. Alerts are informational and do not constitute medical advice.",
+            alertDisclaimerKey = "alert_disclaimer_ca",
         )
     )
 
@@ -370,7 +374,8 @@ object RegionConfigProvider {
             explicitCommunityConsent = true,
             fhirProfileUrl = "http://hl7.org.au/fhir",
             regulatoryBody = "TGA",
-            alertDisclaimer = "Bios is not a TGA-registered medical device. Alerts are informational and do not constitute medical advice."
+            alertDisclaimer = "Bios is not a TGA-registered medical device. Alerts are informational and do not constitute medical advice.",
+            alertDisclaimerKey = "alert_disclaimer_au",
         )
     )
 
@@ -397,7 +402,8 @@ object RegionConfigProvider {
             explicitCommunityConsent = true,  // APPI
             fhirProfileUrl = "http://jpfhir.jp",
             regulatoryBody = "PMDA",
-            alertDisclaimer = "Biosは医療機器ではありません。アラートは情報提供を目的としており、医学的助言ではありません。"
+            alertDisclaimer = "Biosは医療機器ではありません。アラートは情報提供を目的としており、医学的助言ではありません。",
+            alertDisclaimerKey = "alert_disclaimer_jp",
         )
     )
 

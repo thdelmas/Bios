@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Brazilian Portuguese overlay — issue #210.
+
+    Register notes:
+      * Brazilian Portuguese medical/clinical conventions; SBCM and SBE
+        terminology where there is a stable equivalent.
+      * Third-person descriptive; avoids "você deve…" / "você precisa…"
+        which the localized AlertContentPolicy banlist forbids on the
+        push side.
+      * Numeric units render the same as in English (mg/dL, mmol/L, bpm)
+        — Brazilian clinical practice uses mg/dL for glucose by default.
+
+    Translation coverage in this PR:
+      Translated:
+        - infection_onset
+        - sleep_disruption
+        - cardiovascular_stress
+        - overtraining
+        - respiratory_infection
+        - mental_health_correlate
+        - emergency_spo2_critical
+        - emergency_hypoglycemia_critical
+        - emergency_tachycardia_critical
+        - emergency_bradycardia_critical
+        - hypertensive_urgency
+        - alert_disclaimer_us / _gb / _eu / _ca / _au
+
+      NOT translated in this PR (falls back to English):
+        metabolic_drift, cardiorespiratory_deconditioning,
+        chronic_inflammation, recovery_deficit, menstrual_cycle_anomaly,
+        hypertension_emerging, sepsis_screen, paroxysmal_afib_screen,
+        sleep_apnea_screen, circadian_disruption, autonomic_pattern_shift
+        — these will be commissioned with a Brazilian clinical translator
+        in a follow-up PR.
+-->
+<resources>
+
+    <!-- == Phase 1 core patterns == -->
+
+    <string name="pattern_infection_onset_explanation">Vários sinais vitais estão se desviando da linha de base pessoal em um padrão consistente com os estágios iniciais de uma doença. A pesquisa mostra que essas alterações podem aparecer 1 a 2 dias antes dos sintomas.</string>
+    <string name="pattern_infection_onset_suggested_action">Descansar, manter-se hidratado e observar como se sente são respostas razoáveis. Se houver sintomas, convém procurar um profissional de saúde.</string>
+
+    <string name="pattern_sleep_disruption_explanation">A qualidade do sono vem diminuindo há vários dias. A redução do sono profundo combinada com marcadores de estresse fisiológico pode indicar fadiga ou estresse acumulados.</string>
+    <string name="pattern_sleep_disruption_suggested_action">Manter horários consistentes de sono e de despertar, reduzir o tempo de tela antes de dormir e gerenciar o estresse são intervenções com evidência. Se persistir por mais de uma semana, uma consulta com um profissional de saúde pode ajudar.</string>
+
+    <string name="pattern_cardiovascular_stress_explanation">Os marcadores cardiovasculares mostram elevação sustentada acima da linha de base pessoal. Isso pode indicar estresse físico ou emocional, sobretreino ou outros fatores que afetam o coração.</string>
+    <string name="pattern_cardiovascular_stress_suggested_action">Reduzir o exercício intenso, gerenciar o estresse e garantir descanso adequado são respostas com evidência. Diante de dor torácica, tontura ou falta de ar, convém procurar atendimento médico com rapidez.</string>
+
+    <string name="pattern_overtraining_explanation">O organismo está mostrando sinais de recuperação insuficiente após a atividade física recente. Uma frequência cardíaca de repouso elevada combinada com HRV reduzida e má qualidade do sono pode indicar síndrome de sobretreino.</string>
+    <string name="pattern_overtraining_suggested_action">1 a 2 dias de descanso, sono prioritário e redução da intensidade do treino são a resposta com evidência. Se a fadiga persistir por mais de alguns dias de descanso, convém consultar um profissional de medicina esportiva.</string>
+
+    <!-- == Phase 4 patterns == -->
+
+    <string name="pattern_respiratory_infection_explanation">A frequência respiratória e o oxigênio no sangue estão se desviando da linha de base em um padrão associado a infecção respiratória. Essas alterações podem aparecer antes dos sintomas de tosse ou congestão.</string>
+    <string name="pattern_respiratory_infection_suggested_action">Convém observar o surgimento de sintomas respiratórios (tosse, congestão, falta de ar). Se a SpO2 cair abaixo de 95 % ou se aparecer dificuldade respiratória, contatar um profissional de saúde.</string>
+
+    <string name="pattern_mental_health_correlate_explanation">Os padrões de sono, o nível de atividade e os marcadores autonômicos se modificaram na última semana. Essas alterações fisiológicas se correlacionam com estresse, fadiga ou mudanças de humor na literatura clínica. Esta é uma observação de dados, não um diagnóstico.</string>
+    <string name="pattern_mental_health_correlate_suggested_action">Mudanças recentes na vida, estresse ou fatores sazonais podem estar afetando o bem-estar. Se houver humor persistentemente baixo, ansiedade ou perda de interesse, conversar com um profissional de saúde mental pode ajudar.</string>
+
+    <!-- == Emergency vital patterns == -->
+
+    <string name="pattern_emergency_spo2_critical_explanation">A leitura mais recente de oxigênio no sangue é igual ou inferior a 85 %. Esse nível está associado a hipóxia significativa e é o limite clínico padrão para avaliação imediata. Artefato de movimento, dedos frios ou esmalte podem produzir leituras falsamente baixas — convém repetir a medição em um dedo quente e limpo.</string>
+    <string name="pattern_emergency_spo2_critical_suggested_action">Repetir a medição em um dedo quente e limpo, sem esmalte. Se for confirmada abaixo de 90 %, ou se acompanhada de falta de ar, dor no peito, confusão ou coloração azulada nos lábios ou nas pontas dos dedos, convém procurar atendimento médico imediato ou contatar os serviços de emergência.</string>
+
+    <string name="pattern_emergency_hypoglycemia_critical_explanation">A leitura mais recente de glicose no sangue é igual ou inferior a 54 mg/dL (3,0 mmol/L). A ADA classifica esse valor como hipoglicemia de nível 2, o limite de hipoglicemia clinicamente significativa que requer correção imediata.</string>
+    <string name="pattern_emergency_hypoglycemia_critical_suggested_action">Consumir 15-20 g de carboidrato de ação rápida (comprimidos de glicose, suco ou açúcar) e repetir a medição em 15 minutos. Repetir se a leitura ainda estiver abaixo de 70 mg/dL. Se a pessoa não conseguir engolir, estiver confusa ou não responder, é necessário glucagon ou os serviços de emergência.</string>
+
+    <string name="pattern_emergency_tachycardia_critical_explanation">A frequência cardíaca de repouso mais recente é igual ou superior a 130 bpm. Esse valor está fora da variação normal em adultos e é o limite clínico padrão para avaliar taquiarritmia (como fibrilação atrial com resposta ventricular rápida ou taquicardia supraventricular), tireotoxicose, desidratação grave, infecção ou outras causas sistêmicas.</string>
+    <string name="pattern_emergency_tachycardia_critical_suggested_action">Se acompanhada de dor no peito, falta de ar, tontura, desmaio ou palpitações, convém procurar atendimento médico imediato. Sem sintomas agudos, repetir a medição em repouso após alguns minutos; uma leitura sustentada nesse nível justifica avaliação rápida por um profissional de saúde.</string>
+
+    <string name="pattern_emergency_bradycardia_critical_explanation">A frequência cardíaca de repouso mais recente é igual ou inferior a 35 bpm. Esse valor está abaixo do limite em que bradicardia sintomática, doença do sistema de condução (como bloqueio AV de alto grau ou síndrome do nó sinusal) ou hipotireoidismo grave entram na avaliação clínica. Atletas de resistência muito treinados podem ter frequências cardíacas de repouso reais nessa faixa sem patologia; medicação documentada para controle da frequência (betabloqueadores, certos bloqueadores dos canais de cálcio) também pode explicar essa leitura.</string>
+    <string name="pattern_emergency_bradycardia_critical_suggested_action">Se acompanhada de tontura, desmaio, fadiga, falta de ar ou dor no peito, convém procurar atendimento médico imediato. Sem sintomas agudos, um ECG e uma avaliação clínica são o próximo passo padrão para distinguir o condicionamento atlético de um problema de condução.</string>
+
+    <!-- == Hypertension == -->
+
+    <string name="pattern_hypertensive_urgency_explanation">Uma leitura recente de pressão arterial é igual ou superior ao limite de crise hipertensiva (≥180 sistólica ou ≥120 diastólica). Esse é o ponto de corte universal entre as diretrizes ACC/AHA, NICE, ESC, JSH e Hypertension Canada. Uma única leitura com manguito nesse nível pode ocorrer por esforço recente, estresse ou técnica de medição — o protocolo clínico é repetir a medição após alguns minutos de repouso antes de considerá-la confirmada.</string>
+    <string name="pattern_hypertensive_urgency_suggested_action">Descansar por 5 minutos e repetir a medição no braço oposto, com o manguito na altura do coração. Se a leitura for confirmada em 180/120 ou mais, ou se acompanhada de dor no peito, falta de ar, cefaleia intensa, alterações da visão ou fraqueza, convém procurar atendimento médico imediato ou contatar os serviços de emergência. Sem sintomas agudos mas com leitura confirmada nesse nível, uma avaliação clínica urgente (no mesmo dia) é o padrão.</string>
+
+    <!-- == Regional alert disclaimers == -->
+    <string name="alert_disclaimer_us">O Bios não é um dispositivo médico autorizado pela FDA. Os alertas são informativos e não constituem aconselhamento médico.</string>
+    <string name="alert_disclaimer_gb">O Bios não é um dispositivo médico registrado. Os alertas são informativos e não constituem aconselhamento médico.</string>
+    <string name="alert_disclaimer_eu">O Bios não é um dispositivo médico com marcação CE. Os alertas são informativos e não constituem aconselhamento médico.</string>
+    <string name="alert_disclaimer_ca">O Bios não é um dispositivo médico autorizado pela Health Canada. Os alertas são informativos e não constituem aconselhamento médico.</string>
+    <string name="alert_disclaimer_au">O Bios não é um dispositivo médico registrado pela TGA. Os alertas são informativos e não constituem aconselhamento médico.</string>
+
+    <!-- == Settings UI strings == -->
+    <string name="settings_language_title">Idioma</string>
+    <string name="settings_language_subtitle">Substitui o idioma do sistema para os textos do Bios. Afeta as mensagens de alerta e os rótulos da interface. Reinicie o Bios após alterar.</string>
+    <string name="settings_language_system_default">Padrão do sistema</string>
+    <string name="settings_language_apply">Aplicar</string>
+</resources>

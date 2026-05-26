@@ -387,6 +387,8 @@ fun SettingsScreen(
 
         SettingsNotificationsCard()
 
+        SettingsLanguageCard()
+
         SettingsFeedbackCard()
 
         // About

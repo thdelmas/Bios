@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Spanish (Mexico) overlay — issue #210.
+
+    Only includes strings where the Mexican Spanish register or vocabulary
+    differs meaningfully from the Iberian base (values-es). Strings not
+    declared here fall back to values-es automatically per Android's
+    resource resolution. This minimizes translation duplication and the
+    risk of drift between es and es-MX.
+
+    Differences from values-es:
+      * "checar" preferred over "comprobar" for re-measurement
+      * "presión arterial" rendered the same in both registers
+      * "azúcar" common for "glucose" in everyday Mexican Spanish, but
+        clinical contexts retain "glucosa" — we keep "glucosa" for
+        consistency with medical literature
+      * "hace falta" used in es-base sounds peninsular; Mexican register
+        prefers "se necesita" / "se requiere"
+-->
+<resources>
+
+    <string name="pattern_emergency_spo2_critical_suggested_action">Vuelve a checar la medición en un dedo cálido y limpio, sin esmalte. Si se confirma por debajo del 90 %, o si se acompaña de falta de aire, dolor en el pecho, confusión o coloración azulada en labios o yemas de los dedos, conviene buscar atención médica inmediata o llamar a los servicios de emergencia.</string>
+
+    <string name="pattern_emergency_hypoglycemia_critical_suggested_action">Consumir 15-20 g de carbohidratos de acción rápida (tabletas de glucosa, jugo o azúcar) y volver a checar a los 15 minutos. Repetir si la lectura sigue por debajo de 70 mg/dL. Si la persona no puede tragar, está confundida o no responde, se necesita glucagón o servicios de emergencia.</string>
+
+    <!-- == Settings UI strings (Mexican Spanish often prefers "Sistema") == -->
+    <string name="settings_language_system_default">Predeterminado del sistema</string>
+</resources>

@@ -11,8 +11,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.alerts.AlertTextResolver
 import kotlin.math.abs
 
 @Composable
@@ -98,15 +100,19 @@ fun DiagnosticCard(result: DiagnosticResult, onNavigateToDetail: (String) -> Uni
 
                     Spacer(Modifier.height(12.dp))
 
-                    // Explanation
+                    // Explanation — resolves through localization overlay
+                    // (issue #210) and falls back to the English source
+                    // when no overlay key is declared for the current
+                    // locale.
+                    val ctx = LocalContext.current
                     Text(
-                        result.pattern.explanation,
+                        AlertTextResolver.explanationFor(ctx, result.pattern),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     // Suggested action
-                    result.pattern.suggestedAction?.let { action ->
+                    AlertTextResolver.suggestedActionFor(ctx, result.pattern)?.let { action ->
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.Top) {
                             Icon(

@@ -1,10 +1,12 @@
 package com.bios.app.ui
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.bios.app.i18n.LocalePreference
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,15 +46,15 @@ import com.bios.app.ui.trends.TrendsScreen
 import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
+    // Apply the owner-selected UI locale (issue #210) before resources
+    // resolve. SettingsLanguageCard surfaces the "restart to apply" note.
+    override fun attachBaseContext(newBase: Context) =
+        super.attachBaseContext(LocalePreference.wrap(newBase))
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        setContent {
-            BiosTheme {
-                BiosRoot()
-            }
-        }
+        setContent { BiosTheme { BiosRoot() } }
     }
 }
 
