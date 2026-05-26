@@ -484,11 +484,9 @@ fun BiosApp(viewModel: AppViewModel) {
             onDismiss = { showEventSheet = false },
             onSave = { input ->
                 viewModel.createHealthEvent(
-                    type = input.type,
-                    title = input.title,
-                    description = input.description,
-                    parentEventId = input.parentEventId,
-                    initialActionItems = input.initialActionItems
+                    type = input.type, title = input.title, description = input.description,
+                    parentEventId = input.parentEventId, initialActionItems = input.initialActionItems,
+                    codeSystem = input.codeSystem, code = input.code, codeDisplay = input.codeDisplay,
                 )
                 showEventSheet = false
             },
