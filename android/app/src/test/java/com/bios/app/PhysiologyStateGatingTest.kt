@@ -84,13 +84,17 @@ class PhysiologyStateGatingTest {
 
     @Test
     fun only_explicitly_documented_patterns_declare_excludedStates() {
-        // Pins the wired-pattern set so future additions are explicit. Two
-        // patterns currently use the gating:
+        // Pins the wired-pattern set so future additions are explicit.
+        // Patterns currently using the gating:
         //   - cardiovascular_stress: RHR-elevation is normative in pregnancy,
         //     postpartum, and endurance-athlete physiology
         //   - sepsis_screen (#182): NEWS2 thresholds are validated for adults
         //     only — paediatric early-warning scores (PEWS) use age-banded
         //     bands that don't map onto NEWS2 components
+        //   - menstrual_cycle_anomaly (#209): cycle-length variability IS
+        //     the defining marker of the menopausal transition per STRAW+10;
+        //     flagging it as anomaly in peri/post-menopause owners would
+        //     misread the physiology
         // When a new pattern lands here, add its id to the expected map below
         // so the gating contract stays visible.
         val expected = mapOf(
@@ -102,6 +106,7 @@ class PhysiologyStateGatingTest {
                 PhysiologyState.ATHLETE_HIGH_FITNESS,
             ),
             "sepsis_screen" to setOf(PhysiologyState.PAEDIATRIC),
+            "menstrual_cycle_anomaly" to PhysiologyState.MENOPAUSE_TRANSITION,
         )
         val wired = ConditionPatterns.all
             .filter { it.excludedStates.isNotEmpty() }

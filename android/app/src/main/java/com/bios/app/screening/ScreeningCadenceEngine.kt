@@ -7,14 +7,25 @@ import com.bios.app.model.ScreeningEntry
  * (SharedPreferences in the v1 UI) — passing it as a typed value here
  * keeps the engine pure and unit-testable without Android dependencies.
  *
- * `presentsAs` is an anatomy-presentation flag for applicability matching,
- * not an identity declaration. The engine treats `null` as "owner hasn't
- * said" and renders both anatomy-specific screenings as "elective to
- * record" rather than filtering them out.
+ * Two anatomy gates live here for backwards compatibility during the
+ * audit-driven migration to anatomy-direct routing (#209):
+ *
+ * - [presentsAs] is the legacy binary flag — still consulted when no
+ *   [anatomy] profile is set so existing installs keep working.
+ * - [anatomy] is the new per-organ profile. When set, it takes precedence
+ *   over [presentsAs] and routes per screening key (cervix-yes →
+ *   cervical, breast-yes → mammogram, prostate-yes → AAA / PSA). Owners
+ *   are no longer asked "are you female-bodied?"; they're asked about
+ *   each organ individually, the audit-explicit fix to the binary UI.
+ *
+ * The engine treats `null` for either field as "owner hasn't said" and
+ * renders the affected entries as elective rather than filtering them
+ * out.
  */
 data class OwnerDemographics(
     val ageYears: Int,
     val presentsAs: Applicability? = null,
+    val anatomy: AnatomyProfile? = null,
 )
 
 /** Result of evaluating one catalog entry against the owner's history. */
@@ -73,17 +84,40 @@ object ScreeningCadenceEngine {
             )
         }
 
-        // Applicability gate. If owner hasn't declared `presentsAs`, allow
-        // anatomy-specific screenings through so the cadence screen shows
-        // them as elective. The screen labels these so the owner can
-        // self-filter without the engine making identity calls.
-        if (entry.applicability != Applicability.UNIVERSAL &&
-            demographics.presentsAs != null &&
-            demographics.presentsAs != entry.applicability
-        ) {
-            return ScreeningStatus.NotEligible(
-                reason = "Anatomy-specific recommendation",
-            )
+        // Applicability gate. Two routes:
+        //
+        // 1. Anatomy-direct (#209). When the owner has set an
+        //    [AnatomyProfile], we route per screening key — cervix=yes
+        //    gates cervical; prostate=yes gates AAA; etc. This is the
+        //    audit-explicit replacement for the binary female/male
+        //    bucket UI in PreventiveCareScreen.
+        // 2. Legacy [presentsAs] fallback for owners on the old UI who
+        //    haven't yet visited the demographics dialog after the
+        //    anatomy-question redesign. Same semantics as before:
+        //    matching presentsAs → eligible, mismatching → not.
+        //
+        // In both routes, a fully-unset answer is treated as "elective"
+        // — the screen shows the entry and lets the owner decide.
+        if (entry.applicability != Applicability.UNIVERSAL) {
+            val anatomy = demographics.anatomy
+            if (anatomy != null) {
+                when (anatomy.resolveForKey(entry.key)) {
+                    ApplicabilityResolution.NotApplicable ->
+                        return ScreeningStatus.NotEligible(
+                            reason = "Anatomy-specific recommendation",
+                        )
+                    ApplicabilityResolution.Match,
+                    ApplicabilityResolution.Unset -> {
+                        // Fall through to the cadence / record check.
+                    }
+                }
+            } else if (demographics.presentsAs != null &&
+                demographics.presentsAs != entry.applicability
+            ) {
+                return ScreeningStatus.NotEligible(
+                    reason = "Anatomy-specific recommendation",
+                )
+            }
         }
 
         // No record on file.
