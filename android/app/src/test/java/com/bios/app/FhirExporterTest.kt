@@ -466,6 +466,8 @@ class FhirExporterTest {
             MetricUnit.MIU_PER_ML -> "m[IU]/mL"
             MetricUnit.IU_PER_ML -> "[IU]/mL"
             MetricUnit.PER_MINUTE -> "/min"
+            MetricUnit.M_PER_S_SQUARED -> "m/s2"
+            MetricUnit.HERTZ -> "Hz"
         }
     }
 }

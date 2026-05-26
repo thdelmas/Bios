@@ -492,6 +492,8 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.MIU_PER_ML -> "m[IU]/mL"
     MetricUnit.IU_PER_ML -> "[IU]/mL"
     MetricUnit.PER_MINUTE -> "/min"
+    MetricUnit.M_PER_S_SQUARED -> "m/s2"
+    MetricUnit.HERTZ -> "Hz"
 }
 
 internal fun formatInstant(instant: Instant): String = instant.atZone(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
