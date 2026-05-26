@@ -11,8 +11,11 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.WorkerParameters
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.BaselinedActivityThreshold
 import com.bios.app.engine.PhoneSleepInference
+import com.bios.app.engine.SleepDerivations
 import com.bios.app.model.DataSource
+import com.bios.app.model.MetricReading
 import com.bios.app.model.PhoneSleepSample
 import com.bios.app.model.ReadingKind
 import com.bios.app.model.SourceType
@@ -62,10 +65,7 @@ class PhoneSleepWorker(
         val context = applicationContext
         val adapter = PhoneSleepAdapter(context)
         if (!adapter.isAvailable) {
-            // No accelerometer → no inference possible. Succeed quietly so
-            // WorkManager keeps the periodic schedule (cheaper than
-            // re-enqueueing on every retry).
-            Log.d(TAG, "Accelerometer unavailable; skipping sample")
+            Log.i(TAG, "diag: no accelerometer; skipping firing")
             return Result.success()
         }
 
@@ -75,7 +75,6 @@ class PhoneSleepWorker(
         val sourceDao = db.dataSourceDao()
 
         return try {
-            // 1. Sample + persist.
             val sample = adapter.sample()
             sampleDao.insert(
                 PhoneSleepSample(
@@ -84,12 +83,39 @@ class PhoneSleepWorker(
                     charging = sample.charging,
                     ambientLightLux = sample.ambientLightLux,
                     accelMagnitudeVar = sample.accelMagnitudeVar,
+                    stepDelta = sample.stepDelta,
+                    dndEnabled = sample.dndEnabled,
+                    pairedBluetoothConnected = sample.pairedBluetoothConnected,
+                    significantMotionFired = sample.significantMotionFired,
+                    stationary = sample.stationary,
                 )
             )
+            // #244 Cut 2: feed the variance sample into the per-owner
+            // baseline when we're inside quiet hours. The 15-min
+            // worker cadence is lower-volume than the FG service but
+            // still adds samples on devices where the service hasn't
+            // started (no charging trigger today, etc.).
+            if (PhoneSleepQuietHours.isInQuietHoursNow()) {
+                sample.accelMagnitudeVar?.let {
+                    BaselinedActivityThreshold.recordSample(context, it, sample.timestamp)
+                }
+            }
+            // Use the learned threshold for diagnostic logging so the
+            // "quiet=" log line reflects what the inference will see.
+            val threshold = BaselinedActivityThreshold.currentThreshold(context)
+            // One-line per-firing diagnostic so the failure mode is
+            // observable from `adb logcat -s PhoneSleepWorker` without
+            // having to decrypt SQLCipher rows. See #240.
+            val quiet = PhoneSleepInference.isQuietSample(sample, threshold)
+            Log.i(
+                TAG,
+                "diag: sample screenOff=${sample.screenOff} " +
+                    "charging=${sample.charging} " +
+                    "lux=${sample.ambientLightLux} " +
+                    "accelVar=${sample.accelMagnitudeVar} " +
+                    "quiet=$quiet"
+            )
 
-            // 2. Morning trigger? Bail early if not — keeps the common
-            //    path (sample-only) cheap. Dedupe key is the most-recent
-            //    phone-derived sleep midpoint; null on first run.
             val zone = ZoneId.systemDefault()
             val phoneSourceId = sourceDao.findByType(SourceType.PHONE_SENSOR_DERIVED.key)?.id
             val lastMidpoint = phoneSourceId?.let { sid ->
@@ -100,14 +126,14 @@ class PhoneSleepWorker(
             val decision = PhoneSleepScheduler.decide(
                 nowMs = System.currentTimeMillis(),
                 zoneId = zone,
+                wakeHour = PhoneSleepPrefs.wakeHour(context),
                 lastInferredMidpointMs = lastMidpoint,
             )
             if (decision !is PhoneSleepScheduler.TriggerDecision.Fire) {
+                Log.i(TAG, "diag: decision=Skip (preWakeHour or alreadyInferred)")
                 return Result.success()
             }
 
-            // 3. Inference window — read buffered samples, run inference,
-            //    write results under a stable PHONE_SENSOR_DERIVED source.
             val samples = sampleDao
                 .fetchInRange(decision.windowStartMs, decision.windowEndMs)
                 .map {
@@ -117,21 +143,40 @@ class PhoneSleepWorker(
                         charging = it.charging,
                         ambientLightLux = it.ambientLightLux,
                         accelMagnitudeVar = it.accelMagnitudeVar,
+                        stepDelta = it.stepDelta,
+                        dndEnabled = it.dndEnabled,
+                        pairedBluetoothConnected = it.pairedBluetoothConnected,
+                        significantMotionFired = it.significantMotionFired,
+                        stationary = it.stationary,
                     )
                 }
+            val breakdown = PhoneSleepInference.signalBreakdown(samples, threshold)
+            val longestQuietMin =
+                PhoneSleepInference.longestScreenOffMs(samples, threshold) / 60_000L
+            Log.i(
+                TAG,
+                "diag: decision=Fire window=${decision.windowStartMs}..${decision.windowEndMs} " +
+                    "samples=${samples.size} breakdown=$breakdown " +
+                    "longestQuietMin=$longestQuietMin"
+            )
             if (samples.size < MIN_SAMPLES_FOR_INFERENCE) {
-                Log.d(TAG, "Only ${samples.size} samples in window; skipping inference")
+                Log.i(TAG, "diag: ${samples.size} samples < $MIN_SAMPLES_FOR_INFERENCE; skip infer")
                 return Result.success()
             }
 
             val sourceId = ensureSource(sourceDao)
             val readings = adapter.infer(samples, sourceId)
             if (readings.isNotEmpty()) {
-                readingDao.insertAll(readings)
-                Log.i(TAG, "Inferred phone sleep: ${readings.size} readings written")
+                val derived = deriveSleep(readings, sourceId)
+                readingDao.insertAll(readings + derived)
+                Log.i(
+                    TAG,
+                    "diag: inferred readings=${readings.size} derived=${derived.size}"
+                )
+            } else {
+                Log.i(TAG, "diag: inferred readings=0 (no viable window in buffer)")
             }
 
-            // 4. Prune old samples so the buffer can't grow unbounded.
             sampleDao.deleteOlderThan(
                 PhoneSleepScheduler.pruneCutoffMs(System.currentTimeMillis())
             )
@@ -182,6 +227,11 @@ class PhoneSleepWorker(
                     charging = fresh.charging,
                     ambientLightLux = fresh.ambientLightLux,
                     accelMagnitudeVar = fresh.accelMagnitudeVar,
+                    stepDelta = fresh.stepDelta,
+                    dndEnabled = fresh.dndEnabled,
+                    pairedBluetoothConnected = fresh.pairedBluetoothConnected,
+                    significantMotionFired = fresh.significantMotionFired,
+                    stationary = fresh.stationary,
                 )
             )
 
@@ -194,6 +244,11 @@ class PhoneSleepWorker(
                     charging = it.charging,
                     ambientLightLux = it.ambientLightLux,
                     accelMagnitudeVar = it.accelMagnitudeVar,
+                    stepDelta = it.stepDelta,
+                    dndEnabled = it.dndEnabled,
+                    pairedBluetoothConnected = it.pairedBluetoothConnected,
+                    significantMotionFired = it.significantMotionFired,
+                    stationary = it.stationary,
                 )
             }
             if (samples.size < MIN_SAMPLES_FOR_INFERENCE) {
@@ -203,8 +258,30 @@ class PhoneSleepWorker(
             val sourceId = ensureSource(sourceDao)
             val readings = adapter.infer(samples, sourceId)
             if (readings.isEmpty()) return ImmediateResult.NoSleepWindow
-            readingDao.insertAll(readings)
-            return ImmediateResult.Written(readings.size)
+            val derived = deriveSleep(readings, sourceId)
+            readingDao.insertAll(readings + derived)
+            return ImmediateResult.Written(readings.size + derived.size)
+        }
+
+        /**
+         * Phone-inferred SLEEP_STAGE rows skip IngestManager.deriveAll, so
+         * efficiency / TIB / latency / WASO / fragmentation / score would
+         * never populate without this. Mirrors the per-source grouping
+         * IngestManager uses so derivations stay coherent against a single
+         * session's stage rows.
+         */
+        internal fun deriveSleep(
+            readings: List<MetricReading>,
+            sourceId: String,
+        ): List<MetricReading> {
+            val derived = mutableListOf<MetricReading>()
+            SleepDerivations.deriveSleepLatency(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepEfficiency(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveTimeInBed(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepFragmentation(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveWakeAfterSleepOnset(readings, sourceId)?.let { derived += it }
+            SleepDerivations.deriveSleepScore(readings, sourceId)?.let { derived += it }
+            return derived
         }
 
         private suspend fun ensureSource(dao: com.bios.app.data.dao.DataSourceDao): String {

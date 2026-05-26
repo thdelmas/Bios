@@ -41,7 +41,22 @@ fun SettingsScreen(
     onNavigateToPreventiveCare: () -> Unit = {},
     onNavigateToRiskProfile: () -> Unit = {},
     onNavigateToPhysiologyState: () -> Unit = {},
-    onNavigateToGoalsOfCare: () -> Unit = {}
+    onNavigateToFrailAssessment: () -> Unit = {},
+    onNavigateToGoalsOfCare: () -> Unit = {},
+    onNavigateToHeadacheDiary: () -> Unit = {},
+    onNavigateToFastStroke: () -> Unit = {},
+    onNavigateToEsasCapture: () -> Unit = {},
+    onNavigateToTraditionalMedicine: () -> Unit = {},
+    onNavigateToEnvironmentalContext: () -> Unit = {},
+    onNavigateToEmergencyContacts: () -> Unit = {},
+    onNavigateToEcgStrips: () -> Unit = {},
+    onNavigateToSurgicalRecovery: () -> Unit = {},
+    onNavigateToInterventionEvents: () -> Unit = {},
+    onNavigateToTreatmentCourses: () -> Unit = {},
+    onNavigateToAnthropometry: () -> Unit = {},
+    onNavigateToMetricReadingsDebug: () -> Unit = {},
+    onNavigateToSeizureTimeline: () -> Unit = {},
+    onNavigateToMetricSources: () -> Unit = {}, onNavigateToGeriatricTrajectory: () -> Unit = {}, onNavigateToTremorTrend: () -> Unit = {}, onNavigateToReproductive: (route: String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -84,30 +99,29 @@ fun SettingsScreen(
     ) {
         Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
-        // Identity — who the owner is. Surfaces the owner annotates about
-        // themselves. Not "settings" in the configuration sense; this is
-        // the owner's medical and physiological context.
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Identity", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                listOf(
-                    "Current medications" to onNavigateToMedications,
-                    "Immunisation record" to onNavigateToImmunisations,
-                    "Preventive care" to onNavigateToPreventiveCare,
-                    "Risk profile" to onNavigateToRiskProfile,
-                    "Physiology state" to onNavigateToPhysiologyState,
-                    "Goals of care" to onNavigateToGoalsOfCare,
-                ).forEachIndexed { idx, (label, action) ->
-                    if (idx > 0) Spacer(Modifier.height(4.dp))
-                    SettingsActionButton(label, action)
-                }
-            }
-        }
+        IdentityCard(
+            onNavigateToMedications = onNavigateToMedications,
+            onNavigateToImmunisations = onNavigateToImmunisations,
+            onNavigateToPreventiveCare = onNavigateToPreventiveCare,
+            onNavigateToRiskProfile = onNavigateToRiskProfile,
+            onNavigateToPhysiologyState = onNavigateToPhysiologyState,
+            onNavigateToFrailAssessment = onNavigateToFrailAssessment,
+            onNavigateToGoalsOfCare = onNavigateToGoalsOfCare,
+            onNavigateToHeadacheDiary = onNavigateToHeadacheDiary,
+            onNavigateToFastStroke = onNavigateToFastStroke,
+            onNavigateToEsasCapture = onNavigateToEsasCapture,
+            onNavigateToTraditionalMedicine = onNavigateToTraditionalMedicine,
+            onNavigateToEnvironmentalContext = onNavigateToEnvironmentalContext,
+            onNavigateToEmergencyContacts = onNavigateToEmergencyContacts,
+            onNavigateToEcgStrips = onNavigateToEcgStrips,
+            onNavigateToSurgicalRecovery = onNavigateToSurgicalRecovery,
+            onNavigateToInterventionEvents = onNavigateToInterventionEvents,
+            onNavigateToTreatmentCourses = onNavigateToTreatmentCourses,
+            onNavigateToAnthropometry = onNavigateToAnthropometry,
+            onNavigateToGeriatricTrajectory = onNavigateToGeriatricTrajectory, onNavigateToTremorTrend = onNavigateToTremorTrend, onNavigateToReproductive = onNavigateToReproductive,
+        )
 
-        // Privacy — what can leave, and who can access. The single highest-
-        // stakes surface in the app. Companion Apps was previously buried
-        // inside Data Sources; promoted here per the audit recommendation.
+        // Privacy — what can leave, and who can access. Highest-stakes surface.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Privacy", style = MaterialTheme.typography.titleSmall)
@@ -264,6 +278,8 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(8.dp))
                 SettingsActionButton("Data coverage", onNavigateToDataCoverage)
+                Spacer(Modifier.height(4.dp))
+                SettingsActionButton("Per-metric sources", onNavigateToMetricSources)
             }
         }
 
@@ -386,19 +402,17 @@ fun SettingsScreen(
         }
 
         SettingsNotificationsCard()
-
         SettingsLanguageCard()
-
         SettingsFeedbackCard()
 
-        // About
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("About", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                SettingsRow("Version", "0.2.0")
-            }
-        }
+        SettingsPhoneSleepCard()
+
+        SettingsSeizureDetectionCard(onViewDetections = onNavigateToSeizureTimeline)
+
+        SettingsDiagnosticsCard()
+
+        // About — long-press Version row opens the metric_readings debug screen (#253).
+        SettingsAboutCard(onLongPressVersion = onNavigateToMetricReadingsDebug)
     }
 
     if (showDeleteDialog) {
@@ -476,22 +490,11 @@ fun SettingsScreen(
     }
 }
 
-/** Helper-text strings for the [PasteTokenDialog]. Extracted so the call
- *  sites in [SettingsScreen] stay compact and the strings have one home. */
-internal object SettingsHelperText {
-    const val OURA = "Paste an Oura personal-access token from cloud.ouraring.com. Bios uses it as a bearer token; refresh-aware OAuth lands when a Bios Oura app is registered."
-    const val WITHINGS = "Paste a Withings API access token. Obtain one through a Withings developer-account OAuth exchange against developer.withings.com — Bios does not perform the OAuth dance itself yet."
-    const val WHOOP = "Paste a WHOOP API access token. Obtain one through a WHOOP developer-account OAuth exchange against developer.whoop.com — Bios does not perform the OAuth dance itself yet."
-    const val GARMIN = "Paste a Garmin Wellness API access token (or a pre-signed session token from a Garmin proxy). Bios does not perform the OAuth 1.0a dance itself yet — see the connection notes for what works today."
-    const val POLAR = "Paste a Polar AccessLink API access token from admin.polaraccesslink.com. Bios uses it as a bearer; refresh-aware OAuth lands when a Bios Polar app is registered."
-}
-
 @Composable
 private fun SettingsActionButton(label: String, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(label) }
 }
 
 private fun saveTier(context: Context, tier: PrivacyTier) {
-    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
-        .edit().putString("privacy_tier", tier.name).apply()
+    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE).edit().putString("privacy_tier", tier.name).apply()
 }

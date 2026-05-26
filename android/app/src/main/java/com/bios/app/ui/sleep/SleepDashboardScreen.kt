@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,6 +69,8 @@ import java.util.Locale
 fun SleepDashboardScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
+    onSeeWearableRecommendations: () -> Unit = {},
+    onOpenSleepGuide: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -82,6 +85,10 @@ fun SleepDashboardScreen(
     var longestQuietMs by remember { mutableStateOf(0L) }
     var signalBreakdown by remember {
         mutableStateOf<com.bios.app.engine.PhoneSleepInference.SignalBreakdown?>(null)
+    }
+    // #245 — banner state: gate-derived + persisted dismissed timestamp.
+    var bannerDismissedAtMs by remember {
+        mutableStateOf(WearableRecommendationStore.getDismissedAtMs(context))
     }
 
     LaunchedEffect(windowDays, refreshTick) {
@@ -132,6 +139,32 @@ fun SleepDashboardScreen(
         )
     }
 
+    // #245 — wearable-recommendation banner: pure-function gate over the
+    // last 7 calendar nights, honoring a 30-day cooldown after dismissal.
+    // Both `remember` calls must live at the Composable scope (not
+    // inside the LazyColumn lambda).
+    val recentNights = remember(nights) {
+        WearableRecommendationGate.binByNight(
+            readingsNewestFirst = nights,
+            localDayKey = { ms ->
+                val cal = java.util.Calendar.getInstance().apply {
+                    timeInMillis = ms
+                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                cal.timeInMillis / (24L * 60L * 60L * 1000L)
+            },
+        )
+    }
+    val showWearableBanner = remember(recentNights, bannerDismissedAtMs) {
+        WearableRecommendationGate.shouldShow(
+            recentNights = recentNights,
+            dismissedAtMs = bannerDismissedAtMs,
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -142,6 +175,12 @@ fun SleepDashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenSleepGuide) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = "Sleep guide",
+                        )
+                    }
                     IconButton(onClick = onInferNow, enabled = !inferring) {
                         if (inferring) {
                             CircularProgressIndicator(
@@ -167,6 +206,18 @@ fun SleepDashboardScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { WindowSelector(windowDays) { windowDays = it } }
+            if (showWearableBanner) {
+                item {
+                    WearableRecommendationBanner(
+                        onSeeRecommendations = onSeeWearableRecommendations,
+                        onDismiss = {
+                            val now = System.currentTimeMillis()
+                            WearableRecommendationStore.markDismissedNow(context, now)
+                            bannerDismissedAtMs = now
+                        },
+                    )
+                }
+            }
             inferenceMessage?.let { msg ->
                 item { InferenceResultCard(msg) }
             }

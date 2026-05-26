@@ -1,5 +1,6 @@
 package com.bios.app.screening
 
+import com.bios.app.model.RiskProfile
 import com.bios.app.model.ScreeningEntry
 
 /**
@@ -7,14 +8,25 @@ import com.bios.app.model.ScreeningEntry
  * (SharedPreferences in the v1 UI) — passing it as a typed value here
  * keeps the engine pure and unit-testable without Android dependencies.
  *
- * `presentsAs` is an anatomy-presentation flag for applicability matching,
- * not an identity declaration. The engine treats `null` as "owner hasn't
- * said" and renders both anatomy-specific screenings as "elective to
- * record" rather than filtering them out.
+ * Two anatomy gates live here for backwards compatibility during the
+ * audit-driven migration to anatomy-direct routing (#209):
+ *
+ * - [presentsAs] is the legacy binary flag — still consulted when no
+ *   [anatomy] profile is set so existing installs keep working.
+ * - [anatomy] is the new per-organ profile. When set, it takes precedence
+ *   over [presentsAs] and routes per screening key (cervix-yes →
+ *   cervical, breast-yes → mammogram, prostate-yes → AAA / PSA). Owners
+ *   are no longer asked "are you female-bodied?"; they're asked about
+ *   each organ individually, the audit-explicit fix to the binary UI.
+ *
+ * The engine treats `null` for either field as "owner hasn't said" and
+ * renders the affected entries as elective rather than filtering them
+ * out.
  */
 data class OwnerDemographics(
     val ageYears: Int,
     val presentsAs: Applicability? = null,
+    val anatomy: AnatomyProfile? = null,
 )
 
 /** Result of evaluating one catalog entry against the owner's history. */
@@ -52,15 +64,30 @@ object ScreeningCadenceEngine {
     private const val DUE_NOW_GRACE_DAYS = 30
 
     /**
-     * Evaluate a single catalog entry against the owner's demographics
-     * and the latest entry for that screening (or `null` if none on file).
+     * Evaluate a single catalog entry against the owner's demographics,
+     * risk profile, and the latest entry for that screening (or `null`
+     * if none on file). When [riskProfile] is null the engine treats
+     * every [RiskGate] other than [RiskGate.NONE] as gated-out — the
+     * owner hasn't filled the risk-profile screen yet, so we can't
+     * surface a hereditary cadence.
      */
     fun evaluate(
         entry: ScreeningCatalogEntry,
         demographics: OwnerDemographics,
         latest: ScreeningEntry?,
+        riskProfile: RiskProfile? = null,
         now: Long = System.currentTimeMillis(),
     ): ScreeningStatus {
+        // Risk gate — evaluated first so hereditary entries are filtered
+        // out before any age check fires. Hides the entry entirely (the
+        // UI drops `NotEligible` rows with this reason from the default
+        // view) so non-carriers don't see the long syndrome list.
+        if (entry.riskGate != RiskGate.NONE && !satisfiesRiskGate(entry.riskGate, riskProfile)) {
+            return ScreeningStatus.NotEligible(
+                reason = riskGateReason(entry.riskGate),
+            )
+        }
+
         // Age gate.
         if (demographics.ageYears < entry.minAge) {
             return ScreeningStatus.NotEligible(
@@ -73,17 +100,40 @@ object ScreeningCadenceEngine {
             )
         }
 
-        // Applicability gate. If owner hasn't declared `presentsAs`, allow
-        // anatomy-specific screenings through so the cadence screen shows
-        // them as elective. The screen labels these so the owner can
-        // self-filter without the engine making identity calls.
-        if (entry.applicability != Applicability.UNIVERSAL &&
-            demographics.presentsAs != null &&
-            demographics.presentsAs != entry.applicability
-        ) {
-            return ScreeningStatus.NotEligible(
-                reason = "Anatomy-specific recommendation",
-            )
+        // Applicability gate. Two routes:
+        //
+        // 1. Anatomy-direct (#209). When the owner has set an
+        //    [AnatomyProfile], we route per screening key — cervix=yes
+        //    gates cervical; prostate=yes gates AAA; etc. This is the
+        //    audit-explicit replacement for the binary female/male
+        //    bucket UI in PreventiveCareScreen.
+        // 2. Legacy [presentsAs] fallback for owners on the old UI who
+        //    haven't yet visited the demographics dialog after the
+        //    anatomy-question redesign. Same semantics as before:
+        //    matching presentsAs → eligible, mismatching → not.
+        //
+        // In both routes, a fully-unset answer is treated as "elective"
+        // — the screen shows the entry and lets the owner decide.
+        if (entry.applicability != Applicability.UNIVERSAL) {
+            val anatomy = demographics.anatomy
+            if (anatomy != null) {
+                when (anatomy.resolveForKey(entry.key)) {
+                    ApplicabilityResolution.NotApplicable ->
+                        return ScreeningStatus.NotEligible(
+                            reason = "Anatomy-specific recommendation",
+                        )
+                    ApplicabilityResolution.Match,
+                    ApplicabilityResolution.Unset -> {
+                        // Fall through to the cadence / record check.
+                    }
+                }
+            } else if (demographics.presentsAs != null &&
+                demographics.presentsAs != entry.applicability
+            ) {
+                return ScreeningStatus.NotEligible(
+                    reason = "Anatomy-specific recommendation",
+                )
+            }
         }
 
         // No record on file.
@@ -112,16 +162,68 @@ object ScreeningCadenceEngine {
     /**
      * Convenience: evaluate the entire catalog. The caller supplies a
      * lookup function for "latest screening matching this key" so the
-     * engine stays pure (no repo dependency).
+     * engine stays pure (no repo dependency). [riskProfile] is optional
+     * so legacy callers (USPSTF-only screen) keep working without
+     * changes; the extended catalog (#191) passes the real profile so
+     * the risk-gate filter fires.
      */
     fun evaluateAll(
         catalog: List<ScreeningCatalogEntry>,
         demographics: OwnerDemographics,
         latestByKey: (String) -> ScreeningEntry?,
+        riskProfile: RiskProfile? = null,
         now: Long = System.currentTimeMillis(),
     ): List<Pair<ScreeningCatalogEntry, ScreeningStatus>> {
         return catalog.map { entry ->
-            entry to evaluate(entry, demographics, latestByKey(entry.key), now)
+            entry to evaluate(entry, demographics, latestByKey(entry.key), riskProfile, now)
         }
+    }
+
+    /**
+     * Returns `true` when the owner's [RiskProfile] flag matching the
+     * gate is set. Treats a null profile as "no flags set" — hereditary
+     * entries stay hidden until the owner records their syndrome on the
+     * risk-profile screen.
+     */
+    internal fun satisfiesRiskGate(gate: RiskGate, profile: RiskProfile?): Boolean {
+        if (gate == RiskGate.NONE) return true
+        if (profile == null) return false
+        return when (gate) {
+            RiskGate.NONE -> true
+            RiskGate.LYNCH_SYNDROME -> profile.lynchSyndrome
+            RiskGate.LI_FRAUMENI -> profile.liFraumeni
+            RiskGate.FAP -> profile.fapFamilialAdenomatousPolyposis
+            RiskGate.COWDEN -> profile.cowdenSyndrome
+            RiskGate.PEUTZ_JEGHERS -> profile.peutzJeghersSyndrome
+            RiskGate.VHL -> profile.vhlVonHippelLindau
+            RiskGate.MEN1 -> profile.men1
+            RiskGate.MEN2A -> profile.men2A
+            RiskGate.MEN2B -> profile.men2B
+            RiskGate.HDGC -> profile.hdgcHereditaryDiffuseGastric
+            RiskGate.IHS_DIABETIC_AIAN -> profile.ihsDiabeticAianStatus
+            RiskGate.EVER_SMOKER ->
+                profile.personalTobaccoYears != null || profile.personalTobaccoPackYears != null
+        }
+    }
+
+    /**
+     * Human-readable explanation for why a risk-gated entry was hidden,
+     * surfaced on debug/eligible screens. Owner-facing wording stays
+     * neutral — Bios never asserts a diagnosis, only restates the gate.
+     */
+    private fun riskGateReason(gate: RiskGate): String = when (gate) {
+        RiskGate.NONE -> ""
+        RiskGate.LYNCH_SYNDROME -> "Requires owner-recorded Lynch syndrome"
+        RiskGate.LI_FRAUMENI -> "Requires owner-recorded Li-Fraumeni syndrome"
+        RiskGate.FAP -> "Requires owner-recorded familial adenomatous polyposis"
+        RiskGate.COWDEN -> "Requires owner-recorded Cowden syndrome"
+        RiskGate.PEUTZ_JEGHERS -> "Requires owner-recorded Peutz-Jeghers syndrome"
+        RiskGate.VHL -> "Requires owner-recorded von Hippel-Lindau"
+        RiskGate.MEN1 -> "Requires owner-recorded MEN1"
+        RiskGate.MEN2A -> "Requires owner-recorded MEN2A"
+        RiskGate.MEN2B -> "Requires owner-recorded MEN2B"
+        RiskGate.HDGC -> "Requires owner-recorded hereditary diffuse gastric cancer"
+        RiskGate.IHS_DIABETIC_AIAN -> "Requires owner-recorded diabetic AI/AN status"
+        RiskGate.EVER_SMOKER -> "Requires owner-recorded smoking history"
     }
 }

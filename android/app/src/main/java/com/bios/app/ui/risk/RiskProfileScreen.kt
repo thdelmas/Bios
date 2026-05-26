@@ -95,6 +95,16 @@ fun RiskProfileScreen(onBack: () -> Unit) {
                 onChange = { profile = it },
             )
 
+            HereditarySyndromeCard(
+                profile = profile,
+                onChange = { profile = it },
+            )
+
+            RegionalRiskCard(
+                profile = profile,
+                onChange = { profile = it },
+            )
+
             TobaccoCard(
                 profile = profile,
                 onChange = { profile = it },
@@ -170,6 +180,92 @@ private fun FamilyHistoryCard(profile: RiskProfile, onChange: (RiskProfile) -> U
                 label = "First-degree melanoma",
                 checked = profile.firstDegreeMelanoma,
                 onChange = { onChange(profile.copy(firstDegreeMelanoma = it)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun HereditarySyndromeCard(profile: RiskProfile, onChange: (RiskProfile) -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Hereditary syndromes", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Tick what genetics testing or a clinician has confirmed. " +
+                    "These flags unlock NCCN surveillance cadences in Preventive Care.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CheckRow(
+                label = "Lynch syndrome (HNPCC)",
+                checked = profile.lynchSyndrome,
+                onChange = { onChange(profile.copy(lynchSyndrome = it)) },
+            )
+            CheckRow(
+                label = "Li-Fraumeni syndrome",
+                checked = profile.liFraumeni,
+                onChange = { onChange(profile.copy(liFraumeni = it)) },
+            )
+            CheckRow(
+                label = "Familial adenomatous polyposis (FAP)",
+                checked = profile.fapFamilialAdenomatousPolyposis,
+                onChange = { onChange(profile.copy(fapFamilialAdenomatousPolyposis = it)) },
+            )
+            CheckRow(
+                label = "Cowden syndrome (PTEN)",
+                checked = profile.cowdenSyndrome,
+                onChange = { onChange(profile.copy(cowdenSyndrome = it)) },
+            )
+            CheckRow(
+                label = "Peutz-Jeghers syndrome",
+                checked = profile.peutzJeghersSyndrome,
+                onChange = { onChange(profile.copy(peutzJeghersSyndrome = it)) },
+            )
+            CheckRow(
+                label = "von Hippel-Lindau",
+                checked = profile.vhlVonHippelLindau,
+                onChange = { onChange(profile.copy(vhlVonHippelLindau = it)) },
+            )
+            CheckRow(
+                label = "MEN1",
+                checked = profile.men1,
+                onChange = { onChange(profile.copy(men1 = it)) },
+            )
+            CheckRow(
+                label = "MEN2A",
+                checked = profile.men2A,
+                onChange = { onChange(profile.copy(men2A = it)) },
+            )
+            CheckRow(
+                label = "MEN2B",
+                checked = profile.men2B,
+                onChange = { onChange(profile.copy(men2B = it)) },
+            )
+            CheckRow(
+                label = "Hereditary diffuse gastric cancer (CDH1+)",
+                checked = profile.hdgcHereditaryDiffuseGastric,
+                onChange = { onChange(profile.copy(hdgcHereditaryDiffuseGastric = it)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RegionalRiskCard(profile: RiskProfile, onChange: (RiskProfile) -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Regional context", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Bios never infers ethnicity. Self-declared here so the cadence " +
+                    "engine can surface IHS Diabetes Standards (HbA1c every 6 mo) " +
+                    "when it applies.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CheckRow(
+                label = "Diabetic, American Indian / Alaska Native (IHS Standards)",
+                checked = profile.ihsDiabeticAianStatus,
+                onChange = { onChange(profile.copy(ihsDiabeticAianStatus = it)) },
             )
         }
     }

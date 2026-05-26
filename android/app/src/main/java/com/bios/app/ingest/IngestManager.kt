@@ -4,6 +4,7 @@ import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.CircadianEngine
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.GlucoseVariability
+import com.bios.app.engine.HrRecoveryPersister
 import com.bios.app.engine.PipelineStage
 import com.bios.app.engine.SignalQualityFilter
 import com.bios.app.engine.SleepDerivations
@@ -51,6 +52,7 @@ class IngestManager(
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
     private val payloadDao = db.eventPayloadFieldDao()
+    private val toggleDao = db.sourceMetricToggleDao()
     private val circadianEngine = CircadianEngine(readingDao)
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
@@ -221,7 +223,7 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                readingDao.insertAll(quality + derived)
+                readingDao.insertAll(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
                 updateLastReadings(quality)
 
                 // Composite events (EXERCISE_SESSION) take a parallel path —
@@ -244,8 +246,9 @@ class IngestManager(
                 ingestBlock()
             }
 
-            deriveCircadianPhaseShift()
-
+            circadianEngine.derive()?.let { readingDao.insert(it) }
+            HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
+            RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
@@ -288,7 +291,7 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                readingDao.insertAll(quality + derived)
+                readingDao.insertAll(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
                 updateLastReadings(quality)
 
                 healthConnectSourceId?.let { id ->
@@ -304,24 +307,19 @@ class IngestManager(
                 _syncProgress.value = completedDays / totalDays
             }
 
-            deriveCircadianPhaseShift()
-
+            // Each derivation/backfill is idempotent and self-skips when
+            // preconditions aren't met (e.g. <4 days of sleep history),
+            // so this block is safe to call on every sync.
+            circadianEngine.derive()?.let { readingDao.insert(it) }
+            HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
+            SleepDerivationsBackfill(readingDao).runForLookback(lookbackDays = 30)
+            RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
             _lastSyncTime.value = System.currentTimeMillis()
             updateDataAge()
         } finally {
             _isSyncing.value = false
             _syncProgress.value = 1f
         }
-    }
-
-    /**
-     * Run the circadian-phase-shift derivation against the readings now in DB.
-     * Self-skips when fewer than 4 days of SLEEP_DURATION exist or when today's
-     * shift has already been emitted, so this is safe to call on every sync.
-     */
-    private suspend fun deriveCircadianPhaseShift() {
-        val reading = circadianEngine.derive() ?: return
-        readingDao.insert(reading)
     }
 
     // MARK: - Derivations
@@ -336,6 +334,7 @@ class IngestManager(
         quality.groupBy { it.sourceId }.forEach { (sourceId, rows) ->
             SleepDerivations.deriveSleepLatency(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepEfficiency(rows, sourceId)?.let { derived += it }
+            SleepDerivations.deriveTimeInBed(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepFragmentation(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveWakeAfterSleepOnset(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepScore(rows, sourceId)?.let { derived += it }
@@ -377,6 +376,7 @@ class IngestManager(
         if (sessions.isEmpty()) return
         readingDao.insertAll(sessions.map { it.reading })
         payloadDao.insertAll(sessions.flatMap { it.payload })
+        HrRecoveryPersister.persistFor(sessions, readingDao)
     }
 
     // MARK: - Helpers

@@ -30,6 +30,7 @@ import com.bios.app.ui.notice.NoticeScreen
 import com.bios.app.ui.onboarding.OnboardingScreen
 import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
+import com.bios.app.ui.clinical.AddReadingScreen
 import com.bios.app.ui.journal.HealthEventSheet
 import com.bios.app.ui.diagnostics.ConditionDetailScreen
 import androidx.navigation.NavType
@@ -46,14 +47,16 @@ import com.bios.app.ui.trends.TrendsScreen
 import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
-    // Apply the owner-selected UI locale (issue #210) before resources
-    // resolve. SettingsLanguageCard surfaces the "restart to apply" note.
-    override fun attachBaseContext(newBase: Context) =
-        super.attachBaseContext(LocalePreference.wrap(newBase))
-
+    // Apply owner-selected UI locale (#210) before resources resolve.
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(LocalePreference.wrap(newBase))
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Retry the seizure foreground service from a foreground context;
+        // Application.onCreate's call no-ops on background process spawns.
+        com.bios.app.ingest.SeizureDetectionService.startIfOptedIn(this)
+
         setContent { BiosTheme { BiosRoot() } }
     }
 }
@@ -137,49 +140,7 @@ fun BiosApp(viewModel: AppViewModel) {
         }
     }
 
-    // Deep-link from CompanionAccessNotifier — opens Settings → Companion Apps.
-    LaunchedEffect(Unit) {
-        val activity = context as? android.app.Activity ?: return@LaunchedEffect
-        val intent = activity.intent ?: return@LaunchedEffect
-        if (intent.getBooleanExtra(
-                com.bios.app.provider.CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS,
-                false
-            )
-        ) {
-            intent.removeExtra(com.bios.app.provider.CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS)
-            navController.navigate("companions")
-        }
-    }
-
-    // Deep-link from DisconnectNotifier — opens Data Coverage so the
-    // owner can reconnect the failing source.
-    LaunchedEffect(Unit) {
-        val activity = context as? android.app.Activity ?: return@LaunchedEffect
-        val intent = activity.intent ?: return@LaunchedEffect
-        if (intent.getBooleanExtra(
-                com.bios.app.alerts.DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE,
-                false
-            )
-        ) {
-            intent.removeExtra(com.bios.app.alerts.DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE)
-            navController.navigate("data_coverage")
-        }
-    }
-
-    // Deep-link from a companion (e.g. W2F "take a snapshot" CTA): bios://capture/ppg
-    // lands directly on the PPG capture screen. popUpTo home/inclusive empties
-    // the in-app back stack so pressing back from capture finishes the
-    // activity and returns to the calling companion, not Bios Home.
-    LaunchedEffect(Unit) {
-        val activity = context as? android.app.Activity ?: return@LaunchedEffect
-        val data = activity.intent?.data ?: return@LaunchedEffect
-        if (data.scheme == "bios" && data.host == "capture" && data.path == "/ppg") {
-            activity.intent.data = null
-            navController.navigate("ppg_capture") {
-                popUpTo("home") { inclusive = true }
-            }
-        }
-    }
+    HandleDeepLinks(navController)
 
     LaunchedEffect(error) {
         error?.let {
@@ -199,8 +160,13 @@ fun BiosApp(viewModel: AppViewModel) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (selectedTab == 3) { // Journal tab
-                FloatingActionButton(onClick = {
+            when (selectedTab) {
+                // Read + Log tabs — quick-add a self-reported reading
+                0, 1 -> FloatingActionButton(onClick = { navController.navigate("add_reading") }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add reading")
+                }
+                // Journal tab — log a health event
+                3 -> FloatingActionButton(onClick = {
                     eventSheetParentId = null
                     eventSheetDefaultType = null
                     showEventSheet = true
@@ -253,16 +219,10 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToActiveSubstances = { navController.navigate("active_substances") },
                     onNavigateToBodyLevels = { navController.navigate("body_levels") },
                     onNavigateToMetric = { metric ->
-                        // SLEEP_DURATION has a dedicated dashboard richer
-                        // than the generic trends view.
-                        if (metric == MetricType.SLEEP_DURATION) {
-                            navController.navigate("sleep_dashboard")
-                        } else {
-                            navController.navigate("trends?metric=${metric.key}") {
-                                popUpTo("home") { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                        navController.navigate("trends?metric=${metric.key}") {
+                            popUpTo("home") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
@@ -308,7 +268,7 @@ fun BiosApp(viewModel: AppViewModel) {
                 val metricKey = backStackEntry.arguments?.getString("metric")
                 TrendsScreen(
                     viewModel = viewModel,
-                    initialMetric = metricKey?.let { com.bios.contracts.MetricType.fromKey(it) }
+                    initialMetric = metricKey?.let { com.bios.contracts.MetricType.fromKey(it) },
                 )
             }
             composable("notice") {
@@ -343,27 +303,44 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
                     onNavigateToRiskProfile = { navController.navigate("risk_profile") },
                     onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
-                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") }
+                    onNavigateToFrailAssessment = { navController.navigate("frail_assessment") },
+                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
+                    onNavigateToHeadacheDiary = { navController.navigate("headache_diary") },
+                    onNavigateToFastStroke = { navController.navigate("fast_stroke") },
+                    onNavigateToEsasCapture = { navController.navigate("esas_capture") },
+                    onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") },
+                    onNavigateToEnvironmentalContext = { navController.navigate("environmental_context") },
+                    onNavigateToEmergencyContacts = { navController.navigate("emergency_contacts") },
+                    onNavigateToEcgStrips = { navController.navigate("ecg_strips") },
+                    onNavigateToSurgicalRecovery = { navController.navigate("surgical_recovery") },
+                    onNavigateToInterventionEvents = { navController.navigate("intervention_events") },
+                    onNavigateToTreatmentCourses = { navController.navigate("treatment_courses") },
+                    onNavigateToAnthropometry = { navController.navigate("anthropometry") },
+                    onNavigateToMetricReadingsDebug = { navController.navigate("metric_readings_debug") },
+                    onNavigateToSeizureTimeline = { navController.navigate("seizure_timeline") },
+                    onNavigateToMetricSources = { navController.navigate("metric_sources") }, onNavigateToGeriatricTrajectory = { navController.navigate("geriatric_trajectory") }, onNavigateToTremorTrend = { navController.navigate("tremor_trend") }, onNavigateToReproductive = { route -> navController.navigate(route) },
                 )
             }
-            composable("risk_profile") {
-                com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
+            composable("metric_sources") {
+                com.bios.app.ui.settings.MetricSourcesScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                )
             }
-            composable("physiology_state") {
-                com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
+            composable("metric_readings_debug") {
+                com.bios.app.ui.diagnostics.MetricReadingsDebugScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                )
             }
-            composable("goals_of_care") {
-                com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
+            composable("seizure_timeline") {
+                com.bios.app.ui.seizure.SeizureTimelineScreen(
+                    onBack = { navController.popBackStack() },
+                )
             }
-            composable("medications") {
-                com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
-            }
-            composable("immunisations") {
-                com.bios.app.ui.immunisations.ImmunisationsScreen(onBack = { navController.popBackStack() })
-            }
-            composable("preventive_care") {
-                com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
-            }
+            // Self-surface routes — extracted to IdentityRoutes.kt to keep this file
+            // under the 500-line cap and give new self-screens a single landing zone.
+            identityRoutes(navController)
             composable("ble_pair") {
                 val bleVm = remember(viewModel) {
                     com.bios.app.ui.ble.BleAirQualityPairViewModel(
@@ -398,6 +375,16 @@ fun BiosApp(viewModel: AppViewModel) {
                     onBack = { navController.popBackStack() }
                 )
             }
+            composable(
+                route = "add_reading?metric={metric}",
+                arguments = listOf(navArgument("metric") { type = NavType.StringType; nullable = true; defaultValue = null })
+            ) { backStackEntry ->
+                AddReadingScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    initialMetric = backStackEntry.arguments?.getString("metric")?.let { MetricType.fromKey(it) },
+                )
+            }
             composable("bbt_entry") {
                 com.bios.app.ui.bbt.BbtEntryScreen(
                     viewModel = viewModel,
@@ -420,7 +407,21 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("sleep_dashboard") {
                 com.bios.app.ui.sleep.SleepDashboardScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSeeWearableRecommendations = {
+                        navController.navigate("wearable_recommendations")
+                    },
+                    onOpenSleepGuide = { navController.navigate("guide_sleep") },
+                )
+            }
+            composable("wearable_recommendations") {
+                com.bios.app.ui.sleep.WearableRecommendationScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("guide_sleep") {
+                com.bios.app.ui.sleep.GuideSleepScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("active_substances") {
@@ -495,4 +496,5 @@ fun BiosApp(viewModel: AppViewModel) {
             defaultType = eventSheetDefaultType
         )
     }
+
 }

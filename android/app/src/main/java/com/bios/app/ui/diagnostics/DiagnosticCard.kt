@@ -15,13 +15,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.AlertTextResolver
+import com.bios.app.ui.theme.BiosTokens
 import kotlin.math.abs
 
 @Composable
 fun DiagnosticCard(result: DiagnosticResult, onNavigateToDetail: (String) -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
     val pct = (result.probability * 100).toInt()
-    val color = probabilityColor(result.probability)
+    val color = BiosTokens.probabilityColor(result.probability)
 
     Card(
         modifier = Modifier
@@ -162,8 +163,7 @@ private fun SignalRow(signal: SignalStatus) {
                 else Icons.Default.RadioButtonUnchecked,
             contentDescription = null,
             modifier = Modifier.size(10.dp),
-            tint = if (signal.isActive) probabilityColor(1.0)
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            tint = if (signal.isActive) BiosTokens.error else BiosTokens.muted
         )
 
         Spacer(Modifier.width(8.dp))
@@ -185,18 +185,10 @@ private fun SignalRow(signal: SignalStatus) {
             },
             style = MaterialTheme.typography.bodySmall,
             color = when {
-                signal.isActive -> probabilityColor(1.0)
-                !signal.hasBaseline || signal.currentZScore == null ->
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                signal.isActive -> BiosTokens.error
+                !signal.hasBaseline || signal.currentZScore == null -> BiosTokens.muted
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
         )
     }
-}
-
-private fun probabilityColor(probability: Double): Color = when {
-    probability >= 0.75 -> Color(0xFFF44336)
-    probability >= 0.50 -> Color(0xFFFF9800)
-    probability >= 0.25 -> Color(0xFFFFC107)
-    else -> Color(0xFF4CAF50)
 }

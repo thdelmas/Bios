@@ -24,3 +24,9 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Pre-install on-device DB snapshots — see `make db-backup`
+db-backups/
+
+# Claude Code session artifacts
+.claude/worktrees/

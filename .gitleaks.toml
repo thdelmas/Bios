@@ -1,0 +1,18 @@
+title = "Bios gitleaks config"
+
+# Inherit gitleaks' default rule set; we only narrow it where the defaults
+# produce false positives on this codebase.
+[extend]
+useDefault = true
+
+# Screening catalog files contain catalog entry identifiers of the form
+# `key = "<snake_case_identifier>"`. When the identifier contains digits
+# (e.g. `men2a_surveillance`), the `key = "..."` literal + the value's
+# entropy crosses gitleaks' generic-api-key heuristic. These directories
+# only contain USPSTF / NCCN / ACS / ACOG / ACIP / PALS reference data —
+# no credentials of any kind.
+[allowlist]
+description = "Screening catalog identifier keys are not API keys"
+paths = [
+    '''android/app/src/main/java/com/bios/app/screening/.*Catalog\.kt''',
+]

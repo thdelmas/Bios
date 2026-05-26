@@ -72,7 +72,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)
     val mlModel = TFLiteAnomalyModel.load(application)
     val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker, reproductiveReadingDao,
-        physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current())
+        physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current(),
+        ownerConditions = com.bios.app.physiology.OwnerConditionStore(application).current(),
+        drugClass = com.bios.app.physiology.PhysiologyStateStore(application).drugClass(),
+        environmentalContext = com.bios.app.config.EnvironmentalContextProvider(application).current())
     val alertManager = AlertManager(application, db, latencyTracker)
 
     private val _isInitialized = MutableStateFlow(false)
@@ -389,7 +392,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _timelineEntries.value = db.anomalyDao().fetchAll()
     }
 
-    private suspend fun refreshBaselines() {
+    internal suspend fun refreshBaselines() {
         val allBaselines = db.personalBaselineDao().fetchAll()
         _baselines.value = allBaselines
         _trackedMetricTypes.value = allBaselines.mapNotNull { MetricType.fromKey(it.metricType) }.toSet()
@@ -492,8 +495,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshRecentBiomarkers(limit: Int = 20) = biomarkers.refreshRecent(limit)
     fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) =
         biomarkers.addManual(metricType, value, timestamp, context)
-
-    // MARK: - General manual-reading entry (clinical vitals)
 
     val manualReadingRepo: ManualReadingRepo = ManualReadingRepo(db)
 }

@@ -156,7 +156,20 @@ class BaselineEngine(
         val values = sourceDao.fetchValues(
             metricType.key, startMillis, endMillis, kindFilter
         )
-        if (values.size < MIN_SAMPLES_FOR_BASELINE) return
+        if (values.size < MIN_SAMPLES_FOR_BASELINE) {
+            // Drop the stale row only when there is *truly* no data left —
+            // i.e. the owner deleted every reading for this metric. A slow
+            // week (sensor samples dipping below the in-window minimum)
+            // must NOT vanish a baseline that was validly computed from
+            // historical data, or owners with sparse-but-real records (sleep
+            // tracker offline a few nights, weight measured weekly) lose
+            // their baseline on every sync.
+            val totalRows = readingDao.count(metricType.key)
+            if (totalRows == 0) {
+                baselineDao.delete(metricType.key, context.name)
+            }
+            return
+        }
 
         val stats = Stats.compute(values)
 
