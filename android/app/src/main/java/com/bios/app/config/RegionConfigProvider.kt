@@ -194,6 +194,95 @@ object RegionConfigProvider {
             normalCeiling = 2.0, borderlineCeiling = 2.5,
             concerningDirection = BandDirection.ABOVE,
         ),
+
+        // -- #203 biomarker-panel expansion --
+        // Hepatic completion (AASLD 2017 — abnormal-liver-chemistry guidance).
+        // Total bilirubin (µmol/L): <20 normal, 20-50 borderline, ≥50 marked
+        // hyperbilirubinaemia. Persistent values >50 µmol/L (~3 mg/dL)
+        // warrant hepatic / haemolysis workup.
+        MetricType.TOTAL_BILIRUBIN_UMOL_PER_L to BiomarkerBands(
+            normalCeiling = 20.0, borderlineCeiling = 50.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // Albumin (g/L): ≥35 normal, 30-35 borderline-low, <30 concerning
+        // (synthetic-function failure / malnutrition).
+        MetricType.ALBUMIN_G_PER_L to BiomarkerBands(
+            normalCeiling = 30.0, borderlineCeiling = 35.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
+        // ALP (U/L): <130 normal, 130-200 borderline, ≥200 concerning.
+        // Cholestatic / bone-isoform-elevated workup typically triggered
+        // at ≥130 but isolated elevations are common (e.g. growth,
+        // pregnancy, fracture healing); 200 is the more conservative
+        // "high" threshold (AASLD 2017).
+        MetricType.ALP_U_PER_L to BiomarkerBands(
+            normalCeiling = 130.0, borderlineCeiling = 200.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+
+        // Cardiovascular risk amplifiers.
+        // Lp(a) (nmol/L): EAS 2022 / Reyes-Soffer AHA 2022 — <75 normal,
+        // 75-125 borderline (mild risk), ≥125 high. mg/dL conversion is
+        // assay-dependent and not done here; nmol/L is the recommended
+        // reporting unit. Lp(a) is once-in-a-lifetime so a wider band
+        // semantics is appropriate.
+        MetricType.LP_A_NMOL_PER_L to BiomarkerBands(
+            normalCeiling = 75.0, borderlineCeiling = 125.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // D-dimer (ng/mL FEU): <500 normal age-independent cutoff, 500-1000
+        // borderline (low-pretest-probability rule-out window),
+        // ≥1000 concerning. Age-adjusted variant lives in the condition
+        // pattern, not the bands.
+        MetricType.D_DIMER_NG_PER_ML to BiomarkerBands(
+            normalCeiling = 500.0, borderlineCeiling = 1000.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+
+        // Functional-medicine markers.
+        // Homocysteine (µmol/L): <10 optimal (functional-medicine target;
+        // Smith Refsum 2018), 10-15 borderline, ≥15 concerning (AHA 2009).
+        MetricType.HOMOCYSTEINE_UMOL_PER_L to BiomarkerBands(
+            normalCeiling = 10.0, borderlineCeiling = 15.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // Uric acid (µmol/L): <360 normal (gout-prevention target),
+        // 360-420 borderline, ≥420 concerning (hyperuricaemia /
+        // gout-risk threshold). 420 µmol/L = ~7 mg/dL.
+        MetricType.URIC_ACID_UMOL_PER_L to BiomarkerBands(
+            normalCeiling = 360.0, borderlineCeiling = 420.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+
+        // Thyroid functional extension.
+        // TPO antibodies (kIU/L): <35 negative, 35-100 borderline
+        // (low-titre — common in older adults without overt thyroid
+        // disease), ≥100 concerning (Hashimoto's / autoimmune-thyroid
+        // signature). ATA 2014 reference.
+        MetricType.THYROID_PEROXIDASE_AB_KIU_PER_L to BiomarkerBands(
+            normalCeiling = 35.0, borderlineCeiling = 100.0,
+            concerningDirection = BandDirection.ABOVE,
+        ),
+        // Reverse T3 (ng/dL): bidirectional — both extremes are clinically
+        // meaningful (low: T3-overconversion / hyperthyroid;
+        // high: euthyroid sick syndrome / nonthyroidal illness).
+        // Reference 9.2-24.1; using 24.1 as borderline-low boundary on the
+        // high-concern side, 30 as concerning high; lowCeiling 9 for the
+        // low-concern band.
+        MetricType.REVERSE_T3_NG_PER_DL to BiomarkerBands(
+            normalCeiling = 24.1, borderlineCeiling = 30.0,
+            concerningDirection = BandDirection.ABOVE,
+            lowCeiling = 9.0,
+        ),
+
+        // Cardiometabolic.
+        // Omega-3 index (%): Harris 2008. ≥8 cardioprotective (NORMAL on
+        // BELOW-direction), 4-8 intermediate (BORDERLINE), <4 high risk
+        // (CONCERNING).
+        MetricType.OMEGA_3_INDEX_PCT to BiomarkerBands(
+            normalCeiling = 4.0, borderlineCeiling = 8.0,
+            concerningDirection = BandDirection.BELOW,
+        ),
     )
 
     private val configs: Map<String, RegionConfig> = mapOf(

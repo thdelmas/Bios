@@ -80,6 +80,63 @@ object BiomarkerReferenceRanges {
         // (testosterone, estradiol, IGF-1) are deliberately absent here
         // because a sex/age-independent cutoff would be misleading.
         MetricType.CORTISOL to ReferenceRange(low = 6.0, high = 23.0, units = "µg/dL"),
+
+        // -- #203 biomarker-panel expansion --
+        // Hepatic completion (AASLD 2017 — abnormal-liver-chemistry guidance).
+        // Total bilirubin: typical adult reference 5.1-20.5 µmol/L
+        // (0.3-1.2 mg/dL). Conservative upper bound 20.
+        MetricType.TOTAL_BILIRUBIN_UMOL_PER_L to ReferenceRange(low = null, high = 20.0, units = "µmol/L"),
+        // Albumin (g/L) — synthetic-function marker. Adult reference 35-50.
+        MetricType.ALBUMIN_G_PER_L to ReferenceRange(low = 35.0, high = 50.0, units = "g/L"),
+        // Alkaline phosphatase (U/L) — adult reference 30-130. Higher in
+        // adolescents (bone-isoform) and pregnancy; the screening cutoff
+        // applies to non-pregnant adults.
+        MetricType.ALP_U_PER_L to ReferenceRange(low = 30.0, high = 130.0, units = "U/L"),
+
+        // Cardiovascular risk amplifiers.
+        // Lp(a) — EAS 2022 / Reyes-Soffer AHA 2022. <75 nmol/L is below the
+        // population-percentile threshold for elevated cardiovascular risk
+        // (some labs use 50 nmol/L). No lower bound (low Lp(a) is benign).
+        MetricType.LP_A_NMOL_PER_L to ReferenceRange(low = null, high = 75.0, units = "nmol/L"),
+        // D-dimer — <500 ng/mL FEU is the standard age-independent cutoff;
+        // age-adjusted cutoff (age × 10) is used after 50 in some protocols.
+        MetricType.D_DIMER_NG_PER_ML to ReferenceRange(low = null, high = 500.0, units = "ng/mL FEU"),
+
+        // Functional-medicine markers.
+        // Homocysteine (µmol/L) — AHA 2009 scientific statement: <15
+        // generally normal; "optimal" functional-medicine cutoff is <10
+        // (Smith Refsum 2018). Using the conservative clinical bound 15.
+        MetricType.HOMOCYSTEINE_UMOL_PER_L to ReferenceRange(low = null, high = 15.0, units = "µmol/L"),
+        // Uric acid (µmol/L) — sex-stratified reference ranges (140-340 ♀;
+        // 200-420 ♂). Using the more permissive 420 male upper bound as the
+        // universal cutoff to avoid sex-misclassification on female readings
+        // sitting at the male edge.
+        MetricType.URIC_ACID_UMOL_PER_L to ReferenceRange(low = 140.0, high = 420.0, units = "µmol/L"),
+        // TIBC (µmol/L) — adult reference 45-72. Iron-deficiency anemia
+        // raises TIBC; anemia of chronic disease lowers it.
+        MetricType.TIBC_UMOL_PER_L to ReferenceRange(low = 45.0, high = 72.0, units = "µmol/L"),
+
+        // Thyroid (functional-medicine extension).
+        // Reverse T3 (ng/dL) — typical reference range 9.2-24.1. Elevated
+        // values in euthyroid sick syndrome / nonthyroidal illness.
+        MetricType.REVERSE_T3_NG_PER_DL to ReferenceRange(low = 9.2, high = 24.1, units = "ng/dL"),
+        // TPO antibodies (kIU/L) — <35 generally negative (ATA 2014). Some
+        // assays report <9 / <40; the 35 floor is the most-cited cutoff.
+        MetricType.THYROID_PEROXIDASE_AB_KIU_PER_L to ReferenceRange(low = null, high = 35.0, units = "kIU/L"),
+
+        // Endocrine (functional-medicine extension).
+        // DHEA-S and SHBG are sex- and age-dependent — a single cutoff is
+        // misleading. Surfaced un-coloured (no entry here) so the dashboard
+        // shows the value without classification, same treatment as
+        // testosterone / estradiol / IGF-1 above.
+
+        // Cardiometabolic — leptin and adiponectin are also sex/BMI-
+        // dependent; omitted intentionally. Omega-3 index has a clear
+        // population threshold.
+        // Omega-3 index (% — proportion of EPA + DHA in RBC membrane).
+        // Harris 2008: <4% high cardiovascular risk; 4-8% intermediate;
+        // ≥8% cardioprotective. Using 4 as low / 8 as high.
+        MetricType.OMEGA_3_INDEX_PCT to ReferenceRange(low = 4.0, high = 8.0, units = "%"),
     )
 
     fun forMetric(metric: MetricType): ReferenceRange? = ranges[metric]

@@ -113,11 +113,13 @@ class FhirExporterTest {
     @Test
     fun `metric types with LOINC mappings include the AHI passthrough`() {
         // 32 base + 5 wave-5 biomarkers (#158: eGFR, creatinine, ALT, AST, GGT)
-        // + AHI (#157) = 38. The count assertion is intentionally maintained
-        // alongside the loincCode() table so any unmapped new MetricType is
-        // caught.
+        // + AHI (#157) = 38. + 15 panel-expansion biomarkers (#203: total
+        // bilirubin, albumin, ALP, Lp(a), D-dimer, homocysteine, urate, TIBC,
+        // reverse T3, TPO Ab, DHEA-S, SHBG, omega-3 index, leptin, adiponectin)
+        // = 53. The count assertion is intentionally maintained alongside
+        // the loincCode() table so any unmapped new MetricType is caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(38, mapped)
+        assertEquals(53, mapped)
     }
 
     @Test
@@ -295,6 +297,22 @@ class FhirExporterTest {
             MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
             // #157 — apnea-hypopnea index.
             MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
+            // #203 — biomarker-panel expansion.
+            MetricType.TOTAL_BILIRUBIN_UMOL_PER_L -> "1975-2" to "Bilirubin.total [Mass/volume] in Serum or Plasma"
+            MetricType.ALBUMIN_G_PER_L -> "1751-7" to "Albumin [Mass/volume] in Serum or Plasma"
+            MetricType.ALP_U_PER_L -> "6768-6" to "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma"
+            MetricType.LP_A_NMOL_PER_L -> "43583-4" to "Lipoprotein a [Moles/volume] in Serum or Plasma"
+            MetricType.D_DIMER_NG_PER_ML -> "48065-7" to "Fibrin D-dimer FEU [Mass/volume] in Platelet poor plasma"
+            MetricType.HOMOCYSTEINE_UMOL_PER_L -> "13965-9" to "Homocysteine [Moles/volume] in Serum or Plasma"
+            MetricType.URIC_ACID_UMOL_PER_L -> "3084-1" to "Urate [Moles/volume] in Serum or Plasma"
+            MetricType.TIBC_UMOL_PER_L -> "35215-8" to "Iron binding capacity [Moles/volume] in Serum or Plasma"
+            MetricType.REVERSE_T3_NG_PER_DL -> "3053-6" to "Triiodothyronine reverse [Mass/volume] in Serum or Plasma"
+            MetricType.THYROID_PEROXIDASE_AB_KIU_PER_L -> "8099-4" to "Thyroid peroxidase Ab [Units/volume] in Serum"
+            MetricType.DHEA_S_UMOL_PER_L -> "2191-5" to "Dehydroepiandrosterone sulfate (DHEA-S) [Moles/volume] in Serum or Plasma"
+            MetricType.SHBG_NMOL_PER_L -> "13967-5" to "Sex hormone binding globulin [Moles/volume] in Serum or Plasma"
+            MetricType.OMEGA_3_INDEX_PCT -> "97584-1" to "Omega-3 index [Mass fraction] in Red Blood Cells"
+            MetricType.LEPTIN_NG_PER_ML -> "14655-5" to "Leptin [Mass/volume] in Serum or Plasma"
+            MetricType.ADIPONECTIN_MG_PER_L -> "55440-2" to "Adiponectin [Mass/volume] in Serum or Plasma"
             else -> null
         }
     }
@@ -370,6 +388,10 @@ class FhirExporterTest {
             MetricUnit.GRAMS -> "g"
             MetricUnit.U_PER_L -> "U/L"
             MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
+            MetricUnit.UMOL_PER_L -> "umol/L"
+            MetricUnit.NMOL_PER_L -> "nmol/L"
+            MetricUnit.G_PER_L -> "g/L"
+            MetricUnit.KIU_PER_L -> "k[IU]/L"
         }
     }
 }

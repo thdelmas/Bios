@@ -379,6 +379,27 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     // 90562-0 is the standard PSG-derived LOINC ("Sleep apnea hypopnea
     // index"). Wearable-derived passthrough uses the same code.
     MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
+    // #203 — biomarker-panel expansion. LOINC codes verified against
+    // loinc.org's canonical lab-test catalog (search.loinc.org); each
+    // pairs the code with its long-form display name so a Bundle reader
+    // can index against the WHO/HL7-canonical names. Where the same
+    // analyte has multiple LOINCs by specimen / units, the most-common
+    // serum-or-plasma + SI-units code is used.
+    MetricType.TOTAL_BILIRUBIN_UMOL_PER_L -> "1975-2" to "Bilirubin.total [Mass/volume] in Serum or Plasma"
+    MetricType.ALBUMIN_G_PER_L -> "1751-7" to "Albumin [Mass/volume] in Serum or Plasma"
+    MetricType.ALP_U_PER_L -> "6768-6" to "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.LP_A_NMOL_PER_L -> "43583-4" to "Lipoprotein a [Moles/volume] in Serum or Plasma"
+    MetricType.D_DIMER_NG_PER_ML -> "48065-7" to "Fibrin D-dimer FEU [Mass/volume] in Platelet poor plasma"
+    MetricType.HOMOCYSTEINE_UMOL_PER_L -> "13965-9" to "Homocysteine [Moles/volume] in Serum or Plasma"
+    MetricType.URIC_ACID_UMOL_PER_L -> "3084-1" to "Urate [Moles/volume] in Serum or Plasma"
+    MetricType.TIBC_UMOL_PER_L -> "35215-8" to "Iron binding capacity [Moles/volume] in Serum or Plasma"
+    MetricType.REVERSE_T3_NG_PER_DL -> "3053-6" to "Triiodothyronine reverse [Mass/volume] in Serum or Plasma"
+    MetricType.THYROID_PEROXIDASE_AB_KIU_PER_L -> "8099-4" to "Thyroid peroxidase Ab [Units/volume] in Serum"
+    MetricType.DHEA_S_UMOL_PER_L -> "2191-5" to "Dehydroepiandrosterone sulfate (DHEA-S) [Moles/volume] in Serum or Plasma"
+    MetricType.SHBG_NMOL_PER_L -> "13967-5" to "Sex hormone binding globulin [Moles/volume] in Serum or Plasma"
+    MetricType.OMEGA_3_INDEX_PCT -> "97584-1" to "Omega-3 index [Mass fraction] in Red Blood Cells"
+    MetricType.LEPTIN_NG_PER_ML -> "14655-5" to "Leptin [Mass/volume] in Serum or Plasma"
+    MetricType.ADIPONECTIN_MG_PER_L -> "55440-2" to "Adiponectin [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -420,6 +441,10 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.GRAMS -> "g"
     MetricUnit.U_PER_L -> "U/L"
     MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
+    MetricUnit.UMOL_PER_L -> "umol/L"
+    MetricUnit.NMOL_PER_L -> "nmol/L"
+    MetricUnit.G_PER_L -> "g/L"
+    MetricUnit.KIU_PER_L -> "k[IU]/L"
 }
 
 internal fun formatInstant(instant: Instant): String =

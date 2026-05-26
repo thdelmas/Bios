@@ -47,6 +47,24 @@ class BiomarkerEntrySelectorsTest {
             // Renal / hepatic (#158).
             MetricType.EGFR, MetricType.CREATININE,
             MetricType.ALT, MetricType.AST, MetricType.GGT,
+            // Biomarker-panel expansion (#203) — hepatic completion,
+            // cardiovascular amplifiers, functional-medicine, thyroid
+            // autoimmunity, endocrine, cardiometabolic.
+            MetricType.TOTAL_BILIRUBIN_UMOL_PER_L,
+            MetricType.ALBUMIN_G_PER_L,
+            MetricType.ALP_U_PER_L,
+            MetricType.LP_A_NMOL_PER_L,
+            MetricType.D_DIMER_NG_PER_ML,
+            MetricType.HOMOCYSTEINE_UMOL_PER_L,
+            MetricType.URIC_ACID_UMOL_PER_L,
+            MetricType.TIBC_UMOL_PER_L,
+            MetricType.REVERSE_T3_NG_PER_DL,
+            MetricType.THYROID_PEROXIDASE_AB_KIU_PER_L,
+            MetricType.DHEA_S_UMOL_PER_L,
+            MetricType.SHBG_NMOL_PER_L,
+            MetricType.OMEGA_3_INDEX_PCT,
+            MetricType.LEPTIN_NG_PER_ML,
+            MetricType.ADIPONECTIN_MG_PER_L,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,

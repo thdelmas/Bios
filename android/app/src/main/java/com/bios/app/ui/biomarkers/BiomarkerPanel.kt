@@ -33,6 +33,16 @@ object BiomarkerPanels {
             MetricType.HDL_CHOLESTEROL,
             MetricType.TRIGLYCERIDES,
             MetricType.APO_B,
+            // #203 biomarker-panel expansion — cardiovascular risk
+            // amplifiers and metabolic-hormone axis. Lp(a) is a once-in-
+            // a-lifetime inherited atherogenic factor; omega-3 index,
+            // leptin, adiponectin are the cardiometabolic-syndrome
+            // matrix markers (EAS 2022, Harris 2008, IFM matrix).
+            MetricType.LP_A_NMOL_PER_L,
+            MetricType.D_DIMER_NG_PER_ML,
+            MetricType.OMEGA_3_INDEX_PCT,
+            MetricType.LEPTIN_NG_PER_ML,
+            MetricType.ADIPONECTIN_MG_PER_L,
         ),
     )
 
@@ -53,6 +63,13 @@ object BiomarkerPanels {
         metrics = listOf(
             MetricType.HSCRP,
             MetricType.FERRITIN,
+            // #203 — methylation / inflammation extensions. Homocysteine
+            // and urate are functional-medicine markers; TIBC pairs with
+            // ferritin to disambiguate iron-deficiency vs. anemia of
+            // chronic disease.
+            MetricType.HOMOCYSTEINE_UMOL_PER_L,
+            MetricType.URIC_ACID_UMOL_PER_L,
+            MetricType.TIBC_UMOL_PER_L,
         ),
     )
 
@@ -63,6 +80,11 @@ object BiomarkerPanels {
             MetricType.TSH,
             MetricType.FREE_T4,
             MetricType.FREE_T3,
+            // #203 — autoimmune-thyroid + functional-medicine extensions.
+            // TPO Ab is the Hashimoto's screen; reverse T3 is the
+            // euthyroid-sick-syndrome marker (IFM matrix, ATA 2014).
+            MetricType.REVERSE_T3_NG_PER_DL,
+            MetricType.THYROID_PEROXIDASE_AB_KIU_PER_L,
         ),
     )
 
@@ -105,6 +127,11 @@ object BiomarkerPanels {
             MetricType.ALT,
             MetricType.AST,
             MetricType.GGT,
+            // #203 hepatic-panel completion — cholestatic + synthetic-
+            // function + bilirubin axis (AASLD 2017 / 2021).
+            MetricType.ALP_U_PER_L,
+            MetricType.TOTAL_BILIRUBIN_UMOL_PER_L,
+            MetricType.ALBUMIN_G_PER_L,
         ),
     )
 
@@ -116,6 +143,10 @@ object BiomarkerPanels {
             MetricType.ESTRADIOL,
             MetricType.CORTISOL,
             MetricType.IGF_1,
+            // #203 — adrenal reserve + sex-hormone-binding capacity
+            // extensions (Endocrine Society 2014 / 2018).
+            MetricType.DHEA_S_UMOL_PER_L,
+            MetricType.SHBG_NMOL_PER_L,
         ),
     )
 

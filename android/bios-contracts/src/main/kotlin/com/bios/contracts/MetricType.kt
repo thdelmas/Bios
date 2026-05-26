@@ -226,6 +226,88 @@ enum class MetricType(
     AST("ast", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
     GGT("ggt", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
+    // Biomarker-panel expansion (#203, audit gap convergence across
+    // MEDICAL_PROFESSIONAL_POV §2.8, ONCOLOGY_POV §2.3, CARDIOLOGY_POV §2.11,
+    // MODERN_NON_ALLOPATHIC_POV §2.3, GERIATRICS_PALLIATIVE_POV). The
+    // expansion fills four gaps the audits identified:
+    //  - Hepatic panel completion (ALP / total bilirubin / albumin) — silent
+    //    cholestatic disease, hepatocellular injury staging, and synthetic
+    //    function. Pairs with the existing ALT/AST/GGT trio.
+    //  - Cardiometabolic risk amplifiers — Lp(a) is the single most important
+    //    inherited atherogenic factor (EAS/AHA 2022 consensus) and the only
+    //    one with a once-in-a-lifetime measurement use-case.
+    //  - Functional-medicine / preventive markers — homocysteine,
+    //    uric acid, TIBC, reverse T3, TPO antibodies, DHEA-S, SHBG, omega-3
+    //    index, leptin, adiponectin. The IFM matrix groups these as
+    //    methylation, autoimmune-thyroid, adrenal, and metabolic-hormone
+    //    axes. Bios stores raw values; evaluation belongs to the owner.
+    //  - Thrombosis / coagulation — D-dimer (VTE workup; cardio-oncology
+    //    surveillance adjunct to troponin / NT-proBNP).
+    //
+    // Cross-references: cardio-oncology troponin / NT-proBNP / absolute
+    // neutrophil count are owned by PR #230 (feat/cardio-oncology-
+    // surveillance) and intentionally not added here to avoid contract
+    // collisions; this PR composes against #230's keys via the
+    // BiomarkerConditionPatterns once both ship.
+    //
+    // Hepatic-panel completion (AASLD 2017 — Practice Guidance on
+    // evaluation of abnormal liver chemistries).
+    TOTAL_BILIRUBIN_UMOL_PER_L("total_bilirubin_umol_per_l", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ALBUMIN_G_PER_L("albumin_g_per_l", MetricUnit.G_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ALP_U_PER_L("alp_u_per_l", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Cardiovascular risk amplifiers.
+    // Lp(a) — EAS 2022 consensus statement / Reyes-Soffer AHA 2022:
+    // measured once in a lifetime; nmol/L is the recommended SI unit
+    // (mg/dL is convertible but is not particle-mass-equivalent across
+    // assays). Audit gap: primary care + cardiology §2.11.
+    LP_A_NMOL_PER_L("lp_a_nmol_per_l", MetricUnit.NMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // D-dimer — Wells / PERC adjunct; cardio-oncology adjunct to
+    // troponin / NT-proBNP. Reported as ng/mL FEU (fibrinogen equivalent
+    // units); the FEU qualifier is universal in clinical practice.
+    D_DIMER_NG_PER_ML("d_dimer_ng_per_ml", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Functional-medicine / methylation + inflammation panel.
+    // Homocysteine — methylation-cycle marker; elevated values associate
+    // with cardiovascular risk and B12/folate insufficiency (AHA 2009
+    // scientific statement; Smith Refsum 2018).
+    HOMOCYSTEINE_UMOL_PER_L("homocysteine_umol_per_l", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // Uric acid — metabolic-syndrome marker; gout / kidney-stone risk.
+    // SI unit µmol/L; US labs report mg/dL via UnitDisplay.
+    URIC_ACID_UMOL_PER_L("uric_acid_umol_per_l", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // TIBC — total iron-binding capacity. Pairs with FERRITIN above to
+    // disambiguate iron-deficiency from anemia of chronic disease
+    // (Williams Hematology 10th ed.).
+    TIBC_UMOL_PER_L("tibc_umol_per_l", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Thyroid (functional-medicine extension to TSH/FT4/FT3 above).
+    // Reverse T3 — IFM matrix marker for euthyroid sick syndrome and
+    // peripheral T4-to-T3 conversion impairment. Not part of the standard
+    // ATA workup but used in functional-medicine practice.
+    REVERSE_T3_NG_PER_DL("reverse_t3_ng_per_dl", MetricUnit.NG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // TPO antibody — Hashimoto's autoimmune-thyroid screen (ATA 2014).
+    // Assay-specific unit kIU/L is the WHO international-reference
+    // standard.
+    THYROID_PEROXIDASE_AB_KIU_PER_L("thyroid_peroxidase_ab_kiu_per_l", MetricUnit.KIU_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Endocrine (functional-medicine extension — adrenal + sex-hormone
+    // binding capacity).
+    // DHEA-S — adrenal-androgen reserve; declines linearly with age and
+    // is a functional-medicine adrenal-axis marker (Endocrine Society
+    // 2014). SI unit µmol/L; US labs report µg/dL.
+    DHEA_S_UMOL_PER_L("dhea_s_umol_per_l", MetricUnit.UMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    // SHBG — sex-hormone-binding globulin; required to compute free
+    // androgen index. PCOS workup, low-testosterone evaluation, and
+    // hyperinsulinemia screen (Endocrine Society 2018).
+    SHBG_NMOL_PER_L("shbg_nmol_per_l", MetricUnit.NMOL_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
+    // Cardiometabolic — leptin, adiponectin, omega-3 index. Each is a
+    // functional-medicine matrix marker for metabolic-syndrome staging
+    // beyond HOMA-IR / HbA1c.
+    OMEGA_3_INDEX_PCT("omega_3_index_pct", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    LEPTIN_NG_PER_ML("leptin_ng_per_ml", MetricUnit.NG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
+    ADIPONECTIN_MG_PER_L("adiponectin_mg_per_l", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
+
     // Epigenetic age clocks (user-imported from TruDiagnostic / other labs).
     // Slow-rolling: quarterly at best. Treated as biomarkers — the owner sees
     // them alongside HBA1C, ApoB, etc. Bios never derives a composite "age
@@ -328,7 +410,15 @@ enum class MetricUnit(val symbol: String) {
     /** Enzyme activity per litre — ALT, AST, GGT, etc. */
     U_PER_L("U/L"),
     /** eGFR normalized to body surface area — KDIGO 2024 standard. */
-    ML_PER_MIN_PER_173("mL/min/1.73m²")
+    ML_PER_MIN_PER_173("mL/min/1.73m²"),
+    /** SI micromolar — homocysteine, uric acid, TIBC, total bilirubin. */
+    UMOL_PER_L("µmol/L"),
+    /** SI nanomolar — Lp(a) (EAS 2022), SHBG. */
+    NMOL_PER_L("nmol/L"),
+    /** Albumin SI — g/L (US uses g/dL via UnitDisplay). */
+    G_PER_L("g/L"),
+    /** Thyroid antibodies — WHO international-reference assay units. */
+    KIU_PER_L("kIU/L")
 }
 
 enum class MetricDomain {
