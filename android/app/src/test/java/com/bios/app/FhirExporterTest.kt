@@ -465,6 +465,7 @@ class FhirExporterTest {
             MetricUnit.PICOGRAMS -> "pg"
             MetricUnit.MIU_PER_ML -> "m[IU]/mL"
             MetricUnit.IU_PER_ML -> "[IU]/mL"
+            MetricUnit.PER_MINUTE -> "/min"
         }
     }
 }
