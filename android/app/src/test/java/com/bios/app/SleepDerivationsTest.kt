@@ -130,6 +130,58 @@ class SleepDerivationsTest {
         assertNull(SleepDerivations.deriveSleepEfficiency(emptyList(), "src"))
     }
 
+    // MARK: - Time in bed
+
+    @Test
+    fun `time in bed sums all stage durations including AWAKE`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),  // 300s awake
+            stage(SleepStage.LIGHT, 1_300_000L),  // 300s
+            stage(SleepStage.DEEP, 1_600_000L),   // 300s
+            stage(SleepStage.AWAKE, 1_900_000L),  // 300s awake
+        )
+        val tib = SleepDerivations.deriveTimeInBed(readings, "src")!!
+        assertEquals(MetricType.TIME_IN_BED.key, tib.metricType)
+        assertEquals(1200.0, tib.value, 0.0)
+        assertEquals(1200, tib.durationSec)
+        assertEquals(1_000_000L, tib.timestamp)
+    }
+
+    @Test
+    fun `time in bed is at least sleep duration (TIB greater-equal TST invariant)`() {
+        val readings = listOf(
+            stage(SleepStage.AWAKE, 1_000_000L),
+            stage(SleepStage.LIGHT, 1_300_000L),
+            stage(SleepStage.DEEP, 1_600_000L),
+            stage(SleepStage.REM, 1_900_000L),
+            stage(SleepStage.AWAKE, 2_200_000L),
+        )
+        val tib = SleepDerivations.deriveTimeInBed(readings, "src")!!
+        val efficiency = SleepDerivations.deriveSleepEfficiency(readings, "src")!!
+        val tst = efficiency.value / 100.0 * efficiency.durationSec!!
+        assertTrue("TIB (${tib.value}) must be >= TST ($tst)", tib.value >= tst)
+    }
+
+    @Test
+    fun `time in bed is null when no stage rows`() {
+        assertNull(SleepDerivations.deriveTimeInBed(emptyList(), "src"))
+    }
+
+    @Test
+    fun `time in bed is null when all durations are zero`() {
+        val readings = listOf(
+            MetricReading(
+                metricType = MetricType.SLEEP_STAGE.key,
+                value = SleepStage.LIGHT.value.toDouble(),
+                timestamp = 1_000_000L,
+                durationSec = 0,
+                sourceId = "src",
+                confidence = ConfidenceTier.MEDIUM.level,
+            )
+        )
+        assertNull(SleepDerivations.deriveTimeInBed(readings, "src"))
+    }
+
     // MARK: - Fragmentation
 
     @Test

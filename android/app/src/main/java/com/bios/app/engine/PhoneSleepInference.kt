@@ -28,13 +28,46 @@ import kotlin.math.min
  */
 object PhoneSleepInference {
 
-    /** One phone-state observation, typically aggregated over ~1 minute. */
+    /**
+     * One phone-state observation, typically aggregated over ~1 minute.
+     *
+     * Tier-1 nullable additions (#243 Cut 1) are collection-only with
+     * one exception: [stationary] is consumed by [isQuietSample] (#243
+     * Cut 2) because hardware-confirmed multi-second stillness is much
+     * stronger than the accelerometer-variance proxy and crucially
+     * bypasses the AOD-display-state ambiguity. The remaining new
+     * fields stay observability-only until field data confirms their
+     * predictive value; a null on any new field means "sensor / signal
+     * absent on this device — ignore" and the inference behaves
+     * exactly as before for that field.
+     */
     data class Sample(
         val timestamp: Long,
         val screenOff: Boolean,
         val charging: Boolean,
         val ambientLightLux: Float?,
         val accelMagnitudeVar: Float?,
+        /** Step delta since the previous sample (TYPE_STEP_COUNTER).
+         *  Zero across a sample window is a strong sleep prior. */
+        val stepDelta: Int? = null,
+        /** True when the owner has enabled Do Not Disturb (any non-ALL
+         *  interruption filter). Strong sleep-intent corroborator. */
+        val dndEnabled: Boolean? = null,
+        /** True when at least one paired Bluetooth peripheral (typically
+         *  a wearable / smart speaker / car system) is connected. Lets
+         *  the inference distinguish "phone on nightstand at home" from
+         *  "phone on a bar table at night." */
+        val pairedBluetoothConnected: Boolean? = null,
+        /** True when SIGNIFICANT_MOTION fired within the recency window
+         *  before this sample (#243 Cut 2). Collection-only for now;
+         *  observability via [signalBreakdown]. */
+        val significantMotionFired: Boolean? = null,
+        /** Hardware-confirmed stillness from TYPE_STATIONARY_DETECT
+         *  (#243 Cut 2). When `true` AND charging, [isQuietSample]
+         *  accepts the sample regardless of screen / lux state — this
+         *  is the AOD-on-nightstand signature with the strongest
+         *  primary sensor we have. */
+        val stationary: Boolean? = null,
     )
 
     /**
@@ -42,10 +75,14 @@ object PhoneSleepInference {
      * reading plus optional [MetricType.SLEEP_STAGE] rows for LIGHT / AWAKE
      * segments inside the sleep window. Empty when no viable window is found.
      */
-    fun infer(samples: List<Sample>, sourceId: String): List<MetricReading> {
+    fun infer(
+        samples: List<Sample>,
+        sourceId: String,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): List<MetricReading> {
         if (samples.size < 2) return emptyList()
         val sorted = samples.sortedBy { it.timestamp }
-        val window = longestScreenOffStretch(sorted) ?: return emptyList()
+        val window = longestScreenOffStretch(sorted, activityThreshold) ?: return emptyList()
         val (startIdx, endIdx) = window
         val windowMs = sorted[endIdx].timestamp - sorted[startIdx].timestamp
         if (windowMs < MIN_SLEEP_WINDOW_MS) return emptyList()
@@ -87,20 +124,38 @@ object PhoneSleepInference {
     private data class Segment(val stage: SleepStage, val startMs: Long, val durationMs: Long)
 
     /**
-     * Walk the [start, end] index range and merge consecutive samples that
-     * share the same coarse activity label (AWAKE if accel variance is
-     * above [ACTIVITY_THRESHOLD], LIGHT otherwise) into contiguous segments.
+     * Walk the [startIdx, endIdx] index range and merge consecutive samples
+     * that share the same coarse activity label into contiguous segments.
+     *
+     * The per-sample label is the result of a two-phase classification
+     * (#244 Cuts 1 + 1b):
+     *  1. **Cole-Kripke 7-tap FIR** scores each sample's centered window
+     *     of accelerometer variances — the published 1992 baseline.
+     *  2. **Webster rescoring rules a-e** clean up the canonical
+     *     post-FIR misclassifications: wake-bout forward extension
+     *     (rules a/b/c) + brief-sleep absorption between long wake
+     *     runs (rules d/e).
+     *
+     * Webster looks at the WHOLE sample range (not just [startIdx,
+     * endIdx]) so its preceding-wake-run lookbacks aren't truncated at
+     * the window boundary.
      */
     private fun segmentByActivity(
         samples: List<Sample>,
         startIdx: Int,
         endIdx: Int
     ): List<Segment> {
+        val variances: List<Float?> = samples.map { it.accelMagnitudeVar }
+        val rawAwake = BooleanArray(samples.size) { i ->
+            ColeKripkeClassifier.isAwake(ColeKripkeClassifier.centeredWindow(variances, i))
+        }
+        val rescoredAwake = WebsterRescoring.rescore(rawAwake)
+
         val out = mutableListOf<Segment>()
         var segStart = samples[startIdx].timestamp
-        var currentStage = stageAt(samples[startIdx])
+        var currentStage = stageFor(rescoredAwake[startIdx])
         for (i in (startIdx + 1)..endIdx) {
-            val stage = stageAt(samples[i])
+            val stage = stageFor(rescoredAwake[i])
             if (stage != currentStage) {
                 out += Segment(currentStage, segStart, samples[i].timestamp - segStart)
                 segStart = samples[i].timestamp
@@ -110,9 +165,13 @@ object PhoneSleepInference {
         out += Segment(currentStage, segStart, samples[endIdx].timestamp - segStart)
         // Collapse very brief AWAKE flickers (< AWAKE_BOUT_MIN_MS) back into
         // the surrounding sleep — single-minute movement bouts during sleep
-        // are normal posture shifts, not wake events.
+        // are normal posture shifts, not wake events. Complementary to
+        // Webster's d/e rules which absorb in the opposite direction.
         return mergeBriefAwake(out)
     }
+
+    private fun stageFor(awake: Boolean): SleepStage =
+        if (awake) SleepStage.AWAKE else SleepStage.LIGHT
 
     private fun mergeBriefAwake(segments: List<Segment>): List<Segment> {
         if (segments.size <= 1) return segments
@@ -131,10 +190,6 @@ object PhoneSleepInference {
         return out
     }
 
-    private fun stageAt(sample: Sample): SleepStage {
-        val variance = sample.accelMagnitudeVar ?: 0f
-        return if (variance > ACTIVITY_THRESHOLD) SleepStage.AWAKE else SleepStage.LIGHT
-    }
 
     /**
      * Per-sample "owner is likely quiet / not actively using the device"
@@ -152,9 +207,19 @@ object PhoneSleepInference {
      * fails the stationary check the moment the owner adjusts position.
      * "Phone on nightstand showing AOD" passes all three.
      */
-    internal fun isQuietSample(s: Sample): Boolean {
+    internal fun isQuietSample(
+        s: Sample,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): Boolean {
         if (s.screenOff) return true
-        val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+        // #243 Cut 2: hardware-confirmed stillness + charging is the
+        // AOD-on-nightstand signature with the strongest primary signal
+        // we have. STATIONARY_DETECT requires multi-second stillness in
+        // the sensor hub — much stronger than the variance proxy, and
+        // bypasses the lux check (streetlight through a window must
+        // not disqualify a clearly-stationary plugged-in device).
+        if (s.stationary == true && s.charging) return true
+        val lowMotion = (s.accelMagnitudeVar ?: Float.MAX_VALUE) < activityThreshold
         val dark = (s.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
         return s.charging && lowMotion && dark
     }
@@ -169,13 +234,16 @@ object PhoneSleepInference {
      *
      * Returns null when no quiet stretch exists at all.
      */
-    private fun longestScreenOffStretch(samples: List<Sample>): Pair<Int, Int>? {
+    private fun longestScreenOffStretch(
+        samples: List<Sample>,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): Pair<Int, Int>? {
         var best: Pair<Int, Int>? = null
         var bestLen = 0L
         var runStart = -1
         var i = 0
         while (i < samples.size) {
-            if (isQuietSample(samples[i])) {
+            if (isQuietSample(samples[i], activityThreshold)) {
                 if (runStart == -1) runStart = i
                 if (i == samples.lastIndex) {
                     val len = samples[i].timestamp - samples[runStart].timestamp
@@ -187,7 +255,7 @@ object PhoneSleepInference {
                 // quiet stretch resume after? If the gap is brief, treat it
                 // as a flicker and keep the run going.
                 val gapStart = i
-                while (i < samples.size && !isQuietSample(samples[i])) i++
+                while (i < samples.size && !isQuietSample(samples[i], activityThreshold)) i++
                 val gapEndExclusive = i
                 val gapDurMs = if (gapEndExclusive < samples.size) {
                     samples[gapEndExclusive].timestamp - samples[gapStart].timestamp
@@ -217,15 +285,25 @@ object PhoneSleepInference {
      * no stretch exists. Used by the dashboard diagnostic so the owner can
      * see how close the buffer is to crossing the 4h floor.
      */
-    fun longestScreenOffMs(samples: List<Sample>): Long {
+    fun longestScreenOffMs(
+        samples: List<Sample>,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): Long {
         if (samples.size < 2) return 0L
         val sorted = samples.sortedBy { it.timestamp }
-        val range = longestScreenOffStretch(sorted) ?: return 0L
+        val range = longestScreenOffStretch(sorted, activityThreshold) ?: return 0L
         return sorted[range.second].timestamp - sorted[range.first].timestamp
     }
 
     /** Per-signal breakdown of the buffer so owners can diagnose which
-     *  signal is keeping the inference from firing. */
+     *  signal is keeping the inference from firing.
+     *
+     *  Tier-1 additions (#243 Cut 1 + Cut 2): [zeroStepDelta], [dndOn],
+     *  [pairedBtConnected], [sigMotionFired], and [stationaryDetected]
+     *  are observability counts of the new optional signals; samples
+     *  where the signal is absent (`null`) are not counted. The
+     *  denominator for each new count is on [sampledNewSignals]
+     *  (samples that carried at least one non-null new signal). */
     data class SignalBreakdown(
         val total: Int,
         val screenInactive: Int,
@@ -233,19 +311,48 @@ object PhoneSleepInference {
         val dark: Int,
         val charging: Int,
         val quiet: Int,
+        /** Samples with stepDelta == 0 (owner not walking). */
+        val zeroStepDelta: Int = 0,
+        /** Samples with DND enabled. */
+        val dndOn: Int = 0,
+        /** Samples with at least one paired BT peripheral connected. */
+        val pairedBtConnected: Int = 0,
+        /** Samples where SIGNIFICANT_MOTION fired in the recency
+         *  window (#243 Cut 2). */
+        val sigMotionFired: Int = 0,
+        /** Samples where STATIONARY_DETECT confirms the device is
+         *  currently still (#243 Cut 2). */
+        val stationaryDetected: Int = 0,
+        /** Samples that carried at least one non-null Tier-1 new signal.
+         *  Acts as the denominator for the new counts on devices /
+         *  builds where any of the signals weren't recorded. */
+        val sampledNewSignals: Int = 0,
     )
 
-    fun signalBreakdown(samples: List<Sample>): SignalBreakdown {
+    fun signalBreakdown(
+        samples: List<Sample>,
+        activityThreshold: Float = ACTIVITY_THRESHOLD,
+    ): SignalBreakdown {
         val total = samples.size
         val screenInactive = samples.count { it.screenOff }
         val lowMotion = samples.count {
-            (it.accelMagnitudeVar ?: Float.MAX_VALUE) < ACTIVITY_THRESHOLD
+            (it.accelMagnitudeVar ?: Float.MAX_VALUE) < activityThreshold
         }
         val dark = samples.count {
             (it.ambientLightLux ?: Float.MAX_VALUE) < DARK_LUX_THRESHOLD
         }
         val charging = samples.count { it.charging }
-        val quiet = samples.count { isQuietSample(it) }
+        val quiet = samples.count { isQuietSample(it, activityThreshold) }
+        val zeroStepDelta = samples.count { it.stepDelta == 0 }
+        val dndOn = samples.count { it.dndEnabled == true }
+        val pairedBtConnected = samples.count { it.pairedBluetoothConnected == true }
+        val sigMotionFired = samples.count { it.significantMotionFired == true }
+        val stationaryDetected = samples.count { it.stationary == true }
+        val sampledNewSignals = samples.count {
+            it.stepDelta != null || it.dndEnabled != null ||
+                it.pairedBluetoothConnected != null ||
+                it.significantMotionFired != null || it.stationary != null
+        }
         return SignalBreakdown(
             total = total,
             screenInactive = screenInactive,
@@ -253,6 +360,12 @@ object PhoneSleepInference {
             dark = dark,
             charging = charging,
             quiet = quiet,
+            zeroStepDelta = zeroStepDelta,
+            dndOn = dndOn,
+            pairedBtConnected = pairedBtConnected,
+            sigMotionFired = sigMotionFired,
+            stationaryDetected = stationaryDetected,
+            sampledNewSignals = sampledNewSignals,
         )
     }
 
@@ -288,8 +401,15 @@ object PhoneSleepInference {
     // After subtracting AWAKE bouts, demand at least 1h of actual sleep
     // before publishing anything. Floors out clearly-bad windows.
     internal const val MIN_SLEEP_DURATION_MS: Long = 1L * 60L * 60L * 1000L
-    // Brief movement bouts (< 5 min) are posture shifts, not wake events.
-    internal const val AWAKE_BOUT_MIN_MS: Long = 5L * 60L * 1000L
+    // Brief movement bouts (< 10 min) are posture shifts, not wake events.
+    // Bumped from 5 → 10 min when the Cole-Kripke 7-tap classifier
+    // landed (#244 Cut 1): the smoother windowed classifier extends a
+    // brief activity spike's AWAKE footprint ~3 min on each side via
+    // the FIR convolution, so a 1-2 min posture shift now produces a
+    // ~7-8 min AWAKE region. Bumping the collapse threshold keeps the
+    // "posture shift, not wake" semantic intact under the new
+    // classifier while still catching genuine 10+ min wake events.
+    internal const val AWAKE_BOUT_MIN_MS: Long = 10L * 60L * 1000L
     // Single notification waking the screen, AOD, or a "lift to wake" event
     // shouldn't bisect an otherwise clean overnight stretch. ~20 min covers
     // one missed sample at the 15-min cadence plus a small buffer for clock

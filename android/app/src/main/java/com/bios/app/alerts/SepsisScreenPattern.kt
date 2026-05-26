@@ -265,9 +265,11 @@ object SepsisScreenPattern {
         // thresholds are validated only for adults — paediatric early-
         // warning scores (PEWS) use age-banded thresholds that don't
         // map onto NEWS2 component bands.
-        excludedStates = setOf(
-            com.bios.app.physiology.PhysiologyState.PAEDIATRIC,
-        ),
+        // NEWS2's component thresholds are validated only for adults —
+        // paediatric early-warning scores (PEWS) use age-banded thresholds
+        // that don't map onto NEWS2 components. Suppress for every
+        // paediatric band, not just the coarse PAEDIATRIC parent (#198).
+        excludedStates = com.bios.app.physiology.PhysiologyState.PAEDIATRIC_ALL,
     )
 }
 

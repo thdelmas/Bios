@@ -1,6 +1,10 @@
 package com.bios.app.ingest
 
 import android.content.Context
+import android.hardware.camera2.CaptureRequest
+import android.util.Range
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -9,8 +13,12 @@ import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.concurrent.futures.await
 import androidx.lifecycle.LifecycleOwner
+import android.os.Build
 import com.bios.app.engine.CaptureQuality
+import com.bios.app.engine.EctopyDetector
 import com.bios.app.engine.HrvAnalyzer
+import com.bios.app.engine.PpgCalibrationLogger
+import com.bios.app.engine.PpgDeviceProfiles
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
@@ -59,6 +67,7 @@ class CameraPpgAdapter(private val context: Context) {
      *    are pushed during capture so the UI can coach the owner if the
      *    finger drifts or motion is detected. Updates ~2 Hz.
      */
+    @OptIn(ExperimentalCamera2Interop::class)
     suspend fun capture(
         lifecycleOwner: LifecycleOwner,
         durationSec: Int,
@@ -72,11 +81,34 @@ class CameraPpgAdapter(private val context: Context) {
             return@withContext CaptureResult.error(RejectionReason.HARDWARE_UNAVAILABLE)
         }
 
+        // #266 Cut 2: per-device motion-rejection thresholds. Unknown
+        // models fall back to PpgDeviceProfiles.DEFAULT which preserves
+        // pre-Cut-2 behaviour — no regression on the device set that
+        // currently works. As calibration-log distribution data lands
+        // (Cut 1 toggle), specific models can be added to
+        // PpgDeviceProfiles.PROFILES.
+        val deviceProfile = PpgDeviceProfiles.forDevice(Build.MODEL)
+
         val luminance = Collections.synchronizedList(mutableListOf<Double>())
         val executor = Executors.newSingleThreadExecutor()
         val frameCounter = java.util.concurrent.atomic.AtomicInteger(0)
-        val analysis = ImageAnalysis.Builder()
+        // Pin AE to TARGET_FPS so a dark scene + torch can't push the
+        // sensor onto a long exposure and drop the frame rate to ~17 fps.
+        // At 17 fps each frame is ~60 ms apart but a systolic upstroke is
+        // ~80–120 ms, so peaks get sampled at random phase — amplitudes
+        // swing wildly (peakAmpCov ≈ 1.6, observed on Pixel 9a) and the
+        // adaptive-threshold detector misses alternating beats, producing
+        // a half-rate HR. Forcing a faster AE keeps exposure short enough
+        // that frame rate stays at TARGET_FPS; the torch is what lights
+        // the finger anyway, AE has nothing useful to optimise here.
+        val analysisBuilder = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        Camera2Interop.Extender(analysisBuilder)
+            .setCaptureRequestOption(
+                CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                Range(TARGET_FPS, TARGET_FPS),
+            )
+        val analysis = analysisBuilder
             .build()
             .also {
                 it.setAnalyzer(executor) { image ->
@@ -89,7 +121,7 @@ class CameraPpgAdapter(private val context: Context) {
                             luminance.takeLast(QUALITY_WINDOW_FRAMES)
                         }
                         qualityFlow.value = CaptureQuality.classify(
-                            window, ASSUMED_SAMPLING_HZ
+                            window, ASSUMED_SAMPLING_HZ, deviceProfile,
                         )
                     }
                 }
@@ -124,13 +156,41 @@ class CameraPpgAdapter(private val context: Context) {
         }
 
         val samplingRateHz = snapshot.size / actualDurationSec
-        val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz)
+        val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz, deviceProfile)
         val hrv = if (ppg.accepted) HrvAnalyzer.analyze(ppg.rrIntervalsMs) else null
+
+        if (PpgCalibrationLogger.isEnabled(context)) {
+            // Diagnostic log opted in by the owner. Computed here (not inside
+            // the processor) because saturationRatio is the only field we
+            // can derive without re-running peak detection, and the
+            // median-jump distribution is intrinsically a property of the
+            // raw luminance series.
+            val row = PpgCalibrationLogger.rowFor(
+                timestampMs = System.currentTimeMillis(),
+                samplingRateHz = samplingRateHz,
+                jumpStats = CaptureQuality.medianJumpPercentiles(snapshot, samplingRateHz),
+                peakAmplitudeCov = ppg.peakAmplitudeCov,
+                saturationRatio = PpgSignalProcessor.saturationRatio(snapshot),
+                peakCount = ppg.peakCount,
+                durationSec = actualDurationSec,
+                rejectionReason = ppg.rejectionReason,
+            )
+            withContext(Dispatchers.IO) { PpgCalibrationLogger(context).log(row) }
+        }
 
         toResult(ppg, hrv, sourceId, System.currentTimeMillis())
     }
 
     companion object {
+        /** AE target frame rate (fps). Pinned via [Camera2Interop] on the
+         *  ImageAnalysis use case so a dark scene + torch can't push the
+         *  sensor onto a long exposure and drop the effective rate to the
+         *  point where systolic upstrokes alias between frames. 30 is a
+         *  range every CameraX-supported device advertises; the HAL may
+         *  still round to the closest supported pair if (30, 30) is
+         *  unsupported on a given device. */
+        private const val TARGET_FPS = 30
+
         /** Approximate analyzer frame rate, used by the real-time quality
          *  classifier. Actual rate is measured offline; this is just the
          *  scale for the motion-window heuristic. */
@@ -195,6 +255,24 @@ class CameraPpgAdapter(private val context: Context) {
                     confidence = ConfidenceTier.LOW.level
                 )
             }
+            // PVC-burden estimate (#216 / Triage #26). Skipped on rhythms
+            // the classifier scores irregularly-irregular — AFib's
+            // randomness inflates the short-long pair count and would
+            // confound the PVC interpretation.
+            val ectopyReading = if (rhythmVerdict.verdict != RhythmClassifier.WindowVerdict.REGULAR) {
+                null
+            } else {
+                EctopyDetector.analyse(ppg.rrIntervalsMs)?.let { result ->
+                    MetricReading(
+                        metricType = MetricType.ECTOPY_BURDEN_ESTIMATE.key,
+                        value = result.burdenPercent,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                }
+            }
             val readings = listOfNotNull(
                 MetricReading(
                     metricType = MetricType.HEART_RATE.key,
@@ -253,6 +331,87 @@ class CameraPpgAdapter(private val context: Context) {
                     confidence = ConfidenceTier.LOW.level
                 ),
                 burdenReading,
+                ectopyReading,
+                // PPG pulse-wave morphology (#181, CARDIOLOGY_POV.md §2.2).
+                // Statistical summaries that PpgSignalProcessor surfaces
+                // alongside HRV. Written only when waveformFeatures is
+                // populated (rejected recordings + sessions with too few
+                // clean beats skip every key in this block).
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_PEAK_AMPLITUDE_MEAN.key,
+                        value = feat.peakAmplitudeTrimmedMean,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_PEAK_AMPLITUDE_COV.key,
+                        value = feat.peakAmplitudeCov,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_RISE_TIME_MEAN.key,
+                        value = feat.riseTimeMeanSec,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_RISE_TIME_COV.key,
+                        value = feat.riseTimeCov,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                ppg.waveformFeatures?.let { feat ->
+                    MetricReading(
+                        metricType = MetricType.PPG_DECAY_ASYMMETRY_INDEX.key,
+                        value = feat.decayAsymmetryIndex,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                // Dichrotic-notch position is nullable in PulseWaveformFeatures
+                // — only surfaced when enough beats yield a detectable notch.
+                ppg.waveformFeatures?.dichroticNotchRelativePosition?.let { pos ->
+                    MetricReading(
+                        metricType = MetricType.PPG_DICHROTIC_NOTCH_POSITION.key,
+                        value = pos,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
+                // PPG-derived augmentation index (Blueprint audit §3.1 #8).
+                // Computed when a diastolic rebound is detectable on enough
+                // beats; null on short or noisy recordings.
+                ppg.waveformFeatures?.augmentationIndexPercent?.let { aix ->
+                    MetricReading(
+                        metricType = MetricType.AUGMENTATION_INDEX_PPG.key,
+                        value = aix,
+                        timestamp = timestamp,
+                        durationSec = durSec,
+                        sourceId = sourceId,
+                        confidence = ConfidenceTier.LOW.level,
+                    )
+                },
             )
             return CaptureResult(
                 readings = readings,

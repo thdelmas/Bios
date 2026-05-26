@@ -3,28 +3,26 @@ package com.bios.app.engine
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
+import com.bios.app.config.RegionConfig
+import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.MedicationAnnotationRepo
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.*
+import com.bios.app.physiology.OwnerCondition
 import com.bios.app.physiology.PhysiologyState
 import com.bios.contracts.MetricType
-import com.bios.contracts.MetricUnit
-import com.bios.contracts.MetricDomain
 import com.bios.app.ui.diagnostics.DiagnosticResult
 import com.bios.app.ui.diagnostics.SignalStatus
 import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * Detects anomalies by scoring deviations from personal baselines
- * and cross-correlating multiple signals.
- *
- * `reproductiveReadingDao` (#142): optional DAO for the isolated
- * [com.bios.app.data.ReproductiveDatabase]. WOMENS_HEALTH metrics resolve
- * there; baselines stay in the main DB as summary-only rows.
- * `medicationRepo` (#154): appends an "Annotated current medications" line
- * to alert explanations, snapshot frozen at anomaly creation.
+ * Detects anomalies by scoring deviations from personal baselines and
+ * cross-correlating multiple signals. `reproductiveReadingDao` (#142) routes
+ * WOMENS_HEALTH metrics to the isolated [com.bios.app.data.ReproductiveDatabase].
+ * `medicationRepo` (#154) freezes annotated medications on alert creation.
+ * `physiologyState` (#159, CARDIOLOGY_POV §2.4) filters patterns via [appliesIn].
  */
 class AnomalyDetector(
     private val db: BiosDatabase,
@@ -32,44 +30,57 @@ class AnomalyDetector(
     private val latencyTracker: DetectionLatencyTracker? = null,
     private val reproductiveReadingDao: MetricReadingDao? = null,
     private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
-    /** Owner-set physiology context (#159); filters patterns by excludedStates. */
-    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD
+    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
+    /** #196: region gates `requiresTropicalRegion`; ownerConditions gates `requiredOwnerConditions`. */
+    private val regionConfig: RegionConfig = RegionConfigProvider.forCurrentLocale(),
+    private val ownerConditions: Set<OwnerCondition> = emptySet(),
+    /** Cancer-therapy drug class (#201); gates `requiredDrugClasses`. */
+    private val drugClass: com.bios.app.physiology.CancerTherapyDrugClass = com.bios.app.physiology.CancerTherapyDrugClass.NONE,
+    /** #197: modulates `elevationAdjustedBelow` thresholds when set. */
+    private val environmentalContext: com.bios.app.model.EnvironmentalContext? = null,
+    /** #190: sub-window acute-event detector. Null disables the acute path. */
+    private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
 ) {
 
     private val readingDao = db.metricReadingDao()
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
-    private fun applicablePatterns(): List<ConditionPattern> =
-        ConditionPatterns.all.filter { physiologyState !in it.excludedStates }
+    // Acute-window patterns (#190) and signalRules-less patterns (e.g. MOH #207,
+    // scored by a dedicated diary evaluator) bypass this pipeline; surfacing
+    // them here would render a misleading "Current Match Score: 0%" in the
+    // detail screen. appliesIn honors excludedStates + requiredStates (#200) +
+    // region (#196) + owner-conditions (#196).
+    private fun applicablePatterns(): List<ConditionPattern> {
+        val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
+        return ConditionPatterns.all.filter {
+            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) &&
+                it.id !in acuteIds && it.signalRules.isNotEmpty()
+        }
+    }
 
     suspend fun runDetection(): List<Anomaly> {
         val endToEndStart = System.currentTimeMillis()
         val newAnomalies = mutableListOf<Anomaly>()
         val patterns = applicablePatterns()
 
+        // Acute-window detection (#190) — parallel path for sub-window
+        // events (anaphylaxis, OUD respiratory depression, DKA, shock).
+        val acuteAnomalies = acuteWindowDetector?.runAcuteDetection() ?: emptyList()
+        newAnomalies.addAll(acuteAnomalies)
+
         // Pattern-based detection (existing statistical approach)
-        val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) {
+        suspend fun evalAll(): List<Anomaly> {
             val results = mutableListOf<Anomaly>()
             for (pattern in patterns) {
-                val anomaly = evaluatePattern(pattern)
-                if (anomaly != null) {
-                    anomalyDao.insert(anomaly)
-                    results.add(anomaly)
+                evaluatePattern(pattern)?.let {
+                    anomalyDao.insert(it)
+                    results.add(it)
                 }
             }
-            results
-        } ?: run {
-            val results = mutableListOf<Anomaly>()
-            for (pattern in patterns) {
-                val anomaly = evaluatePattern(pattern)
-                if (anomaly != null) {
-                    anomalyDao.insert(anomaly)
-                    results.add(anomaly)
-                }
-            }
-            results
+            return results
         }
+        val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) { evalAll() } ?: evalAll()
         newAnomalies.addAll(patternAnomalies)
 
         // ML-based holistic anomaly detection
@@ -389,20 +400,6 @@ class AnomalyDetector(
         )
     }
 
-    private fun classifySeverity(
-        activeSignals: Int,
-        combinedScore: Double,
-        totalRules: Int
-    ): AlertTier {
-        val signalRatio = activeSignals.toDouble() / totalRules.toDouble()
-
-        return when {
-            combinedScore > 3.0 || signalRatio > 0.8 -> AlertTier.ADVISORY
-            combinedScore > 2.0 || signalRatio > 0.5 -> AlertTier.NOTICE
-            else -> AlertTier.OBSERVATION
-        }
-    }
-
     private fun buildExplanation(
         pattern: ConditionPattern,
         deviations: Map<MetricType, Double>
@@ -433,6 +430,30 @@ class AnomalyDetector(
         )
     }
 
+    // Absolute-rule window values. Fast value-only path unless the
+    // rule needs row-level columns: durationAtLeastSec (#268) requires
+    // durationSec; excludePayloadFieldValue (#269 Cut 2 safety gate)
+    // requires a payload lookup to drop wearable_inferred SEIZURE_EVENT
+    // rows from the URGENT path.
+    private suspend fun fetchAbsoluteWindowValues(rule: com.bios.app.alerts.SignalRule): List<Double> {
+        val minDuration = rule.durationAtLeastSec
+        val excludePayload = rule.excludePayloadFieldValue
+        if (minDuration == null && excludePayload == null) {
+            return fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+        }
+        val endMillis = System.currentTimeMillis()
+        val startMillis = endMillis - rule.absoluteWindowHours.toLong() * 3600 * 1000
+        var rows = daoFor(rule.metricType).fetch(rule.metricType.key, startMillis, endMillis)
+        if (minDuration != null) rows = rows.filter { (it.durationSec ?: 0) >= minDuration }
+        if (excludePayload != null) {
+            val payloads = db.eventPayloadFieldDao()
+                .fetchForReadings(rows.map { it.id })
+                .groupBy { it.readingId }
+            rows = applyPayloadExclusion(rows, payloads, excludePayload)
+        }
+        return rows.map { it.value }
+    }
+
     private fun daoFor(metricType: MetricType): MetricReadingDao =
         if (isReproductiveMetric(metricType) && reproductiveReadingDao != null) {
             reproductiveReadingDao
@@ -453,7 +474,7 @@ class AnomalyDetector(
         rule: com.bios.app.alerts.SignalRule
     ): Pair<Double?, Boolean> {
         val representative: Double = if (rule.absoluteWindowHours > 0) {
-            val values = fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
+            val values = fetchAbsoluteWindowValues(rule)
             if (values.size < rule.absoluteMinReadings) return null to false
             values.sorted().let { s ->
                 if (s.size % 2 == 0) (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0 else s[s.size / 2]
@@ -463,38 +484,12 @@ class AnomalyDetector(
                 ?: return null to false
         }
         val above = rule.absoluteAbove?.let { representative >= it } == true
-        val below = rule.absoluteBelow?.let { representative <= it } == true
+        // Elevation-adjusted "at or below" cutoff (#197). When the rule
+        // ships an `elevationAdjustedBelow` map and the owner has declared
+        // an environmental context, the band-specific value displaces the
+        // base cutoff. Sea-level / null contexts fall through unchanged.
+        val resolvedBelow = rule.resolvedAbsoluteBelow(environmentalContext?.elevationBand)
+        val below = resolvedBelow?.let { representative <= it } == true
         return representative to (above || below)
     }
 }
-
-// EVENT-unit metrics (tobacco_use, fall_event, …) are intentionally
-// companion-written — SELF_REPORTED or DERIVED. CompanionConditionPatterns
-// rules explicitly want those rows. PR #25 over-applied the SENSOR-only
-// filter to every fetch and broke the cessation / fall-rate patterns; this
-// branches the filter by unit so SENSOR-typed metrics still resolve against
-// sensor sources (the decision 3 reason — z-scores vs a sensor baseline)
-// while EVENT-typed metrics see the data they're meant to see.
-//
-// WOMENS_HEALTH metrics (BBT, CYCLE_PHASE, CYCLE_DAY, MENSTRUATION_ONSET) are
-// also exempted: those readings live in the isolated ReproductiveDatabase
-// and are SELF_REPORTED by design (no sensor adapter writes BBT — would
-// break the privacy isolation). The decision-3 SENSOR filter exists to keep
-// self-reports out of *physiological* baselines; for a metric whose
-// canonical source IS self-report, the filter would just zero the rows.
-internal fun readingKindFilterFor(metricType: MetricType): String? = when {
-    metricType.unit == MetricUnit.EVENT -> null
-    isReproductiveMetric(metricType) -> null
-    else -> ReadingKind.SENSOR.name
-}
-
-/**
- * Reproductive metrics whose raw readings live in
- * [com.bios.app.data.ReproductiveDatabase] rather than the main
- * [BiosDatabase]. Anomaly evaluation must route value fetches to the
- * isolated DB; baselines for these metrics, when computed, are still
- * stored as summary-only rows in the main DB per the documented contract
- * on [com.bios.app.data.ReproductiveDatabase].
- */
-internal fun isReproductiveMetric(metricType: MetricType): Boolean =
-    metricType.domain == MetricDomain.WOMENS_HEALTH

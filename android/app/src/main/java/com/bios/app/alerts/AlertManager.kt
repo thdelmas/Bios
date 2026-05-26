@@ -72,6 +72,17 @@ class AlertManager(
         val tier = AlertTier.fromLevel(anomaly.severity)
         if (tier < AlertTier.NOTICE) return  // only notify for Notice and above
 
+        // Pull-side-only patterns (#208 geriatric trajectory advisories,
+        // future trajectory surfaces) persist their anomalies but never
+        // raise a system notification. The owner reads the trend when
+        // they navigate into the trajectory surface; Bios stays silent
+        // until then.
+        val patternId = anomaly.patternId
+        if (patternId != null) {
+            val pattern = ConditionPatterns.all.firstOrNull { it.id == patternId }
+            if (pattern?.pullSideOnly == true) return
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     context, Manifest.permission.POST_NOTIFICATIONS

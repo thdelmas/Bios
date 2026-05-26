@@ -1,5 +1,6 @@
 package com.bios.app
 
+import com.bios.app.alerts.BaselineDeviationPatterns
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.export.loincCode
@@ -62,7 +63,7 @@ class Vo2MaxIntegrationTest {
         // pre-existed the ingestion path — adding a SignalRule closes
         // the loop. Direction BELOW is load-bearing: a VO2 increase is
         // not a deconditioning signal.
-        val pattern = ConditionPatterns.cardiorespiratoryDeconditioning
+        val pattern = BaselineDeviationPatterns.cardiorespiratoryDeconditioning
         val vo2Rule = pattern.signalRules.singleOrNull { it.metricType == MetricType.VO2_MAX }
         assertNotNull(
             "Cardiorespiratory deconditioning pattern must include a VO2_MAX SignalRule (#26)",

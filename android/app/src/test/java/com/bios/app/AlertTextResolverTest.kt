@@ -1,6 +1,7 @@
 package com.bios.app
 
 import com.bios.app.alerts.AlertTextResolver
+import com.bios.app.alerts.BaselineDeviationPatterns
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.SignalRule
@@ -28,7 +29,7 @@ class AlertTextResolverTest {
 
     @Test
     fun `explanation key follows pattern_id_explanation convention`() {
-        val pattern = ConditionPatterns.infectionOnset
+        val pattern = BaselineDeviationPatterns.infectionOnset
         assertEquals(
             "pattern_infection_onset_explanation",
             AlertTextResolver.explanationKey(pattern.id),
@@ -37,7 +38,7 @@ class AlertTextResolverTest {
 
     @Test
     fun `suggested action key follows pattern_id_suggested_action convention`() {
-        val pattern = ConditionPatterns.cardiovascularStress
+        val pattern = BaselineDeviationPatterns.cardiovascularStress
         assertEquals(
             "pattern_cardiovascular_stress_suggested_action",
             AlertTextResolver.suggestedActionKey(pattern.id),

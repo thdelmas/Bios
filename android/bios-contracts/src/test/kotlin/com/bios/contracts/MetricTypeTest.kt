@@ -288,8 +288,10 @@ class MetricTypeTest {
     fun allows_manual_entry_defaults_false_for_pure_sensor_keys() {
         // Spot-check: streaming sensor / derived signals must never opt in
         // to the manual-reading surface, or the picker fills with noise.
+        // HRV_LF_POWER / HRV_HF_POWER stay non-manual (PSD outputs of an IBI
+        // series), but HRV itself opts in — phone-PPG apps like HRV4Training
+        // give the owner a number to type. See manual_vital assertions.
         val notManual = listOf(
-            MetricType.HEART_RATE_VARIABILITY,
             MetricType.HRV_LF_POWER, MetricType.HRV_HF_POWER,
             MetricType.PARASYMPATHETIC_TONE, MetricType.STRESS_SCORE,
             MetricType.LF_HF_RATIO, MetricType.VO2_MAX,
@@ -312,6 +314,7 @@ class MetricTypeTest {
     fun allows_manual_entry_true_for_clinical_vitals() {
         val manual = listOf(
             MetricType.HEART_RATE, MetricType.RESTING_HEART_RATE,
+            MetricType.HEART_RATE_VARIABILITY,
             MetricType.BLOOD_PRESSURE_SYSTOLIC, MetricType.BLOOD_PRESSURE_DIASTOLIC,
             MetricType.BLOOD_OXYGEN, MetricType.RESPIRATORY_RATE,
             MetricType.SKIN_TEMPERATURE,
@@ -353,5 +356,142 @@ class MetricTypeTest {
     fun reserved_intent_actions_are_present() {
         assertNotNull(BiosIntentActions.ACTION_SUGGEST_BAND)
         assertNotNull(BiosIntentActions.ACTION_REQUEST_STOP)
+    }
+
+    // -- Wave-1 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.1) --
+
+    @Test
+    fun wave1_biomarkers_use_canonical_per_assay_units() {
+        // Each new MetricType pairs with the unit its lab report uses by
+        // convention; locking the pair here prevents drift if the enum is
+        // reordered or a unit is renamed.
+        val expected = mapOf(
+            MetricType.LIPOPROTEIN_A to MetricUnit.NMOL_PER_L,
+            MetricType.HOMOCYSTEINE to MetricUnit.UMOL_PER_L,
+            MetricType.BUN to MetricUnit.MG_PER_DL,
+            MetricType.CALCIUM_SERUM to MetricUnit.MG_PER_DL,
+            MetricType.CARBON_DIOXIDE to MetricUnit.MEQ_PER_L,
+            MetricType.CHLORIDE to MetricUnit.MEQ_PER_L,
+            MetricType.PHOSPHATE to MetricUnit.MG_PER_DL,
+            MetricType.SODIUM to MetricUnit.MEQ_PER_L,
+            MetricType.POTASSIUM to MetricUnit.MEQ_PER_L,
+            MetricType.URIC_ACID to MetricUnit.MG_PER_DL,
+            MetricType.ALBUMIN to MetricUnit.G_PER_DL,
+            MetricType.ALKALINE_PHOSPHATASE to MetricUnit.U_PER_L,
+            MetricType.BILIRUBIN_TOTAL to MetricUnit.MG_PER_DL,
+            MetricType.TOTAL_PROTEIN to MetricUnit.G_PER_DL,
+            MetricType.AMYLASE to MetricUnit.U_PER_L,
+            MetricType.LIPASE to MetricUnit.U_PER_L,
+            MetricType.MCV to MetricUnit.FEMTOLITERS,
+            MetricType.MCH to MetricUnit.PICOGRAMS,
+            MetricType.MCHC to MetricUnit.G_PER_DL,
+            MetricType.RDW to MetricUnit.PERCENT,
+            MetricType.MPV to MetricUnit.FEMTOLITERS,
+            MetricType.NEUTROPHILS_PCT to MetricUnit.PERCENT,
+            MetricType.LYMPHOCYTES_PCT to MetricUnit.PERCENT,
+            MetricType.MONOCYTES_PCT to MetricUnit.PERCENT,
+            MetricType.EOSINOPHILS_PCT to MetricUnit.PERCENT,
+            MetricType.BASOPHILS_PCT to MetricUnit.PERCENT,
+            MetricType.IRON_SERUM to MetricUnit.UG_PER_DL,
+            MetricType.IRON_SATURATION_PCT to MetricUnit.PERCENT,
+            MetricType.TIBC to MetricUnit.UG_PER_DL,
+            MetricType.FSH to MetricUnit.MIU_PER_ML,
+            MetricType.LH to MetricUnit.MIU_PER_ML,
+            MetricType.SHBG to MetricUnit.NMOL_PER_L,
+            MetricType.AMH to MetricUnit.NG_PER_ML,
+            MetricType.TESTOSTERONE_FREE to MetricUnit.PG_PER_ML,
+            MetricType.PROLACTIN to MetricUnit.NG_PER_ML,
+            MetricType.DHEA_SULFATE to MetricUnit.UG_PER_DL,
+        )
+        for ((type, unit) in expected) {
+            assertEquals(MetricDomain.BIOMARKER, type.domain, "${type.key} must be a BIOMARKER")
+            assertEquals(unit, type.unit, "${type.key} must report in ${unit.name}")
+            assertTrue(type.allowsManualEntry, "${type.key} (biomarker) must allow manual entry")
+        }
+    }
+
+    @Test
+    fun wave1_new_units_carry_expected_symbols() {
+        assertEquals("nmol/L", MetricUnit.NMOL_PER_L.symbol)
+        assertEquals("µmol/L", MetricUnit.UMOL_PER_L.symbol)
+        assertEquals("mEq/L", MetricUnit.MEQ_PER_L.symbol)
+        assertEquals("fL", MetricUnit.FEMTOLITERS.symbol)
+        assertEquals("pg", MetricUnit.PICOGRAMS.symbol)
+        assertEquals("mIU/mL", MetricUnit.MIU_PER_ML.symbol)
+    }
+
+    // -- Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2) --
+
+    @Test
+    fun wave2_biomarkers_use_canonical_per_assay_units() {
+        val expected = mapOf(
+            MetricType.THYROID_PEROXIDASE_AB to MetricUnit.IU_PER_ML,
+            MetricType.THYROGLOBULIN_AB to MetricUnit.IU_PER_ML,
+            MetricType.PSA_TOTAL to MetricUnit.NG_PER_ML,
+            MetricType.PSA_FREE to MetricUnit.NG_PER_ML,
+            MetricType.TELOMERE_LENGTH to MetricUnit.SCORE,
+            MetricType.CORONARY_CALCIUM_SCORE to MetricUnit.SCORE,
+            MetricType.BONE_DENSITY_T_SCORE to MetricUnit.SCORE,
+            MetricType.PTAU_217 to MetricUnit.PG_PER_ML,
+            MetricType.VITAMIN_K2 to MetricUnit.NG_PER_ML,
+            MetricType.VITAMIN_A_RETINOL to MetricUnit.UG_PER_DL,
+            MetricType.VITAMIN_E_ALPHA_TOCOPHEROL to MetricUnit.MG_PER_L,
+        )
+        for ((type, unit) in expected) {
+            assertEquals(MetricDomain.BIOMARKER, type.domain, "${type.key} must be a BIOMARKER")
+            assertEquals(unit, type.unit, "${type.key} must report in ${unit.name}")
+            assertTrue(type.allowsManualEntry, "${type.key} (biomarker) must allow manual entry")
+        }
+    }
+
+    @Test
+    fun wave2_new_unit_carries_expected_symbol() {
+        assertEquals("IU/mL", MetricUnit.IU_PER_ML.symbol)
+    }
+
+    @Test
+    fun neurology_urgent_primitives_are_neurological_events() {
+        // Audit §3.2 #24 — SEIZURE_EVENT and THUNDERCLAP_HEADACHE_SUSPECTED
+        // are owner-logged event-shape primitives that drive URGENT
+        // neurology patterns. Same shape as FAST_STROKE_SUSPECTED, FALL_EVENT.
+        for (t in setOf(MetricType.SEIZURE_EVENT, MetricType.THUNDERCLAP_HEADACHE_SUSPECTED)) {
+            assertEquals(MetricDomain.NEUROLOGICAL, t.domain)
+            assertEquals(MetricUnit.EVENT, t.unit)
+            assertTrue(t.allowsManualEntry, "${t.key} must allow manual entry — owner is the only producer")
+            assertEquals(t, MetricType.fromKey(t.key))
+        }
+    }
+
+    @Test
+    fun augmentation_index_ppg_is_cardiovascular_percent() {
+        // Blueprint audit §3.1 #8 — PPG-derived augmentation index. Lives on
+        // the cardiovascular side (computed from camera-PPG morphology), not
+        // BIOMARKER. Manual entry stays false; the value is always
+        // PpgSignalProcessor-derived, never owner-typed.
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.AUGMENTATION_INDEX_PPG.domain)
+        assertEquals(MetricUnit.PERCENT, MetricType.AUGMENTATION_INDEX_PPG.unit)
+        assertEquals(false, MetricType.AUGMENTATION_INDEX_PPG.allowsManualEntry)
+        assertEquals(
+            MetricType.AUGMENTATION_INDEX_PPG,
+            MetricType.fromKey("augmentation_index_ppg"),
+        )
+    }
+
+    // -- ECG strip presence (#188, audit gap §2.8) --
+
+    @Test
+    fun ecg_strip_available_is_cardiovascular_boolean() {
+        // ECG strips are not scalar measurements — the waveform lives
+        // in the `ecg_strips` table. This MetricType key is just the
+        // presence indicator the pattern engine joins against.
+        assertEquals(MetricDomain.CARDIOVASCULAR, MetricType.ECG_STRIP_AVAILABLE.domain)
+        assertEquals(MetricUnit.BOOLEAN, MetricType.ECG_STRIP_AVAILABLE.unit)
+        // Booleans aren't manually entered — the strip is the artefact;
+        // owners import the strip itself rather than the presence flag.
+        assertEquals(false, MetricType.ECG_STRIP_AVAILABLE.allowsManualEntry)
+        // Sibling-consistency check: every cardiovascular key has
+        // resolvable round-trip semantics through fromKey.
+        assertEquals(MetricType.ECG_STRIP_AVAILABLE,
+            MetricType.fromKey("ecg_strip_available"))
     }
 }

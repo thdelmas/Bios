@@ -9,9 +9,15 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.sqlite.db.SupportSQLiteDatabase
 import android.util.Log
+import com.bios.app.data.dao.ContraceptionEntryDao
 import com.bios.app.data.dao.DataSourceDao
+import com.bios.app.data.dao.GenderAffirmingCareEntryDao
+import com.bios.app.data.dao.MenopauseStageEntryDao
 import com.bios.app.data.dao.MetricReadingDao
+import com.bios.app.model.ContraceptionEntry
 import com.bios.app.model.DataSource
+import com.bios.app.model.GenderAffirmingCareEntry
+import com.bios.app.model.MenopauseStageEntry
 import com.bios.app.model.MetricReading
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
@@ -30,14 +36,23 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
  * in the main database without raw values (only statistical summaries).
  */
 @Database(
-    entities = [MetricReading::class, DataSource::class],
-    version = 2,
+    entities = [
+        MetricReading::class,
+        DataSource::class,
+        ContraceptionEntry::class,
+        MenopauseStageEntry::class,
+        GenderAffirmingCareEntry::class,
+    ],
+    version = 4,
     exportSchema = false
 )
 abstract class ReproductiveDatabase : RoomDatabase() {
 
     abstract fun readingDao(): MetricReadingDao
     abstract fun dataSourceDao(): DataSourceDao
+    abstract fun contraceptionEntryDao(): ContraceptionEntryDao
+    abstract fun menopauseStageEntryDao(): MenopauseStageEntryDao
+    abstract fun genderAffirmingCareEntryDao(): GenderAffirmingCareEntryDao
 
     companion object {
         @Volatile
@@ -149,7 +164,7 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                 DB_NAME
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
 
@@ -165,6 +180,113 @@ abstract class ReproductiveDatabase : RoomDatabase() {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE metric_readings ADD COLUMN note TEXT")
+            }
+        }
+
+        // Mirrors BiosDatabase MetricReadingMigrations.MIGRATION_30_31: the
+        // shared MetricReading entity declares a UNIQUE INDEX on
+        // (sourceId, metricType, timestamp) so re-syncs collapse into
+        // in-place updates instead of growing parallel rows. The main DB
+        // got the index via v30_31; this DB didn't, so on-device repro DBs
+        // persisted at v2 fail Room's identity-hash check on first open
+        // ("Expected …, found …") and BiosSyncWorker can't read BBT /
+        // CYCLE_PHASE / CYCLE_DAY for baselines.
+        //
+        // Same two-step shape as the main-DB migration: pick-best dedupe
+        // (confidence DESC, createdAt DESC, id ASC) then UNIQUE INDEX. No
+        // destructive fallback — reproductive readings (BBT especially)
+        // are owner-entered and not re-fetchable from any wearable.
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    DELETE FROM metric_readings
+                    WHERE id NOT IN (
+                        SELECT r1.id
+                        FROM metric_readings r1
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM metric_readings r2
+                            WHERE r2.sourceId   = r1.sourceId
+                              AND r2.metricType = r1.metricType
+                              AND r2.timestamp  = r1.timestamp
+                              AND (
+                                  r2.confidence > r1.confidence
+                                  OR (r2.confidence = r1.confidence AND r2.createdAt > r1.createdAt)
+                                  OR (r2.confidence = r1.confidence AND r2.createdAt = r1.createdAt AND r2.id < r1.id)
+                              )
+                        )
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS
+                        index_metric_readings_sourceId_metricType_timestamp
+                    ON metric_readings (sourceId, metricType, timestamp)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // Reproductive completeness (#209): three new owner-annotation tables
+        // (contraception, menopause stage, gender-affirming care) join the
+        // reproductive DB. They're owner-recorded, independent of the
+        // MetricReading stream, so no foreign keys; the migration is three
+        // CREATE TABLEs + their indices. All columns are nullable where
+        // [data class] defaults allow null so Room schema validation
+        // matches the entity hash.
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS contraception_entries (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        method TEXT NOT NULL,
+                        startDate INTEGER NOT NULL,
+                        endDate INTEGER,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_contraception_entries_startDate " +
+                        "ON contraception_entries(startDate)"
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS menopause_stage_entries (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        stage TEXT NOT NULL,
+                        recordedDate INTEGER NOT NULL,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_menopause_stage_entries_recordedDate " +
+                        "ON menopause_stage_entries(recordedDate)"
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS gender_affirming_care_entries (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        hormoneType TEXT NOT NULL,
+                        startDate INTEGER NOT NULL,
+                        endDate INTEGER,
+                        dose TEXT,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_gender_affirming_care_entries_startDate " +
+                        "ON gender_affirming_care_entries(startDate)"
+                )
             }
         }
 

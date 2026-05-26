@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.ui.AppViewModel
+import com.bios.app.ui.theme.BiosTokens
 import kotlin.math.abs
 
 /**
@@ -152,10 +153,12 @@ private fun MetricCardBody(
 @Composable
 private fun DeviationIndicator(value: Double, baseline: PersonalBaseline) {
     val z = baseline.zScore(value)
-    val (text, color) = when {
-        abs(z) < 1.0 -> "OK" to Color(0xFF4CAF50)
-        abs(z) < 2.0 -> String.format("%.1fσ", z) to Color(0xFFFFC107)
-        else -> String.format("%.1fσ", z) to Color(0xFFFF9800)
+    val abs = abs(z)
+    val text = if (abs < 1.0) "OK" else String.format("%.1fσ", z)
+    val color = when {
+        abs < 1.0 -> BiosTokens.success
+        abs < 2.0 -> BiosTokens.warning
+        else -> BiosTokens.attention
     }
 
     Text(
@@ -232,6 +235,8 @@ internal fun formatValue(value: Double, metricType: MetricType): String {
             val minutes = totalMinutes % 60
             "${hours}h ${minutes}m"
         }
+        MetricType.SLEEP_EFFICIENCY ->
+            "${value.toInt()}%"
         else -> String.format("%.1f", value)
     }
 }

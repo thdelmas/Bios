@@ -2,8 +2,10 @@ package com.bios.app
 
 import android.app.Application
 import com.bios.app.alerts.DailyDigestWorker
+import com.bios.app.alerts.MohScreeningWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.ingest.GadgetbridgeReceiver
+import com.bios.app.ingest.PowerConnectionReceiver
 import com.bios.app.ingest.SyncWorker
 import com.bios.app.platform.HealthApiServer
 import com.bios.app.platform.LetheCompat
@@ -29,6 +31,7 @@ class BiosApplication : Application() {
 
     private var healthApiServer: HealthApiServer? = null
     private var gadgetbridgeReceiver: GadgetbridgeReceiver? = null
+    private var powerConnectionReceiver: PowerConnectionReceiver? = null
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -70,10 +73,67 @@ class BiosApplication : Application() {
         // self-skips otherwise).
         com.bios.app.ingest.PhoneSleepWorker.enqueuePeriodicWork(this)
 
+        // Arm the wake-up motion tracker so SIGNIFICANT_MOTION /
+        // STATIONARY_DETECT listeners are live before the periodic
+        // worker fires (#243 Cut 2). The short-lived adapter the worker
+        // builds per firing wouldn't otherwise give the sensors time to
+        // observe a state transition; attaching here means the sensor-
+        // hub is already tracking when the first sample is taken.
+        com.bios.app.ingest.WakeUpMotionTracker.attach(this)
+
+        // Start the wearable seizure-detection foreground service if
+        // the owner has opted in via Settings (#269 Cut 3b). No-op
+        // when the opt-in is off — the service self-stops in
+        // onStartCommand even if start is mis-triggered. The privacy
+        // gate (SeizureDetectionPrefs) and the safety gate (#287
+        // payload-exclusion on URGENT seizure patterns) are both
+        // independent of this start call.
+        com.bios.app.ingest.SeizureDetectionService.startIfOptedIn(this)
+
+        // Register the charge-edge receiver for the new foreground
+        // collection service (#241). ACTION_POWER_CONNECTED /
+        // _DISCONNECTED are not on the API 26+ implicit-broadcast
+        // allowlist, so the receiver must be registered at runtime —
+        // a manifest declaration would never fire. RECEIVER_NOT_EXPORTED
+        // is correct: only the OS sends these broadcasts.
+        powerConnectionReceiver = PowerConnectionReceiver().also {
+            registerReceiver(
+                it,
+                android.content.IntentFilter().apply {
+                    addAction(android.content.Intent.ACTION_POWER_CONNECTED)
+                    addAction(android.content.Intent.ACTION_POWER_DISCONNECTED)
+                },
+                RECEIVER_NOT_EXPORTED,
+            )
+        }
+
         // Schedule daily digest notification (8 AM, user can disable in settings)
         if (DailyDigestWorker.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
         }
+
+        // Schedule the daily MOH screening worker (#276). Idempotent via
+        // WorkManager's unique-work policy. The worker is a no-op when
+        // the diary is empty, so it's safe to enqueue unconditionally.
+        MohScreeningWorker.schedule(this)
+
+        // Schedule the daily chronic-migraine screening worker (#283 Cut 3,
+        // IHS ICHD-3 §1.3). Same idempotent shape as MOH; reads from the
+        // headache-event metric_readings rows the #293 writer mirrors.
+        com.bios.app.alerts.ChronicMigraineWorker.schedule(this)
+
+        // Schedule the nightly sleep-regularity derivation worker (#135
+        // deliverable 2 — closes the gap between SleepRegularityCalculator
+        // existing and rows actually landing on the bus). Pull-side
+        // metric only — no alert. The worker is a no-op when fewer than
+        // the minimum nights are available, so it's safe to enqueue
+        // unconditionally.
+        com.bios.app.engine.SleepRegularityWorker.schedule(this)
+
+        // Schedule daily paediatric-band recompute (#198). Idempotent and
+        // a no-op when no birth date is on file — safe to enqueue on every
+        // launch.
+        com.bios.app.physiology.PaediatricBandWorker.schedule(this)
 
         // Re-register UnifiedPush if previously enabled (idempotent — just
         // confirms the registration with the distributor). Does NOT auto-enable;
@@ -88,6 +148,7 @@ class BiosApplication : Application() {
 
     override fun onTerminate() {
         gadgetbridgeReceiver?.let { unregisterReceiver(it) }
+        powerConnectionReceiver?.let { unregisterReceiver(it) }
         p2pTransport.stop()
         healthApiServer?.stop()
         letheCompat.unregisterWipeReceivers(this)

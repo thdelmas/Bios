@@ -4,9 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,13 +35,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
+import com.bios.app.data.RiskProfileRepo
 import com.bios.app.data.ScreeningEntryRepo
-import com.bios.app.screening.Applicability
+import com.bios.app.model.RiskProfile
+import com.bios.app.screening.AnatomyProfile
 import com.bios.app.screening.OwnerDemographicsStore
 import com.bios.app.screening.ScreeningCadenceEngine
 import com.bios.app.screening.ScreeningCatalog
@@ -72,12 +71,14 @@ import java.util.Locale
 fun PreventiveCareScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val repo = remember(context) { ScreeningEntryRepo(BiosDatabase.getInstance(context)) }
+    val riskRepo = remember(context) { RiskProfileRepo(BiosDatabase.getInstance(context)) }
     val demographicsStore = remember(context) { OwnerDemographicsStore(context) }
     val scope = rememberCoroutineScope()
 
     var birthYear by remember { mutableStateOf(demographicsStore.birthYear()) }
-    var presentsAs by remember { mutableStateOf(demographicsStore.presentsAs()) }
+    var anatomy by remember { mutableStateOf(demographicsStore.anatomy()) }
     var entries by remember { mutableStateOf<Map<String, Long?>>(emptyMap()) }
+    var riskProfile by remember { mutableStateOf<RiskProfile?>(null) }
     var showRecordDialog by remember { mutableStateOf<ScreeningCatalogEntry?>(null) }
     var showDemographicsDialog by remember { mutableStateOf(false) }
 
@@ -88,6 +89,7 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
         // Group most-recent per key.
         entries = all.groupBy { it.screeningKey }
             .mapValues { (_, list) -> list.maxOfOrNull { it.performedDate } }
+        riskProfile = riskRepo.fetch()
     }
 
     LaunchedEffect(Unit) { refresh() }
@@ -95,7 +97,11 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
     val demographics = birthYear?.let {
         com.bios.app.screening.OwnerDemographics(
             ageYears = (currentYear - it).coerceAtLeast(0),
-            presentsAs = presentsAs,
+            // presentsAs remains null in the new anatomy-direct flow;
+            // the engine consults `anatomy` first and only falls back
+            // to `presentsAs` for legacy installs (#209).
+            presentsAs = null,
+            anatomy = anatomy,
         )
     }
 
@@ -120,7 +126,7 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
         ) {
             DemographicsCard(
                 birthYear = birthYear,
-                presentsAs = presentsAs,
+                anatomy = anatomy,
                 onEdit = { showDemographicsDialog = true },
             )
             ManifestoCard()
@@ -133,7 +139,7 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
                 )
             } else {
                 val statuses = ScreeningCadenceEngine.evaluateAll(
-                    catalog = ScreeningCatalog.uspstf,
+                    catalog = ScreeningCatalog.combined,
                     demographics = demographics,
                     latestByKey = { key ->
                         entries[key]?.let { date ->
@@ -143,12 +149,24 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
                             )
                         }
                     },
+                    riskProfile = riskProfile,
                 )
+                // Hide risk-gated entries the owner doesn't qualify for —
+                // showing the entire NCCN hereditary list to every
+                // non-carrier owner would be noise. The owner's
+                // risk-profile screen is the entry point to surface
+                // these; once a syndrome flag is set, the engine
+                // returns a non-`Requires owner-recorded ...` status
+                // and the row appears here.
+                val visible = statuses.filterNot { (_, status) ->
+                    status is ScreeningStatus.NotEligible &&
+                        status.reason.startsWith("Requires owner-recorded")
+                }
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
-                    items(statuses, key = { it.first.key }) { (entry, status) ->
+                    items(visible, key = { it.first.key }) { (entry, status) ->
                         ScreeningRow(
                             entry = entry,
                             status = status,
@@ -177,13 +195,16 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
     if (showDemographicsDialog) {
         DemographicsDialog(
             initialBirthYear = birthYear,
-            initialPresentsAs = presentsAs,
+            initialAnatomy = anatomy,
             onDismiss = { showDemographicsDialog = false },
-            onSave = { year, applicability ->
+            onSave = { year, newAnatomy ->
                 demographicsStore.setBirthYear(year)
-                demographicsStore.setPresentsAs(applicability)
+                demographicsStore.setAnatomy(newAnatomy)
+                // Clear any legacy presentsAs flag so the anatomy answers
+                // are the single source of truth going forward.
+                demographicsStore.setPresentsAs(null)
                 birthYear = year
-                presentsAs = applicability
+                anatomy = newAnatomy
                 showDemographicsDialog = false
             },
         )
@@ -211,7 +232,7 @@ private fun ManifestoCard() {
 @Composable
 private fun DemographicsCard(
     birthYear: Int?,
-    presentsAs: Applicability?,
+    anatomy: AnatomyProfile,
     onEdit: () -> Unit,
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -226,7 +247,8 @@ private fun DemographicsCard(
                 Text(
                     buildString {
                         append(birthYear?.let { "Born $it" } ?: "Birth year not set")
-                        presentsAs?.let { append(" • ${applicabilityLabel(it)}") }
+                        val anatomySummary = anatomySummary(anatomy)
+                        if (anatomySummary.isNotEmpty()) append(" • $anatomySummary")
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -235,6 +257,17 @@ private fun DemographicsCard(
             TextButton(onClick = onEdit) { Text(if (birthYear == null) "Set" else "Edit") }
         }
     }
+}
+
+private fun anatomySummary(anatomy: AnatomyProfile): String {
+    if (anatomy.isAllUnset) return ""
+    val parts = mutableListOf<String>()
+    if (anatomy.hasBreastTissue == true) parts += "breast tissue"
+    if (anatomy.hasCervix == true) parts += "cervix"
+    if (anatomy.hasUterus == true) parts += "uterus"
+    if (anatomy.hasProstate == true) parts += "prostate"
+    if (parts.isEmpty()) return "anatomy noted"
+    return parts.joinToString(", ")
 }
 
 @Composable
@@ -337,12 +370,12 @@ private fun RecordScreeningDialog(
 @Composable
 private fun DemographicsDialog(
     initialBirthYear: Int?,
-    initialPresentsAs: Applicability?,
+    initialAnatomy: AnatomyProfile,
     onDismiss: () -> Unit,
-    onSave: (Int?, Applicability?) -> Unit,
+    onSave: (Int?, AnatomyProfile) -> Unit,
 ) {
     var yearText by remember { mutableStateOf(initialBirthYear?.toString() ?: "") }
-    var presentsAs by remember { mutableStateOf(initialPresentsAs) }
+    var anatomy by remember { mutableStateOf(initialAnatomy) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -356,23 +389,51 @@ private fun DemographicsDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("Anatomy presentation", style = MaterialTheme.typography.bodySmall)
+                Text("Anatomy", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "Used so the catalog hides screenings that don't apply " +
-                        "(mammogram, AAA). Leave unset to see them all.",
+                    "Bios asks about anatomy, not gender. Each screening " +
+                        "recommendation pins to an organ: mammograms to breast " +
+                        "tissue, cervical screening to a cervix, PSA discussion " +
+                        "to a prostate. Answer what applies; leave the rest " +
+                        "unset.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PresentsAsChip("Female-bodied", Applicability.PRESENTS_AS_FEMALE, presentsAs) { presentsAs = it }
-                    PresentsAsChip("Male-bodied", Applicability.PRESENTS_AS_MALE, presentsAs) { presentsAs = it }
-                    PresentsAsChip("Unset", null, presentsAs) { presentsAs = it }
-                }
+                AnatomyQuestion(
+                    label = "Do you have breast tissue?",
+                    answer = anatomy.hasBreastTissue,
+                    onAnswer = { anatomy = anatomy.copy(hasBreastTissue = it) },
+                )
+                AnatomyQuestion(
+                    label = "Do you have a cervix?",
+                    answer = anatomy.hasCervix,
+                    onAnswer = { anatomy = anatomy.copy(hasCervix = it) },
+                )
+                AnatomyQuestion(
+                    label = "Do you have a uterus?",
+                    answer = anatomy.hasUterus,
+                    onAnswer = { anatomy = anatomy.copy(hasUterus = it) },
+                )
+                AnatomyQuestion(
+                    label = "Do you have a prostate?",
+                    answer = anatomy.hasProstate,
+                    onAnswer = { anatomy = anatomy.copy(hasProstate = it) },
+                )
+                AnatomyQuestion(
+                    label = "Have you had bottom or top surgery?",
+                    answer = anatomy.hadGenderAffirmingSurgery,
+                    onAnswer = { anatomy = anatomy.copy(hadGenderAffirmingSurgery = it) },
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(yearText.toIntOrNull()?.takeIf { it in 1900..Calendar.getInstance().get(Calendar.YEAR) }, presentsAs)
+                onSave(
+                    yearText.toIntOrNull()?.takeIf {
+                        it in 1900..Calendar.getInstance().get(Calendar.YEAR)
+                    },
+                    anatomy,
+                )
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
@@ -380,15 +441,29 @@ private fun DemographicsDialog(
 }
 
 @Composable
-private fun PresentsAsChip(
+private fun AnatomyQuestion(
     label: String,
-    target: Applicability?,
-    current: Applicability?,
-    onClick: (Applicability?) -> Unit,
+    answer: Boolean?,
+    onAnswer: (Boolean?) -> Unit,
 ) {
-    val selected = current == target
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AnatomyChip("Yes", answer == true) { onAnswer(true) }
+            AnatomyChip("No", answer == false) { onAnswer(false) }
+            AnatomyChip("Unset", answer == null) { onAnswer(null) }
+        }
+    }
+}
+
+@Composable
+private fun AnatomyChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     OutlinedButton(
-        onClick = { onClick(target) },
+        onClick = onClick,
         colors = if (selected) {
             androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -396,12 +471,6 @@ private fun PresentsAsChip(
             )
         } else androidx.compose.material3.ButtonDefaults.outlinedButtonColors(),
     ) { Text(label) }
-}
-
-private fun applicabilityLabel(a: Applicability): String = when (a) {
-    Applicability.UNIVERSAL -> "All bodies"
-    Applicability.PRESENTS_AS_FEMALE -> "Female-bodied"
-    Applicability.PRESENTS_AS_MALE -> "Male-bodied"
 }
 
 private fun cadenceLabel(months: Int): String = when {

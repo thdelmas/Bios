@@ -6,14 +6,72 @@ import com.bios.contracts.MetricType
  * Region-specific configuration for localized health thresholds, unit display,
  * and regulatory compliance. Adding a new locale means adding a new config —
  * not new code paths.
+ *
+ * [climateZone] and [defaultLatitudeDeg] / [defaultElevationM] feed
+ * [com.bios.app.config.EnvironmentalContextProvider] (#197). They are
+ * *defaults* per region — the owner can override every one of them from
+ * Settings → Environmental context, and nothing is auto-derived from GPS
+ * without explicit permission.
  */
 data class RegionConfig(
     val regionCode: String,
     val displayName: String,
     val unitOverrides: Map<MetricType, UnitDisplay>,
     val clinicalThresholds: ClinicalThresholds,
-    val regulatory: RegulatoryConfig
+    val regulatory: RegulatoryConfig,
+    /**
+     * Local emergency services number for the region. Surfaced on alerts
+     * recommending professional escalation. `null` when no canonical number
+     * exists — UI falls back to "your local emergency services".
+     */
+    val emergencyNumber: String? = null,
+    /**
+     * `true` when this locale sits inside a recognised indigenous data-
+     * sovereignty framework (e.g. Te Mana Raraunga in NZ, NACCHO in AU,
+     * CARE Principles for Indigenous Data Governance). Surfaced as a footnote
+     * on data-export UI. Cross-ref: INDIGENOUS_AMERICAS_POV §2.5, OCEANIC_ARCTIC_POV.
+     */
+    val indigenousFlagged: Boolean = false,
+    /**
+     * Whether tropical / endemic-disease patterns (malaria, dengue, chikungunya,
+     * leptospirosis, scrub typhus, ciguatera) should fire in this region (#196,
+     * audit gap §2.6). Cross-ref: AFRICAN_TRADITIONAL_POV §2.6, OTHER_ASIAN_SYSTEMS_POV §2-3,
+     * OCEANIC_ARCTIC_POV §2.6. Owner override via [com.bios.app.physiology.OwnerCondition].
+     */
+    val tropicalDiseaseRelevant: Boolean = false,
+    /**
+     * Default climate zone for this region. Owner-overridable from
+     * Settings → Environmental context. Used to seed heat / cold pattern
+     * thresholds when the owner has not entered a value.
+     */
+    val climateZone: ClimateZone = ClimateZone.TEMPERATE,
+    /**
+     * Default latitude in degrees north (negative = southern hemisphere)
+     * for daylight-hours computation. Country centroid is plenty for
+     * photoperiod math — the owner sets a precise value if they want one.
+     */
+    val defaultLatitudeDeg: Double = 45.0,
+    /**
+     * Default elevation in metres for the region centroid. Most countries
+     * sit near sea level; the Andean / Tibetan / Ethiopian highland regions
+     * carry meaningful baseline elevation. Owner-overridable.
+     */
+    val defaultElevationM: Double = 0.0,
 )
+
+/**
+ * Köppen-derived broad climate band (#197). Five bins cover the gradient
+ * from tropical heat to Arctic cold without committing the codebase to a
+ * full Köppen vocabulary. Sets the default heat/cold thresholds the
+ * `heat_exhaustion_screen` and `hypothermia_screen` patterns use.
+ */
+enum class ClimateZone(val displayName: String) {
+    TROPICAL("Tropical"),
+    SUBTROPICAL("Subtropical"),
+    TEMPERATE("Temperate"),
+    COLD("Cold (continental / boreal)"),
+    ARCTIC("Arctic / polar")
+}
 
 /**
  * Locale-aware unit display. The internal data model always stores SI/metric;

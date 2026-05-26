@@ -36,6 +36,7 @@ Bios shares LETHE's protection philosophy:
 ## Architecture
 - See docs/ARCHITECTURE.md for system diagrams
 - See docs/DATA_MODEL.md for unified metric schema
+- See [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — **canonical visual & design system for the entire Bios ecosystem** (Bios + Smokeless / Fil / W2F / Virgil / SoulRadio / Idun). When changing visual treatment, palette roles, typography, component anatomy, or the Bios-integration UI block, edit the canonical doc here first; specialists re-sync. Token files in [docs/design-tokens/](docs/design-tokens/).
 - See docs/PRIVACY_ARCHITECTURE.md for privacy/encryption details
 - See docs/CONSUMER_API.md for the `BiosHealthProvider` ContentProvider contract (read by W2F, future companions)
 - See docs/ECOSYSTEM_BOUNDARIES.md for what belongs in Bios vs. companion apps (Fil, W2F, Virgil, SoulRadio)

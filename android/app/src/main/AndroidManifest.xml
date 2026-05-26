@@ -38,6 +38,33 @@
     <!-- Background work -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!--
+      Phone-sleep collection foreground service (#241). FOREGROUND_SERVICE
+      is the base permission; FOREGROUND_SERVICE_HEALTH is required on
+      API 34+ for the documented "sleep / vitals" service category that
+      PhoneSleepCollectionService declares. WAKE_LOCK keeps the CPU
+      available so the per-minute sampling cadence does not drift under
+      Doze while the service is running.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!--
+      Exact-alarm permission for the receiver-launch relay (#315). A
+      background BroadcastReceiver cannot call startForegroundService
+      on Android 12+ for non-allowlisted broadcasts like
+      ACTION_POWER_CONNECTED. Alarms scheduled with
+      setExactAndAllowWhileIdle() are on the FGS launch-exemption list,
+      so PowerConnectionReceiver schedules a short-deferred alarm and
+      PhoneSleepAlarmReceiver issues the legal startForegroundService.
+
+      SCHEDULE_EXACT_ALARM is auto-granted on API 31–32 and
+      user-revocable on API 33+. When revoked, the receiver logs
+      honestly and falls back to the 15-min PhoneSleepWorker safety net.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <!-- Step counter. Android 10+ silently delivers zero events to
          Sensor.TYPE_STEP_COUNTER without this permission, even though
          the sensor itself reports `hasStepCounter = true`. Without this
@@ -168,6 +195,17 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+        <!-- URGENT-alert notification-action handler (#179). Owner taps
+             "I'm OK" → cancels the pending UrgentAckTimeoutWorker so no
+             SMS-compose prompt fires. Not exported — only Bios itself
+             builds PendingIntents pointing here. -->
+        <receiver
+            android:name=".alerts.AlertActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.bios.app.alerts.ACTION_ACKNOWLEDGE" />
+            </intent-filter>
+        </receiver>
         <!-- UnifiedPush service for Google-free push notifications.
              The connector library's internal receiver forwards events here.
              Not exported — only the library binds to it. -->
@@ -176,6 +214,67 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Phone-sleep collection foreground service (#241 Cut 1).
+             Started by PowerConnectionReceiver on ACTION_POWER_CONNECTED
+             during quiet-hours; stopped on ACTION_POWER_DISCONNECTED.
+             Not exported — only Bios itself starts it. The "health"
+             foregroundServiceType is documented for sleep / vitals
+             collection on API 34+; older releases ignore the attribute.
+
+             The PowerConnectionReceiver is registered at runtime in
+             BiosApplication.onCreate — ACTION_POWER_CONNECTED /
+             _DISCONNECTED are NOT on the API 26+ implicit-broadcast
+             allowlist, so manifest-declared receivers never fire. -->
+        <service
+            android:name=".ingest.PhoneSleepCollectionService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+        <!-- Alarm relay that legally starts PhoneSleepCollectionService
+             from the background (#315). PowerConnectionReceiver cannot
+             call startForegroundService itself on Android 12+, so it
+             schedules an exact alarm and this receiver — fired by the
+             alarm subsystem, which carries the FGS-launch exemption —
+             issues the real startForegroundService call.
+
+             Manifest-declared because the alarm PendingIntent targets
+             this class explicitly; explicit intents bypass the implicit-
+             broadcast restriction. Not exported: only our own
+             PendingIntent triggers it. -->
+        <receiver
+            android:name=".ingest.PhoneSleepAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.bios.app.ingest.action.START_SLEEP_COLLECTION" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Wearable convulsive-seizure detector foreground service
+             (#269 Cut 3b). Owner opt-in via SeizureDetectionPrefs;
+             SettingsSeizureDetectionCard starts / stops the service
+             when the toggle flips. Same FOREGROUND_SERVICE_TYPE_HEALTH
+             category as the sleep collector. -->
+        <service
+            android:name=".ingest.SeizureDetectionService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+        <!-- Quick Settings tile for owner-asserted bedtime ↔ wake log
+             (#242). The tile is exported (the system Settings UI binds
+             to it to enumerate available tiles for the picker) and
+             gated by the BIND_QUICK_SETTINGS_TILE permission, which is
+             only granted to the SystemUI process. -->
+        <service
+            android:name=".ingest.SleepTileService"
+            android:exported="true"
+            android:icon="@android:drawable/ic_lock_idle_alarm"
+            android:label="Going to bed"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
     </application>

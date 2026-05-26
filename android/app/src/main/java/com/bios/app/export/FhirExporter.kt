@@ -50,6 +50,7 @@ class FhirExporter(
     private val anomalyDao = db.anomalyDao()
     private val baselineDao = db.personalBaselineDao()
     private val payloadDao = db.eventPayloadFieldDao()
+    private val fastStrokeDao = db.fastStrokeEventDao()
 
     /**
      * Export all Bios data as a FHIR R4 Bundle (JSON).
@@ -103,6 +104,15 @@ class FhirExporter(
 
         for (anomaly in anomalyDao.fetchAll()) {
             entries.put(bundleEntry(buildDetectedIssueResource(anomaly)))
+        }
+
+        // Owner-recorded FAST stroke-recognition events (#207). Only positive
+        // screens are emitted as flag observations — the negative checks stay
+        // in the local diary but don't add noise to the clinician bundle.
+        for (event in fastStrokeDao.fetchAll()) {
+            if (event.isPositive) {
+                entries.put(bundleEntry(buildFastStrokeFlagResource(event)))
+            }
         }
 
         return buildBundleResource(entries)
@@ -352,10 +362,9 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.WBC -> "6690-2" to "Leukocytes [#/volume] in Blood by Automated count"
     MetricType.RBC -> "789-8" to "Erythrocytes [#/volume] in Blood by Automated count"
     MetricType.PLATELETS -> "777-3" to "Platelets [#/volume] in Blood by Automated count"
-    // #24 — glycemic-extended, iron, endocrine, micronutrient.
-    // LOINC codes sourced from loinc.org's canonical lab-test catalog; each
-    // pairs the code with its official long-form display name so the FHIR
-    // round-trip is greppable in a Bundle.
+    // #24 — glycemic-extended, iron, endocrine, micronutrient. LOINC codes
+    // sourced from loinc.org's canonical catalog (display names ride along
+    // so the FHIR round-trip stays greppable in a Bundle).
     MetricType.FASTING_GLUCOSE -> "1558-6" to "Fasting glucose [Mass/volume] in Serum or Plasma"
     MetricType.FASTING_INSULIN -> "20448-7" to "Insulin [Units/volume] in Serum or Plasma --fasting"
     MetricType.HOMA_IR -> "81576-7" to "Homeostatic model assessment Insulin resistance Calculated"
@@ -367,18 +376,61 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.VITAMIN_B12 -> "2132-9" to "Cobalamins [Mass/volume] in Serum or Plasma"
     MetricType.FOLATE -> "2284-8" to "Folate [Mass/volume] in Serum or Plasma"
     MetricType.MAGNESIUM -> "2601-3" to "Magnesium [Mass/volume] in Serum or Plasma"
-    // #158 — renal / hepatic. eGFR pairs with creatinine (creatinine is the
-    // raw input; eGFR is the body-surface-normalised derived value most labs
-    // report alongside it). ALT / AST / GGT are the core hepatic panel.
+    // #158 — renal / hepatic. eGFR is the body-surface-normalised CKD-EPI 2021 form.
     MetricType.EGFR -> "62238-1" to "Glomerular filtration rate/1.73 sq M.predicted by Creatinine-based formula (CKD-EPI 2021)"
     MetricType.CREATININE -> "2160-0" to "Creatinine [Mass/volume] in Serum or Plasma"
     MetricType.ALT -> "1742-6" to "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
     MetricType.AST -> "1920-8" to "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
     MetricType.GGT -> "2324-2" to "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum or Plasma"
-    // #157 — apnea-hypopnea index. Universal sleep-medicine measure;
-    // 90562-0 is the standard PSG-derived LOINC ("Sleep apnea hypopnea
-    // index"). Wearable-derived passthrough uses the same code.
+    // #157 — apnea-hypopnea index; same LOINC for PSG-derived and wearable passthrough.
     MetricType.AHI -> "90562-0" to "Sleep apnea hypopnea index"
+    // Wave-1 expansion (audit §3.1). Lp(a) uses the nmol/L LOINC per ESC 2021 / NLA 2022.
+    MetricType.LIPOPROTEIN_A -> "89594-4" to "Lipoprotein a [Moles/volume] in Serum or Plasma"
+    MetricType.HOMOCYSTEINE -> "13965-9" to "Homocysteine [Moles/volume] in Serum or Plasma"
+    MetricType.BUN -> "3094-0" to "Urea nitrogen [Mass/volume] in Serum or Plasma"
+    MetricType.CALCIUM_SERUM -> "17861-6" to "Calcium [Mass/volume] in Serum or Plasma"
+    MetricType.CARBON_DIOXIDE -> "2028-9" to "Carbon dioxide, total [Moles/volume] in Serum or Plasma"
+    MetricType.CHLORIDE -> "2075-0" to "Chloride [Moles/volume] in Serum or Plasma"
+    MetricType.PHOSPHATE -> "2777-1" to "Phosphate [Mass/volume] in Serum or Plasma"
+    MetricType.SODIUM -> "2951-2" to "Sodium [Moles/volume] in Serum or Plasma"
+    MetricType.POTASSIUM -> "2823-3" to "Potassium [Moles/volume] in Serum or Plasma"
+    MetricType.URIC_ACID -> "3084-1" to "Urate [Mass/volume] in Serum or Plasma"
+    MetricType.ALBUMIN -> "1751-7" to "Albumin [Mass/volume] in Serum or Plasma"
+    MetricType.ALKALINE_PHOSPHATASE -> "6768-6" to "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.BILIRUBIN_TOTAL -> "1975-2" to "Bilirubin.total [Mass/volume] in Serum or Plasma"
+    MetricType.TOTAL_PROTEIN -> "2885-2" to "Protein [Mass/volume] in Serum or Plasma"
+    MetricType.AMYLASE -> "1798-8" to "Amylase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.LIPASE -> "3040-3" to "Lipase [Enzymatic activity/volume] in Serum or Plasma"
+    MetricType.MCV -> "787-2" to "MCV [Entitic volume] by Automated count"
+    MetricType.MCH -> "785-6" to "MCH [Entitic mass] by Automated count"
+    MetricType.MCHC -> "786-4" to "MCHC [Mass/volume] by Automated count"
+    MetricType.RDW -> "788-0" to "Erythrocyte distribution width [Ratio] by Automated count"
+    MetricType.MPV -> "32623-1" to "Platelet mean volume [Entitic volume] in Blood by Automated count"
+    MetricType.NEUTROPHILS_PCT -> "770-8" to "Neutrophils/100 leukocytes in Blood by Automated count"
+    MetricType.LYMPHOCYTES_PCT -> "736-9" to "Lymphocytes/100 leukocytes in Blood by Automated count"
+    MetricType.MONOCYTES_PCT -> "5905-5" to "Monocytes/100 leukocytes in Blood by Automated count"
+    MetricType.EOSINOPHILS_PCT -> "713-8" to "Eosinophils/100 leukocytes in Blood by Automated count"
+    MetricType.BASOPHILS_PCT -> "706-2" to "Basophils/100 leukocytes in Blood by Automated count"
+    MetricType.IRON_SERUM -> "2498-4" to "Iron [Mass/volume] in Serum or Plasma"
+    MetricType.IRON_SATURATION_PCT -> "2502-3" to "Iron saturation [Mass Fraction] in Serum or Plasma"
+    MetricType.TIBC -> "2500-7" to "Iron binding capacity [Mass/volume] in Serum or Plasma"
+    MetricType.FSH -> "15067-2" to "Follitropin [Units/volume] in Serum or Plasma"
+    MetricType.LH -> "10501-5" to "Lutropin [Units/volume] in Serum or Plasma"
+    MetricType.SHBG -> "13967-5" to "Sex hormone binding globulin [Moles/volume] in Serum or Plasma"
+    MetricType.AMH -> "38476-0" to "Mullerian inhibiting substance [Mass/volume] in Serum or Plasma"
+    MetricType.TESTOSTERONE_FREE -> "2991-8" to "Testosterone.free [Mass/volume] in Serum or Plasma"
+    MetricType.PROLACTIN -> "2842-3" to "Prolactin [Mass/volume] in Serum or Plasma"
+    MetricType.DHEA_SULFATE -> "2191-5" to "Dehydroepiandrosterone sulfate [Mass/volume] in Serum or Plasma"
+    // Wave-2 (audit §3.2). Telomere length / bone-density T-score / vitamin
+    // K2 stay unmapped — proprietary scoring, site-specific, or no stable code.
+    MetricType.THYROID_PEROXIDASE_AB -> "8099-3" to "Thyroid peroxidase Ab [Units/volume] in Serum"
+    MetricType.THYROGLOBULIN_AB -> "8088-6" to "Thyroglobulin Ab [Units/volume] in Serum"
+    MetricType.PSA_TOTAL -> "2857-1" to "Prostate specific Ag [Mass/volume] in Serum or Plasma"
+    MetricType.PSA_FREE -> "10886-0" to "Prostate Specific Ag Free [Mass/volume] in Serum or Plasma"
+    MetricType.CORONARY_CALCIUM_SCORE -> "49595-2" to "Coronary artery calcium score by CT"
+    MetricType.PTAU_217 -> "102965-7" to "Phosphorylated tau 217 [Mass/volume] in Serum or Plasma"
+    MetricType.VITAMIN_A_RETINOL -> "2923-1" to "Retinol [Mass/volume] in Serum or Plasma"
+    MetricType.VITAMIN_E_ALPHA_TOCOPHEROL -> "1823-4" to "Tocopherol alpha [Mass/volume] in Serum or Plasma"
     else -> null
 }
 
@@ -416,14 +468,33 @@ internal fun ucumCode(metricType: MetricType): String = when (metricType.unit) {
     MetricUnit.PPM -> "[ppm]"
     MetricUnit.PPB -> "[ppb]"
     MetricUnit.LITERS_PER_MIN -> "L/min"
+    MetricUnit.LITERS -> "L"
     MetricUnit.MILLIGRAMS -> "mg"
     MetricUnit.GRAMS -> "g"
     MetricUnit.U_PER_L -> "U/L"
     MetricUnit.ML_PER_MIN_PER_173 -> "mL/min/{1.73_m2}"
+    MetricUnit.NG_PER_L -> "ng/L"
+    MetricUnit.PER_MICRO_L -> "/uL"
+    MetricUnit.METERS -> "m"
+    MetricUnit.HOURS -> "h"
+    MetricUnit.CENTIMETERS -> "cm"
+    MetricUnit.KG_PER_M2 -> "kg/m2"
+    // Presence indicator (ECG_STRIP_AVAILABLE, #188). UCUM dimensionless
+    // for boolean flags — the actual waveform is exported as a separate
+    // FHIR Media resource by the ECG strip exporter, not as a quantity.
+    MetricUnit.BOOLEAN -> "{boolean}"
+    // Wave-1 biomarker expansion units (BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
+    MetricUnit.NMOL_PER_L -> "nmol/L"
+    MetricUnit.UMOL_PER_L -> "umol/L"
+    MetricUnit.MEQ_PER_L -> "meq/L"
+    MetricUnit.FEMTOLITERS -> "fL"
+    MetricUnit.PICOGRAMS -> "pg"
+    MetricUnit.MIU_PER_ML -> "m[IU]/mL"
+    MetricUnit.IU_PER_ML -> "[IU]/mL"
+    MetricUnit.PER_MINUTE -> "/min"
+    MetricUnit.M_PER_S_SQUARED -> "m/s2"
+    MetricUnit.HERTZ -> "Hz"
 }
 
-internal fun formatInstant(instant: Instant): String =
-    instant.atZone(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-
-internal fun formatEpochMillis(millis: Long): String =
-    formatInstant(Instant.ofEpochMilli(millis))
+internal fun formatInstant(instant: Instant): String = instant.atZone(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+internal fun formatEpochMillis(millis: Long): String = formatInstant(Instant.ofEpochMilli(millis))
