@@ -318,7 +318,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToAnthropometry = { navController.navigate("anthropometry") },
                     onNavigateToMetricReadingsDebug = { navController.navigate("metric_readings_debug") },
                     onNavigateToSeizureTimeline = { navController.navigate("seizure_timeline") },
-                    onNavigateToMetricSources = { navController.navigate("metric_sources") }, onNavigateToGeriatricTrajectory = { navController.navigate("geriatric_trajectory") }, onNavigateToTremorTrend = { navController.navigate("tremor_trend") },
+                    onNavigateToMetricSources = { navController.navigate("metric_sources") }, onNavigateToGeriatricTrajectory = { navController.navigate("geriatric_trajectory") }, onNavigateToTremorTrend = { navController.navigate("tremor_trend") }, onNavigateToReproductive = { route -> navController.navigate(route) },
                 )
             }
             composable("metric_sources") {

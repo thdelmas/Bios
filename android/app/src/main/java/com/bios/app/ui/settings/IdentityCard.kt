@@ -45,6 +45,7 @@ internal fun IdentityCard(
     onNavigateToAnthropometry: () -> Unit = {},
     onNavigateToGeriatricTrajectory: () -> Unit = {},
     onNavigateToTremorTrend: () -> Unit = {},
+    onNavigateToReproductive: (route: String) -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -71,6 +72,10 @@ internal fun IdentityCard(
                 "Surgical recovery" to onNavigateToSurgicalRecovery,
                 "Intervention events" to onNavigateToInterventionEvents,
                 "Treatment courses" to onNavigateToTreatmentCourses,
+                "Contraception" to { onNavigateToReproductive("contraception") },
+                "Menopause / perimenopause" to { onNavigateToReproductive("menopause_stage") },
+                "Gender-affirming care" to { onNavigateToReproductive("gender_affirming_care") },
+                "PCOS / Endometriosis context" to { onNavigateToReproductive("pcos_endometriosis") },
             ).forEachIndexed { idx, (label, action) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }
