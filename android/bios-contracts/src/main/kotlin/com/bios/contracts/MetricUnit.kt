@@ -79,4 +79,8 @@ enum class MetricUnit(val symbol: String) {
     IU_PER_ML("IU/mL"),
     /** Rate per minute — keystroke cadence, breaths-per-min style scalars where SCORE is too lossy. */
     PER_MINUTE("/min"),
+    /** SI acceleration — tremor amplitude (TREMOR_AMPLITUDE_G); UI converts to g if it surfaces that unit. */
+    M_PER_S_SQUARED("m/s²"),
+    /** Frequency — tremor peak frequency in the 3–12 Hz physiologic band. */
+    HERTZ("Hz"),
 }
