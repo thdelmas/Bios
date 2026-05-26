@@ -44,6 +44,7 @@ internal fun IdentityCard(
     onNavigateToTreatmentCourses: () -> Unit = {},
     onNavigateToAnthropometry: () -> Unit = {},
     onNavigateToGeriatricTrajectory: () -> Unit = {},
+    onNavigateToTremorTrend: () -> Unit = {},
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -60,6 +61,7 @@ internal fun IdentityCard(
                 "FRAIL assessment" to onNavigateToFrailAssessment,
                 "Goals of care" to onNavigateToGoalsOfCare,
                 "Geriatric trajectory" to onNavigateToGeriatricTrajectory,
+                "Tremor / movement trends" to onNavigateToTremorTrend,
                 "Headache & migraine diary" to onNavigateToHeadacheDiary,
                 "FAST stroke check" to onNavigateToFastStroke,
                 "Symptom report (ESAS-r)" to onNavigateToEsasCapture,

@@ -170,6 +170,29 @@ enum class PhysiologyState(val displayName: String) {
     KNOWN_OUD_TREATMENT("Opioid-use-disorder treatment (owner-declared)"),
 
     /**
+     * Owner-declared Parkinson's disease (#206, NEUROLOGY_POV §2.4). Gates the
+     * tremor-trend pull-side surface. Bios never infers PD — the diagnosis
+     * belongs to the owner and their neurologist; the tremor pipeline reports
+     * the physiological signal once the owner has declared the context.
+     */
+    KNOWN_PD("Parkinson's disease (owner-declared)"),
+
+    /**
+     * Owner-declared essential tremor (#206, NEUROLOGY_POV §2.4). ET sits in
+     * the 4–12 Hz postural/action band, distinct from Parkinsonian rest tremor
+     * (4–6 Hz). Gates the tremor-trend surface alongside [KNOWN_PD].
+     */
+    KNOWN_ET("Essential tremor (owner-declared)"),
+
+    /**
+     * Owner opt-in to movement-disorder tracking without a confirmed diagnosis
+     * (#206) — family history, neurologist-recommended self-monitoring,
+     * post-stroke recovery. Gates the same tremor surface as [KNOWN_PD] /
+     * [KNOWN_ET]. Explicit owner opt-in, never a default.
+     */
+    MOVEMENT_DISORDER_TRACKING("Movement-disorder tracking (owner opt-in)"),
+
+    /**
      * Cardio-oncology contexts (#201, ONCOLOGY_POV §2.3-2.5). Owner-declared
      * cancer therapy state; enables CardioOncologyPatterns surveillance via
      * the `requiredStates` axis. Drug-class annotation lives separately in
@@ -231,6 +254,11 @@ enum class PhysiologyState(val displayName: String) {
         /** All peri-operative states (SURGICAL_POV §2.1). */
         val PERIOPERATIVE: Set<PhysiologyState> = setOf(
             PREHAB_WINDOW, POD_0_30, POD_30_90, POD_90_PLUS,
+        )
+
+        /** Owner-declared movement-disorder contexts (#206). Gates the tremor pull-side surface. */
+        val MOVEMENT_DISORDER_CONTEXTS: Set<PhysiologyState> = setOf(
+            KNOWN_PD, KNOWN_ET, MOVEMENT_DISORDER_TRACKING,
         )
     }
 }
