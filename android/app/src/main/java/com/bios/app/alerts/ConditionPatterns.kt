@@ -75,6 +75,6 @@ object ConditionPatterns {
             TropicalDiseasePatterns.all + EnvironmentalPatterns.all +
             PerioperativePatterns.all + CardioOncologyPatterns.all +
             GrowthAndCompositionPatterns.all + NeurologyUrgentPatterns.all +
-            AdvancedCardiologyPatterns.all
+            AdvancedCardiologyPatterns.all + PsychiatryPatterns.all
     }
 }
