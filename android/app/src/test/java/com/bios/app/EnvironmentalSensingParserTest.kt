@@ -1,5 +1,6 @@
 package com.bios.app
 
+import com.bios.app.alerts.BaselineDeviationPatterns
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.ingest.EnvironmentalSensingParser
@@ -171,7 +172,7 @@ class EnvironmentalSensingParserTest {
         // Bedroom CO2 > 1000 ppm degrades sleep efficiency (Strom-Tejsen
         // 2016). Pinning the SignalRule so a future refactor of the
         // pattern can't silently drop the air-quality corroborator.
-        val pattern = ConditionPatterns.sleepDisruption
+        val pattern = BaselineDeviationPatterns.sleepDisruption
         val co2Rule = pattern.signalRules.singleOrNull { it.metricType == MetricType.AIR_CO2 }
         assertNotNull("Sleep Disruption must include the AIR_CO2 SignalRule (#43)", co2Rule)
         assertEquals(DeviationDirection.ABOVE, co2Rule!!.direction)

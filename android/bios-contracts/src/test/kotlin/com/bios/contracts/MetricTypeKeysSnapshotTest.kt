@@ -39,9 +39,32 @@ class MetricTypeKeysSnapshotTest {
         "blood_pressure_systolic",
         "blood_pressure_diastolic",
         "blood_oxygen",
+        // PPG-derived AFib screen (#180) + pulse-wave morphology (#181)
+        "irregular_rhythm_burden",
+        // Single-lead ECG strip presence (#188)
+        "ecg_strip_available",
+        "ppg_peak_amplitude_mean",
+        "ppg_peak_amplitude_cov",
+        "ppg_rise_time_mean",
+        "ppg_rise_time_cov",
+        "ppg_decay_asymmetry_index",
+        "ppg_dichrotic_notch_position",
+        // PPG-derived augmentation index (Blueprint audit §3.1 #8)
+        "augmentation_index_ppg",
+        // Heart-rate recovery (Triage Inventory #26)
+        "hr_recovery_1min",
+        "hr_recovery_2min",
+        // PVC-burden estimate (Triage Inventory #26)
+        "ectopy_burden_estimate",
         // Respiratory
         "respiratory_rate",
         "oxygen_flow_rate",
+        // Sleep apnea passthrough (#157)
+        "sleep_apnea_event",
+        "ahi",
+        // Asthma surveillance (#200) — owner-measured PEF + FEV1
+        "peak_expiratory_flow_lmin",
+        "forced_expiratory_volume_1_liters",
         // Neurological (manual-capture clinical signs)
         "pain_score",
         "consciousness_level",
@@ -51,6 +74,7 @@ class MetricTypeKeysSnapshotTest {
         // Sleep
         "sleep_stage",
         "sleep_duration",
+        "time_in_bed",
         "sleep_latency",
         "sleep_efficiency",
         "sleep_fragmentation_index",
@@ -86,6 +110,13 @@ class MetricTypeKeysSnapshotTest {
         "air_pm25",
         "air_voc",
         "air_co2",
+        // Environment expansion (#200) — humidity + ambient temp for asthma
+        // trigger context, heat-index, damp/dry pathogen overlays
+        "ambient_humidity_pct",
+        "ambient_temperature_c",
+        // Environmental context (#197) — elevation + daylight hours
+        "elevation_m",
+        "daylight_hours",
         // Biomarkers
         "hba1c",
         "hscrp",
@@ -115,6 +146,65 @@ class MetricTypeKeysSnapshotTest {
         "vitamin_b12",
         "folate",
         "magnesium",
+        // Renal / hepatic panel (#158)
+        "egfr",
+        "creatinine",
+        "alt",
+        "ast",
+        "ggt",
+        // Cardio-oncology biomarkers (#201)
+        "troponin_ng_per_l",
+        "nt_pro_bnp_pg_per_ml",
+        "absolute_neutrophil_count",
+        // Wave-1 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.1)
+        "lipoprotein_a",
+        "homocysteine",
+        "bun",
+        "calcium_serum",
+        "carbon_dioxide",
+        "chloride",
+        "phosphate",
+        "sodium",
+        "potassium",
+        "uric_acid",
+        "albumin",
+        "alkaline_phosphatase",
+        "bilirubin_total",
+        "total_protein",
+        "amylase",
+        "lipase",
+        "mcv",
+        "mch",
+        "mchc",
+        "rdw",
+        "mpv",
+        "neutrophils_pct",
+        "lymphocytes_pct",
+        "monocytes_pct",
+        "eosinophils_pct",
+        "basophils_pct",
+        "iron_serum",
+        "iron_saturation_pct",
+        "tibc",
+        "fsh",
+        "lh",
+        "shbg",
+        "amh",
+        "testosterone_free",
+        "prolactin",
+        "dhea_sulfate",
+        // Wave-2 biomarker expansion (BLUEPRINT_PROTOCOL_AUDIT §3.2)
+        "thyroid_peroxidase_ab",
+        "thyroglobulin_ab",
+        "psa_total",
+        "psa_free",
+        "telomere_length",
+        "coronary_calcium_score",
+        "bone_density_t_score",
+        "ptau_217",
+        "vitamin_k2",
+        "vitamin_a_retinol",
+        "vitamin_e_alpha_tocopherol",
         // Epigenetic age clocks
         "epigenetic_age_dunedin_pace",
         "epigenetic_age_grim",
@@ -138,6 +228,44 @@ class MetricTypeKeysSnapshotTest {
         "check_in_miss",
         // Reserved active-test result
         "reaction_time_ms",
+        // Neurology owner-PRO (#207)
+        "headache_intensity_nrs",
+        "migraine_attack_event",
+        // ICHD-3 structured event surface (#283 Cut 1) — generic headache +
+        // cluster split from migraine so the chronic-migraine pattern
+        // (#283 Cut 3, IHS ICHD-3 §1.3) can count migraine-days separately
+        // and #284's cluster periodicity histogram has its own row stream.
+        "headache_attack_event",
+        "cluster_headache_attack_event",
+        "fast_stroke_suspected",
+        // Neurology URGENT primitives (#216, audit §3.2 #24)
+        "seizure_event",
+        "thunderclap_headache_suspected",
+        // Paediatric growth + body composition (#199)
+        "height_cm",
+        "head_circumference_cm",
+        "bmi_kg_per_m2",
+        "lean_body_mass_kg",
+        "fat_mass_kg",
+        // Sedentary-load primitives (Anastasis companion)
+        "sedentary_bout",
+        "movement_break",
+        // Owner-rated subjective self-evaluation scales (#323) — universal
+        // substrate for cessation specialist (Smokeless) and future
+        // companions. 0–10 SCORE, owner-source-only; engine isolated.
+        "mood_self_rating",
+        "energy_self_rating",
+        "focus_self_rating",
+        "tobacco_craving_intensity",
+        "cannabis_craving_intensity",
+        "social_belonging_self_rating",
+        "smoker_identity_self_rating",
+        "change_agency_self_rating",
+        "smell_self_rating",
+        "taste_self_rating",
+        "cough_frequency_self_rating",
+        "sputum_self_rating",
+        "breath_ease_self_rating",
     )
 
     @Test

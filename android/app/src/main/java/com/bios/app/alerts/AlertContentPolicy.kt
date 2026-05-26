@@ -79,7 +79,42 @@ object AlertContentPolicy {
         "daily goal",
         "badge",
         "leaderboard",
-        "ranking"
+        "ranking",
+        // Geriatric trajectory manifesto-critical phrases (#208,
+        // GERIATRICS_PALLIATIVE_POV §2.3 + §2.4 + §2.5). Bios never
+        // auto-classifies fall risk, delirium, MCI, dementia, or
+        // capacity loss. Trajectory advisories carry strictly data-
+        // statement framing — these phrases would break that.
+        "your memory is declining",
+        "cognition declining",
+        "your cognition is declining",
+        "dementia risk",
+        "you may have mci",
+        "you may have dementia",
+        "mci risk",
+        "fall risk increased",
+        "your fall risk",
+        "elevated fall risk",
+        "you are at risk of falling",
+        "you are at risk of dementia",
+        "capacity loss",
+        "losing capacity",
+        "cognitive decline detected",
+        // Prognostic push-side language (#206, NEUROLOGY_POV §3.3). RBD has
+        // a strong long-horizon conversion rate to synucleinopathies but
+        // push-side communication of that horizon is explicitly forbidden.
+        // The screen pattern is pull-side only; this banlist keeps any
+        // future pattern from drifting into push-side prognostic framing.
+        // "prodromal" and "neurodegenerative" intentionally NOT banned:
+        // both are neutral clinical descriptors that legitimate existing
+        // patterns use in earlyDetection / risks framing (e.g. NAFLD,
+        // COPD, mania-prodrome citations).
+        "parkinson's risk",
+        "parkinsons risk",
+        "synucleinopathy",
+        "you may be developing",
+        "you may develop",
+        "you're at risk of",
     )
 
     data class Violation(

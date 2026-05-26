@@ -1,7 +1,7 @@
 package com.bios.app.ui.reproductive
 
+import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 
 /**
@@ -11,7 +11,7 @@ import androidx.navigation.compose.composable
  * [com.bios.app.ui.MainActivity] so the host file stays within the
  * 500-line code-quality bound.
  */
-fun NavGraphBuilder.reproductiveCompletenessRoutes(navController: NavHostController) {
+fun NavGraphBuilder.reproductiveCompletenessRoutes(navController: NavController) {
     composable("contraception") {
         ContraceptionScreen(onBack = { navController.popBackStack() })
     }

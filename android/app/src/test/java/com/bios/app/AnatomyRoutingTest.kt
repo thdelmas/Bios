@@ -168,10 +168,10 @@ class AnatomyRoutingTest {
         )
         assertEquals(
             ScreeningStatus.NoRecord,
-            ScreeningCadenceEngine.evaluate(mammogram, demographics, null, now),
+            ScreeningCadenceEngine.evaluate(mammogram, demographics, latest = null, now = now),
         )
         assertTrue(
-            ScreeningCadenceEngine.evaluate(cervical, demographics, null, now)
+            ScreeningCadenceEngine.evaluate(cervical, demographics, latest = null, now = now)
                 is ScreeningStatus.NotEligible,
         )
     }

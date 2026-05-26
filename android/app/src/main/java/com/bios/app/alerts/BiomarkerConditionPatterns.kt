@@ -28,7 +28,7 @@ object BiomarkerConditionPatterns {
             inflammationSignature, prediabetesSignature, dyslipidemiaSignature,
             vitaminDDeficiencySignature, hypothyroidSignature, hyperthyroidSignature,
             anemiaSignature,
-        ) + Wave5BiomarkerPatterns.all
+        ) + Wave5BiomarkerPatterns.all + Wave6BiomarkerPatterns.all
     }
 
     /**

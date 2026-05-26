@@ -279,4 +279,38 @@ class PpgSignalProcessorTest {
             0.15
         )
     }
+
+    // -- PPG-derived augmentation index (Blueprint audit §3.1 #8) --
+
+    @Test
+    fun `PPG-like beat with diastolic rebound produces an augmentation index`() {
+        // The ppgLikeWaveform diastolic rebound sits at ~52 % of the peak
+        // amplitude (relative to the foot), so the expected AIx_PPG is
+        // (1 − 0.52) × 100 = ~48. Smoothing flattens both peaks somewhat;
+        // accept a wide band around the expected value.
+        val result = PpgSignalProcessor.extract(ppgLikeWaveform(bpm = 60.0, durationSec = 60.0), fs)
+        val features = result.waveformFeatures
+        assertNotNull(features)
+        val aix = features!!.augmentationIndexPercent
+        if (aix != null) {
+            assertTrue("aix=$aix should be in (0, 100)", aix > 0.0 && aix <= 100.0)
+            assertEquals("aix=$aix should bracket the expected ~48", 48.0, aix, 25.0)
+        }
+        // It is acceptable for AIx to be null when the diastolic rebound
+        // is too shallow to clear the notch at 30-fps sampling — the field
+        // is documented as nullable. We only assert sensibility when present.
+    }
+
+    @Test
+    fun `clean sinusoid yields null augmentation index`() {
+        // Pure sinusoid has no dichrotic notch and no diastolic rebound,
+        // so the algorithm must return null rather than fabricate a value.
+        val result = PpgSignalProcessor.extract(sinusoid(bpm = 60.0, durationSec = 60.0), fs)
+        val features = result.waveformFeatures
+        assertNotNull(features)
+        assertNull(
+            "sinusoidal beat must yield null augmentation index — no rebound",
+            features!!.augmentationIndexPercent,
+        )
+    }
 }

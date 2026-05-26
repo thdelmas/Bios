@@ -43,7 +43,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         MenopauseStageEntry::class,
         GenderAffirmingCareEntry::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class ReproductiveDatabase : RoomDatabase() {
@@ -164,7 +164,7 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                 DB_NAME
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
 
@@ -183,6 +183,51 @@ abstract class ReproductiveDatabase : RoomDatabase() {
             }
         }
 
+        // Mirrors BiosDatabase MetricReadingMigrations.MIGRATION_30_31: the
+        // shared MetricReading entity declares a UNIQUE INDEX on
+        // (sourceId, metricType, timestamp) so re-syncs collapse into
+        // in-place updates instead of growing parallel rows. The main DB
+        // got the index via v30_31; this DB didn't, so on-device repro DBs
+        // persisted at v2 fail Room's identity-hash check on first open
+        // ("Expected …, found …") and BiosSyncWorker can't read BBT /
+        // CYCLE_PHASE / CYCLE_DAY for baselines.
+        //
+        // Same two-step shape as the main-DB migration: pick-best dedupe
+        // (confidence DESC, createdAt DESC, id ASC) then UNIQUE INDEX. No
+        // destructive fallback — reproductive readings (BBT especially)
+        // are owner-entered and not re-fetchable from any wearable.
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    DELETE FROM metric_readings
+                    WHERE id NOT IN (
+                        SELECT r1.id
+                        FROM metric_readings r1
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM metric_readings r2
+                            WHERE r2.sourceId   = r1.sourceId
+                              AND r2.metricType = r1.metricType
+                              AND r2.timestamp  = r1.timestamp
+                              AND (
+                                  r2.confidence > r1.confidence
+                                  OR (r2.confidence = r1.confidence AND r2.createdAt > r1.createdAt)
+                                  OR (r2.confidence = r1.confidence AND r2.createdAt = r1.createdAt AND r2.id < r1.id)
+                              )
+                        )
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS
+                        index_metric_readings_sourceId_metricType_timestamp
+                    ON metric_readings (sourceId, metricType, timestamp)
+                    """.trimIndent()
+                )
+            }
+        }
+
         // Reproductive completeness (#209): three new owner-annotation tables
         // (contraception, menopause stage, gender-affirming care) join the
         // reproductive DB. They're owner-recorded, independent of the
@@ -190,7 +235,7 @@ abstract class ReproductiveDatabase : RoomDatabase() {
         // CREATE TABLEs + their indices. All columns are nullable where
         // [data class] defaults allow null so Room schema validation
         // matches the entity hash.
-        private val MIGRATION_2_3 = object : Migration(2, 3) {
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """

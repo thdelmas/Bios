@@ -18,10 +18,16 @@ cat > "$HOOKS_DIR/pre-commit" << 'HOOK'
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Resolve the current worktree root (works for both main and linked worktrees).
+# Falls back to the hook's own location only if git rev-parse fails.
+if PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    :
+else
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+fi
 
-echo "Running pre-commit checks..."
+echo "Running pre-commit checks in $PROJECT_ROOT..."
 "$PROJECT_ROOT/scripts/code-quality-check.sh"
 HOOK
 
