@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Spanish (Argentina / Rioplatense) overlay — issue #210.
+
+    Argentine Spanish uses voseo and a distinct lexicon. The overlay
+    keeps texts in the same descriptive/impersonal register as the
+    Iberian base (values-es) — voseo verb forms appear in user-facing
+    questions or instructions only when the source already addresses
+    the owner, and we avoid imperative "tenés que…" since the
+    AlertContentPolicy banlist categorizes second-person obligation as
+    a push-side judgment.
+
+    Differences from values-es:
+      * "chequear" preferred over "comprobar"
+      * "presión" or "presión arterial" both common; we use "presión arterial"
+      * Vocabulary: "jugo" vs "zumo", "manguito" vs "brazalete"
+      * Voseo conjugation appears only where the source already uses tú/usted
+        — most patterns are in the third person and don't need rewriting.
+
+    Strings not declared here fall back to values-es per Android resource
+    resolution.
+-->
+<resources>
+
+    <string name="pattern_emergency_spo2_critical_suggested_action">Volvé a chequear la medición en un dedo cálido y limpio, sin esmalte. Si se confirma por debajo del 90 %, o si se acompaña de falta de aire, dolor en el pecho, confusión o coloración azulada en labios o yemas de los dedos, conviene buscar atención médica inmediata o llamar a los servicios de emergencia.</string>
+
+    <string name="pattern_emergency_hypoglycemia_critical_suggested_action">Consumir 15-20 g de hidratos de carbono de absorción rápida (pastillas de glucosa, jugo o azúcar) y volver a chequear a los 15 minutos. Repetir si la lectura sigue por debajo de 70 mg/dL. Si la persona no puede tragar, está confundida o no responde, se necesita glucagón o los servicios de emergencia.</string>
+
+    <string name="pattern_hypertensive_urgency_suggested_action">Descansar 5 minutos y volver a tomar la presión en el otro brazo con el brazalete a la altura del corazón. Si la lectura se confirma igual o superior a 180/120, o si se acompaña de dolor en el pecho, falta de aire, cefalea intensa, alteraciones de la visión o debilidad, conviene buscar atención médica inmediata o llamar a los servicios de emergencia. Sin síntomas agudos pero con una lectura confirmada en este nivel, una evaluación clínica urgente (el mismo día) es el estándar.</string>
+
+    <!-- TODO(es-rAR): commission a fluent reviewer for the remaining patterns
+         once an Argentine clinical translator is available. Issue #210 ships
+         the architectural scaffolding; this overlay only contains the
+         re-measurement and BP strings where the lexical drift from
+         peninsular Spanish is large enough to affect comprehension. -->
+</resources>

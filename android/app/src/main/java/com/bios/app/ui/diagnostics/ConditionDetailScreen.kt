@@ -12,8 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.alerts.AlertTextResolver
 import com.bios.app.alerts.BiomarkerReference
 import com.bios.app.alerts.BiomarkerReferences
 import com.bios.app.alerts.ConditionPatterns
@@ -79,9 +81,10 @@ fun ConditionDetailScreen(
                 ProbabilityCard(result)
             }
 
-            // Overview
+            // Overview — resolves through localization overlay when available.
+            val ctx = LocalContext.current
             Text(
-                pattern.explanation,
+                AlertTextResolver.explanationFor(ctx, pattern),
                 style = MaterialTheme.typography.bodyMedium
             )
 

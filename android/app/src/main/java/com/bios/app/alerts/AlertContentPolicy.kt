@@ -1,5 +1,7 @@
 package com.bios.app.alerts
 
+import android.content.Context
+
 /**
  * Enforces the **push-side unsolicited-judgment ban** on alert text.
  *
@@ -117,6 +119,54 @@ object AlertContentPolicy {
         "you're at risk of",
     )
 
+    /**
+     * Per-locale prohibited phrases. The English banlist above is always
+     * applied; these supplemental lists catch register-equivalent push-side
+     * judgments in non-English overlays (issue #210, requirement 6).
+     *
+     * Keyed by ISO 639-1 language code (lowercase), matched against the
+     * resolved string's source locale at lookup time. Adding a locale to
+     * the overlay set means adding its register-equivalent phrases here.
+     *
+     * Only phrases that occur in our own English banlist's register family
+     * are included — direct judgments ("you should X") and gamification.
+     * Polite suggestions phrased as conditional questions are intentionally
+     * not banned in any language.
+     */
+    private val LOCALIZED_PROHIBITED_PHRASES: Map<String, List<String>> = mapOf(
+        "es" to listOf(
+            "deberías",          // "you should" (informal)
+            "debería usted",     // "you should" (formal)
+            "tú debes",          // "you must"
+            "tienes que",        // "you have to"
+            "has fallado",       // "you failed"
+            "te perdiste",       // "you missed"
+            "racha",             // "streak"
+            "logro desbloqueado",
+            "insignia",          // "badge"
+        ),
+        "pt" to listOf(
+            "você deve",         // "you should/must"
+            "você precisa",      // "you need to"
+            "você tem que",      // "you have to"
+            "você falhou",       // "you failed"
+            "sequência",         // "streak"
+            "conquista desbloqueada",
+            "medalha",           // "badge"
+        ),
+        // Te Reo Māori: the translated overlay in this PR uses descriptive,
+        // non-imperative forms (no "me…" / "kia…" command framings). Banlist
+        // is intentionally empty until the translation set grows; revisit
+        // with a fluent reviewer before adding entries — the imperative gate
+        // forms are short enough that naive banning would catch false
+        // positives in descriptive text.
+        "mi" to emptyList(),
+        // ʻŌlelo Hawaiʻi: same disposition as mi — the small translation
+        // surface in this PR is descriptive only. Add specific banned forms
+        // here when the translation set grows.
+        "haw" to emptyList(),
+    )
+
     data class Violation(
         val field: String,
         val pattern: ConditionPattern,
@@ -169,4 +219,82 @@ object AlertContentPolicy {
     fun validateAll(): List<Violation> {
         return ConditionPatterns.all.flatMap { validate(it) }
     }
+
+    /**
+     * Validate localized [text] against the English banlist plus the
+     * locale-specific banlist for [languageCode] (ISO 639-1, lowercase).
+     * Returns the prohibited phrase that matched, or null when compliant.
+     *
+     * Used by [validateLocaleOverlays] to enforce the policy across every
+     * shipped locale overlay (issue #210, requirement 6 — CI gate).
+     */
+    fun phraseViolatingLocale(text: String, languageCode: String): String? {
+        val lower = text.lowercase()
+        for (phrase in PROHIBITED_PHRASES) {
+            if (lower.contains(phrase)) return phrase
+        }
+        val localized = LOCALIZED_PROHIBITED_PHRASES[languageCode.lowercase()]
+            ?: return null
+        for (phrase in localized) {
+            if (lower.contains(phrase)) return phrase
+        }
+        return null
+    }
+
+    /**
+     * Validate every locale overlay's pattern strings against the banlist.
+     * Walks [ConditionPatterns.all], resolves both explanation and
+     * suggestedAction through [AlertTextResolver] using a [Context] whose
+     * locale has been swapped to each [languageCodes] entry, and reports
+     * any localized strings containing a prohibited phrase. Empty list ⇒
+     * all overlays compliant.
+     *
+     * Drives the CI gate test [AlertContentPolicyTest] guards: a
+     * translator who inadvertently introduces "tú debes" or "you should"
+     * into an overlay fails the build at unit-test time.
+     */
+    fun validateLocaleOverlays(
+        baseContext: Context,
+        languageCodes: List<String>,
+    ): List<LocaleViolation> {
+        val violations = mutableListOf<LocaleViolation>()
+        for (language in languageCodes) {
+            val locale = java.util.Locale.forLanguageTag(language)
+            val config = android.content.res.Configuration(
+                baseContext.resources.configuration
+            )
+            config.setLocale(locale)
+            val ctx = baseContext.createConfigurationContext(config)
+            for (pattern in ConditionPatterns.all) {
+                val explanation = AlertTextResolver.explanationFor(ctx, pattern)
+                val suggested = AlertTextResolver.suggestedActionFor(ctx, pattern)
+                phraseViolatingLocale(explanation, locale.language)?.let { phrase ->
+                    violations += LocaleViolation(
+                        languageTag = language,
+                        patternId = pattern.id,
+                        field = "explanation",
+                        prohibitedPhrase = phrase,
+                    )
+                }
+                if (suggested != null) {
+                    phraseViolatingLocale(suggested, locale.language)?.let { phrase ->
+                        violations += LocaleViolation(
+                            languageTag = language,
+                            patternId = pattern.id,
+                            field = "suggestedAction",
+                            prohibitedPhrase = phrase,
+                        )
+                    }
+                }
+            }
+        }
+        return violations
+    }
+
+    data class LocaleViolation(
+        val languageTag: String,
+        val patternId: String,
+        val field: String,
+        val prohibitedPhrase: String,
+    )
 }

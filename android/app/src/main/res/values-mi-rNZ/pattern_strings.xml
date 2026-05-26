@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Te Reo Māori (Aotearoa New Zealand) overlay — issue #210.
+
+    Statutory context:
+      * Te Reo Māori is an official language of Aotearoa New Zealand under
+        the Māori Language Act 1987 (Te Ture mō Te Reo Māori 1987) and the
+        Māori Language Act 2016 (Te Ture mō Te Reo Māori 2016).
+      * The Treaty of Waitangi (Te Tiriti o Waitangi 1840) underpins the
+        Crown's obligation to actively protect Te Reo as a taonga — an
+        obligation Bios shares as a piece of software shipping to Aotearoa.
+
+    Honest scope statement (issue #210 explicitly requires honesty here):
+      This PR ships only the language-selector UI strings — those are short,
+      use widely accepted vocabulary documented in the Te Aka Māori
+      Dictionary and Te Taura Whiri terminology lists, and use macrons
+      (tohutō) correctly.
+
+      The clinical pattern explanations (sepsis screening, AFib burden,
+      qSOFA, HRV, mg/dL ↔ mmol/L conversions) are NOT translated in this
+      PR. Translating those without a fluent reviewer who also has
+      clinical-translation training would risk losing the literature
+      anchor and producing register-inappropriate or just wrong text.
+      Empty keys would shadow the English default; instead, those keys
+      are intentionally absent here, so Android falls back to the English
+      pattern_strings.xml until a future PR commissions a qualified
+      translator with iwi consultation (Health Quality & Safety
+      Commission style guide; Te Aka Manawa; Hauora Māori clinical
+      translation panel).
+
+    Macron policy: use tohutō (ā ē ī ō ū) per standard orthography. Avoid
+    double-vowel spelling. Words like kūmara, whānau, mātauranga, hauora
+    take macrons consistently.
+
+    DO NOT add translated pattern_*_explanation / _suggested_action keys
+    to this file without iwi-consulted review. Better empty than wrong.
+-->
+<resources>
+
+    <!-- == Settings UI strings (language selector) == -->
+    <string name="settings_language_title">Reo</string>
+    <string name="settings_language_subtitle">Whakarerekētia te reo pūnaha mō ngā kupu o Bios. He pānga ki ngā kōrero whakatūpato me ngā tapanga atanga. Whakaaratahingia anō a Bios i muri i te panonitanga.</string>
+    <string name="settings_language_system_default">Te taunoa o te pūnaha</string>
+    <string name="settings_language_apply">Whakamahia</string>
+</resources>

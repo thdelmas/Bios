@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ConditionPattern alert text (issue #210).
+
+    Convention:
+      pattern_<id>_explanation        -> ConditionPattern.explanation
+      pattern_<id>_suggested_action   -> ConditionPattern.suggestedAction
+
+    The <id> matches ConditionPattern.id in lowercase (which is what
+    the patterns already use). Keys are resolved at display time by
+    AlertTextResolver (com.bios.app.alerts) — if a key is missing in
+    the active locale, Android falls back to this default file; if
+    missing here too, the resolver falls back to the Kotlin source
+    field declared on the ConditionPattern.
+
+    Translators: a locale overlay should only include the patterns it
+    can translate accurately. Absent keys are intentionally OK — they
+    fall back to the English default. Empty translations would shadow
+    the default and produce blank notifications; do not ship empty
+    values. Per the manifesto, no machine translation.
+
+    Push-side text rules (AlertContentPolicy):
+      * no second-person lifestyle judgments ("you should…")
+      * no wellness scores or grades
+      * no guilt mechanics or gamification
+
+    See docs/PRIVACY_ARCHITECTURE.md "Alert Content Policy."
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MissingTranslation">
+
+    <!-- == Phase 1 core patterns == -->
+
+    <string name="pattern_infection_onset_explanation">Multiple vital signs are deviating from your personal baseline in a pattern consistent with the early stages of illness. Research shows these changes can appear 1-2 days before symptoms.</string>
+    <string name="pattern_infection_onset_suggested_action">Consider resting, staying hydrated, and monitoring how you feel. If symptoms develop, consult your healthcare provider.</string>
+
+    <string name="pattern_sleep_disruption_explanation">Your sleep quality has been declining for several days. Reduced deep sleep combined with physiological stress markers may indicate accumulated fatigue or stress.</string>
+    <string name="pattern_sleep_disruption_suggested_action">Maintaining consistent sleep and wake times, reducing screen time before bed, and managing stress are evidence-supported interventions. If this persists for more than a week, consulting a healthcare provider may help.</string>
+
+    <string name="pattern_cardiovascular_stress_explanation">Your cardiovascular markers are showing sustained elevation above your personal baseline. This may indicate physical or emotional stress, overtraining, or other factors affecting your heart.</string>
+    <string name="pattern_cardiovascular_stress_suggested_action">Reducing intense exercise, managing stress, and ensuring adequate rest are evidence-supported responses. If chest pain, dizziness, or shortness of breath develop, seek medical attention promptly.</string>
+
+    <string name="pattern_overtraining_explanation">Your body is showing signs of insufficient recovery from recent physical activity. Elevated resting heart rate combined with reduced HRV and poor sleep quality can indicate overtraining syndrome.</string>
+    <string name="pattern_overtraining_suggested_action">1-2 rest days, prioritized sleep, and reduced training intensity are the evidence-supported response. If fatigue persists beyond a few days of rest, a sports medicine consultation may help.</string>
+
+    <!-- == Phase 3B longevity patterns == -->
+
+    <string name="pattern_metabolic_drift_explanation">Glucose variability has increased while sleep quality or resting heart rate have shifted from your baseline over the past week — a pattern associated with metabolic stress in clinical literature.</string>
+    <string name="pattern_metabolic_drift_suggested_action">Reviewing recent dietary patterns and sleep habits may help. If glucose variability persists, discussing HbA1c testing with a healthcare provider is the standard next step.</string>
+
+    <string name="pattern_cardiorespiratory_deconditioning_explanation">Your resting heart rate and HRV have shifted over the past two weeks in a direction consistent with cardiorespiratory fitness decline, alongside reduced activity levels.</string>
+    <string name="pattern_cardiorespiratory_deconditioning_suggested_action">Gradual return to regular aerobic activity can reverse deconditioning. Even moderate daily movement (brisk walking, cycling) improves cardiovascular fitness within weeks.</string>
+
+    <string name="pattern_chronic_inflammation_explanation">Multiple vital signs have been mildly but persistently shifted from your baseline over the past 1-2 weeks. This multi-signal pattern is consistent with sustained low-grade inflammation in clinical literature.</string>
+    <string name="pattern_chronic_inflammation_suggested_action">Persistent mild deviations across multiple signals may warrant investigation. Discussing an hsCRP blood test with a healthcare provider is the standard next step.</string>
+
+    <string name="pattern_recovery_deficit_explanation">Your HRV has been below baseline for an extended period while sleep quality has declined and resting heart rate has drifted upward — a pattern consistent with accumulated recovery debt.</string>
+    <string name="pattern_recovery_deficit_suggested_action">Sleep quality and reduced overall physical and mental demands are the evidence-supported response. If fatigue persists beyond 2 weeks of prioritized rest, a healthcare provider consultation may help.</string>
+
+    <!-- == Phase 4 expanded patterns == -->
+
+    <string name="pattern_respiratory_infection_explanation">Your respiratory rate and blood oxygen are shifting from baseline in a pattern associated with respiratory infection. These changes can appear before cough or congestion symptoms.</string>
+    <string name="pattern_respiratory_infection_suggested_action">Monitor for developing respiratory symptoms (cough, congestion, shortness of breath). If SpO2 drops below 95% or breathing difficulty develops, contact a healthcare provider.</string>
+
+    <string name="pattern_mental_health_correlate_explanation">Your sleep patterns, activity level, and autonomic markers have shifted over the past week. These physiological changes are correlated with stress, fatigue, or mood changes in clinical literature. This is a data observation, not a diagnosis.</string>
+    <string name="pattern_mental_health_correlate_suggested_action">Recent life changes, stress, or seasonal factors may be affecting wellbeing. If persistent low mood, anxiety, or loss of interest is present, speaking with a mental health professional can help.</string>
+
+    <string name="pattern_menstrual_cycle_anomaly_explanation">Your basal body temperature and associated physiological markers are showing a pattern that deviates from your established cycle. Cycle-to-cycle variation is normal, but persistent changes may warrant attention.</string>
+    <string name="pattern_menstrual_cycle_anomaly_suggested_action">Tracking associated symptoms (pain, flow changes, mood changes) in the health journal may help. If cycle irregularities persist across multiple cycles, discussing with a gynecologist is the standard next step.</string>
+
+    <!-- == Emergency vital patterns == -->
+
+    <string name="pattern_emergency_spo2_critical_explanation">The most recent blood-oxygen reading is at or below 85 %. This level is associated with significant hypoxia and is the standard clinical cutoff for prompt evaluation. Motion artifact, cold fingers, or nail polish can produce false low readings — re-check on a warm, clean finger.</string>
+    <string name="pattern_emergency_spo2_critical_suggested_action">Re-check the reading on a warm clean finger without nail polish. If confirmed below 90 %, or accompanied by shortness of breath, chest pain, confusion, bluish lips, or fingertips, seek immediate medical attention or contact emergency services.</string>
+
+    <string name="pattern_emergency_hypoglycemia_critical_explanation">The most recent blood-glucose reading is at or below 54 mg/dL (3.0 mmol/L). ADA classifies this as Level 2 hypoglycemia, the threshold for clinically significant low glucose requiring immediate correction.</string>
+    <string name="pattern_emergency_hypoglycemia_critical_suggested_action">Consume 15–20 g of fast-acting carbohydrate (glucose tablets, juice, or sugar) and re-check in 15 minutes. Repeat if still below 70 mg/dL. If unable to swallow, confused, or unresponsive, glucagon or emergency services are needed.</string>
+
+    <string name="pattern_emergency_tachycardia_critical_explanation">The most recent resting heart rate is at or above 130 bpm. This is outside normal adult variation and is the standard clinical threshold for evaluating tachyarrhythmia (such as atrial fibrillation with rapid ventricular response or supraventricular tachycardia), thyrotoxicosis, severe dehydration, infection, or other systemic causes.</string>
+    <string name="pattern_emergency_tachycardia_critical_suggested_action">If accompanied by chest pain, shortness of breath, dizziness, fainting, or palpitations, seek immediate medical attention. Without acute symptoms, re-check at rest after several minutes; a sustained reading at this level warrants prompt evaluation by a healthcare provider.</string>
+
+    <string name="pattern_emergency_bradycardia_critical_explanation">The most recent resting heart rate is at or below 35 bpm. This is below the threshold at which symptomatic bradycardia, conduction-system disease (such as high-grade AV block or sick sinus syndrome), or severe hypothyroidism are clinical considerations. Highly trained endurance athletes can have true resting heart rates in this range without pathology; documented rate-control medication (beta-blockers, certain calcium channel blockers) can also explain this reading.</string>
+    <string name="pattern_emergency_bradycardia_critical_suggested_action">If accompanied by dizziness, fainting, fatigue, shortness of breath, or chest pain, seek immediate medical attention. Without acute symptoms, an ECG and clinical evaluation are the standard next step to distinguish athletic conditioning from a conduction problem.</string>
+
+    <!-- == Hypertension == -->
+
+    <string name="pattern_hypertension_emerging_explanation">The median of recent blood pressure readings sits at or above stage-1 hypertension thresholds (≥130 systolic or ≥80 diastolic per ACC/AHA 2017; regional guidelines such as NICE / ESC / JSH use 140/90). The median across multiple home readings is more reliable than any single cuff measurement, which can be affected by white-coat effect, posture, or recent activity.</string>
+    <string name="pattern_hypertension_emerging_suggested_action">Discuss these readings with a healthcare provider. Home BP monitoring over 7 days (morning and evening) is the standard clinical follow-up, and the trend data from Bios is useful to share. The provider applies the regional guideline cutoff for diagnosis.</string>
+
+    <string name="pattern_hypertensive_urgency_explanation">A recent blood pressure reading is at or above the hypertensive-crisis threshold (≥180 systolic or ≥120 diastolic). This is the universal cutoff across ACC/AHA, NICE, ESC, JSH, and Hypertension Canada guidelines. Single cuff readings at this level can occur from recent exertion, stress, or measurement technique — the clinical protocol is to re-check after a few minutes of rest before treating it as confirmed.</string>
+    <string name="pattern_hypertensive_urgency_suggested_action">Rest for 5 minutes, then re-check on the opposite arm with the cuff at heart level. If the reading is confirmed at or above 180/120, or accompanied by chest pain, shortness of breath, severe headache, vision changes, or weakness, seek immediate medical attention or contact emergency services. Without acute symptoms but with a confirmed reading at this level, urgent (same-day) clinical evaluation is the standard.</string>
+
+    <!-- == Sepsis / AFib / Sleep apnea / Circadian / Autonomic == -->
+
+    <string name="pattern_sepsis_screen_explanation">Vital signs in the last 6 hours meet the NHS NEWS2 / Sepsis Six screening trigger. NEWS2 (Royal College of Physicians 2017) and qSOFA (Singer 2016, JAMA) are the multi-signal early-warning composites the Surviving Sepsis Campaign uses to flag possible sepsis. This is a data observation against a published clinical screen — not a sepsis diagnosis. Many non-sepsis conditions can produce the same vital-sign pattern (medication effect, dehydration, anxiety, transient illness).</string>
+    <string name="pattern_sepsis_screen_suggested_action">Vital signs meet the NHS Sepsis Six trigger criteria — seek immediate medical assessment. Bring a recent vital-signs summary (the readings that triggered this alert) for the assessing clinician. If accompanied by fever, rigors, new confusion, severe shortness of breath, or symptoms of infection (cough, urinary symptoms, wound, indwelling line), contact emergency services without delay.</string>
+
+    <string name="pattern_paroxysmal_afib_screen_explanation">The majority of recent fingertip-PPG captures (median burden above 50 %) were scored irregularly irregular by the on-device rhythm classifier — Poincaré SD1/SD2 dispersion, sample entropy, and ΔRR turning-point ratio all elevated. This is the same family of computations used by the Apple Heart Study, mAFA-II, and Fitbit Heart Study. PPG-based screening has roughly 34 % positive predictive value for AFib on follow-up ECG (Perez 2019) — informative for screening, not diagnostic. Many non-AFib factors can produce an irregular RR series: frequent ectopy, motion artifact across multiple sessions, atrial flutter, or sinus arrhythmia in younger owners.</string>
+    <string name="pattern_paroxysmal_afib_screen_suggested_action">Discuss these readings with a healthcare provider. The standard follow-up is a clinical ECG — single-lead (Apple Watch, KardiaMobile, Withings ScanWatch) or 12-lead in office — to confirm or rule out atrial fibrillation. The burden trend and individual session data can be exported and shared with a cardiologist.</string>
+
+    <string name="pattern_sleep_apnea_screen_explanation">The most recent apnea-hypopnea index sits at or above 5 events/hour — the AASM mild-OSA screening threshold — while at least one corroborating wearable signal has appeared: sustained nocturnal SpO2 desaturation, resting-HR drift, or rising sleep fragmentation. The AHI anchors the pattern; the wearable signals on their own have many possible causes.</string>
+    <string name="pattern_sleep_apnea_screen_suggested_action">Discuss the AHI value and the nightly SpO2 / resting-HR trends with a healthcare provider. The standard follow-up is a sleep-medicine referral for confirmatory evaluation — home sleep apnea test (HSAT) or in-laboratory polysomnography. The AHI reading, SpO2 trend, and RHR trend from Bios are useful to share.</string>
+
+    <string name="pattern_circadian_disruption_explanation">Your ambient-light exposure pattern over the past week has deviated substantially from your established baseline, and at least one sleep signal (depth or timing) has degraded in parallel. The combination is consistent with circadian misalignment — caused by night work, heavy evening screen use, jet-lag, or a sudden change in daily light environment. This is a data observation about your environment, not a judgment about your habits.</string>
+    <string name="pattern_circadian_disruption_suggested_action">If the disruption is intentional (travel, shift work), no action is needed beyond awareness. Otherwise, increasing morning-daylight exposure and reducing bright-screen exposure within 2 hours of bedtime are the highest-evidence interventions for re-entrainment.</string>
+
+    <string name="pattern_autonomic_pattern_shift_explanation">Heart-rate variability is showing baseline-relative irregularity alongside a sustained resting-HR elevation. This autonomic pattern is non-specific — infection, dehydration, alcohol withdrawal, thyroid perturbation, and post-vaccination autonomic shifts can all produce it.</string>
+    <string name="pattern_autonomic_pattern_shift_suggested_action">Track how you feel over the next 24–48 hours. If palpitations, chest discomfort, dizziness, or shortness of breath develop, contact a healthcare provider. This pattern is not a rhythm-strip analysis — see the AFib screening surface for the PPG-derived irregular-rhythm burden.</string>
+
+    <!-- == Regional alert disclaimers (RegionConfig.alertDisclaimerKey) == -->
+    <string name="alert_disclaimer_us">Bios is not an FDA-cleared medical device. Alerts are informational and do not constitute medical advice.</string>
+    <string name="alert_disclaimer_gb">Bios is not a registered medical device. Alerts are informational and do not constitute medical advice.</string>
+    <string name="alert_disclaimer_eu">Bios is not a CE-marked medical device. Alerts are informational and do not constitute medical advice.</string>
+    <string name="alert_disclaimer_ca">Bios is not a Health Canada licensed medical device. Alerts are informational and do not constitute medical advice.</string>
+    <string name="alert_disclaimer_au">Bios is not a TGA-registered medical device. Alerts are informational and do not constitute medical advice.</string>
+    <string name="alert_disclaimer_jp">Biosは医療機器ではありません。アラートは情報提供を目的としており、医学的助言ではありません。</string>
+
+    <!-- == Settings UI strings for language selector == -->
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_subtitle">Override the system language for Bios text. Affects alert wording and UI labels. Restart Bios after changing.</string>
+    <string name="settings_language_system_default">System default</string>
+    <string name="settings_language_apply">Apply</string>
+</resources>
