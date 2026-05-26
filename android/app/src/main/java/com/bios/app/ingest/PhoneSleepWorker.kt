@@ -124,6 +124,7 @@ class PhoneSleepWorker(
             val decision = PhoneSleepScheduler.decide(
                 nowMs = System.currentTimeMillis(),
                 zoneId = zone,
+                wakeHour = PhoneSleepPrefs.wakeHour(context),
                 lastInferredMidpointMs = lastMidpoint,
             )
             if (decision !is PhoneSleepScheduler.TriggerDecision.Fire) {
