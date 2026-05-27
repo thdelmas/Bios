@@ -13,12 +13,10 @@ import com.bios.app.model.ExerciseSession
 import com.bios.app.model.ExerciseSessionFields
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
-import com.bios.app.model.SleepStage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import java.time.Instant
-import java.util.UUID
 
 /**
  * Bridges Health Connect data into Bios unified MetricReadings.
@@ -63,281 +61,26 @@ class HealthConnectAdapter(private val context: Context) {
         sourceId: String
     ): List<MetricReading> = coroutineScope {
         val jobs = listOf(
-            async { fetchHeartRate(startTime, endTime, sourceId) },
-            async { fetchHRV(startTime, endTime, sourceId) },
-            async { fetchRestingHR(startTime, endTime, sourceId) },
-            async { fetchSpO2(startTime, endTime, sourceId) },
-            async { fetchRespiratoryRate(startTime, endTime, sourceId) },
-            async { fetchSkinTemp(startTime, endTime, sourceId) },
-            async { fetchSleep(startTime, endTime, sourceId) },
-            async { fetchSteps(startTime, endTime, sourceId) },
-            async { fetchActiveCalories(startTime, endTime, sourceId) },
-            async { fetchVo2Max(startTime, endTime, sourceId) },
+            async { HealthConnectReads.heartRate(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.hrv(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.restingHr(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.spo2(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.respiratoryRate(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.skinTemp(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.sleep(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.steps(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.activeCalories(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.vo2Max(client, startTime, endTime, sourceId) },
             async { HealthConnectBodyComposition.fetchAll(client, startTime, endTime, sourceId) },
         )
         jobs.awaitAll().flatten()
     }
 
-    // VO2 max is vendor-derived (Garmin / Fitbit / Apple fitness models); not a clinical CPET.
-    private suspend fun fetchVo2Max(start: Instant, end: Instant, sourceId: String): List<MetricReading> =
-        client.readRecords(ReadRecordsRequest(Vo2MaxRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end)))
-            .records.map { record -> MetricReading(
-                metricType = MetricType.VO2_MAX.key,
-                value = record.vo2MillilitersPerMinuteKilogram,
-                timestamp = record.time.toEpochMilli(),
-                sourceId = sourceId,
-                confidence = ConfidenceTier.VENDOR_DERIVED.level,
-            ) }
-
-    // MARK: - Individual record types
-
-    private suspend fun fetchHeartRate(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                HeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.flatMap { record ->
-            record.samples.map { sample ->
-                MetricReading(
-                    metricType = MetricType.HEART_RATE.key,
-                    value = sample.beatsPerMinute.toDouble(),
-                    timestamp = sample.time.toEpochMilli(),
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.MEDIUM.level
-                )
-            }
-        }
-    }
-
-    private suspend fun fetchHRV(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                HeartRateVariabilityRmssdRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.map { record ->
-            MetricReading(
-                metricType = MetricType.HEART_RATE_VARIABILITY.key,
-                value = record.heartRateVariabilityMillis,
-                timestamp = record.time.toEpochMilli(),
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-        }
-    }
-
-    private suspend fun fetchRestingHR(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                RestingHeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.map { record ->
-            MetricReading(
-                metricType = MetricType.RESTING_HEART_RATE.key,
-                value = record.beatsPerMinute.toDouble(),
-                timestamp = record.time.toEpochMilli(),
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-        }
-    }
-
-    private suspend fun fetchSpO2(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                OxygenSaturationRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.map { record ->
-            MetricReading(
-                metricType = MetricType.BLOOD_OXYGEN.key,
-                value = record.percentage.value,
-                timestamp = record.time.toEpochMilli(),
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-        }
-    }
-
-    private suspend fun fetchRespiratoryRate(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                RespiratoryRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.map { record ->
-            MetricReading(
-                metricType = MetricType.RESPIRATORY_RATE.key,
-                value = record.rate,
-                timestamp = record.time.toEpochMilli(),
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-        }
-    }
-
-    private suspend fun fetchSkinTemp(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                SkinTemperatureRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.flatMap { record ->
-            val baselineC = record.baseline?.inCelsius
-            record.deltas.flatMap { delta ->
-                val tMs = delta.time.toEpochMilli()
-                val deviation = MetricReading(
-                    metricType = MetricType.SKIN_TEMPERATURE_DEVIATION.key,
-                    value = delta.delta.inCelsius,
-                    timestamp = tMs,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.MEDIUM.level
-                )
-                // Reconstruct raw absolute temp when the record supplies a baseline.
-                // Needed for febrile-range thresholds and menstrual phase detection,
-                // which require absolute °C rather than personal-baseline deltas.
-                if (baselineC != null) {
-                    listOf(
-                        deviation,
-                        MetricReading(
-                            metricType = MetricType.SKIN_TEMPERATURE.key,
-                            value = baselineC + delta.delta.inCelsius,
-                            timestamp = tMs,
-                            sourceId = sourceId,
-                            confidence = ConfidenceTier.MEDIUM.level
-                        )
-                    )
-                } else {
-                    listOf(deviation)
-                }
-            }
-        }
-    }
-
-    private suspend fun fetchSleep(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                SleepSessionRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.flatMap { session ->
-            val stageReadings = session.stages.mapNotNull { stage ->
-                val biosStage = when (stage.stage) {
-                    SleepSessionRecord.STAGE_TYPE_AWAKE,
-                    SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> SleepStage.AWAKE
-                    SleepSessionRecord.STAGE_TYPE_LIGHT -> SleepStage.LIGHT
-                    SleepSessionRecord.STAGE_TYPE_DEEP -> SleepStage.DEEP
-                    SleepSessionRecord.STAGE_TYPE_REM -> SleepStage.REM
-                    else -> null
-                } ?: return@mapNotNull null
-
-                val durationSec = java.time.Duration.between(
-                    stage.startTime, stage.endTime
-                ).seconds.toInt()
-
-                val stageStartMs = stage.startTime.toEpochMilli()
-                MetricReading(
-                    id = HealthConnectStableIds.forSubRecord("sleep-stage", sourceId, session.metadata.id, stageStartMs),
-                    metricType = MetricType.SLEEP_STAGE.key,
-                    value = biosStage.value.toDouble(),
-                    timestamp = stageStartMs,
-                    durationSec = durationSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.MEDIUM.level
-                )
-            }
-
-            // Asleep time = session total minus AWAKE stages (matches Oura/Whoop semantics).
-            // If the session has no stage breakdown, fall back to the full session length.
-            val awakeSec = stageReadings
-                .filter { it.value.toInt() == SleepStage.AWAKE.value }
-                .sumOf { it.durationSec ?: 0 }
-            val sessionSec = java.time.Duration.between(
-                session.startTime, session.endTime
-            ).seconds.toInt()
-            val asleepSec = (sessionSec - awakeSec).coerceAtLeast(0)
-
-            val durationReading = MetricReading(
-                id = HealthConnectStableIds.forRecord("sleep-duration", sourceId, session.metadata.id),
-                metricType = MetricType.SLEEP_DURATION.key,
-                value = asleepSec.toDouble(),
-                timestamp = session.endTime.toEpochMilli(),
-                durationSec = sessionSec,
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-
-            stageReadings + durationReading
-        }
-    }
-
-    private suspend fun fetchSteps(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                StepsRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.map { record ->
-            val durationSec = java.time.Duration.between(
-                record.startTime, record.endTime
-            ).seconds.toInt()
-
-            MetricReading(
-                metricType = MetricType.STEPS.key,
-                value = record.count.toDouble(),
-                timestamp = record.startTime.toEpochMilli(),
-                durationSec = durationSec,
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-        }
-    }
-
-    private suspend fun fetchActiveCalories(
-        start: Instant, end: Instant, sourceId: String
-    ): List<MetricReading> {
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                ActiveCaloriesBurnedRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        )
-        return response.records.map { record ->
-            MetricReading(
-                metricType = MetricType.ACTIVE_CALORIES.key,
-                value = record.energy.inKilocalories,
-                timestamp = record.startTime.toEpochMilli(),
-                sourceId = sourceId,
-                confidence = ConfidenceTier.MEDIUM.level
-            )
-        }
-    }
+    // Per-record reads (1:1 record ⇒ MetricReading, multi-output for HR
+    // samples / skin-temp deltas / sleep stages) live in
+    // [HealthConnectReads] so this file stays under the 500-line ceiling
+    // and each emitted MetricReading carries a stable id derived from the
+    // HC record id — see #312.
 
     // MARK: - Composite event: exercise sessions
 
@@ -379,7 +122,7 @@ class HealthConnectAdapter(private val context: Context) {
             ).seconds.toInt()
 
             val reading = MetricReading(
-                id = UUID.randomUUID().toString(),
+                id = HealthConnectStableIds.forRecord("exercise-session", sourceId, record.metadata.id),
                 metricType = MetricType.EXERCISE_SESSION.key,
                 value = 1.0,
                 timestamp = startMs,
