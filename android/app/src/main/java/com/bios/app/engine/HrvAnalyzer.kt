@@ -26,15 +26,52 @@ object HrvAnalyzer {
     /** Malik threshold: successive IBI change > 20% is artifact. */
     private const val MALIK_THRESHOLD = 0.20
 
+    /**
+     * Median-anchored fractional tolerance — an IBI further than this fraction
+     * from the global median of the physiologically-valid IBIs is rejected.
+     * Slightly wider than the sequential threshold because there is no serial
+     * drift to absorb legitimate respiratory + vasomotor modulation.
+     */
+    private const val MEDIAN_ANCHORED_THRESHOLD = 0.25
+
     /** Minimum clean IBIs required for meaningful HRV. */
     const val MIN_IBIS = 5
 
     /**
+     * Strategy for rejecting artifact IBIs.
+     *
+     * - [SEQUENTIAL_MALIK]: Malik 1996 / HeartPy — each IBI compared to the
+     *   previous *accepted* IBI; reject if successive change > 20 %. Robust on
+     *   clean signals; on low-SNR captures a single missed beat anchors the
+     *   reference forward and pulls the survival rate down.
+     * - [MEDIAN_ANCHORED]: each IBI compared to the global median of the
+     *   physiologically-valid IBIs; reject if it differs by >
+     *   [MEDIAN_ANCHORED_THRESHOLD]. Tolerates single missed beats because the
+     *   median is robust to a small fraction of outliers — survival rate
+     *   stays above 70 % on Pixel-9a-class low-SNR captures where the
+     *   sequential rule loses ~50 % of IBIs.
+     */
+    enum class ArtifactRejection { SEQUENTIAL_MALIK, MEDIAN_ANCHORED }
+
+    /**
      * Full HRV analysis from raw inter-beat intervals (in milliseconds).
      * Returns null if insufficient clean data.
+     *
+     * [rejection] picks the artifact-rejection rule. Default is the historical
+     * sequential Malik filter so devices on the default profile see no
+     * behaviour change; per-device profiles can override this to
+     * [ArtifactRejection.MEDIAN_ANCHORED] on hardware whose adaptive-threshold
+     * peak detector picks up enough false beats that the sequential rule
+     * collapses (Pixel 9a — see [PpgDeviceProfile.artifactRejection]).
      */
-    fun analyze(rawIbisMs: List<Double>): HrvResult? {
-        val clean = rejectArtifacts(rawIbisMs)
+    fun analyze(
+        rawIbisMs: List<Double>,
+        rejection: ArtifactRejection = ArtifactRejection.SEQUENTIAL_MALIK,
+    ): HrvResult? {
+        val clean = when (rejection) {
+            ArtifactRejection.SEQUENTIAL_MALIK -> rejectArtifacts(rawIbisMs)
+            ArtifactRejection.MEDIAN_ANCHORED -> rejectArtifactsMedianAnchored(rawIbisMs)
+        }
         if (clean.size < MIN_IBIS) return null
 
         val rmssd = computeRmssd(clean)
@@ -84,6 +121,33 @@ object HrvAnalyzer {
         }
 
         return clean
+    }
+
+    /**
+     * Median-anchored artifact rejection. Drops physiologically-impossible
+     * IBIs first, then drops any IBI further than [MEDIAN_ANCHORED_THRESHOLD]
+     * from the median of what remains.
+     *
+     * Why: the sequential Malik rule compares each IBI to the *previous*
+     * accepted IBI, so a single missed beat (≈ 2× the true IBI) becomes the
+     * new reference and the next legitimate IBI looks like a 50 % artifact.
+     * On low-SNR captures, that anchoring cascades and rejects half the
+     * series. Anchoring on the global median tolerates the same single
+     * missed beat without losing the rest of the recording.
+     */
+    internal fun rejectArtifactsMedianAnchored(ibis: List<Double>): List<Double> {
+        if (ibis.isEmpty()) return emptyList()
+        val physOk = ibis.filter { it in MIN_IBI_MS..MAX_IBI_MS }
+        if (physOk.isEmpty()) return emptyList()
+        val median = medianOf(physOk)
+        if (median <= 0.0) return emptyList()
+        return physOk.filter { abs(it - median) / median <= MEDIAN_ANCHORED_THRESHOLD }
+    }
+
+    private fun medianOf(values: List<Double>): Double {
+        val sorted = values.sorted()
+        val mid = sorted.size / 2
+        return if (sorted.size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2.0 else sorted[mid]
     }
 
     /**
