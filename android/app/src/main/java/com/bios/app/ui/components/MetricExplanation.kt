@@ -65,5 +65,11 @@ object MetricExplanations {
             whyItVaries = "Schedule, stress, caffeine, alcohol, light exposure, and screen use shift it. Adult guidance is 7–9 hours but personal need varies.",
             howBiosUsesIt = "Bios reports what you slept — not what you should sleep. The Sleep dashboard (tap the card) shows regularity, latency, and efficiency separately.",
         ),
+        MetricType.HEART_RATE_BEFORE_SLEEP to MetricExplanation(
+            title = "Heart rate before sleep",
+            whatItMeasures = "Median beats per minute in the quarter-hour you spent lying quietly before sleep onset. Bios computes it from your continuous heart-rate stream; you can also enter it manually by counting your pulse for 15 seconds and multiplying by four.",
+            whyItVaries = "Alcohol pushes it +5–10 bpm; nicotine +10; a large meal close to bed +10; late caffeine +2–5; stress, anxiety, or rumination +5–25 — the largest single modifier. Fitness, evening room temperature, and how long ago you exercised also shift it.",
+            howBiosUsesIt = "Bios learns your personal nightly range. The number is most informative read alongside the modifiers above — the reading is the instrument, the interpretation is yours.",
+        ),
     )
 }
