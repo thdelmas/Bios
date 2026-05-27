@@ -8,11 +8,13 @@ import kotlin.math.sqrt
  * into inter-beat intervals (IBIs) for [HrvAnalyzer], plus a signal-quality
  * judgement the UI can surface.
  *
- * Pipeline: detrend (remove baseline drift) → smooth (low-pass) → adaptive-
- * threshold peak detection → RR intervals → SQI scoring. Bandpass is
- * approximated by the detrend/smooth pair rather than a Butterworth biquad:
- * the moving-average stack is robust, branchless, and matches what HeartPy
- * uses by default. Upgrade to a proper biquad if field data shows we need
+ * Pipeline: zero-phase Butterworth bandpass [HR_BAND_LOW_HZ, HR_BAND_HIGH_HZ]
+ * → adaptive-threshold peak detection → RR intervals → SQI scoring. The
+ * bandpass replaces an earlier detrend(2s) + smooth(5-sample) moving-average
+ * stack: on low-SNR captures (observed Pixel 9a) the moving-average pair let
+ * baseline drift and motion-burst variance inflate the rolling-std term in the
+ * peak detector, masking real systolic peaks during the recovery window and
+ * producing ~20 % missed beats. A proper Butterworth concentrates energy in
  * sharper rolloff.
  *
  * References:
@@ -31,13 +33,15 @@ object PpgSignalProcessor {
     /** Refractory period between peaks (ms). Physiological floor at ~240 bpm. */
     private const val PEAK_REFRACTORY_MS = 250.0
 
-    /** Detrend window (seconds). Must exceed the slowest expected heartbeat
-     *  period (~1.5 s at 40 bpm) so we subtract baseline drift, not the beat. */
-    private const val DETREND_WINDOW_SEC = 2.0
+    /** Bandpass low cutoff (Hz). 0.7 Hz = 42 bpm — slightly below the slowest
+     *  resting HR we expect, so genuine bradycardia isn't filtered out while
+     *  baseline drift (respiration, vasomotor) is. */
+    private const val HR_BAND_LOW_HZ = 0.7
 
-    /** Smoothing window (samples). Suppresses high-frequency noise without
-     *  blurring the systolic peak. */
-    private const val SMOOTH_WINDOW_SAMPLES = 5
+    /** Bandpass high cutoff (Hz). 3.5 Hz = 210 bpm — well above peak HR; the
+     *  dichrotic-notch second harmonic is still let through so morphology
+     *  analysis (notch position, AIx) still has signal. */
+    private const val HR_BAND_HIGH_HZ = 3.5
 
     /** Peak threshold: local-max must exceed rolling mean + K × rolling std. */
     private const val PEAK_THRESHOLD_K = 0.5
@@ -71,7 +75,14 @@ object PpgSignalProcessor {
      * motion.
      */
     private const val PEAK_AMPLITUDE_TRIM_FRACTION = 0.25
-    private const val MAX_RR_COV = 0.30                 // higher = irregular
+    /**
+     * Default RR-interval coefficient-of-variation cap. Above this, the
+     * processor rejects as IRREGULAR_RHYTHM. Per-device overrides land via
+     * [PpgDeviceProfile.maxRrCov] for hardware whose adaptive-threshold
+     * peak detector jitters RR intervals beyond this on regular rhythms
+     * (low absolute PPG amplitude + small noise peaks the detector accepts).
+     */
+    const val MAX_RR_COV_DEFAULT = 0.30                 // higher = irregular
 
     /**
      * Minimum number of complete beats (foot → peak → foot triples) needed
@@ -119,9 +130,12 @@ object PpgSignalProcessor {
             )
         }
 
-        val detrendWindow = (DETREND_WINDOW_SEC * samplingRateHz).toInt().coerceAtLeast(3)
-        val detrended = detrend(luminanceSamples, detrendWindow)
-        val smoothed = smooth(detrended, SMOOTH_WINDOW_SAMPLES)
+        val smoothed = Bandpass.apply(
+            samples = luminanceSamples.toDoubleArray(),
+            lowHz = HR_BAND_LOW_HZ,
+            highHz = HR_BAND_HIGH_HZ,
+            samplingHz = samplingRateHz,
+        )
 
         val thresholdWindow = (THRESHOLD_WINDOW_SEC * samplingRateHz).toInt().coerceAtLeast(3)
         val refractorySamples = (PEAK_REFRACTORY_MS * samplingRateHz / 1000.0).toInt().coerceAtLeast(1)
@@ -152,7 +166,7 @@ object PpgSignalProcessor {
 
         val rrMs = peakIndices.zipWithNext { a, b -> (b - a) / samplingRateHz * 1000.0 }
         val rrCov = coefficientOfVariation(rrMs)
-        if (rrCov > MAX_RR_COV) {
+        if (rrCov > profile.maxRrCov) {
             return PpgResult.rejected(
                 RejectionReason.IRREGULAR_RHYTHM,
                 durationSec = durationSec,
@@ -162,7 +176,10 @@ object PpgSignalProcessor {
             )
         }
 
-        val sqi = compositeSqi(variance, saturation, peakAmpCov, rrCov, profile.maxPeakAmplitudeCov)
+        val sqi = compositeSqi(
+            variance, saturation, peakAmpCov, rrCov,
+            profile.maxPeakAmplitudeCov, profile.maxRrCov,
+        )
         val features = computeWaveformFeatures(smoothed, peakIndices, samplingRateHz, peakAmpCov)
         return PpgResult(
             rrIntervalsMs = rrMs,
@@ -461,12 +478,13 @@ object PpgSignalProcessor {
         peakAmpCov: Double,
         rrCov: Double,
         maxPeakAmplitudeCov: Double = MAX_PEAK_AMPLITUDE_COV_DEFAULT,
+        maxRrCov: Double = MAX_RR_COV_DEFAULT,
     ): Int {
         // Each term 0..1 (1 = perfect); combine by geometric mean, rescale to 100.
         val varianceTerm = (variance / 50.0).coerceIn(0.0, 1.0)
         val saturationTerm = (1.0 - saturationRatio / MAX_SATURATION_RATIO).coerceIn(0.0, 1.0)
         val ampTerm = (1.0 - peakAmpCov / maxPeakAmplitudeCov).coerceIn(0.0, 1.0)
-        val rrTerm = (1.0 - rrCov / MAX_RR_COV).coerceIn(0.0, 1.0)
+        val rrTerm = (1.0 - rrCov / maxRrCov).coerceIn(0.0, 1.0)
         val geomMean = (varianceTerm * saturationTerm * ampTerm * rrTerm)
         return (sqrt(sqrt(geomMean)) * 100.0).toInt().coerceIn(0, 100)
     }

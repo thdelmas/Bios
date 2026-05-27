@@ -48,8 +48,14 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
         /** Mean Y above this means room light is reaching the sensor. */
         const val FINGER_OFF_BRIGHT_MEAN = 200.0
 
-        /** Variance below this means there's no PPG modulation at all. */
-        const val FINGER_OFF_MIN_VARIANCE = 0.5
+        /**
+         * Eyeball-tuned variance floor used as the fallback when a device
+         * has no [PpgDeviceProfile] override. Below this the windowed signal
+         * has no PPG modulation at all. Per-device overrides land via
+         * [PpgDeviceProfile.fingerOffMinVariance] for hardware where the
+         * legitimate PPG amplitude is smaller than the default tolerates.
+         */
+        const val FINGER_OFF_MIN_VARIANCE_DEFAULT = 0.5
 
         /**
          * Default motion threshold on the *median* frame-to-frame Y
@@ -90,7 +96,7 @@ enum class CaptureQuality(val message: String, val isGood: Boolean) {
             if (mean > FINGER_OFF_BRIGHT_MEAN) return FINGER_OFF
 
             val variance = window.sumOf { (it - mean) * (it - mean) } / window.size
-            if (variance < FINGER_OFF_MIN_VARIANCE) return FINGER_OFF
+            if (variance < profile.fingerOffMinVariance) return FINGER_OFF
 
             val recentSpan =
                 (samplingRateHz * MOTION_WINDOW_SEC).toInt().coerceAtLeast(5)
