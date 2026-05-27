@@ -57,6 +57,7 @@ internal object HealthConnectBodyComposition {
         ReadRecordsRequest(WeightRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end))
     ).records.map { record ->
         MetricReading(
+            id = HealthConnectStableIds.forRecord("body-mass", sourceId, record.metadata.id),
             metricType = MetricType.BODY_MASS.key,
             value = record.weight.inKilograms,
             timestamp = record.time.toEpochMilli(),
@@ -71,6 +72,7 @@ internal object HealthConnectBodyComposition {
         ReadRecordsRequest(BodyFatRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end))
     ).records.map { record ->
         MetricReading(
+            id = HealthConnectStableIds.forRecord("body-fat", sourceId, record.metadata.id),
             metricType = MetricType.BODY_FAT_PCT.key,
             // HC reports body fat as a percentage (0–100), confusingly via
             // a `Percentage` type — `.value` is the 0–100 number, matching
@@ -88,6 +90,7 @@ internal object HealthConnectBodyComposition {
         ReadRecordsRequest(LeanBodyMassRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end))
     ).records.map { record ->
         MetricReading(
+            id = HealthConnectStableIds.forRecord("lean-mass", sourceId, record.metadata.id),
             metricType = MetricType.LEAN_MASS.key,
             value = record.mass.inKilograms,
             timestamp = record.time.toEpochMilli(),
