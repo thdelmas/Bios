@@ -266,6 +266,34 @@ class MetricTypeKeysSnapshotTest {
         "cough_frequency_self_rating",
         "sputum_self_rating",
         "breath_ease_self_rating",
+        // HRBS (#309)
+        "heart_rate_before_sleep",
+        // Snapshot back-fill for keys that landed without updating the
+        // snapshot in their original PR — the bios-contracts test target
+        // is not invoked by the project's code-quality script, so the
+        // drift accumulated silently. These are all already shipped via
+        // their landing PRs.
+        "rbd_event_flag",
+        "rem_movement_index",
+        "tremor_amplitude_g",
+        "tremor_frequency_hz",
+        "crp",                          // #354
+        "d_dimer",                      // #339
+        "reverse_t3",                   // #339
+        "omega_3_index",                // #339
+        "leptin",                       // #339
+        "adiponectin",                  // #339
+        "prothrombin_time",             // #352
+        "inr",                          // #352
+        "quick_index",                  // #352
+        "aptt",                         // #352
+        "aptt_ratio",                   // #352
+        "absolute_lymphocyte_count",    // #353
+        "absolute_monocyte_count",      // #353
+        "absolute_eosinophil_count",    // #353
+        "absolute_basophil_count",      // #353
+        "gait_variability_cov",
+        "typing_speed_char_per_min",
     )
 
     @Test

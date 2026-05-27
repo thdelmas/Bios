@@ -192,7 +192,8 @@ The canonical string keys Bios stores and accepts. All are lowercase with
 underscores, case-sensitive.
 
 **Cardiovascular**: `heart_rate`, `heart_rate_variability`, `resting_heart_rate`,
-`blood_pressure_systolic`, `blood_pressure_diastolic`, `blood_oxygen`
+`heart_rate_before_sleep`, `blood_pressure_systolic`, `blood_pressure_diastolic`,
+`blood_oxygen`
 
 **Respiratory**: `respiratory_rate`
 
