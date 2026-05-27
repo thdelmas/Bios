@@ -2,6 +2,7 @@ package com.bios.app.ingest
 
 import com.bios.app.data.BiosDatabase
 import com.bios.app.engine.CircadianEngine
+import com.bios.app.engine.HrbsEngine
 import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.GlucoseVariability
 import com.bios.app.engine.HrRecoveryPersister
@@ -53,7 +54,7 @@ class IngestManager(
     private val sourceDao = db.dataSourceDao()
     private val payloadDao = db.eventPayloadFieldDao()
     private val toggleDao = db.sourceMetricToggleDao()
-    private val circadianEngine = CircadianEngine(readingDao)
+    private val circadianEngine = CircadianEngine(readingDao); private val hrbsEngine = HrbsEngine(readingDao)
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
     val lastSyncTime: StateFlow<Long?> = _lastSyncTime
@@ -247,6 +248,7 @@ class IngestManager(
             }
 
             circadianEngine.derive()?.let { readingDao.insert(it) }
+            hrbsEngine.derive()?.let { readingDao.insert(it) }
             HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
             RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 14)
             _lastSyncTime.value = System.currentTimeMillis()
@@ -311,6 +313,7 @@ class IngestManager(
             // preconditions aren't met (e.g. <4 days of sleep history),
             // so this block is safe to call on every sync.
             circadianEngine.derive()?.let { readingDao.insert(it) }
+            hrbsEngine.derive()?.let { readingDao.insert(it) }
             HrGapTibBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)
             SleepDerivationsBackfill(readingDao).runForLookback(lookbackDays = 30)
             RestingHeartRateBackfill(readingDao, sourceDao).runForLookback(lookbackDays = 30)

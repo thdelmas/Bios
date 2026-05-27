@@ -40,6 +40,7 @@ Applied:
 | `tobacco_use`, `fall_event`, etc. | discrete user actions | **companion** | requires tap-to-log / fall-detection surface |
 | `reaction_time_ms` | active test result | **Fil / W2F** | requires active-test surface |
 | `circadian_phase_shift` | sleep-onset times | **Bios** | inputs are canonical (sleep timing from 9 adapters); no companion-specific surface |
+| `heart_rate_before_sleep` | HR stream + sleep onset | **Bios** | inputs are canonical; consumed read-only by Smokeless (substance modifiers), W2F (stress correlate), SoulRadio (parasympathetic before/after), Fil (autonomic surveillance) — see #309 |
 | `sleep_duration` from screen-off | long quiet screen-off windows | **W2F** (LOW confidence) | UsageStatsTracker / screen-off is W2F's unique surface; Bios accepts the write via companion URI |
 | `sleep_duration` from phone sensors | accel + screen-off + charging + ambient-light fusion | **Bios** (MEDIUM confidence) | universal-infrastructure: every phone has these sensors; not domain-specific |
 | `cognitive_speed` (planned) | TBD | **decide at landing** | if active test output → Fil; if composite over canonical inputs → Bios |

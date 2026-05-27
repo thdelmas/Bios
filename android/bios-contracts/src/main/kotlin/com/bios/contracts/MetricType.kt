@@ -43,7 +43,7 @@ enum class MetricType(
     HRV_LF_POWER("hrv_lf_power", MetricUnit.MS_SQUARED, MetricDomain.CARDIOVASCULAR),
     HRV_HF_POWER("hrv_hf_power", MetricUnit.MS_SQUARED, MetricDomain.CARDIOVASCULAR),
     VO2_MAX("vo2_max", MetricUnit.ML_PER_KG_MIN, MetricDomain.CARDIOVASCULAR),
-    RESTING_HEART_RATE("resting_heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
+    RESTING_HEART_RATE("resting_heart_rate", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true), HEART_RATE_BEFORE_SLEEP("heart_rate_before_sleep", MetricUnit.BPM, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true), // #309 HRBS — median bpm in the N-min window preceding sleep onset; Bios-owned, companion-read
     BLOOD_PRESSURE_SYSTOLIC("blood_pressure_systolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
