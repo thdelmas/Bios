@@ -258,10 +258,12 @@ class HealthConnectAdapter(private val context: Context) {
                     stage.startTime, stage.endTime
                 ).seconds.toInt()
 
+                val stageStartMs = stage.startTime.toEpochMilli()
                 MetricReading(
+                    id = HealthConnectStableIds.forSubRecord("sleep-stage", sourceId, session.metadata.id, stageStartMs),
                     metricType = MetricType.SLEEP_STAGE.key,
                     value = biosStage.value.toDouble(),
-                    timestamp = stage.startTime.toEpochMilli(),
+                    timestamp = stageStartMs,
                     durationSec = durationSec,
                     sourceId = sourceId,
                     confidence = ConfidenceTier.MEDIUM.level
@@ -279,6 +281,7 @@ class HealthConnectAdapter(private val context: Context) {
             val asleepSec = (sessionSec - awakeSec).coerceAtLeast(0)
 
             val durationReading = MetricReading(
+                id = HealthConnectStableIds.forRecord("sleep-duration", sourceId, session.metadata.id),
                 metricType = MetricType.SLEEP_DURATION.key,
                 value = asleepSec.toDouble(),
                 timestamp = session.endTime.toEpochMilli(),
