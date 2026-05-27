@@ -79,6 +79,7 @@ fun BiosRoot(viewModel: AppViewModel = viewModel()) {
     }
 
     MaybeRequestActivityRecognition(hasPermissions)
+    MaybeRequestPostNotifications(hasPermissions)
 
     // Check permissions on first composition
     LaunchedEffect(Unit) {
