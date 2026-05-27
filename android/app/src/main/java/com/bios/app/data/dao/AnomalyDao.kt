@@ -54,4 +54,7 @@ interface AnomalyDao {
 
     @Query("DELETE FROM anomalies")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM anomalies WHERE detectedAt >= :afterMillis")
+    suspend fun deleteAfter(afterMillis: Long): Int
 }
