@@ -178,6 +178,76 @@ class HrvAnalyzerTest {
         assertEquals(0.0, HrvAnalyzer.computeStressIndex(emptyList()), 0.0)
     }
 
+    // -- Median-anchored artifact rejection (#367) --
+
+    @Test
+    fun `median-anchored filter keeps clean IBIs`() {
+        val ibis = listOf(800.0, 810.0, 795.0, 820.0, 805.0)
+        val clean = HrvAnalyzer.rejectArtifactsMedianAnchored(ibis)
+        assertEquals(5, clean.size)
+    }
+
+    @Test
+    fun `median-anchored survives initial outlier where sequential collapses`() {
+        // The sequential Malik filter accepts the first IBI unconditionally
+        // (no predecessor to compare against). If that first IBI is an
+        // AE-convergence artifact (short, ~350 ms), the rule anchors on it
+        // and rejects every subsequent legitimate ~800 ms IBI as a > 100 %
+        // change. The median-anchored rule rejects the artifact itself
+        // because the global median is robust to a single outlier.
+        val ibis = listOf(350.0, 800.0, 810.0, 795.0, 805.0, 815.0, 800.0, 790.0)
+        val sequential = HrvAnalyzer.rejectArtifacts(ibis)
+        val medianAnchored = HrvAnalyzer.rejectArtifactsMedianAnchored(ibis)
+        // Sequential anchors on 350 and rejects everything after.
+        assertEquals("sequential anchors on the first-IBI artifact", 1, sequential.size)
+        assertEquals(350.0, sequential.first(), 0.01)
+        // Median-anchored rejects only the 350 ms outlier.
+        assertEquals(7, medianAnchored.size)
+        assertFalse("artifact must be rejected", medianAnchored.contains(350.0))
+    }
+
+    @Test
+    fun `median-anchored drops physiologically impossible IBIs`() {
+        val ibis = listOf(800.0, 200.0, 810.0, 3000.0, 805.0)
+        val clean = HrvAnalyzer.rejectArtifactsMedianAnchored(ibis)
+        assertEquals(3, clean.size)
+        assertFalse(clean.contains(200.0))
+        assertFalse(clean.contains(3000.0))
+    }
+
+    @Test
+    fun `analyze with median-anchored strategy uses the median-anchored filter`() {
+        // Same first-IBI artifact scenario — sequential anchors on the
+        // outlier and analyse() returns null (too few clean IBIs survive);
+        // median-anchored produces a usable result.
+        val ibis = listOf(350.0, 800.0, 810.0, 795.0, 805.0, 815.0, 800.0, 790.0)
+        val viaSequential = HrvAnalyzer.analyze(
+            ibis, HrvAnalyzer.ArtifactRejection.SEQUENTIAL_MALIK
+        )
+        val viaMedian = HrvAnalyzer.analyze(
+            ibis, HrvAnalyzer.ArtifactRejection.MEDIAN_ANCHORED
+        )
+        assertNull("sequential anchors on the outlier and yields too few IBIs", viaSequential)
+        assertNotNull(viaMedian)
+        assertTrue(
+            "median-anchored should keep 7 of 8 IBIs (cleanIbiCount=${viaMedian!!.cleanIbiCount})",
+            viaMedian.cleanIbiCount == 7,
+        )
+    }
+
+    @Test
+    fun `analyze default rejection is sequential Malik (backwards compatible)`() {
+        // The historical default — devices on PpgDeviceProfiles.DEFAULT must
+        // see no behaviour change relative to pre-#367 builds.
+        val ibis = listOf(800.0, 815.0, 795.0, 810.0, 805.0, 820.0, 790.0)
+        val defaulted = HrvAnalyzer.analyze(ibis)!!
+        val explicit = HrvAnalyzer.analyze(
+            ibis, HrvAnalyzer.ArtifactRejection.SEQUENTIAL_MALIK
+        )!!
+        assertEquals(explicit.cleanIbiCount, defaulted.cleanIbiCount)
+        assertEquals(explicit.meanIbiMs, defaulted.meanIbiMs, 1e-9)
+    }
+
     @Test
     fun `analyze populates stressIndex consistent with direct call`() {
         val ibis = listOf(800.0, 815.0, 795.0, 810.0, 805.0, 820.0, 790.0)

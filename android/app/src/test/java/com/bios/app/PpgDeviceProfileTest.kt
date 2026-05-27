@@ -1,6 +1,7 @@
 package com.bios.app
 
 import com.bios.app.engine.CaptureQuality
+import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgDeviceProfile
 import com.bios.app.engine.PpgDeviceProfiles
 import com.bios.app.engine.PpgSignalProcessor
@@ -36,6 +37,29 @@ class PpgDeviceProfileTest {
             PpgSignalProcessor.MAX_PEAK_AMPLITUDE_COV_DEFAULT,
             PpgDeviceProfiles.DEFAULT.maxPeakAmplitudeCov,
             1e-9,
+        )
+        assertEquals(
+            PpgSignalProcessor.PEAK_THRESHOLD_K_DEFAULT,
+            PpgDeviceProfiles.DEFAULT.peakThresholdK,
+            1e-9,
+        )
+        assertEquals(
+            HrvAnalyzer.ArtifactRejection.SEQUENTIAL_MALIK,
+            PpgDeviceProfiles.DEFAULT.artifactRejection,
+        )
+    }
+
+    @Test
+    fun pixel_9a_profile_uses_tighter_peak_threshold_and_median_anchored_rejection() {
+        // #367 — Pixel-9a-class low-SNR captures need a stricter
+        // peak-detector bar (K > default) and a robust artifact filter
+        // (median-anchored, not sequential Malik) to keep Malik survival
+        // above 70 % on calm 60 s captures.
+        val profile = PpgDeviceProfiles.forDevice("Pixel 9a")
+        assertEquals(1.0, profile.peakThresholdK, 1e-9)
+        assertEquals(
+            HrvAnalyzer.ArtifactRejection.MEDIAN_ANCHORED,
+            profile.artifactRejection,
         )
     }
 

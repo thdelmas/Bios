@@ -1,5 +1,7 @@
 package com.bios.app
 
+import com.bios.app.engine.PpgDeviceProfile
+import com.bios.app.engine.PpgDeviceProfiles
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
@@ -139,6 +141,31 @@ class PpgSignalProcessorTest {
         val constant = DoubleArray(50) { 7.0 }
         val smoothed = PpgSignalProcessor.smooth(constant, windowSamples = 5)
         smoothed.forEach { assertEquals(7.0, it, 0.001) }
+    }
+
+    // -- Per-device peak threshold K (#367) --
+
+    @Test
+    fun `extract honours per-device peakThresholdK`() {
+        // The detector accepts a local max when value > mean + K × std.
+        // On a clean sinusoid std ≈ amplitude/√2, so a sufficiently high K
+        // pushes the threshold above every legitimate peak. Verify that
+        // a profile override actually reaches the detector by comparing
+        // peak counts at default vs extreme K on the same input.
+        val clean = sinusoid(bpm = 60.0, durationSec = 60.0)
+
+        val viaDefault = PpgSignalProcessor.extract(clean, fs, PpgDeviceProfiles.DEFAULT)
+        val strict = PpgDeviceProfiles.DEFAULT.copy(peakThresholdK = 10.0)
+        val viaStrict = PpgSignalProcessor.extract(clean, fs, strict)
+
+        assertTrue(
+            "default K must accept a clean 60 bpm sinusoid: ${viaDefault.rejectionReason}",
+            viaDefault.accepted,
+        )
+        assertTrue(
+            "extreme K must starve the detector (got peaks=${viaStrict.peakCount})",
+            viaStrict.peakCount < viaDefault.peakCount,
+        )
     }
 
     @Test
