@@ -189,6 +189,9 @@ interface MetricReadingDao {
     @Query("DELETE FROM metric_readings WHERE timestamp < :beforeMillis")
     suspend fun deleteBefore(beforeMillis: Long): Int
 
+    @Query("DELETE FROM metric_readings WHERE timestamp >= :afterMillis")
+    suspend fun deleteAfter(afterMillis: Long): Int
+
     /**
      * Delete a single reading by id. Used by the headache / migraine
      * entry repos (#283 Cut 2) so an entity-table delete also clears
