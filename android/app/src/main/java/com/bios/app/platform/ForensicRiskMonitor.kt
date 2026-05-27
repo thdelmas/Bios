@@ -3,6 +3,8 @@ package com.bios.app.platform
 import android.content.Context
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
+import com.bios.app.data.dao.AnomalyDao
+import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.ingest.SyncWorker
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -58,32 +60,32 @@ class ForensicRiskMonitor(
     }
 
     /**
-     * Delete readings newer than the given cutoff, keeping baselines intact.
-     * This lets the owner reduce their footprint without losing long-term trends.
+     * Delete readings (and anomalies) from the last [days] days, keeping
+     * older data so baselines and long-term trends survive. Inverse of
+     * retention pruning: it removes the newest window, not the oldest.
      */
-    suspend fun wipeRecentData(days: Int) {
-        val cutoff = Instant.now().minus(days.toLong(), ChronoUnit.DAYS).toEpochMilli()
-        // Delete readings from the recent period (keep older data for baselines)
-        // This is the inverse of retention pruning: it removes the newest N days
-        val now = System.currentTimeMillis()
-        db.metricReadingDao().deleteBefore(now) // This deletes everything
-        // Re-approach: we need readings BEFORE cutoff to survive
-        // The DAO only has deleteBefore, so we use it differently
-    }
+    suspend fun wipeRecentData(days: Int) =
+        wipeRecentWindow(days, db.metricReadingDao(), db.anomalyDao())
 
-    /**
-     * Delete all readings from the last N days.
-     */
-    suspend fun quickWipe(days: Int) {
-        val cutoffMillis = System.currentTimeMillis() - (days.toLong() * 24 * 3600 * 1000)
-        // We need a "deleteAfter" query — add to DAO
-        // For now, this is a selective delete using the reading DAO
-        val allReadings = db.metricReadingDao().countAll()
-        if (allReadings > 0) {
-            // Delete anomalies from the wipe period too
-            db.anomalyDao().deleteAll() // Simplified — in production, filter by date
-        }
-    }
+    /** Owner-facing alias retained for the privacy-dashboard call site. */
+    suspend fun quickWipe(days: Int) = wipeRecentData(days)
+}
+
+/**
+ * DAO-only wipe so the seed/wipe/survive contract from #313 can be exercised
+ * without spinning up Room. Tests inject fake DAOs and a fixed [nowMillis].
+ */
+internal suspend fun wipeRecentWindow(
+    days: Int,
+    readings: MetricReadingDao,
+    anomalies: AnomalyDao,
+    nowMillis: Long = Instant.now().toEpochMilli(),
+) {
+    val cutoff = Instant.ofEpochMilli(nowMillis)
+        .minus(days.toLong(), ChronoUnit.DAYS)
+        .toEpochMilli()
+    readings.deleteAfter(cutoff)
+    anomalies.deleteAfter(cutoff)
 }
 
 data class DataFootprint(
