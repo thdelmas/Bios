@@ -165,4 +165,36 @@ internal val universalBiomarkerBands: Map<MetricType, BiomarkerBands> = mapOf(
     // AMC and ABC (#353) — no universal alarm threshold; reference range
     // depends on whether the lab reports as part of a 5-cell or 6-cell
     // differential. Banded as reference-range descriptive only.
+
+    // -- Wave 6 expansion (#339) --
+    // Alkaline phosphatase (U/L): adult universal upper ~120 U/L; >250 is
+    // the marked cholestatic / Paget tier worth prompt evaluation.
+    // (AASLD 2017; Newton 2011 — cholestatic injury workup)
+    MetricType.ALKALINE_PHOSPHATASE to BiomarkerBands(
+        normalCeiling = 120.0, borderlineCeiling = 250.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // Lipoprotein(a) (nmol/L): <75 desirable, 75–125 borderline, ≥125 high
+    // — independent ASCVD risk. (ESC 2019 dyslipidaemia guideline §6.4;
+    // NLA 2019 — Wilson et al.)
+    MetricType.LIPOPROTEIN_A to BiomarkerBands(
+        normalCeiling = 75.0, borderlineCeiling = 125.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // D-dimer (ng/mL FEU): <500 negative VTE rule-out; 500–2000 elevated;
+    // ≥2000 marked. Age-adjusted rule (age × 10 above 50 y) is a separate
+    // localization concern and not modeled here. (Wells 2003; ESC 2019 PE)
+    MetricType.D_DIMER to BiomarkerBands(
+        normalCeiling = 500.0, borderlineCeiling = 2000.0,
+        concerningDirection = BandDirection.ABOVE,
+    ),
+    // Omega-3 index (%): <4 high cardiovascular risk, 4–8 intermediate,
+    // ≥8 protective. INVERSE direction. (Harris & von Schacky 2004)
+    MetricType.OMEGA_3_INDEX to BiomarkerBands(
+        normalCeiling = 4.0, borderlineCeiling = 8.0,
+        concerningDirection = BandDirection.BELOW,
+    ),
+    // Reverse T3 / leptin / adiponectin (#339): population-dependent
+    // reference ranges (sex, age, BMI for leptin; assay-vendor for rT3);
+    // descriptive-only display until the data shape settles per issue scope.
 )

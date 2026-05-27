@@ -127,6 +127,12 @@ internal fun loincCode(metricType: MetricType): Pair<String, String>? = when (me
     MetricType.ABSOLUTE_MONOCYTE_COUNT -> "742-7" to "Monocytes [#/volume] in Blood by Automated count"
     MetricType.ABSOLUTE_EOSINOPHIL_COUNT -> "711-2" to "Eosinophils [#/volume] in Blood by Automated count"
     MetricType.ABSOLUTE_BASOPHIL_COUNT -> "704-7" to "Basophils [#/volume] in Blood by Automated count"
+    // Wave 6 biomarker expansion (#339).
+    MetricType.D_DIMER -> "48065-7" to "Fibrin D-dimer FEU [Mass/volume] in Platelet poor plasma"
+    MetricType.REVERSE_T3 -> "32261-0" to "Triiodothyronine.reverse [Mass/volume] in Serum or Plasma"
+    MetricType.OMEGA_3_INDEX -> "89028-2" to "Omega-3 index in Erythrocytes"
+    MetricType.LEPTIN -> "32413-7" to "Leptin [Mass/volume] in Serum or Plasma"
+    MetricType.ADIPONECTIN -> "30516-9" to "Adiponectin [Mass/volume] in Serum or Plasma"
     else -> null
 }
 

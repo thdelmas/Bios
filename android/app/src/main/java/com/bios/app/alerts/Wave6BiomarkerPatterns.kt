@@ -123,6 +123,12 @@ object Wave6BiomarkerPatterns {
                 absoluteAbove = 120.0,
             ),
             SignalRule(
+                MetricType.ALKALINE_PHOSPHATASE, DeviationDirection.ABOVE, 0.0, 0, 0.8,
+                ThresholdSource.LITERATURE,
+                "AASLD 2017 — ALP >120 U/L corroborates cholestatic injury; GGT + ALP both elevated localises the cholestasis to the hepatobiliary axis vs the bone-turnover ALP source",
+                absoluteAbove = 120.0,
+            ),
+            SignalRule(
                 MetricType.BILIRUBIN_TOTAL, DeviationDirection.ABOVE, 0.0, 0, 0.8,
                 ThresholdSource.LITERATURE,
                 "AASLD 2021 — total bilirubin >2.0 mg/dL (≈ 35 µmol/L) indicates impaired conjugation / cholestasis and elevates the urgency of the workup",
@@ -137,7 +143,7 @@ object Wave6BiomarkerPatterns {
         ),
         // The anchor (ALT) is required, so any single corroborator suffices.
         minActiveSignals = 2,
-        explanation = "The most recent ALT reading sits above 3× the upper reference range (>100 U/L) — the AASLD 2021 marked-hepatocellular-injury threshold. At least one corroborating signal has appeared: parallel AST elevation, GGT elevation, bilirubin elevation, or albumin drop. The differential at this tier is broader than for the mild-elevation NAFLD screen and includes drug-induced injury, viral hepatitis, autoimmune hepatitis, and ischaemic injury.",
+        explanation = "The most recent ALT reading sits above 3× the upper reference range (>100 U/L) — the AASLD 2021 marked-hepatocellular-injury threshold. At least one corroborating signal has appeared: parallel AST elevation, GGT elevation, ALP elevation, bilirubin elevation, or albumin drop. The differential at this tier is broader than for the mild-elevation NAFLD screen and includes drug-induced injury, viral hepatitis, autoimmune hepatitis, ischaemic injury, and cholestatic patterns when ALP / GGT co-elevate.",
         suggestedAction = "Discuss the hepatic panel with a healthcare provider promptly. AASLD 2021 recommends evaluation of common reversible causes (medications, alcohol, supplements) and viral / autoimmune workup at this tier. The lab values and trends from Bios are useful to share alongside the original lab report.",
         references = listOf(
             "Kwo PY et al. (AASLD 2017, updated 2021) — ACG Clinical Guideline: Evaluation of Abnormal Liver Chemistries",

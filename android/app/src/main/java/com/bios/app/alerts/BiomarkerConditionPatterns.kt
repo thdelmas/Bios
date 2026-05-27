@@ -148,15 +148,22 @@ object BiomarkerConditionPatterns {
                 "Sniderman et al. 2019 — ApoB ≥120 mg/dL is the atherogenic-particle-count threshold",
                 absoluteAbove = 120.0,
             ),
+            SignalRule(
+                MetricType.LIPOPROTEIN_A, DeviationDirection.ABOVE, 0.0, 0, 0.8,
+                ThresholdSource.LITERATURE,
+                "ESC 2019 / NLA 2019 — Lp(a) ≥125 nmol/L is the independent ASCVD-risk tier; corroborates the dyslipidemia pattern when elevated",
+                absoluteAbove = 125.0,
+            ),
         ),
         minActiveSignals = 2,
-        explanation = "The most recent LDL reading sits at or above 160 mg/dL while at least one corroborating lipid marker — low HDL, high triglycerides, or high ApoB — is also out of range. NCEP and recent ApoB literature treat this multi-marker combination as the dyslipidemia pattern most predictive of atherosclerotic cardiovascular risk.",
-        suggestedAction = "Discuss the lipid panel with a healthcare provider. The LDL, HDL, triglyceride, and ApoB values from Bios are all useful to share alongside the original lab report.",
+        explanation = "The most recent LDL reading sits at or above 160 mg/dL while at least one corroborating lipid marker — low HDL, high triglycerides, high ApoB, or elevated Lp(a) — is also out of range. NCEP, ApoB and Lp(a) literature treat this multi-marker combination as the dyslipidemia pattern most predictive of atherosclerotic cardiovascular risk.",
+        suggestedAction = "Discuss the lipid panel with a healthcare provider. The LDL, HDL, triglyceride, ApoB and Lp(a) values from Bios are all useful to share alongside the original lab report.",
         references = listOf(
             "NCEP ATP III (2002) — Detection, Evaluation, and Treatment of High Blood Cholesterol in Adults",
             "Sniderman AD et al. (2019) — Apolipoprotein B particles and cardiovascular disease",
+            "Mach F et al. (2019) — ESC/EAS Guidelines for the management of dyslipidaemias (Lp(a) §6.4)",
         ),
-        earlyDetection = "An isolated LDL elevation can have transient causes (diet, weight cycling). Multi-marker confirmation across the lipid panel narrows the signal to durable dyslipidemia worth investigating.",
+        earlyDetection = "An isolated LDL elevation can have transient causes (diet, weight cycling). Multi-marker confirmation across the lipid panel — including Lp(a), which is largely genetically determined and adds independent risk — narrows the signal to durable dyslipidemia worth investigating.",
     )
 
     /**

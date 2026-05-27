@@ -86,6 +86,13 @@ class BiomarkerEntrySelectorsTest {
             MetricType.ABSOLUTE_BASOPHIL_COUNT,
             // Standard CRP (#354) — distinct from HSCRP.
             MetricType.CRP,
+            // Wave 6 expansion (#339) — D-dimer, reverse T3, omega-3 index,
+            // leptin, adiponectin. ALP and Lp(a) ride in the Wave-1 block above.
+            MetricType.D_DIMER,
+            MetricType.REVERSE_T3,
+            MetricType.OMEGA_3_INDEX,
+            MetricType.LEPTIN,
+            MetricType.ADIPONECTIN,
             // Epigenetic age clocks (slow-rolling, lab-imported).
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,

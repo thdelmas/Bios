@@ -199,6 +199,9 @@ class BiomarkerBandsTest {
             MetricType.ABSOLUTE_LYMPHOCYTE_COUNT,
             MetricType.ABSOLUTE_EOSINOPHIL_COUNT,
             MetricType.CRP,
+            // #339 — Wave 6 expansion: universal-band biomarkers
+            MetricType.ALKALINE_PHOSPHATASE, MetricType.LIPOPROTEIN_A,
+            MetricType.D_DIMER, MetricType.OMEGA_3_INDEX,
         )
         for (regionCode in RegionConfigProvider.supportedRegions()) {
             val bands = RegionConfigProvider.forRegion(regionCode).clinicalThresholds.biomarkerBands
@@ -425,5 +428,56 @@ class BiomarkerBandsTest {
         // ≥150 = normal range
         assertEquals(BiomarkerBand.NORMAL, plt.classify(150.0))
         assertEquals(BiomarkerBand.NORMAL, plt.classify(300.0))
+    }
+
+    // -- Wave 6 expansion thresholds (#339) --
+
+    @Test
+    fun alp_bands_match_AASLD_cholestatic_thresholds() {
+        // AASLD 2017 — ALP universal upper ~120 U/L; >250 marked cholestatic / Paget tier.
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.ALKALINE_PHOSPHATASE]!!
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(100.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(120.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(249.999))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(250.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(800.0))
+    }
+
+    @Test
+    fun lpa_bands_match_ESC_2019_ASCVD_thresholds() {
+        // ESC 2019 / NLA 2019 — <75 desirable, 75–125 borderline, ≥125 high ASCVD risk.
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.LIPOPROTEIN_A]!!
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(50.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(75.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(124.999))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(125.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(500.0))
+    }
+
+    @Test
+    fun d_dimer_bands_match_VTE_ruleout_thresholds() {
+        // Wells 2003 / ESC 2019 PE — <500 negative VTE rule-out; ≥2000 marked.
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.D_DIMER]!!
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(250.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(500.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(1999.999))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(2000.0))
+    }
+
+    @Test
+    fun omega_3_index_bands_match_Harris_cardiometabolic_thresholds_BELOW_direction() {
+        // Harris & von Schacky 2004 — <4% high cardiovascular risk, ≥8% protective.
+        // INVERSE direction: low values are the concern.
+        val bands = RegionConfigProvider.forRegion("US")
+            .clinicalThresholds.biomarkerBands[MetricType.OMEGA_3_INDEX]!!
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(2.0))
+        assertEquals(BiomarkerBand.CONCERNING, bands.classify(3.999))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(4.0))
+        assertEquals(BiomarkerBand.BORDERLINE, bands.classify(7.999))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(8.0))
+        assertEquals(BiomarkerBand.NORMAL, bands.classify(12.0))
     }
 }

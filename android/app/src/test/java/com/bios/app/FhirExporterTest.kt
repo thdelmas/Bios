@@ -116,11 +116,12 @@ class FhirExporterTest {
         // 32 base + 5 wave-5 biomarkers (#158) + AHI (#157) + 47 Wave-1
         // (audit §3.1) + 8 Wave-2 (audit §3.2 — telomere/bone-T/vit K2
         // intentionally unmapped) + 5 coagulation (#352) + 4 absolute
-        // leukocyte differential (#353) + 1 standard CRP (#354) = 103.
-        // The count assertion is maintained alongside the loincCode() table
-        // so any unmapped new MetricType is caught.
+        // leukocyte differential (#353) + 1 standard CRP (#354) + 5 Wave-6
+        // (#339 — D-dimer, reverse T3, omega-3 index, leptin, adiponectin)
+        // = 108. The count assertion is maintained alongside the
+        // loincCode() table so any unmapped new MetricType is caught.
         val mapped = MetricType.entries.count { loincCode(it) != null }
-        assertEquals(103, mapped)
+        assertEquals(108, mapped)
     }
 
     @Test
@@ -372,4 +373,36 @@ class FhirExporterTest {
         )
     }
 
+    // -- Wave 6 biomarker LOINC codes (#339) --
+
+    @Test
+    fun `D-dimer maps to LOINC 48065-7 FEU`() {
+        val (code, display) = loincCode(MetricType.D_DIMER)!!
+        assertEquals("48065-7", code)
+        assertTrue("display should mark FEU convention: $display", display.contains("FEU"))
+    }
+
+    @Test
+    fun `reverse T3 maps to LOINC 32261-0`() {
+        val (code, _) = loincCode(MetricType.REVERSE_T3)!!
+        assertEquals("32261-0", code)
+    }
+
+    @Test
+    fun `omega-3 index maps to LOINC 89028-2`() {
+        val (code, _) = loincCode(MetricType.OMEGA_3_INDEX)!!
+        assertEquals("89028-2", code)
+    }
+
+    @Test
+    fun `leptin maps to LOINC 32413-7`() {
+        val (code, _) = loincCode(MetricType.LEPTIN)!!
+        assertEquals("32413-7", code)
+    }
+
+    @Test
+    fun `adiponectin maps to LOINC 30516-9`() {
+        val (code, _) = loincCode(MetricType.ADIPONECTIN)!!
+        assertEquals("30516-9", code)
+    }
 }
