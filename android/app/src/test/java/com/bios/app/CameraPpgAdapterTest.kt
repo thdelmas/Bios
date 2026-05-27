@@ -5,6 +5,7 @@ import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PulseWaveformFeatures
 import com.bios.app.engine.RejectionReason
 import com.bios.app.ingest.CameraPpgAdapter
+import com.bios.app.ingest.ImagePlaneStats
 import com.bios.app.model.ConfidenceTier
 import com.bios.contracts.MetricType
 import org.junit.Assert.*
@@ -54,7 +55,10 @@ class CameraPpgAdapterTest {
         assertEquals(7, result.readings.size)
 
         val hr = result.readings.single { it.metricType == MetricType.HEART_RATE.key }
-        assertEquals(73.6, hr.value, 0.01)
+        // HR comes from peakCount/durationSec, not the Malik-cleaned IBI mean
+        // (60 peaks / 60 s = 60 bpm in this fixture). See toResult() for why:
+        // Malik biases HR on low-SNR captures while leaving HRV usable.
+        assertEquals(60.0, hr.value, 0.01)
         assertEquals(sourceId, hr.sourceId)
         assertEquals(ConfidenceTier.LOW.level, hr.confidence)
         assertEquals(60, hr.durationSec)
@@ -285,7 +289,7 @@ class CameraPpgAdapterTest {
             100, (150).toByte(), 50, 200.toByte()).forEach { buf.put(it) }
         buf.rewind()
 
-        val mean = CameraPpgAdapter.yPlaneMean(
+        val mean = ImagePlaneStats.yPlaneMean(
             buffer = buf,
             rowStride = 4,
             pixelStride = 1,
@@ -303,7 +307,7 @@ class CameraPpgAdapterTest {
         byteArrayOf(100, 100, 0, 0, 200.toByte(), 200.toByte(), 0, 0).forEach { buf.put(it) }
         buf.rewind()
 
-        val mean = CameraPpgAdapter.yPlaneMean(
+        val mean = ImagePlaneStats.yPlaneMean(
             buffer = buf,
             rowStride = 4,
             pixelStride = 1,
@@ -320,7 +324,7 @@ class CameraPpgAdapterTest {
         val buf = ByteBuffer.allocate(2)
         buf.put(0xFF.toByte()); buf.put(0xFF.toByte()); buf.rewind()
 
-        val mean = CameraPpgAdapter.yPlaneMean(
+        val mean = ImagePlaneStats.yPlaneMean(
             buffer = buf,
             rowStride = 2,
             pixelStride = 1,
@@ -333,7 +337,7 @@ class CameraPpgAdapterTest {
     @Test
     fun `yPlaneMean returns 0 for zero-sized image`() {
         val buf = ByteBuffer.allocate(4)
-        val mean = CameraPpgAdapter.yPlaneMean(
+        val mean = ImagePlaneStats.yPlaneMean(
             buffer = buf,
             rowStride = 0,
             pixelStride = 1,
