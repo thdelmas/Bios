@@ -2,12 +2,14 @@ package com.bios.app.ingest
 
 import android.content.Context
 import android.hardware.camera2.CaptureRequest
+import android.util.Log
 import android.util.Range
+import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -30,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
-import java.nio.ByteBuffer
 import java.util.Collections
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -101,18 +102,37 @@ class CameraPpgAdapter(private val context: Context) {
         // a half-rate HR. Forcing a faster AE keeps exposure short enough
         // that frame rate stays at TARGET_FPS; the torch is what lights
         // the finger anyway, AE has nothing useful to optimise here.
+        // Output RGBA so we can pull the red channel directly. Transmission-mode
+        // PPG (torch behind finger) has the same physics as pulse oximetry:
+        // red transmits best through tissue and carries the largest absolute AC
+        // modulation. YUV Y dilutes that into a weighted RGB sum and shrinks
+        // the AC component below the noise floor — observed on Pixel 9a, 73%
+        // of windows fell below the FINGER_OFF variance floor under torch+
+        // finger with AE locked and Y plane averaging.
         val analysisBuilder = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
         Camera2Interop.Extender(analysisBuilder)
             .setCaptureRequestOption(
                 CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
                 Range(TARGET_FPS, TARGET_FPS),
             )
+            // Disable in-HAL noise reduction and edge enhancement — both
+            // adaptively smooth the small (~1–3 Y unit) PPG AC component
+            // as if it were sensor noise.
+            .setCaptureRequestOption(
+                CaptureRequest.NOISE_REDUCTION_MODE,
+                CaptureRequest.NOISE_REDUCTION_MODE_OFF,
+            )
+            .setCaptureRequestOption(
+                CaptureRequest.EDGE_MODE,
+                CaptureRequest.EDGE_MODE_OFF,
+            )
         val analysis = analysisBuilder
             .build()
             .also {
                 it.setAnalyzer(executor) { image ->
-                    luminance.add(yPlaneMean(image))
+                    luminance.add(ImagePlaneStats.redChannelMean(image))
                     image.close()
 
                     val n = frameCounter.incrementAndGet()
@@ -140,7 +160,23 @@ class CameraPpgAdapter(private val context: Context) {
             if (camera.cameraInfo.hasFlashUnit()) {
                 camera.cameraControl.enableTorch(true)
             }
-            delay(durationSec * 1000L)
+            // Let AE find a workable exposure for torch+finger, then lock
+            // AE/AWB. Without the lock, AE treats the systolic luminance
+            // oscillation (~1-3 Y units on Pixel 9a) as drift and regulates
+            // it away — the windowed variance crashes below the FINGER_OFF
+            // floor and the offline path rejects as MOTION_ARTIFACT because
+            // the surviving peak amplitudes are wildly normalised.
+            val totalMs = durationSec * 1000L
+            val warmupMs = AE_WARMUP_MS.coerceAtMost(totalMs)
+            delay(warmupMs)
+            Camera2CameraControl.from(camera.cameraControl)
+                .setCaptureRequestOptions(
+                    CaptureRequestOptions.Builder()
+                        .setCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK, true)
+                        .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, true)
+                        .build()
+                )
+            delay(totalMs - warmupMs)
         } catch (e: Exception) {
             return@withContext CaptureResult.error(RejectionReason.HARDWARE_UNAVAILABLE)
         } finally {
@@ -158,6 +194,23 @@ class CameraPpgAdapter(private val context: Context) {
         val samplingRateHz = snapshot.size / actualDurationSec
         val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz, deviceProfile)
         val hrv = if (ppg.accepted) HrvAnalyzer.analyze(ppg.rrIntervalsMs) else null
+        val meanY = snapshot.average()
+        val varY = snapshot.let { s ->
+            if (s.size < 2) 0.0 else s.sumOf { (it - meanY) * (it - meanY) } / s.size
+        }
+        val satRatio = PpgSignalProcessor.saturationRatio(snapshot)
+        val hrvCleanIbis = hrv?.cleanIbiCount ?: 0
+        val hrvArtifacts = hrv?.artifactsRejected ?: -1
+        val hrvOutcome = when {
+            !ppg.accepted -> "n/a"
+            hrv == null -> "REJECTED_AT_HRV"
+            else -> "OK hr=%.0f rmssd=%.0f".format(hrv.meanHrBpm, hrv.rmssd)
+        }
+        Log.d(
+            LOG_TAG,
+            "capture done device=${Build.MODEL} samples=${snapshot.size} fps=%.2f dur=%.2fs meanR=%.2f var=%.2f sat=%.3f reason=${ppg.rejectionReason} sqi=${ppg.sqiScore} peaks=${ppg.peakCount} peakAmpCov=%.3f hrv=$hrvOutcome cleanIbi=$hrvCleanIbis artifacts=$hrvArtifacts"
+                .format(samplingRateHz, actualDurationSec, meanY, varY, satRatio, ppg.peakAmplitudeCov ?: -1.0),
+        )
 
         if (PpgCalibrationLogger.isEnabled(context)) {
             // Diagnostic log opted in by the owner. Computed here (not inside
@@ -182,6 +235,21 @@ class CameraPpgAdapter(private val context: Context) {
     }
 
     companion object {
+        private const val LOG_TAG = "BiosPpg"
+
+        /** Minimum fraction of raw IBIs the Malik artifact filter must keep
+         *  before HR is sourced from its cleaned mean rather than the raw
+         *  peak rate. Empirically: ≥ 0.5 → Malik mean tracks a wrist wearable
+         *  within 1–2 bpm; below that the sequential filter's anchoring bias
+         *  pulls the mean IBI long and we get cleaner numbers from peak rate.
+         *  See toResult() for the full rationale. */
+        private const val MALIK_RELIABLE_FRACTION = 0.5
+
+        /** Warm-up before locking AE/AWB. Long enough for the AE servo to
+         *  converge on a flash+finger exposure (observed ≈2 s on Pixel 9a:
+         *  windowed variance settles by frame ~60 at 30 fps). */
+        private const val AE_WARMUP_MS = 2_000L
+
         /** AE target frame rate (fps). Pinned via [Camera2Interop] on the
          *  ImageAnalysis use case so a dark scene + torch can't push the
          *  sensor onto a long exposure and drop the effective rate to the
@@ -205,266 +273,18 @@ class CameraPpgAdapter(private val context: Context) {
         private const val QUALITY_WINDOW_FRAMES = 40
 
         /**
-         * Pure mapping from processor + HRV output to a [CaptureResult]. On
-         * the companion so tests can exercise it without instantiating the
-         * adapter (which would require an Android Context).
+         * Pure mapping from processor + HRV output to a [CaptureResult]. Kept
+         * here as a thin pass-through to [CameraPpgResultMapper] so existing
+         * call sites (tests + ViewModel) don't need to change.
          */
         internal fun toResult(
             ppg: PpgResult,
             hrv: HrvAnalyzer.HrvResult?,
             sourceId: String,
             timestamp: Long
-        ): CaptureResult {
-            if (!ppg.accepted) {
-                return CaptureResult(
-                    readings = emptyList(),
-                    rejectionReason = ppg.rejectionReason,
-                    sqiScore = ppg.sqiScore,
-                    peakCount = ppg.peakCount,
-                    durationSec = ppg.durationSec
-                )
-            }
+        ): CaptureResult = CameraPpgResultMapper.toResult(ppg, hrv, sourceId, timestamp)
 
-            if (hrv == null) {
-                // Peaks passed SQI but HRV analyzer discarded too many artifacts.
-                return CaptureResult(
-                    readings = emptyList(),
-                    rejectionReason = RejectionReason.IRREGULAR_RHYTHM,
-                    sqiScore = ppg.sqiScore,
-                    peakCount = ppg.peakCount,
-                    durationSec = ppg.durationSec
-                )
-            }
 
-            val durSec = ppg.durationSec.toInt().coerceAtLeast(1)
-            // PPG-derived AFib screening burden (#180, cardiology audit §2.1).
-            // Per-session verdict 0.0 (regular) / 100.0 (irregularly irregular)
-            // — the pattern's rolling median over 7 days decides whether to fire.
-            // INSUFFICIENT_DATA windows are skipped so the burden estimate
-            // isn't biased by short captures.
-            val rhythmVerdict = RhythmClassifier.classify(ppg.rrIntervalsMs)
-            val burdenReading = if (rhythmVerdict.verdict == RhythmClassifier.WindowVerdict.INSUFFICIENT_DATA) {
-                null
-            } else {
-                MetricReading(
-                    metricType = MetricType.IRREGULAR_RHYTHM_BURDEN.key,
-                    value = if (rhythmVerdict.irregular) 100.0 else 0.0,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                )
-            }
-            // PVC-burden estimate (#216 / Triage #26). Skipped on rhythms
-            // the classifier scores irregularly-irregular — AFib's
-            // randomness inflates the short-long pair count and would
-            // confound the PVC interpretation.
-            val ectopyReading = if (rhythmVerdict.verdict != RhythmClassifier.WindowVerdict.REGULAR) {
-                null
-            } else {
-                EctopyDetector.analyse(ppg.rrIntervalsMs)?.let { result ->
-                    MetricReading(
-                        metricType = MetricType.ECTOPY_BURDEN_ESTIMATE.key,
-                        value = result.burdenPercent,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                }
-            }
-            val readings = listOfNotNull(
-                MetricReading(
-                    metricType = MetricType.HEART_RATE.key,
-                    value = hrv.meanHrBpm,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                MetricReading(
-                    metricType = MetricType.HEART_RATE_VARIABILITY.key,
-                    value = hrv.rmssd,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                MetricReading(
-                    metricType = MetricType.PARASYMPATHETIC_TONE.key,
-                    value = hrv.lnRmssd,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                MetricReading(
-                    metricType = MetricType.STRESS_SCORE.key,
-                    value = hrv.stressIndex,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                MetricReading(
-                    metricType = MetricType.LF_HF_RATIO.key,
-                    value = hrv.lfHfRatio,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                MetricReading(
-                    metricType = MetricType.HRV_LF_POWER.key,
-                    value = hrv.lfPowerMs2,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                MetricReading(
-                    metricType = MetricType.HRV_HF_POWER.key,
-                    value = hrv.hfPowerMs2,
-                    timestamp = timestamp,
-                    durationSec = durSec,
-                    sourceId = sourceId,
-                    confidence = ConfidenceTier.LOW.level
-                ),
-                burdenReading,
-                ectopyReading,
-                // PPG pulse-wave morphology (#181, CARDIOLOGY_POV.md §2.2).
-                // Statistical summaries that PpgSignalProcessor surfaces
-                // alongside HRV. Written only when waveformFeatures is
-                // populated (rejected recordings + sessions with too few
-                // clean beats skip every key in this block).
-                ppg.waveformFeatures?.let { feat ->
-                    MetricReading(
-                        metricType = MetricType.PPG_PEAK_AMPLITUDE_MEAN.key,
-                        value = feat.peakAmplitudeTrimmedMean,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-                ppg.waveformFeatures?.let { feat ->
-                    MetricReading(
-                        metricType = MetricType.PPG_PEAK_AMPLITUDE_COV.key,
-                        value = feat.peakAmplitudeCov,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-                ppg.waveformFeatures?.let { feat ->
-                    MetricReading(
-                        metricType = MetricType.PPG_RISE_TIME_MEAN.key,
-                        value = feat.riseTimeMeanSec,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-                ppg.waveformFeatures?.let { feat ->
-                    MetricReading(
-                        metricType = MetricType.PPG_RISE_TIME_COV.key,
-                        value = feat.riseTimeCov,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-                ppg.waveformFeatures?.let { feat ->
-                    MetricReading(
-                        metricType = MetricType.PPG_DECAY_ASYMMETRY_INDEX.key,
-                        value = feat.decayAsymmetryIndex,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-                // Dichrotic-notch position is nullable in PulseWaveformFeatures
-                // — only surfaced when enough beats yield a detectable notch.
-                ppg.waveformFeatures?.dichroticNotchRelativePosition?.let { pos ->
-                    MetricReading(
-                        metricType = MetricType.PPG_DICHROTIC_NOTCH_POSITION.key,
-                        value = pos,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-                // PPG-derived augmentation index (Blueprint audit §3.1 #8).
-                // Computed when a diastolic rebound is detectable on enough
-                // beats; null on short or noisy recordings.
-                ppg.waveformFeatures?.augmentationIndexPercent?.let { aix ->
-                    MetricReading(
-                        metricType = MetricType.AUGMENTATION_INDEX_PPG.key,
-                        value = aix,
-                        timestamp = timestamp,
-                        durationSec = durSec,
-                        sourceId = sourceId,
-                        confidence = ConfidenceTier.LOW.level,
-                    )
-                },
-            )
-            return CaptureResult(
-                readings = readings,
-                rejectionReason = null,
-                sqiScore = ppg.sqiScore,
-                peakCount = ppg.peakCount,
-                durationSec = ppg.durationSec
-            )
-        }
-
-        /**
-         * Compute the mean Y (luminance) value of an [ImageProxy] in
-         * YUV_420_888 format. Handles rowStride padding correctly.
-         */
-        fun yPlaneMean(image: ImageProxy): Double {
-            val plane = image.planes[0]
-            return yPlaneMean(
-                buffer = plane.buffer,
-                rowStride = plane.rowStride,
-                pixelStride = plane.pixelStride,
-                width = image.width,
-                height = image.height
-            )
-        }
-
-        /** Buffer-level variant, testable without an ImageProxy. */
-        internal fun yPlaneMean(
-            buffer: ByteBuffer,
-            rowStride: Int,
-            pixelStride: Int,
-            width: Int,
-            height: Int
-        ): Double {
-            if (width <= 0 || height <= 0) return 0.0
-            val row = ByteArray(rowStride)
-            var sum = 0L
-            var count = 0
-            for (y in 0 until height) {
-                val rowStart = y * rowStride
-                if (rowStart >= buffer.capacity()) break
-                buffer.position(rowStart)
-                val available = buffer.remaining().coerceAtMost(rowStride)
-                buffer.get(row, 0, available)
-                var x = 0
-                val pixelsInRow = ((available - 1) / pixelStride + 1).coerceAtMost(width)
-                while (x < pixelsInRow) {
-                    sum += (row[x * pixelStride].toInt() and 0xff)
-                    count++
-                    x++
-                }
-            }
-            return if (count == 0) 0.0 else sum.toDouble() / count
-        }
     }
 }
 
