@@ -216,8 +216,12 @@ class PpgSignalProcessorTest {
             "peakAmplitudeTrimmedMean=${features.peakAmplitudeTrimmedMean}",
             features.peakAmplitudeTrimmedMean > 0.0 && features.peakAmplitudeTrimmedMean.isFinite()
         )
-        // Synthetic signal is steady, so CoV must be small.
-        assertTrue("peakAmplitudeCov=${features.peakAmplitudeCov}", features.peakAmplitudeCov < 0.2)
+        // Synthetic signal is steady, so CoV must be small. The Butterworth
+        // bandpass has a small transient at recording boundaries (the first
+        // ~1 s of beats sit at slightly different amplitudes than the
+        // steady-state interior), so the bound is looser than for the
+        // moving-average filter it replaced.
+        assertTrue("peakAmplitudeCov=${features.peakAmplitudeCov}", features.peakAmplitudeCov < 0.3)
 
         // Rise time at 60 bpm with rise-fraction ~0.3 of a 1.0 s beat ≈ 0.3 s.
         // 30 fps quantisation gives ±2 sample slack → ~0.07 s.

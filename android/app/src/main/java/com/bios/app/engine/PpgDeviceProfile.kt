@@ -46,6 +46,25 @@ data class PpgDeviceProfile(
      * respiratory + vasomotor modulation).
      */
     val maxPeakAmplitudeCov: Double,
+    /**
+     * Live classifier's variance floor for FINGER_OFF. Below this the
+     * windowed Y/R signal has too little modulation to plausibly contain
+     * a heart-rate component. On devices with a low absolute PPG amplitude
+     * (Pixel 9a: AC ≈ 1 R unit on a DC ≈ 80 mean = 1.25 %) the global
+     * default of [CaptureQuality.FINGER_OFF_MIN_VARIANCE_DEFAULT] sits
+     * inside the legitimate PPG variance range and makes the chip flicker
+     * red mid-capture.
+     */
+    val fingerOffMinVariance: Double = CaptureQuality.FINGER_OFF_MIN_VARIANCE_DEFAULT,
+    /**
+     * Coefficient-of-variation cap on successive RR intervals before the
+     * offline processor rejects as IRREGULAR_RHYTHM. On low-SNR devices
+     * the adaptive-threshold peak detector picks up noise/dichrotic
+     * inflections during quiet periods, jittering RR intervals beyond
+     * the [PpgSignalProcessor.MAX_RR_COV_DEFAULT] of 0.30 even on
+     * healthy regular rhythms.
+     */
+    val maxRrCov: Double = PpgSignalProcessor.MAX_RR_COV_DEFAULT,
 )
 
 /**
@@ -71,15 +90,36 @@ object PpgDeviceProfiles {
     val DEFAULT: PpgDeviceProfile = PpgDeviceProfile(
         motionMedianJumpY = CaptureQuality.MOTION_MEDIAN_JUMP_Y_DEFAULT,
         maxPeakAmplitudeCov = PpgSignalProcessor.MAX_PEAK_AMPLITUDE_COV_DEFAULT,
+        fingerOffMinVariance = CaptureQuality.FINGER_OFF_MIN_VARIANCE_DEFAULT,
+        maxRrCov = PpgSignalProcessor.MAX_RR_COV_DEFAULT,
     )
 
     /**
-     * Per-device overrides. Empty at Cut 2 landing; populated as
-     * the calibration-log distribution data accumulates. See
-     * scripts/analyze-ppg-calibration-log.md (TBD) for the
-     * threshold-derivation procedure once enough captures are in.
+     * Per-device overrides. Populated as the calibration-log distribution
+     * data accumulates. See scripts/analyze-ppg-calibration-log.md (TBD)
+     * for the threshold-derivation procedure once enough captures are in.
      */
-    internal val PROFILES: Map<String, PpgDeviceProfile> = emptyMap()
+    internal val PROFILES: Map<String, PpgDeviceProfile> = mapOf(
+        // Pixel 9a: torch+main-lens geometry gives a high-DC, low-AC PPG
+        // signal. Even with AE+AWB locked, NR/edge-enhance disabled,
+        // R-channel averaging, and a Butterworth bandpass [0.7, 3.5] Hz,
+        // observed peakAmpCov clusters around 1.6–2.9 on otherwise-clean
+        // captures (vs the 0.80 default — the legitimate respiratory +
+        // vasomotor amplitude modulation just looks larger than on the
+        // reference hardware). Windowed variance sits below the 0.5 floor
+        // ~80 % of the time on a calm capture, and the noisy peak picks
+        // push rrCov over the 0.30 IRREGULAR_RHYTHM cap on regular rhythms.
+        // The captures rejected by the original 0.80 cap give peak rates
+        // of 60–63 bpm that match a wrist wearable to within ~2 bpm;
+        // captures with real motion stand out at peakAmpCov ≥ 5. Cap of
+        // 3.5 admits the legitimate band and still rejects motion.
+        "Pixel 9a" to PpgDeviceProfile(
+            motionMedianJumpY = 12.0,
+            maxPeakAmplitudeCov = 3.5,
+            fingerOffMinVariance = 0.05,
+            maxRrCov = 0.55,
+        ),
+    )
 
     /**
      * Resolve the [PpgDeviceProfile] for the supplied device model
