@@ -142,6 +142,18 @@ class BiomarkerConditionPatternsTest {
         assertTrue(MetricType.HDL_CHOLESTEROL in supportingMetrics)
         assertTrue(MetricType.TRIGLYCERIDES in supportingMetrics)
         assertTrue(MetricType.APO_B in supportingMetrics)
+        // #339 — Lp(a) joins as an independent ASCVD-risk corroborator.
+        assertTrue(MetricType.LIPOPROTEIN_A in supportingMetrics)
+    }
+
+    @Test
+    fun dyslipidemia_Lp_a_corroborator_uses_125_nmol_per_L_threshold() {
+        // ESC 2019 / NLA 2019 — Lp(a) ≥125 nmol/L is the independent ASCVD-risk tier.
+        val pattern = BiomarkerConditionPatterns.dyslipidemiaSignature
+        val lpaRule = pattern.signalRules.first { it.metricType == MetricType.LIPOPROTEIN_A }
+        assertFalse("Lp(a) is a corroborator, not the anchor", lpaRule.required)
+        assertTrue(lpaRule.isAbsolute)
+        assertEquals(125.0, lpaRule.absoluteAbove!!, 1e-9)
     }
 
     @Test

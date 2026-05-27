@@ -81,13 +81,15 @@ class Wave6BiomarkerPatternsTest {
     }
 
     @Test
-    fun hepatic_injury_screen_carries_AST_GGT_bilirubin_albumin_corroborators() {
+    fun hepatic_injury_screen_carries_AST_GGT_ALP_bilirubin_albumin_corroborators() {
         val pattern = Wave6BiomarkerPatterns.hepaticInjuryScreen
         val corroborators = pattern.signalRules.filter { !it.required }.map { it.metricType }.toSet()
         assertTrue(MetricType.AST in corroborators)
         assertTrue(MetricType.GGT in corroborators)
         assertTrue(MetricType.BILIRUBIN_TOTAL in corroborators)
         assertTrue(MetricType.ALBUMIN in corroborators)
+        // #339 — ALP joins as a cholestatic-pattern corroborator.
+        assertTrue(MetricType.ALKALINE_PHOSPHATASE in corroborators)
     }
 
     @Test
@@ -96,6 +98,7 @@ class Wave6BiomarkerPatternsTest {
             .associateBy { it.metricType }
         assertEquals(105.0, rules.getValue(MetricType.AST).absoluteAbove!!, 1e-9)
         assertEquals(120.0, rules.getValue(MetricType.GGT).absoluteAbove!!, 1e-9)
+        assertEquals(120.0, rules.getValue(MetricType.ALKALINE_PHOSPHATASE).absoluteAbove!!, 1e-9)
         // 2.0 mg/dL ≈ 35 µmol/L (factor 17.1)
         assertEquals(2.0, rules.getValue(MetricType.BILIRUBIN_TOTAL).absoluteAbove!!, 1e-9)
         // 3.5 g/dL = 35 g/L (factor 10)

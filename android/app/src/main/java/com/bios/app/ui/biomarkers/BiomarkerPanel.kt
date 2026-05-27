@@ -34,6 +34,8 @@ object BiomarkerPanels {
             MetricType.TRIGLYCERIDES,
             MetricType.APO_B,
             MetricType.LIPOPROTEIN_A,
+            MetricType.OMEGA_3_INDEX,
+            MetricType.ADIPONECTIN,
             MetricType.HOMOCYSTEINE,
             MetricType.CORONARY_CALCIUM_SCORE,
         ),
@@ -70,6 +72,7 @@ object BiomarkerPanels {
             MetricType.TSH,
             MetricType.FREE_T4,
             MetricType.FREE_T3,
+            MetricType.REVERSE_T3,
             MetricType.THYROID_PEROXIDASE_AB,
             MetricType.THYROGLOBULIN_AB,
         ),
@@ -173,6 +176,7 @@ object BiomarkerPanels {
             MetricType.ESTRADIOL,
             MetricType.CORTISOL,
             MetricType.IGF_1,
+            MetricType.LEPTIN,
         ),
     )
 
@@ -283,6 +287,7 @@ object BiomarkerPanels {
             MetricType.QUICK_INDEX,
             MetricType.APTT,
             MetricType.APTT_RATIO,
+            MetricType.D_DIMER,
         ),
     )
 
