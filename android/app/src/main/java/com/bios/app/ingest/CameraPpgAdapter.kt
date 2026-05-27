@@ -193,7 +193,9 @@ class CameraPpgAdapter(private val context: Context) {
 
         val samplingRateHz = snapshot.size / actualDurationSec
         val ppg = PpgSignalProcessor.extract(snapshot, samplingRateHz, deviceProfile)
-        val hrv = if (ppg.accepted) HrvAnalyzer.analyze(ppg.rrIntervalsMs) else null
+        val hrv = if (ppg.accepted) {
+            HrvAnalyzer.analyze(ppg.rrIntervalsMs, deviceProfile.artifactRejection)
+        } else null
         val meanY = snapshot.average()
         val varY = snapshot.let { s ->
             if (s.size < 2) 0.0 else s.sumOf { (it - meanY) * (it - meanY) } / s.size

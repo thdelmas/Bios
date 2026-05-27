@@ -65,6 +65,31 @@ data class PpgDeviceProfile(
      * healthy regular rhythms.
      */
     val maxRrCov: Double = PpgSignalProcessor.MAX_RR_COV_DEFAULT,
+    /**
+     * K multiplier on the rolling-std term in the adaptive-threshold peak
+     * detector. Higher = stricter (fewer noise picks in the quiet windows
+     * between motion bursts at the cost of missing the weakest beats).
+     *
+     * On Pixel-9a-class hardware the AC PPG component is small relative to
+     * frame-to-frame noise, so the default K=0.5 lets dichrotic-notch
+     * inflections and small noise excursions cross the bar; raising K
+     * suppresses those without losing systolic peaks (which clear the bar
+     * by a comfortable margin even when K is doubled).
+     *
+     * See [PpgSignalProcessor.PEAK_THRESHOLD_K_DEFAULT].
+     */
+    val peakThresholdK: Double = PpgSignalProcessor.PEAK_THRESHOLD_K_DEFAULT,
+    /**
+     * Strategy the HRV analyzer uses to reject artifact IBIs. The default
+     * sequential Malik filter is the historical behaviour and stays in
+     * place for devices on [PpgDeviceProfiles.DEFAULT]. Devices whose peak
+     * detector emits enough false picks that a single missed beat cascades
+     * the sequential rule (Pixel 9a) override this to
+     * [HrvAnalyzer.ArtifactRejection.MEDIAN_ANCHORED] — the global median
+     * tolerates single outliers without losing the rest of the recording.
+     */
+    val artifactRejection: HrvAnalyzer.ArtifactRejection =
+        HrvAnalyzer.ArtifactRejection.SEQUENTIAL_MALIK,
 )
 
 /**
@@ -113,11 +138,22 @@ object PpgDeviceProfiles {
         // of 60–63 bpm that match a wrist wearable to within ~2 bpm;
         // captures with real motion stand out at peakAmpCov ≥ 5. Cap of
         // 3.5 admits the legitimate band and still rejects motion.
+        // PEAK_THRESHOLD_K_DEFAULT of 0.5 admits dichrotic-notch inflections
+        // and small noise picks during the quiet sub-second windows between
+        // motion bursts on this hardware. Raising to 1.0 (mean + 1 σ) keeps
+        // systolic peaks — which clear the bar by ≥ 2 σ on accepted
+        // captures — while pushing the noise picks below the threshold. The
+        // peak detector still emits the occasional false pick; the
+        // MEDIAN_ANCHORED artifact filter lets one slip without anchoring
+        // the sequential reference forward and collapsing the survival
+        // rate (the failure mode that put Malik retention at 50 %).
         "Pixel 9a" to PpgDeviceProfile(
             motionMedianJumpY = 12.0,
             maxPeakAmplitudeCov = 3.5,
             fingerOffMinVariance = 0.05,
             maxRrCov = 0.55,
+            peakThresholdK = 1.0,
+            artifactRejection = HrvAnalyzer.ArtifactRejection.MEDIAN_ANCHORED,
         ),
     )
 

@@ -43,8 +43,12 @@ object PpgSignalProcessor {
      *  analysis (notch position, AIx) still has signal. */
     private const val HR_BAND_HIGH_HZ = 3.5
 
-    /** Peak threshold: local-max must exceed rolling mean + K × rolling std. */
-    private const val PEAK_THRESHOLD_K = 0.5
+    /** Default peak threshold: a local-max must exceed
+     *  `rolling mean + K × rolling std` to be accepted. Per-device overrides
+     *  live on [PpgDeviceProfile.peakThresholdK] — see Pixel 9a, where the
+     *  default lets dichrotic-notch inflections cross the bar in quiet
+     *  windows. */
+    const val PEAK_THRESHOLD_K_DEFAULT = 0.5
 
     /** Rolling window for the adaptive threshold (seconds). */
     private const val THRESHOLD_WINDOW_SEC = 2.0
@@ -139,7 +143,7 @@ object PpgSignalProcessor {
 
         val thresholdWindow = (THRESHOLD_WINDOW_SEC * samplingRateHz).toInt().coerceAtLeast(3)
         val refractorySamples = (PEAK_REFRACTORY_MS * samplingRateHz / 1000.0).toInt().coerceAtLeast(1)
-        val peakIndices = detectPeaks(smoothed, thresholdWindow, refractorySamples, PEAK_THRESHOLD_K)
+        val peakIndices = detectPeaks(smoothed, thresholdWindow, refractorySamples, profile.peakThresholdK)
 
         if (peakIndices.size < MIN_PEAKS_REQUIRED) {
             return PpgResult.rejected(
