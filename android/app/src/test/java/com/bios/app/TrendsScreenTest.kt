@@ -107,6 +107,32 @@ class TrendsScreenTest {
         assertNull(MetricType.fromKey("unknown_metric"))
     }
 
+    // -- TrendsScreen header surfaces any metric the search bar can navigate to (#311) --
+    // The original chip-row design hardcoded a small trackableMetrics set; metrics opened
+    // via HomeScreen.MetricSearchBar that were not in that set landed on a dashboard with
+    // an unselected chip row. The clickable header that replaced the chip row reads
+    // `selectedMetric.readableName` directly, so the bug is impossible by construction
+    // *as long as* every MetricType yields a non-empty readableName. These tests pin that.
+
+    @Test
+    fun `every MetricType yields a non-empty readableName so any navigation target renders`() {
+        for (m in MetricType.entries) {
+            assertTrue(
+                "${m.key} produced a blank readableName — TrendsScreen header would be empty",
+                m.readableName.isNotBlank(),
+            )
+        }
+    }
+
+    @Test
+    fun `metrics cited in #311 surface human-readable header text`() {
+        // The issue called out Weight / BMI / Body fat as failure-mode examples.
+        // Each must render a non-key human string in the dashboard header.
+        assertEquals("Body mass", MetricType.BODY_MASS.readableName)
+        assertEquals("Bmi kg per m2", MetricType.BMI_KG_PER_M2.readableName)
+        assertEquals("Body fat pct", MetricType.BODY_FAT_PCT.readableName)
+    }
+
     // -- Baseline list display --
 
     @Test
