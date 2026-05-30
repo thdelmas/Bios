@@ -3,28 +3,9 @@ package com.bios.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.bios.app.alerts.AlertManager
 import com.bios.app.alerts.FollowUpWorker
-import com.bios.app.data.BiosDatabase
-import com.bios.app.data.ReproductiveDatabase
-import com.bios.app.engine.AnomalyDetector
 import com.bios.app.engine.BaselineEngine
-import com.bios.app.engine.DetectionLatencyTracker
 import com.bios.app.engine.LatencyPercentiles
-import com.bios.app.engine.TFLiteAnomalyModel
-import com.bios.app.ingest.ApiTokenStore
-import com.bios.app.ingest.BleAirQualityAdapter
-import com.bios.app.ingest.DirectSensorAdapter
-import com.bios.app.ingest.GadgetbridgeAdapter
-import com.bios.app.ingest.GarminApiAdapter
-import com.bios.app.ingest.HealthConnectAdapter
-import com.bios.app.ingest.IngestManager
-import com.bios.app.ingest.OuraApiAdapter
-import com.bios.app.ingest.OuraTokenStore
-import com.bios.app.ingest.PhoneSensorAdapter
-import com.bios.app.ingest.PolarApiAdapter
-import com.bios.app.ingest.WhoopApiAdapter
-import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.data.BiomarkerContext
 import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.data.ManualReadingRepo
@@ -48,35 +29,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
-    val db = BiosDatabase.getInstance(application)
-    val healthConnect = HealthConnectAdapter(application)
-    val ouraTokenStore = OuraTokenStore(application)
-    val ouraAdapter = OuraApiAdapter(ouraTokenStore)
-    val apiTokenStore = ApiTokenStore(application)
-    val withingsAdapter = WithingsApiAdapter(apiTokenStore)
-    val whoopAdapter = WhoopApiAdapter(apiTokenStore)
-    val garminAdapter = GarminApiAdapter(apiTokenStore)
-    val polarAdapter = PolarApiAdapter(apiTokenStore)
-    val phoneSensorAdapter = PhoneSensorAdapter(application)
-    val gadgetbridgeAdapter = GadgetbridgeAdapter(application)
-    val directSensorAdapter = DirectSensorAdapter(application)
-    val bleAirQualityAdapter = BleAirQualityAdapter(application, db.metricReadingDao(), com.bios.app.ingest.BlePairedDeviceStore(application))
-    val latencyTracker = DetectionLatencyTracker()
-    val ingestManager = IngestManager(
-        healthConnect, db, ouraAdapter, phoneSensorAdapter,
-        gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, whoopAdapter,
-        garminAdapter, polarAdapter, bleAirQualityAdapter, latencyTracker
-    )
-    private val reproductiveReadingDao = ReproductiveDatabase.readingDaoOrNull(application)
-    val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)
-    val mlModel = TFLiteAnomalyModel.load(application)
-    val anomalyDetector = AnomalyDetector(db, mlModel, latencyTracker, reproductiveReadingDao,
-        physiologyState = com.bios.app.physiology.PhysiologyStateStore(application).current(),
-        ownerConditions = com.bios.app.physiology.OwnerConditionStore(application).current(),
-        drugClass = com.bios.app.physiology.PhysiologyStateStore(application).drugClass(),
-        environmentalContext = com.bios.app.config.EnvironmentalContextProvider(application).current())
-    val alertManager = AlertManager(application, db, latencyTracker)
+class AppViewModel(
+    application: Application,
+    deps: AppDependencies,
+) : AndroidViewModel(application) {
+    // Collaborators are injected via [deps] (built by [AppViewModelFactory] in
+    // production, faked in tests) and re-exposed here so the rest of the
+    // ViewModel — and the screens that read viewModel.db / .ingestManager /
+    // etc. — keep their existing call sites.
+    val db = deps.db
+    val healthConnect = deps.healthConnect
+    val ouraTokenStore = deps.ouraTokenStore
+    val ouraAdapter = deps.ouraAdapter
+    val apiTokenStore = deps.apiTokenStore
+    val withingsAdapter = deps.withingsAdapter
+    val whoopAdapter = deps.whoopAdapter
+    val garminAdapter = deps.garminAdapter
+    val polarAdapter = deps.polarAdapter
+    val phoneSensorAdapter = deps.phoneSensorAdapter
+    val gadgetbridgeAdapter = deps.gadgetbridgeAdapter
+    val directSensorAdapter = deps.directSensorAdapter
+    val bleAirQualityAdapter = deps.bleAirQualityAdapter
+    val latencyTracker = deps.latencyTracker
+    val ingestManager = deps.ingestManager
+    val baselineEngine = deps.baselineEngine
+    val mlModel = deps.mlModel
+    val anomalyDetector = deps.anomalyDetector
+    val alertManager = deps.alertManager
 
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized

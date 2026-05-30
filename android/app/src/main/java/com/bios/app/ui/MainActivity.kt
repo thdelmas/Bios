@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.health.connect.client.PermissionController
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -63,7 +62,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BiosRoot(viewModel: AppViewModel = viewModel()) {
+fun BiosRoot(viewModel: AppViewModel = appViewModel()) {
     val hasPermissions by viewModel.hasPermissions.collectAsState()
     var permissionDenied by remember { mutableStateOf(false) }
     var checkedInitialPermissions by remember { mutableStateOf(false) }
