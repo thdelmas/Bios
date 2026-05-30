@@ -363,9 +363,7 @@ class AnomalyDetector(
         // isn't presented at the same tier as a 7-day RHR drift. Trend
         // patterns leave severityFloor null and fall through to the
         // classifier output.
-        val severity = pattern.severityFloor?.let { floor ->
-            if (floor.level > classifiedSeverity.level) floor else classifiedSeverity
-        } ?: classifiedSeverity
+        val severity = applySeverityFloor(classifiedSeverity, pattern.severityFloor)
 
         val deviationScoresJson = buildString {
             append("{")
@@ -381,7 +379,7 @@ class AnomalyDetector(
             append("]")
         }
 
-        val baseExplanation = buildExplanation(pattern, activeDeviations)
+        val baseExplanation = buildAnomalyExplanation(pattern.explanation, activeDeviations)
         // Medication context — read at anomaly-creation time so the stored
         // text reflects what was on record when the pattern fired (§2.5).
         // Null when the owner has no active medications recorded.
@@ -398,27 +396,6 @@ class AnomalyDetector(
             explanation = explanation,
             suggestedAction = pattern.suggestedAction
         )
-    }
-
-    private fun buildExplanation(
-        pattern: ConditionPattern,
-        deviations: Map<MetricType, Double>
-    ): String {
-        // Per-signal phrasing is z-score-based; rules carried in with z=0 are
-        // ABSENT-direction sentinels (no event in window) and don't fit that
-        // template, so we leave them to pattern.explanation.
-        val parts = deviations.entries
-            .filter { it.value != 0.0 }
-            .sortedByDescending { abs(it.value) }
-            .map { (metric, zScore) ->
-                val direction = if (zScore > 0) "above" else "below"
-                val sigmas = String.format("%.1f", abs(zScore))
-                "Your ${metric.readableName.lowercase()} is $sigmas standard deviations $direction your personal baseline."
-            }
-            .toMutableList()
-
-        parts.add(pattern.explanation)
-        return parts.joinToString(" ")
     }
 
     private suspend fun fetchRecentValues(metricType: MetricType, hours: Int): List<Double> {
@@ -444,7 +421,7 @@ class AnomalyDetector(
         val endMillis = System.currentTimeMillis()
         val startMillis = endMillis - rule.absoluteWindowHours.toLong() * 3600 * 1000
         var rows = daoFor(rule.metricType).fetch(rule.metricType.key, startMillis, endMillis)
-        if (minDuration != null) rows = rows.filter { (it.durationSec ?: 0) >= minDuration }
+        if (minDuration != null) rows = filterDurationAtLeast(rows, minDuration)
         if (excludePayload != null) {
             val payloads = db.eventPayloadFieldDao()
                 .fetchForReadings(rows.map { it.id })
@@ -476,9 +453,7 @@ class AnomalyDetector(
         val representative: Double = if (rule.absoluteWindowHours > 0) {
             val values = fetchAbsoluteWindowValues(rule)
             if (values.size < rule.absoluteMinReadings) return null to false
-            values.sorted().let { s ->
-                if (s.size % 2 == 0) (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0 else s[s.size / 2]
-            }
+            median(values)
         } else {
             readingDao.fetchLatest(rule.metricType.key, 1).firstOrNull()?.value
                 ?: return null to false

@@ -1,7 +1,6 @@
 package com.bios.app
 
 import com.bios.app.alerts.AlertManager
-import com.bios.app.alerts.UrgentEscalationGate
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 import com.bios.app.model.InterventionLevel
@@ -10,42 +9,27 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Tests for AlertManager notification tier filtering logic.
- * AlertManager.sendNotification only sends for NOTICE and above;
- * we test that classification here without needing an Android context.
- *
- * Additional coverage (#184): the goals-of-care escalation gate is
- * exercised via [UrgentEscalationGate]. AlertManager's
- * `sendNotification` consults the same gate via its
- * `isUrgentEscalationSuppressed()` accessor — the mirror tests
- * below pin the user-visible effect (which channel the alert lands
- * on, whether the GOALS_OF_CARE_NOTE is appended).
+ * Tests for AlertManager's pure notification decisions: the NOTICE-and-above
+ * notify gate and the goals-of-care channel selection (#184). These call the
+ * real AlertManager decision functions directly (no Android context needed),
+ * so a regression in either is caught here instead of hiding behind a copy.
  */
 class AlertManagerTest {
 
-    // Mirror of AlertManager.sendNotification's filtering logic
-    private fun shouldNotify(anomaly: Anomaly): Boolean {
-        val tier = AlertTier.fromLevel(anomaly.severity)
-        return tier >= AlertTier.NOTICE
-    }
+    // Adapters over the real AlertManager decision functions — these
+    // re-implement no logic, they only shape an Anomaly / (state, level) into
+    // the arguments the production functions take.
+    private fun shouldNotify(anomaly: Anomaly): Boolean =
+        AlertManager.shouldNotify(AlertTier.fromLevel(anomaly.severity))
 
-    // Mirror of AlertManager.sendNotification's channel-selection.
-    // When the gate fires, URGENT-tier alerts land on the low-
-    // importance NOTICE channel — that's the user-visible effect
-    // of silencing.
     private fun resolveChannel(
         tier: AlertTier,
         state: PhysiologyState,
         level: InterventionLevel,
-    ): String {
-        val suppressed = UrgentEscalationGate.shouldSuppress(tier, state, level)
-        return when {
-            suppressed -> AlertManager.CHANNEL_NOTICE
-            tier == AlertTier.URGENT -> AlertManager.CHANNEL_URGENT
-            tier == AlertTier.ADVISORY -> AlertManager.CHANNEL_ADVISORY
-            else -> AlertManager.CHANNEL_NOTICE
-        }
-    }
+    ): String = AlertManager.resolveChannel(
+        tier,
+        AlertManager.isUrgentEscalationSuppressedFor(tier, state, level),
+    ).first
 
     private fun anomaly(severity: AlertTier) = Anomaly(
         metricTypes = "[\"heart_rate\"]",

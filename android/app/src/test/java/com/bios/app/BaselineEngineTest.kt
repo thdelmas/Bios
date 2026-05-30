@@ -1,60 +1,18 @@
 package com.bios.app
 
 import com.bios.app.engine.BaselineEngine
+import com.bios.app.engine.computeTrend
 import com.bios.app.model.TrendDirection
 import org.junit.Assert.*
 import org.junit.Test
-import java.lang.reflect.Method
 
 /**
- * Tests for BaselineEngine's pure computation logic.
- * Uses reflection to test private computeTrend since it contains
- * critical business logic (trend detection via linear regression).
+ * Tests for BaselineEngine's pure trend-detection math. These call the real
+ * [computeTrend] (extracted to a top-level function so it needs no
+ * BiosDatabase) directly, so a regression in the production algorithm is
+ * caught here instead of hiding behind a test-local copy.
  */
 class BaselineEngineTest {
-
-    private val computeTrendMethod: Method =
-        BaselineEngine::class.java.getDeclaredMethod(
-            "computeTrend",
-            List::class.java
-        ).also { it.isAccessible = true }
-
-    private fun computeTrend(dailyMeans: List<Double>): Pair<TrendDirection, Double> {
-        return computeTrendAlgorithm(dailyMeans)
-    }
-
-    /**
-     * Mirror of BaselineEngine.computeTrend for direct testing.
-     * This avoids needing a BiosDatabase instance for pure math tests.
-     */
-    private fun computeTrendAlgorithm(dailyMeans: List<Double>): Pair<TrendDirection, Double> {
-        if (dailyMeans.size < 3) return Pair(TrendDirection.STABLE, 0.0)
-
-        val n = dailyMeans.size.toDouble()
-        val xs = (0 until dailyMeans.size).map { it.toDouble() }
-        val sumX = xs.sum()
-        val sumY = dailyMeans.sum()
-        val sumXY = xs.zip(dailyMeans).sumOf { (x, y) -> x * y }
-        val sumX2 = xs.sumOf { it * it }
-
-        val denominator = n * sumX2 - sumX * sumX
-        if (denominator == 0.0) return Pair(TrendDirection.STABLE, 0.0)
-
-        val slope = (n * sumXY - sumX * sumY) / denominator
-
-        val mean = sumY / n
-        if (mean == 0.0) return Pair(TrendDirection.STABLE, slope)
-
-        val normalizedSlope = slope / mean
-
-        val direction = when {
-            normalizedSlope > 0.02 -> TrendDirection.RISING
-            normalizedSlope < -0.02 -> TrendDirection.FALLING
-            else -> TrendDirection.STABLE
-        }
-
-        return Pair(direction, slope)
-    }
 
     @Test
     fun `rising trend detected for increasing daily means`() {
