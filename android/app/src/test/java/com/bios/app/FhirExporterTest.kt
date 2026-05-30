@@ -1,5 +1,6 @@
 package com.bios.app
 
+import com.bios.app.export.FhirExporter
 import com.bios.app.export.loincCode
 import com.bios.app.export.ucumCode
 import com.bios.contracts.MetricDomain
@@ -356,11 +357,11 @@ class FhirExporterTest {
 
     @Test
     fun `every WOMENS_HEALTH MetricType is excluded from the default FHIR enumeration`() {
-        // Mirror of the FhirExporter `for (metricType in MetricType.entries) …
-        // if (domain == WOMENS_HEALTH) continue` loop. If any new reproductive
-        // key is added without a corresponding exporter exclusion (or a
-        // conscious opt-in path), this test makes the gap visible.
-        val included = MetricType.entries.filter { it.domain != MetricDomain.WOMENS_HEALTH }
+        // Asserts against the real FhirExporter.defaultExportMetricTypes() — the
+        // same list the export loop iterates. If a new reproductive key is added
+        // without a corresponding exclusion (or a conscious opt-in path), this
+        // test makes the gap visible.
+        val included = FhirExporter.defaultExportMetricTypes()
         val excluded = MetricType.entries - included.toSet()
         assertTrue(
             "WOMENS_HEALTH key(s) leaked into the default-export set: " +
