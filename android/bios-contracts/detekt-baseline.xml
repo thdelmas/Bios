@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>MaxLineLength:MetricType.kt$MetricType$D_DIMER : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$FORCED_EXPIRATORY_VOLUME_1_LITERS : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$HSCRP : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$MOOD_DRIFT_SCORE : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$PROTHROMBIN_TIME : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$RESTING_HEART_RATE : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$SEDENTARY_BOUT : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$SLEEP_DURATION : MetricType</ID>
+    <ID>MaxLineLength:MetricType.kt$MetricType$THUNDERCLAP_HEADACHE_SUSPECTED : MetricType</ID>
+  </CurrentIssues>
+</SmellBaseline>

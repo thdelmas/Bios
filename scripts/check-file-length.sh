@@ -30,6 +30,7 @@ while IFS= read -r file; do
     # catalogues, and reference docs is exempt — splitting them harms readability)
     case "$file" in
         */build/*|*/node_modules/*|*.lock|*.min.*|*.generated.*|*/vendor/*) continue ;;
+        */detekt-baseline.xml|detekt-baseline.xml) continue ;;  # generated; records existing findings, not source
         docs/*.md|docs/*/*.md|*.md) continue ;;
     esac
 
