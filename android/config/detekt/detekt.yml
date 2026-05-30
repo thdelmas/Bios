@@ -1,0 +1,65 @@
+# Bios detekt configuration.
+# buildUponDefaultConfig = true in build.gradle.kts, so this file only carries
+# overrides — every rule not mentioned keeps its detekt default.
+#
+# Posture: catch the maintainability regressions the audit flagged (oversized
+# methods/files, deep nesting, duplication-prone complexity), while staying out
+# of the way of a clinical codebase whose domain is full of literal thresholds.
+
+build:
+  # 0 = any non-baselined finding fails the build. The per-module baselines
+  # absorb the existing tree; this gates only newly introduced violations.
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+naming:
+  # @Composable functions are PascalCase by Jetpack Compose convention — that's
+  # correct, not a violation. Without this, every Composable floods the baseline.
+  FunctionNaming:
+    active: true
+    ignoreAnnotated: ['Composable']
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 70
+  LongParameterList:
+    active: true
+    functionThreshold: 9
+    constructorThreshold: 12   # AppViewModel/IngestManager-style wiring; tracked separately in #380/#381
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 18
+  NestedBlockDepth:
+    active: true
+    threshold: 5
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 25
+    thresholdInClasses: 25
+    thresholdInObjects: 30
+    thresholdInEnums: 40       # MetricType & friends are large, intentionally flat enums
+
+style:
+  # Bios encodes clinical cutoffs as literals everywhere; MagicNumber here is
+  # noise, not signal. Threshold meaning lives in the surrounding code/tests.
+  MagicNumber:
+    active: false
+  # The audit praised the issue-linked TODO discipline; don't fight it.
+  ForbiddenComment:
+    active: false
+  ReturnCount:
+    active: true
+    max: 6
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludeCommentStatements: true
+
+# KDoc-completeness rules are off: enforcing doc comments wholesale would bury
+# real findings under thousands of style nits. Revisit per-package if desired.
+comments:
+  active: false
