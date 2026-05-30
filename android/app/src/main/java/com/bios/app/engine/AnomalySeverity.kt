@@ -25,3 +25,15 @@ internal fun classifySeverity(
         else -> AlertTier.OBSERVATION
     }
 }
+
+/**
+ * Applies a pattern's optional severity floor: the emitted tier is the higher
+ * of the classifier's output and the floor. Emergency vital-sign patterns
+ * declare an URGENT [floor] so a single-rule fire still escalates; trend
+ * patterns leave it null and pass [classified] through unchanged.
+ *
+ * Extracted alongside [classifySeverity] so [AnomalyDetector] and its tests
+ * share one implementation.
+ */
+internal fun applySeverityFloor(classified: AlertTier, floor: AlertTier?): AlertTier =
+    if (floor != null && floor.level > classified.level) floor else classified

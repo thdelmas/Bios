@@ -51,6 +51,26 @@ class FhirExporter(
     private val payloadDao = db.eventPayloadFieldDao()
     private val fastStrokeDao = db.fastStrokeEventDao()
 
+    companion object {
+        /**
+         * The MetricTypes the default FHIR export enumerates: everything except
+         * the WOMENS_HEALTH (reproductive) domain.
+         *
+         * Reproductive-domain readings live in the isolated ReproductiveDatabase
+         * (separate SQLCipher key, independent wipe, priority destruction on a
+         * duress PIN). The main-DB-backed exporter must never read them — the
+         * rows aren't here, and including them in a default bundle would collapse
+         * the isolation that the separate DB exists to provide. A future
+         * per-export "include reproductive data" opt-in would query
+         * ReproductiveDatabase explicitly; today's default is a hard skip.
+         *
+         * Shared with the test boundary so a new reproductive key can't be added
+         * without this exclusion (or a conscious opt-in) being noticed.
+         */
+        internal fun defaultExportMetricTypes(): List<MetricType> =
+            MetricType.entries.filter { it.domain != MetricDomain.WOMENS_HEALTH }
+    }
+
     /**
      * Export all Bios data as a FHIR R4 Bundle (JSON).
      * Returns the file path. The file is plaintext — encrypt with [EncryptedExporter] before sharing.
@@ -71,16 +91,10 @@ class FhirExporter(
         }
 
         val thirtyDaysAgo = System.currentTimeMillis() - 30L * 24 * 3600 * 1000
-        for (metricType in MetricType.entries) {
-            // Reproductive-domain readings live in the isolated ReproductiveDatabase
-            // (separate encryption key, independent wipe, priority destruction on
-            // duress PIN). The main-DB-backed exporter must never read them, both
-            // because the rows aren't here and — critically — because including
-            // them in a default FHIR bundle would collapse the isolation the
-            // separate DB exists to provide. A future per-export "include
-            // reproductive data" opt-in would query ReproductiveDatabase
-            // explicitly; today's default is hard-skip.
-            if (metricType.domain == MetricDomain.WOMENS_HEALTH) continue
+        // WOMENS_HEALTH (reproductive) keys are excluded — see
+        // [defaultExportMetricTypes] for why the main-DB exporter must never
+        // touch the isolated ReproductiveDatabase.
+        for (metricType in defaultExportMetricTypes()) {
             val isBiomarker = metricType.domain == MetricDomain.BIOMARKER
             val readings = readingDao.fetch(metricType.key, thirtyDaysAgo, Long.MAX_VALUE)
             for (reading in readings.take(500)) {
