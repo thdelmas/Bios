@@ -46,6 +46,15 @@ if [ -f "$PROJECT_ROOT/android/gradlew" ]; then
         if ! (cd "$PROJECT_ROOT/android" && ./gradlew testStandaloneDebugUnitTest 2>&1); then
             FAILED=1
         fi
+
+        # bios-contracts is a published artifact that out-of-tree companions
+        # pin to; its frozen MetricType-key snapshot guards against
+        # accidental removals. The :app test target does not exercise it,
+        # so we run it explicitly here whenever Kotlin changes are staged.
+        step "Running bios-contracts tests (MetricType snapshot guard)"
+        if ! (cd "$PROJECT_ROOT/android" && ./gradlew :bios-contracts:test 2>&1); then
+            FAILED=1
+        fi
     else
         step "Skipping Android tests (no Kotlin files staged)"
     fi
