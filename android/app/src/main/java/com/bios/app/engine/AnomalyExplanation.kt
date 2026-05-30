@@ -1,6 +1,7 @@
 package com.bios.app.engine
 
 import com.bios.contracts.MetricType
+import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -26,7 +27,7 @@ internal fun buildAnomalyExplanation(
         .sortedByDescending { abs(it.value) }
         .map { (metric, zScore) ->
             val direction = if (zScore > 0) "above" else "below"
-            val sigmas = String.format("%.1f", abs(zScore))
+            val sigmas = String.format(Locale.US, "%.1f", abs(zScore))
             "Your ${metric.readableName.lowercase()} is $sigmas standard deviations $direction your personal baseline."
         }
         .toMutableList()

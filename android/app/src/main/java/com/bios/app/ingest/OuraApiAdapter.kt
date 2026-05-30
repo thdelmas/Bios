@@ -10,7 +10,6 @@ import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.time.Instant
@@ -18,7 +17,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 /**
  * Fetches health data from the Oura Ring v2 REST API and converts it
@@ -36,10 +34,7 @@ class OuraApiAdapter(
         hasToken = { tokenStore.hasToken() }
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val client = defaultApiClient()
 
     val isConnected: Boolean get() = hasToken()
 
@@ -390,10 +385,7 @@ class OuraApiAdapter(
             .header("Authorization", "Bearer $token")
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return@withContext null
-        val body = response.body?.string() ?: return@withContext null
-        JSONObject(body)
+        client.getJson(request)
     }
 
     // MARK: - Date helpers
@@ -403,7 +395,7 @@ class OuraApiAdapter(
             .format(DateTimeFormatter.ISO_LOCAL_DATE)
 
     internal fun parseTimestamp(isoString: String): Long =
-        Instant.parse(isoString).toEpochMilli()
+        parseIsoTimestampOrNull(isoString) ?: 0L
 
     private fun parseDayTimestamp(dayString: String): Long =
         LocalDate.parse(dayString)
