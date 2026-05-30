@@ -55,6 +55,43 @@ class AlertManager(
                 "escalation will occur. Open the alert in-app to act on it, " +
                 "or change the preference in Settings to restore default " +
                 "escalation."
+
+        /**
+         * [sendNotification] raises a system notification only for NOTICE and
+         * above; OBSERVATION-tier anomalies are persisted but stay silent.
+         * Pure so the gate is unit-testable without an Android context.
+         */
+        internal fun shouldNotify(tier: AlertTier): Boolean = tier >= AlertTier.NOTICE
+
+        /**
+         * Goals-of-care suppression rule (#184): an URGENT alert is silenced
+         * when the owner has declared hospice mode or a comfort-only
+         * intervention level. Pure overload of the instance
+         * [isUrgentEscalationSuppressed] that takes the state and level
+         * explicitly, so it (and the channel choice it drives) can be tested
+         * without an Android context.
+         */
+        internal fun isUrgentEscalationSuppressedFor(
+            tier: AlertTier,
+            state: PhysiologyState,
+            interventionLevel: InterventionLevel,
+        ): Boolean = tier == AlertTier.URGENT &&
+            UrgentEscalationGate.shouldSuppress(tier, state, interventionLevel)
+
+        /**
+         * Channel + notification priority for an alert. When the goals-of-care
+         * gate has silenced an URGENT alert it lands on the low-importance
+         * NOTICE channel with PRIORITY_LOW so no sound or vibration fires.
+         */
+        internal fun resolveChannel(
+            tier: AlertTier,
+            urgentEscalationSuppressed: Boolean,
+        ): Pair<String, Int> = when {
+            urgentEscalationSuppressed -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
+            tier == AlertTier.URGENT -> CHANNEL_URGENT to NotificationCompat.PRIORITY_HIGH
+            tier == AlertTier.ADVISORY -> CHANNEL_ADVISORY to NotificationCompat.PRIORITY_DEFAULT
+            else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
+        }
     }
 
     init {
@@ -70,7 +107,7 @@ class AlertManager(
     fun sendNotification(anomaly: Anomaly) {
         val notificationStart = System.currentTimeMillis()
         val tier = AlertTier.fromLevel(anomaly.severity)
-        if (tier < AlertTier.NOTICE) return  // only notify for Notice and above
+        if (!shouldNotify(tier)) return  // only notify for Notice and above
 
         // Pull-side-only patterns (#208 geriatric trajectory advisories,
         // future trajectory surfaces) persist their anomalies but never
@@ -97,18 +134,13 @@ class AlertManager(
         // emergency-contact / tap-to-call, added by #215). The alert
         // is still persisted to the DB so it appears in-app for the
         // owner / caregivers to read.
-        val urgentEscalationSuppressed =
-            tier == AlertTier.URGENT && isUrgentEscalationSuppressed()
-
-        val (channelId, priority) = when {
-            urgentEscalationSuppressed ->
-                // Silence: emit on the low-importance NOTICE channel
-                // with PRIORITY_LOW so no sound / vibration fires.
-                CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
-            tier == AlertTier.URGENT -> CHANNEL_URGENT to NotificationCompat.PRIORITY_HIGH
-            tier == AlertTier.ADVISORY -> CHANNEL_ADVISORY to NotificationCompat.PRIORITY_DEFAULT
-            else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
+        val state = physiologyStateStore.current()
+        val interventionLevel = runBlocking {
+            goalsOfCareRepo.fetch()?.interventionLevel ?: InterventionLevel.UNSPECIFIED
         }
+        val urgentEscalationSuppressed =
+            isUrgentEscalationSuppressedFor(tier, state, interventionLevel)
+        val (channelId, priority) = resolveChannel(tier, urgentEscalationSuppressed)
 
         // Append regional disclaimer to explanation. Disclaimer text is
         // resolved through the localization overlay when available
@@ -170,11 +202,7 @@ class AlertManager(
         val interventionLevel = runBlocking {
             goalsOfCareRepo.fetch()?.interventionLevel ?: InterventionLevel.UNSPECIFIED
         }
-        return UrgentEscalationGate.shouldSuppress(
-            tier = AlertTier.URGENT,
-            state = state,
-            interventionLevel = interventionLevel,
-        )
+        return isUrgentEscalationSuppressedFor(AlertTier.URGENT, state, interventionLevel)
     }
 
     private fun createNotificationChannels() {

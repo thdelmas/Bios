@@ -1,52 +1,24 @@
 package com.bios.app
 
+import com.bios.app.engine.applySeverityFloor
+import com.bios.app.engine.buildAnomalyExplanation
+import com.bios.app.engine.classifySeverity
+import com.bios.app.engine.filterDurationAtLeast
+import com.bios.app.engine.median
 import com.bios.app.model.AlertTier
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
-import com.bios.app.alerts.ConditionPatterns
-import com.bios.app.alerts.DeviationDirection
 import org.junit.Assert.*
 import org.junit.Test
-import kotlin.math.abs
 
 /**
- * Tests for AnomalyDetector's pure logic: severity classification and explanation building.
- * These mirror the private methods for direct unit testing.
+ * Tests for AnomalyDetector's pure logic. These call the real top-level
+ * functions ([classifySeverity], [buildAnomalyExplanation],
+ * [applySeverityFloor], [median]) directly, so a regression in any of them is
+ * caught here rather than hidden behind a test-local copy.
  */
 class AnomalyDetectorTest {
-
-    // Mirror of AnomalyDetector.classifySeverity
-    private fun classifySeverity(
-        activeSignals: Int,
-        combinedScore: Double,
-        totalRules: Int
-    ): AlertTier {
-        val signalRatio = activeSignals.toDouble() / totalRules.toDouble()
-        return when {
-            combinedScore > 3.0 || signalRatio > 0.8 -> AlertTier.ADVISORY
-            combinedScore > 2.0 || signalRatio > 0.5 -> AlertTier.NOTICE
-            else -> AlertTier.OBSERVATION
-        }
-    }
-
-    // Mirror of AnomalyDetector.buildExplanation
-    private fun buildExplanation(
-        patternExplanation: String,
-        deviations: Map<MetricType, Double>
-    ): String {
-        val parts = deviations.entries
-            .sortedByDescending { abs(it.value) }
-            .map { (metric, zScore) ->
-                val direction = if (zScore > 0) "above" else "below"
-                val sigmas = String.format("%.1f", abs(zScore))
-                "Your ${metric.readableName.lowercase()} is $sigmas standard deviations $direction your personal baseline."
-            }
-            .toMutableList()
-
-        parts.add(patternExplanation)
-        return parts.joinToString(" ")
-    }
 
     // --- classifySeverity tests ---
 
@@ -102,7 +74,7 @@ class AnomalyDetectorTest {
             MetricType.SKIN_TEMPERATURE_DEVIATION to 1.5
         )
 
-        val explanation = buildExplanation("Pattern explanation.", deviations)
+        val explanation = buildAnomalyExplanation("Pattern explanation.", deviations)
 
         // HRV (|3.0|) should come first, then RHR (|2.0|), then temp (|1.5|)
         val hrvIdx = explanation.indexOf("heart rate variability")
@@ -116,7 +88,7 @@ class AnomalyDetectorTest {
     @Test
     fun `explanation shows above for positive z-scores`() {
         val deviations = mapOf(MetricType.RESTING_HEART_RATE to 2.5)
-        val explanation = buildExplanation("Test.", deviations)
+        val explanation = buildAnomalyExplanation("Test.", deviations)
 
         assertTrue(explanation.contains("above your personal baseline"))
     }
@@ -124,7 +96,7 @@ class AnomalyDetectorTest {
     @Test
     fun `explanation shows below for negative z-scores`() {
         val deviations = mapOf(MetricType.HEART_RATE_VARIABILITY to -2.0)
-        val explanation = buildExplanation("Test.", deviations)
+        val explanation = buildAnomalyExplanation("Test.", deviations)
 
         assertTrue(explanation.contains("below your personal baseline"))
     }
@@ -133,7 +105,7 @@ class AnomalyDetectorTest {
     fun `explanation ends with pattern explanation`() {
         val deviations = mapOf(MetricType.HEART_RATE to 1.5)
         val patternExplanation = "This is the pattern explanation."
-        val explanation = buildExplanation(patternExplanation, deviations)
+        val explanation = buildAnomalyExplanation(patternExplanation, deviations)
 
         assertTrue(explanation.endsWith(patternExplanation))
     }
@@ -161,15 +133,12 @@ class AnomalyDetectorTest {
 
     // --- severityFloor escalation tests ---
     //
-    // Mirrors the escalation block in AnomalyDetector.evaluatePattern: when a
-    // pattern declares a severityFloor, the emitted severity is the higher of
-    // the classifier's output and the floor. This is the mechanism that makes
-    // AlertTier.URGENT reachable for emergency vital-sign patterns
-    // (EmergencyVitalPatterns) without affecting trend patterns whose floor
-    // is null.
-
-    private fun applyFloor(classified: AlertTier, floor: AlertTier?): AlertTier =
-        floor?.let { if (it.level > classified.level) it else classified } ?: classified
+    // Exercises the real engine applySeverityFloor used by
+    // AnomalyDetector.evaluatePattern: when a pattern declares a severityFloor,
+    // the emitted severity is the higher of the classifier's output and the
+    // floor. This is the mechanism that makes AlertTier.URGENT reachable for
+    // emergency vital-sign patterns (EmergencyVitalPatterns) without affecting
+    // trend patterns whose floor is null.
 
     @Test
     fun `severityFloor escalates classifier output when floor is higher`() {
@@ -177,7 +146,7 @@ class AnomalyDetectorTest {
         // would otherwise be classified as OBSERVATION; URGENT floor wins.
         assertEquals(
             AlertTier.URGENT,
-            applyFloor(classified = AlertTier.OBSERVATION, floor = AlertTier.URGENT)
+            applySeverityFloor(classified = AlertTier.OBSERVATION, floor = AlertTier.URGENT)
         )
     }
 
@@ -187,7 +156,7 @@ class AnomalyDetectorTest {
         // classifier scored as ADVISORY — keep ADVISORY.
         assertEquals(
             AlertTier.ADVISORY,
-            applyFloor(classified = AlertTier.ADVISORY, floor = AlertTier.NOTICE)
+            applySeverityFloor(classified = AlertTier.ADVISORY, floor = AlertTier.NOTICE)
         )
     }
 
@@ -196,7 +165,7 @@ class AnomalyDetectorTest {
         // Trend patterns (the default) leave severityFloor null.
         assertEquals(
             AlertTier.NOTICE,
-            applyFloor(classified = AlertTier.NOTICE, floor = null)
+            applySeverityFloor(classified = AlertTier.NOTICE, floor = null)
         )
     }
 
@@ -204,22 +173,17 @@ class AnomalyDetectorTest {
     fun `severityFloor equal to classifier output is a no-op`() {
         assertEquals(
             AlertTier.URGENT,
-            applyFloor(classified = AlertTier.URGENT, floor = AlertTier.URGENT)
+            applySeverityFloor(classified = AlertTier.URGENT, floor = AlertTier.URGENT)
         )
     }
 
     // --- median (multi-reading absolute window) tests ---
     //
-    // Mirrors AnomalyDetector.median. The hypertension_emerging pattern
-    // depends on this: white-coat-robust check across multiple home BP
-    // readings uses the median, not the average, so a single outlier reading
-    // doesn't pull the signal.
-
-    private fun median(values: List<Double>): Double {
-        val sorted = values.sorted()
-        val mid = sorted.size / 2
-        return if (sorted.size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2.0 else sorted[mid]
-    }
+    // Exercises the real engine median() used by AnomalyDetector's absolute-
+    // rule evaluation. The hypertension_emerging pattern depends on it: the
+    // white-coat-robust check across multiple home BP readings uses the
+    // median, not the average, so a single outlier reading doesn't pull the
+    // signal.
 
     @Test
     fun `median of odd-count list returns middle element`() {
@@ -253,17 +217,17 @@ class AnomalyDetectorTest {
 
     // --- durationAtLeastSec filter (#268) ---
     //
-    // Mirrors the row-level filter in AnomalyDetector.fetchAbsoluteWindowValues.
-    // The status_epilepticus_convulsive pattern relies on this branch to
-    // honour the ILAE 2015 t1 = 300 s convulsive-SE definition: a 200 s
-    // SEIZURE_EVENT must drop out, a 320 s event must pass through.
+    // Exercises the real engine filterDurationAtLeast used by
+    // AnomalyDetector.fetchAbsoluteWindowValues (this helper only projects the
+    // surviving rows to their values, as the production fetch does). The
+    // status_epilepticus_convulsive pattern relies on this branch to honour the
+    // ILAE 2015 t1 = 300 s convulsive-SE definition: a 200 s SEIZURE_EVENT must
+    // drop out, a 320 s event must pass through.
 
     private fun filterByDurationAtLeast(
         rows: List<MetricReading>,
         minDurationSec: Int,
-    ): List<Double> = rows
-        .filter { (it.durationSec ?: 0) >= minDurationSec }
-        .map { it.value }
+    ): List<Double> = filterDurationAtLeast(rows, minDurationSec).map { it.value }
 
     @Test
     fun `duration filter drops a sub-300s seizure event`() {
