@@ -33,6 +33,19 @@ if [ -f "$PROJECT_ROOT/android/gradlew" ]; then
         echo "WARN: Android lint failed (non-blocking until CI is set up)"
     fi
 
+    # 3b. Detekt static analysis (BLOCKING).
+    # Fast, no type resolution. Per-module detekt-baseline.xml absorbs the
+    # existing tree, so this fails only on NEWLY introduced violations
+    # (oversized methods, deep nesting, complexity, long lines, etc.).
+    # After an intentional large refactor, regenerate with:
+    #   (cd android && ./gradlew detektBaseline)
+    step "Running detekt static analysis"
+    if ! (cd "$PROJECT_ROOT/android" && ./gradlew detekt 2>&1); then
+        echo "Detekt found new violations not in the baseline. Fix them, or — if"
+        echo "intentional — regenerate the baseline with 'cd android && ./gradlew detektBaseline'."
+        FAILED=1
+    fi
+
     # 4. Build verification
     step "Verifying Android build"
     if ! (cd "$PROJECT_ROOT/android" && ./gradlew assembleDebug 2>&1); then
