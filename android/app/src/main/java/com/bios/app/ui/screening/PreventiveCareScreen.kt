@@ -43,6 +43,7 @@ import com.bios.app.data.RiskProfileRepo
 import com.bios.app.data.ScreeningEntryRepo
 import com.bios.app.model.RiskProfile
 import com.bios.app.screening.AnatomyProfile
+import com.bios.app.screening.CadenceKind
 import com.bios.app.screening.OwnerDemographicsStore
 import com.bios.app.screening.ScreeningCadenceEngine
 import com.bios.app.screening.ScreeningCatalog
@@ -217,11 +218,14 @@ private fun ManifestoCard() {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("How Bios uses this", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
-                "Bios reads the USPSTF adult screening schedule and your own " +
-                    "history to answer one question: what are you due for? " +
-                    "Nothing here pushes a notification; the screen waits until " +
-                    "you ask. Cadence math is just math — your provider applies " +
-                    "the local guideline for diagnosis.",
+                "Bios reads the USPSTF adult screening schedule, routine " +
+                    "checkup intervals (dental, eye, periodic exam), and your " +
+                    "own history to answer one question: what are you due for? " +
+                    "Routine checkups show a recommended delay since your last " +
+                    "visit — never an 'overdue', because that's advice, not a " +
+                    "deadline. Nothing here pushes a notification; the screen " +
+                    "waits until you ask. Cadence math is just math — your " +
+                    "provider applies the local guideline for diagnosis.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -285,11 +289,19 @@ private fun ScreeningRow(
             if (status.monthsOverdue > 0)
                 "Overdue by ${status.monthsOverdue} mo"
             else "Due now (last ${status.monthsSinceLast} mo ago)"
+        // Minimum-interval (routine checkup) states — neutral wording, no
+        // "overdue". A recommended delay you can't be late for.
+        is ScreeningStatus.WithinInterval ->
+            "Recommended again in ${status.monthsUntilEligible} mo (last ${status.monthsSinceLast} mo ago)"
+        is ScreeningStatus.IntervalElapsed ->
+            "Eligible again (last ${status.monthsSinceLast} mo ago)"
     }
     val statusColor = when (status) {
         is ScreeningStatus.DueNow -> MaterialTheme.colorScheme.error
         ScreeningStatus.NoRecord -> MaterialTheme.colorScheme.secondary
         is ScreeningStatus.Current -> MaterialTheme.colorScheme.primary
+        is ScreeningStatus.WithinInterval -> MaterialTheme.colorScheme.primary
+        is ScreeningStatus.IntervalElapsed -> MaterialTheme.colorScheme.secondary
         is ScreeningStatus.NotEligible -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -301,7 +313,7 @@ private fun ScreeningRow(
             Text(entry.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Text(statusText, style = MaterialTheme.typography.bodySmall, color = statusColor)
             Text(
-                "Cadence: every ${cadenceLabel(entry.cadenceMonths)} • ${ageLabel(entry)}",
+                "${cadenceDescriptor(entry)} • ${ageLabel(entry)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -367,117 +379,23 @@ private fun RecordScreeningDialog(
     }
 }
 
-@Composable
-private fun DemographicsDialog(
-    initialBirthYear: Int?,
-    initialAnatomy: AnatomyProfile,
-    onDismiss: () -> Unit,
-    onSave: (Int?, AnatomyProfile) -> Unit,
-) {
-    var yearText by remember { mutableStateOf(initialBirthYear?.toString() ?: "") }
-    var anatomy by remember { mutableStateOf(initialAnatomy) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Demographics") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = yearText,
-                    onValueChange = { v -> yearText = v.filter { it.isDigit() }.take(4) },
-                    label = { Text("Birth year (e.g. 1985)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text("Anatomy", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                Text(
-                    "Bios asks about anatomy, not gender. Each screening " +
-                        "recommendation pins to an organ: mammograms to breast " +
-                        "tissue, cervical screening to a cervix, PSA discussion " +
-                        "to a prostate. Answer what applies; leave the rest " +
-                        "unset.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                AnatomyQuestion(
-                    label = "Do you have breast tissue?",
-                    answer = anatomy.hasBreastTissue,
-                    onAnswer = { anatomy = anatomy.copy(hasBreastTissue = it) },
-                )
-                AnatomyQuestion(
-                    label = "Do you have a cervix?",
-                    answer = anatomy.hasCervix,
-                    onAnswer = { anatomy = anatomy.copy(hasCervix = it) },
-                )
-                AnatomyQuestion(
-                    label = "Do you have a uterus?",
-                    answer = anatomy.hasUterus,
-                    onAnswer = { anatomy = anatomy.copy(hasUterus = it) },
-                )
-                AnatomyQuestion(
-                    label = "Do you have a prostate?",
-                    answer = anatomy.hasProstate,
-                    onAnswer = { anatomy = anatomy.copy(hasProstate = it) },
-                )
-                AnatomyQuestion(
-                    label = "Have you had bottom or top surgery?",
-                    answer = anatomy.hadGenderAffirmingSurgery,
-                    onAnswer = { anatomy = anatomy.copy(hadGenderAffirmingSurgery = it) },
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onSave(
-                    yearText.toIntOrNull()?.takeIf {
-                        it in 1900..Calendar.getInstance().get(Calendar.YEAR)
-                    },
-                    anatomy,
-                )
-            }) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
-}
-
-@Composable
-private fun AnatomyQuestion(
-    label: String,
-    answer: Boolean?,
-    onAnswer: (Boolean?) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AnatomyChip("Yes", answer == true) { onAnswer(true) }
-            AnatomyChip("No", answer == false) { onAnswer(false) }
-            AnatomyChip("Unset", answer == null) { onAnswer(null) }
-        }
-    }
-}
-
-@Composable
-private fun AnatomyChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        colors = if (selected) {
-            androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        } else androidx.compose.material3.ButtonDefaults.outlinedButtonColors(),
-    ) { Text(label) }
-}
-
 private fun cadenceLabel(months: Int): String = when {
     months == Int.MAX_VALUE -> "one-time"
     months % 12 == 0 -> "${months / 12} yr"
     else -> "$months mo"
 }
+
+/**
+ * Cadence wording by [CadenceKind]. Recurring entries read "every X";
+ * minimum-interval checkups read "recommended delay: X" so the owner sees
+ * a delay-since-last advice, not a clock to fail.
+ */
+private fun cadenceDescriptor(entry: ScreeningCatalogEntry): String =
+    when (entry.cadenceKind) {
+        CadenceKind.RECURRING -> "Cadence: every ${cadenceLabel(entry.cadenceMonths)}"
+        CadenceKind.MIN_INTERVAL_SINCE_LAST ->
+            "Recommended delay: ${cadenceLabel(entry.cadenceMonths)} since last"
+    }
 
 private fun ageLabel(entry: ScreeningCatalogEntry): String =
     if (entry.maxAge != null) "ages ${entry.minAge}–${entry.maxAge}"
