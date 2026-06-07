@@ -39,6 +39,22 @@ sealed class ScreeningStatus {
     data class DueNow(val monthsSinceLast: Int, val monthsOverdue: Int) : ScreeningStatus()
     /** Eligible, on record, current; next due in [monthsUntilDue] months. */
     data class Current(val monthsSinceLast: Int, val monthsUntilDue: Int) : ScreeningStatus()
+
+    /**
+     * [CadenceKind.MIN_INTERVAL_SINCE_LAST] only: on record, but the
+     * recommended delay since the last occurrence hasn't elapsed yet.
+     * Neutral — "recommended again in [monthsUntilEligible] months". This
+     * is *not* an overdue state and callers must never render it as one.
+     */
+    data class WithinInterval(val monthsSinceLast: Int, val monthsUntilEligible: Int) : ScreeningStatus()
+
+    /**
+     * [CadenceKind.MIN_INTERVAL_SINCE_LAST] only: on record and the
+     * recommended delay has elapsed — eligible to repeat. Still neutral:
+     * a recommended delay you can't be "late" for (manifesto no-shame
+     * rule). Distinct from [DueNow], which carries overdue urgency.
+     */
+    data class IntervalElapsed(val monthsSinceLast: Int) : ScreeningStatus()
 }
 
 /**
@@ -144,6 +160,20 @@ object ScreeningCadenceEngine {
         val monthsSinceLast = (daysSinceLast / DAYS_PER_MONTH).toInt()
         val cadenceDays = (entry.cadenceMonths * DAYS_PER_MONTH).toInt()
         val daysUntilDue = cadenceDays - daysSinceLast
+
+        // Minimum-interval entries (routine checkups) never read as
+        // overdue: before the recommended delay elapses they're
+        // WithinInterval, after it they're IntervalElapsed — both neutral.
+        if (entry.cadenceKind == CadenceKind.MIN_INTERVAL_SINCE_LAST) {
+            return if (daysUntilDue > 0) {
+                ScreeningStatus.WithinInterval(
+                    monthsSinceLast = monthsSinceLast,
+                    monthsUntilEligible = (daysUntilDue / DAYS_PER_MONTH).toInt(),
+                )
+            } else {
+                ScreeningStatus.IntervalElapsed(monthsSinceLast = monthsSinceLast)
+            }
+        }
 
         return if (daysUntilDue <= DUE_NOW_GRACE_DAYS) {
             val monthsOverdue = if (daysUntilDue >= 0) 0 else (-daysUntilDue / DAYS_PER_MONTH).toInt()
