@@ -295,31 +295,14 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("settings") {
                 SettingsScreen(
                     viewModel = viewModel,
-                    onNavigateToPrivacy = { navController.navigate("privacy") },
-                    onNavigateToCompanions = { navController.navigate("companions") },
-                    onNavigateToDataCoverage = { navController.navigate("data_coverage") },
-                    onNavigateToBlePair = { navController.navigate("ble_pair") },
-                    onNavigateToMedications = { navController.navigate("medications") },
-                    onNavigateToImmunisations = { navController.navigate("immunisations") },
-                    onNavigateToPreventiveCare = { navController.navigate("preventive_care") },
-                    onNavigateToRiskProfile = { navController.navigate("risk_profile") },
-                    onNavigateToPhysiologyState = { navController.navigate("physiology_state") },
-                    onNavigateToFrailAssessment = { navController.navigate("frail_assessment") },
-                    onNavigateToGoalsOfCare = { navController.navigate("goals_of_care") },
-                    onNavigateToHeadacheDiary = { navController.navigate("headache_diary") },
-                    onNavigateToFastStroke = { navController.navigate("fast_stroke") },
-                    onNavigateToEsasCapture = { navController.navigate("esas_capture") },
-                    onNavigateToTraditionalMedicine = { navController.navigate("traditional_medicine_context") },
-                    onNavigateToEnvironmentalContext = { navController.navigate("environmental_context") },
-                    onNavigateToEmergencyContacts = { navController.navigate("emergency_contacts") },
-                    onNavigateToEcgStrips = { navController.navigate("ecg_strips") },
-                    onNavigateToSurgicalRecovery = { navController.navigate("surgical_recovery") },
-                    onNavigateToInterventionEvents = { navController.navigate("intervention_events") },
-                    onNavigateToTreatmentCourses = { navController.navigate("treatment_courses") },
-                    onNavigateToAnthropometry = { navController.navigate("anthropometry") },
-                    onNavigateToMetricReadingsDebug = { navController.navigate("metric_readings_debug") },
-                    onNavigateToSeizureTimeline = { navController.navigate("seizure_timeline") },
-                    onNavigateToMetricSources = { navController.navigate("metric_sources") }, onNavigateToGeriatricTrajectory = { navController.navigate("geriatric_trajectory") }, onNavigateToTremorTrend = { navController.navigate("tremor_trend") }, onNavigateToReproductive = { route -> navController.navigate(route) },
+                    onNavigate = { route -> navController.navigate(route) },
+                )
+            }
+            composable("app_settings") {
+                com.bios.app.ui.settings.AppSettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onViewSeizureDetections = { navController.navigate("seizure_timeline") },
+                    onLongPressVersion = { navController.navigate("metric_readings_debug") },
                 )
             }
             composable("metric_sources") {

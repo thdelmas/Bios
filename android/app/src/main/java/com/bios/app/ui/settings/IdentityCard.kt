@@ -31,76 +31,53 @@ import androidx.compose.ui.unit.dp
  * Identity card — owner-annotated medical and physiological context;
  * not configuration. Extracted from [SettingsScreen] to give "Self"
  * surfaces a dedicated landing zone. Adding a new identity entry means
- * adding a nav callback param + a row in the matching [IdentitySection]
- * group below, in one place.
+ * adding a `label to "route"` row in the matching group below, in one
+ * place — every entry navigates by route through [onNavigate].
  *
  * Entries are organised into collapsible groups so the card reads as a
  * handful of scannable headers rather than a wall of buttons. All groups
  * are collapsed by default; the owner expands the area they're looking for.
- *
- * Each `onNavigateTo*` callback is a no-op by default so new entries
- * can be wired progressively without breaking the existing call sites.
  */
 @Composable
 internal fun IdentityCard(
-    onNavigateToMedications: () -> Unit = {},
-    onNavigateToImmunisations: () -> Unit = {},
-    onNavigateToPreventiveCare: () -> Unit = {},
-    onNavigateToRiskProfile: () -> Unit = {},
-    onNavigateToPhysiologyState: () -> Unit = {},
-    onNavigateToFrailAssessment: () -> Unit = {},
-    onNavigateToGoalsOfCare: () -> Unit = {},
-    onNavigateToHeadacheDiary: () -> Unit = {},
-    onNavigateToFastStroke: () -> Unit = {},
-    onNavigateToEsasCapture: () -> Unit = {},
-    onNavigateToTraditionalMedicine: () -> Unit = {},
-    onNavigateToEnvironmentalContext: () -> Unit = {},
-    onNavigateToEmergencyContacts: () -> Unit = {},
-    onNavigateToEcgStrips: () -> Unit = {},
-    onNavigateToSurgicalRecovery: () -> Unit = {},
-    onNavigateToInterventionEvents: () -> Unit = {},
-    onNavigateToTreatmentCourses: () -> Unit = {},
-    onNavigateToAnthropometry: () -> Unit = {},
-    onNavigateToGeriatricTrajectory: () -> Unit = {},
-    onNavigateToTremorTrend: () -> Unit = {},
-    onNavigateToReproductive: (route: String) -> Unit = {},
+    onNavigate: (route: String) -> Unit = {},
 ) {
     val sections = listOf(
         "Body & baseline" to listOf(
-            "Anthropometry" to onNavigateToAnthropometry,
-            "Physiology state" to onNavigateToPhysiologyState,
-            "Environmental context" to onNavigateToEnvironmentalContext,
+            "Anthropometry" to "anthropometry",
+            "Physiology state" to "physiology_state",
+            "Environmental context" to "environmental_context",
         ),
         "Medical record" to listOf(
-            "Current medications" to onNavigateToMedications,
-            "Immunisation record" to onNavigateToImmunisations,
-            "Treatment courses" to onNavigateToTreatmentCourses,
-            "Intervention events" to onNavigateToInterventionEvents,
-            "Surgical recovery" to onNavigateToSurgicalRecovery,
-            "ECG strips" to onNavigateToEcgStrips,
+            "Current medications" to "medications",
+            "Immunisation record" to "immunisations",
+            "Treatment courses" to "treatment_courses",
+            "Intervention events" to "intervention_events",
+            "Surgical recovery" to "surgical_recovery",
+            "ECG strips" to "ecg_strips",
         ),
         "Prevention & risk" to listOf(
-            "Preventive care" to onNavigateToPreventiveCare,
-            "Risk profile" to onNavigateToRiskProfile,
-            "FRAIL assessment" to onNavigateToFrailAssessment,
-            "Geriatric trajectory" to onNavigateToGeriatricTrajectory,
+            "Preventive care" to "preventive_care",
+            "Risk profile" to "risk_profile",
+            "FRAIL assessment" to "frail_assessment",
+            "Geriatric trajectory" to "geriatric_trajectory",
         ),
         "Symptoms & assessments" to listOf(
-            "Headache & migraine diary" to onNavigateToHeadacheDiary,
-            "Tremor / movement trends" to onNavigateToTremorTrend,
-            "FAST stroke check" to onNavigateToFastStroke,
-            "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
+            "Headache & migraine diary" to "headache_diary",
+            "Tremor / movement trends" to "tremor_trend",
+            "FAST stroke check" to "fast_stroke",
+            "Symptom report (ESAS-r)" to "esas_capture",
         ),
         "Reproductive" to listOf(
-            "Contraception" to { onNavigateToReproductive("contraception") },
-            "Menopause / perimenopause" to { onNavigateToReproductive("menopause_stage") },
-            "Gender-affirming care" to { onNavigateToReproductive("gender_affirming_care") },
-            "PCOS / Endometriosis context" to { onNavigateToReproductive("pcos_endometriosis") },
+            "Contraception" to "contraception",
+            "Menopause / perimenopause" to "menopause_stage",
+            "Gender-affirming care" to "gender_affirming_care",
+            "PCOS / Endometriosis context" to "pcos_endometriosis",
         ),
         "Care & contacts" to listOf(
-            "Goals of care" to onNavigateToGoalsOfCare,
-            "Emergency contacts" to onNavigateToEmergencyContacts,
-            "Traditional medicine" to onNavigateToTraditionalMedicine,
+            "Goals of care" to "goals_of_care",
+            "Emergency contacts" to "emergency_contacts",
+            "Traditional medicine" to "traditional_medicine_context",
         ),
     )
 
@@ -109,7 +86,7 @@ internal fun IdentityCard(
             Text("Identity", style = MaterialTheme.typography.titleSmall)
             sections.forEach { (title, entries) ->
                 Spacer(Modifier.height(8.dp))
-                IdentitySection(title = title, entries = entries)
+                IdentitySection(title = title, entries = entries, onNavigate = onNavigate)
             }
         }
     }
@@ -122,7 +99,8 @@ internal fun IdentityCard(
 @Composable
 private fun IdentitySection(
     title: String,
-    entries: List<Pair<String, () -> Unit>>,
+    entries: List<Pair<String, String>>,
+    onNavigate: (route: String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(
@@ -141,9 +119,9 @@ private fun IdentitySection(
     }
     AnimatedVisibility(visible = expanded) {
         Column {
-            entries.forEachIndexed { idx, (label, action) ->
+            entries.forEachIndexed { idx, (label, route) ->
                 if (idx > 0) Spacer(Modifier.height(4.dp))
-                OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                OutlinedButton(onClick = { onNavigate(route) }, modifier = Modifier.fillMaxWidth()) { Text(label) }
             }
         }
     }

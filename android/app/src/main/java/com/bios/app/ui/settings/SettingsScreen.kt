@@ -32,31 +32,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     viewModel: AppViewModel,
-    onNavigateToPrivacy: () -> Unit = {},
-    onNavigateToCompanions: () -> Unit = {},
-    onNavigateToDataCoverage: () -> Unit = {},
-    onNavigateToBlePair: () -> Unit = {},
-    onNavigateToMedications: () -> Unit = {},
-    onNavigateToImmunisations: () -> Unit = {},
-    onNavigateToPreventiveCare: () -> Unit = {},
-    onNavigateToRiskProfile: () -> Unit = {},
-    onNavigateToPhysiologyState: () -> Unit = {},
-    onNavigateToFrailAssessment: () -> Unit = {},
-    onNavigateToGoalsOfCare: () -> Unit = {},
-    onNavigateToHeadacheDiary: () -> Unit = {},
-    onNavigateToFastStroke: () -> Unit = {},
-    onNavigateToEsasCapture: () -> Unit = {},
-    onNavigateToTraditionalMedicine: () -> Unit = {},
-    onNavigateToEnvironmentalContext: () -> Unit = {},
-    onNavigateToEmergencyContacts: () -> Unit = {},
-    onNavigateToEcgStrips: () -> Unit = {},
-    onNavigateToSurgicalRecovery: () -> Unit = {},
-    onNavigateToInterventionEvents: () -> Unit = {},
-    onNavigateToTreatmentCourses: () -> Unit = {},
-    onNavigateToAnthropometry: () -> Unit = {},
-    onNavigateToMetricReadingsDebug: () -> Unit = {},
-    onNavigateToSeizureTimeline: () -> Unit = {},
-    onNavigateToMetricSources: () -> Unit = {}, onNavigateToGeriatricTrajectory: () -> Unit = {}, onNavigateToTremorTrend: () -> Unit = {}, onNavigateToReproductive: (route: String) -> Unit = {},
+    onNavigate: (route: String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
@@ -99,27 +75,7 @@ fun SettingsScreen(
     ) {
         Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
-        IdentityCard(
-            onNavigateToMedications = onNavigateToMedications,
-            onNavigateToImmunisations = onNavigateToImmunisations,
-            onNavigateToPreventiveCare = onNavigateToPreventiveCare,
-            onNavigateToRiskProfile = onNavigateToRiskProfile,
-            onNavigateToPhysiologyState = onNavigateToPhysiologyState,
-            onNavigateToFrailAssessment = onNavigateToFrailAssessment,
-            onNavigateToGoalsOfCare = onNavigateToGoalsOfCare,
-            onNavigateToHeadacheDiary = onNavigateToHeadacheDiary,
-            onNavigateToFastStroke = onNavigateToFastStroke,
-            onNavigateToEsasCapture = onNavigateToEsasCapture,
-            onNavigateToTraditionalMedicine = onNavigateToTraditionalMedicine,
-            onNavigateToEnvironmentalContext = onNavigateToEnvironmentalContext,
-            onNavigateToEmergencyContacts = onNavigateToEmergencyContacts,
-            onNavigateToEcgStrips = onNavigateToEcgStrips,
-            onNavigateToSurgicalRecovery = onNavigateToSurgicalRecovery,
-            onNavigateToInterventionEvents = onNavigateToInterventionEvents,
-            onNavigateToTreatmentCourses = onNavigateToTreatmentCourses,
-            onNavigateToAnthropometry = onNavigateToAnthropometry,
-            onNavigateToGeriatricTrajectory = onNavigateToGeriatricTrajectory, onNavigateToTremorTrend = onNavigateToTremorTrend, onNavigateToReproductive = onNavigateToReproductive,
-        )
+        IdentityCard(onNavigate = onNavigate)
 
         // Privacy — what can leave, and who can access. Highest-stakes surface.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -130,7 +86,7 @@ fun SettingsScreen(
                 CompanionAppsRow(
                     pendingCount = pendingCompanionCount,
                     approvedCount = approvedCompanionCount,
-                    onClick = onNavigateToCompanions
+                    onClick = { onNavigate("companions") }
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -177,7 +133,7 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = onNavigateToPrivacy,
+                    onClick = { onNavigate("privacy") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Shield, contentDescription = null)
@@ -272,14 +228,14 @@ fun SettingsScreen(
                     name = "Air-quality sensor (BLE)",
                     isConnected = viewModel.bleAirQualityAdapter.isPaired,
                     // Both routes go to the pair screen — unpair lives there.
-                    onConnect = onNavigateToBlePair,
-                    onDisconnect = onNavigateToBlePair,
+                    onConnect = { onNavigate("ble_pair") },
+                    onDisconnect = { onNavigate("ble_pair") },
                 )
 
                 Spacer(Modifier.height(8.dp))
-                SettingsActionButton("Data coverage", onNavigateToDataCoverage)
+                SettingsActionButton("Data coverage") { onNavigate("data_coverage") }
                 Spacer(Modifier.height(4.dp))
-                SettingsActionButton("Per-metric sources", onNavigateToMetricSources)
+                SettingsActionButton("Per-metric sources") { onNavigate("metric_sources") }
             }
         }
 
@@ -401,18 +357,16 @@ fun SettingsScreen(
             }
         }
 
-        SettingsNotificationsCard()
-        SettingsLanguageCard()
-        SettingsFeedbackCard()
-
-        SettingsPhoneSleepCard()
-
-        SettingsSeizureDetectionCard(onViewDetections = onNavigateToSeizureTimeline)
-
-        SettingsDiagnosticsCard()
-
-        // About — long-press Version row opens the metric_readings debug screen (#253).
-        SettingsAboutCard(onLongPressVersion = onNavigateToMetricReadingsDebug)
+        // App configuration (notifications, language, feedback, on-device
+        // toggles, diagnostics, about) lives behind its own screen so the
+        // Self tab stays focused on owner identity, privacy, and data.
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("App", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                SettingsActionButton("App settings") { onNavigate("app_settings") }
+            }
+        }
     }
 
     if (showDeleteDialog) {
