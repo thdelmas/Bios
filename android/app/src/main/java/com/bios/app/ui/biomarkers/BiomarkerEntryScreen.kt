@@ -417,7 +417,7 @@ fun BiomarkerEntryScreen(
 }
 
 @Composable
-private fun FhirImportSummaryDialog(summary: FhirImportSummary, onDismiss: () -> Unit) {
+internal fun FhirImportSummaryDialog(summary: FhirImportSummary, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
