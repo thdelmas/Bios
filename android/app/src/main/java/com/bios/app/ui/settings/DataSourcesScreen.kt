@@ -1,6 +1,8 @@
 package com.bios.app.ui.settings
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,11 +44,14 @@ import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
 import com.bios.app.export.FhirExporter
+import com.bios.app.export.FhirImportSummary
+import com.bios.app.export.FhirImporter
 import com.bios.app.ingest.GarminApiAdapter
 import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
 import com.bios.app.ui.AppViewModel
+import com.bios.app.ui.biomarkers.FhirImportSummaryDialog
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -225,6 +230,8 @@ private fun YourDataCard(viewModel: AppViewModel) {
             )
 
             Spacer(Modifier.height(8.dp))
+            ImportFhirButton(viewModel = viewModel)
+            Spacer(Modifier.height(4.dp))
             ExportButton(
                 label = "Export as JSON",
                 enabled = totalReadings > 0,
@@ -248,6 +255,61 @@ private fun YourDataCard(viewModel: AppViewModel) {
             Spacer(Modifier.height(4.dp))
             PdfSummaryButton(viewModel = viewModel, enabled = totalReadings > 0)
         }
+    }
+}
+
+/**
+ * Quick import of lab results from a FHIR R4 JSON file (Bundle or single
+ * Observation) into the biomarker store — the read-side mirror of the
+ * "Export as FHIR Bundle" button. Reuses [FhirImporter] and the shared
+ * [FhirImportSummaryDialog], so accepted/skipped reporting stays identical
+ * to the biomarker entry screen's import path. Imports route through
+ * [AppViewModel.biomarkerEntryRepo]'s SELF_REPORTED write path, so engines
+ * keep ignoring them per docs/SELF_REPORTED_DATA_HOME.md.
+ */
+@Composable
+private fun ImportFhirButton(viewModel: AppViewModel) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var importing by remember { mutableStateOf(false) }
+    var summary by remember { mutableStateOf<FhirImportSummary?>(null) }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            importing = true
+            scope.launch {
+                try {
+                    summary = FhirImporter.importFromUri(
+                        context = context,
+                        uri = uri,
+                        repo = viewModel.biomarkerEntryRepo,
+                    )
+                    viewModel.refreshRecentBiomarkers()
+                } finally {
+                    importing = false
+                }
+            }
+        }
+    }
+
+    OutlinedButton(
+        onClick = {
+            launcher.launch(arrayOf("application/json", "application/fhir+json", "*/*"))
+        },
+        enabled = !importing,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (importing) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(if (importing) "Importing…" else "Import lab results (FHIR)")
+    }
+
+    summary?.let { s ->
+        FhirImportSummaryDialog(summary = s, onDismiss = { summary = null })
     }
 }
 
