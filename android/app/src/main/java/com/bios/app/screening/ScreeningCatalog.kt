@@ -166,7 +166,10 @@ object ScreeningCatalog {
             displayName = "Colorectal cancer (colonoscopy or FIT)",
             minAge = 45, maxAge = 75, cadenceMonths = 12,
             applicability = Applicability.UNIVERSAL,
-            citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual FIT or 10-yr colonoscopy. Cadence here is the annual-FIT pace; the engine treats long-interval modalities (colonoscopy) as still-current when within 10 years.",
+            citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual " +
+                "FIT or 10-yr colonoscopy. The 12-mo cadence here is the annual-FIT pace. Bios doesn't " +
+                "know which modality you used, so if you had a colonoscopy record its date and read the " +
+                "next-due as the 10-yr interval your provider set — the displayed cadence assumes FIT.",
         ),
         ScreeningCatalogEntry(
             key = "mammogram",
@@ -261,11 +264,20 @@ object ScreeningCatalog {
     val checkups: List<ScreeningCatalogEntry> = CheckupCatalog.entries
 
     /**
+     * WHO globally-scoped recommendations (maximum-coverage follow-up) —
+     * total cardiovascular-risk assessment (WHO PEN / HEARTS) and the
+     * at-least-once infectious-disease tests (HIV, HBsAg, anti-HCV). Adds
+     * coverage the USPSTF-anchored set lacks without duplicating entries
+     * WHO merely restates at a different threshold. See [WhoScreeningCatalog].
+     */
+    val who: List<ScreeningCatalogEntry> = WhoScreeningCatalog.entries
+
+    /**
      * Everything the engine should evaluate in the default cadence
      * screen. The UI iterates this list; each entry's [riskGate] +
      * [applicability] + age-band decide whether it actually renders for
      * the active owner.
      */
     val combined: List<ScreeningCatalogEntry> =
-        uspstf + hereditary + obGynSociety + cardiology + ihsPaho + checkups
+        uspstf + hereditary + obGynSociety + cardiology + ihsPaho + checkups + who
 }
