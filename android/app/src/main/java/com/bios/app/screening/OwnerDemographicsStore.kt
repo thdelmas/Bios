@@ -1,25 +1,47 @@
 package com.bios.app.screening
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 /**
  * Owner-set demographics needed by the cadence engine (#155). Stored in
- * encrypted shared-prefs — these aren't health readings, but birth year
- * and anatomy-presentation are dignity-class data and shouldn't be
- * sniffable by other apps with shared-prefs read.
+ * [EncryptedSharedPreferences] backed by the Android Keystore — these
+ * aren't health readings, but birth year and anatomy answers (breast
+ * tissue, cervix, uterus, prostate, gender-affirming-surgery history) are
+ * dignity-class data and must not sit in cleartext at rest, where a device
+ * backup, root, or forensic extraction could read them. Same protection
+ * the credential stores use (see `OuraTokenStore`).
  *
- * Tiny surface: birth year (more stable than age) and an
- * [Applicability]-domain anatomy presentation flag. The engine derives
- * current age from birth year against the system clock. Owner can clear
- * either to opt out of demographic gating — when both are null, the
- * cadence screen renders a one-time prompt asking the owner to set them
- * (no push, just the in-screen surface).
+ * Tiny surface: birth year (more stable than age) and the per-organ
+ * [AnatomyProfile]. The engine derives current age from birth year against
+ * the system clock. Owner can clear either to opt out of demographic
+ * gating — when both are null, the cadence screen renders a one-time
+ * prompt asking the owner to set them (no push, just the in-screen
+ * surface).
+ *
+ * Migration: an earlier build wrote these to a plaintext `MODE_PRIVATE`
+ * file. On first construction we copy any values out of that legacy file
+ * into the encrypted store and delete the plaintext one, so existing
+ * owners keep their answers without re-entering dignity-class data.
  */
 class OwnerDemographicsStore(context: Context) {
 
-    private val prefs = context.applicationContext.getSharedPreferences(
-        "bios_screening_demographics", Context.MODE_PRIVATE,
+    private val appContext = context.applicationContext
+
+    private val prefs = EncryptedSharedPreferences.create(
+        appContext,
+        ENCRYPTED_PREFS_NAME,
+        MasterKey.Builder(appContext)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
     )
+
+    init {
+        migrateLegacyPlaintextPrefs()
+    }
 
     fun setBirthYear(year: Int?) {
         prefs.edit().apply {
@@ -100,7 +122,29 @@ class OwnerDemographicsStore(context: Context) {
         prefs.edit().clear().apply()
     }
 
+    /**
+     * One-time copy of values written by the pre-encryption build into the
+     * encrypted store, then deletes the plaintext file. No-op once the
+     * legacy file is gone (the common case after the first run, and for
+     * fresh installs that never had one).
+     */
+    private fun migrateLegacyPlaintextPrefs() {
+        val legacy = appContext.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+        if (legacy.all.isEmpty()) return
+        prefs.edit().apply {
+            if (legacy.contains(KEY_BIRTH_YEAR)) putInt(KEY_BIRTH_YEAR, legacy.getInt(KEY_BIRTH_YEAR, -1))
+            legacy.getString(KEY_PRESENTS_AS, null)?.let { putString(KEY_PRESENTS_AS, it) }
+            for (key in listOf(KEY_BREAST_TISSUE, KEY_CERVIX, KEY_UTERUS, KEY_PROSTATE, KEY_SURGERY)) {
+                if (legacy.contains(key)) putBoolean(key, legacy.getBoolean(key, false))
+            }
+            apply()
+        }
+        legacy.edit().clear().apply()
+    }
+
     private companion object {
+        const val ENCRYPTED_PREFS_NAME = "bios_screening_demographics_enc"
+        const val LEGACY_PREFS_NAME = "bios_screening_demographics"
         const val KEY_BIRTH_YEAR = "birth_year"
         const val KEY_PRESENTS_AS = "presents_as"
         const val KEY_BREAST_TISSUE = "anatomy_breast_tissue"

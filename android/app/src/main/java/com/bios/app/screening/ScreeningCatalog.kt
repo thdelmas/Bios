@@ -166,7 +166,10 @@ object ScreeningCatalog {
             displayName = "Colorectal cancer (colonoscopy or FIT)",
             minAge = 45, maxAge = 75, cadenceMonths = 12,
             applicability = Applicability.UNIVERSAL,
-            citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual FIT or 10-yr colonoscopy. Cadence here is the annual-FIT pace; the engine treats long-interval modalities (colonoscopy) as still-current when within 10 years.",
+            citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual " +
+                "FIT or 10-yr colonoscopy. The 12-mo cadence here is the annual-FIT pace. Bios doesn't " +
+                "know which modality you used, so if you had a colonoscopy record its date and read the " +
+                "next-due as the 10-yr interval your provider set — the displayed cadence assumes FIT.",
         ),
         ScreeningCatalogEntry(
             key = "mammogram",
