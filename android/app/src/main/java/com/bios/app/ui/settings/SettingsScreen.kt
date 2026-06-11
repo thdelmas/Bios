@@ -34,6 +34,15 @@ fun SettingsScreen(
         val tier = prefs.getString("privacy_tier", PrivacyTier.PRIVATE.name)
         mutableStateOf(PrivacyTier.valueOf(tier ?: PrivacyTier.PRIVATE.name))
     }
+    // Passive, owner-pulled preventive-care due count for the Identity card
+    // badge (#401). Computed only because the owner opened this screen — no
+    // notification, no background work. Recomputed each time the screen is
+    // entered, so recording a checkup elsewhere clears the badge on return.
+    var dueByRoute by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    LaunchedEffect(Unit) {
+        val due = com.bios.app.ui.screening.PreventiveCareData.dueCount(context)
+        dueByRoute = if (due > 0) mapOf("preventive_care" to due) else emptyMap()
+    }
 
     Column(
         modifier = Modifier
@@ -44,7 +53,7 @@ fun SettingsScreen(
     ) {
         Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
-        IdentityCard(onNavigate = onNavigate)
+        IdentityCard(onNavigate = onNavigate, dueByRoute = dueByRoute)
 
         // Privacy — what can leave, and who can access. Highest-stakes surface.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
