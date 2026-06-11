@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -43,7 +42,6 @@ import com.bios.app.data.RiskProfileRepo
 import com.bios.app.data.ScreeningEntryRepo
 import com.bios.app.model.RiskProfile
 import com.bios.app.screening.AnatomyProfile
-import com.bios.app.screening.CadenceKind
 import com.bios.app.screening.OwnerDemographicsStore
 import com.bios.app.screening.ScreeningCadenceEngine
 import com.bios.app.screening.ScreeningCatalog
@@ -82,8 +80,10 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
     var riskProfile by remember { mutableStateOf<RiskProfile?>(null) }
     var showRecordDialog by remember { mutableStateOf<ScreeningCatalogEntry?>(null) }
     var showDemographicsDialog by remember { mutableStateOf(false) }
+    var notApplicableExpanded by remember { mutableStateOf(false) }
 
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val now = remember { System.currentTimeMillis() }
 
     suspend fun refresh() {
         // Most-recent-per-key, merging the manual ledger with dates Bios can
@@ -107,6 +107,30 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
         )
     }
 
+    // Build the chronological timeline once per recomposition from the
+    // engine's per-entry statuses. Risk-gated hereditary entries the owner
+    // doesn't qualify for are dropped first — showing the whole NCCN list to
+    // every non-carrier would be noise; they reappear once the owner sets the
+    // matching flag on the risk-profile screen.
+    val timeline = demographics?.let { demo ->
+        val statuses = ScreeningCadenceEngine.evaluateAll(
+            catalog = ScreeningCatalog.combined,
+            demographics = demo,
+            latestByKey = { key ->
+                entries[key]?.let { date ->
+                    com.bios.app.model.ScreeningEntry(screeningKey = key, performedDate = date)
+                }
+            },
+            riskProfile = riskProfile,
+            now = now,
+        )
+        val visible = statuses.filterNot { (_, status) ->
+            status is ScreeningStatus.NotEligible &&
+                status.reason.startsWith("Requires owner-recorded")
+        }
+        com.bios.app.screening.PreventiveCareTimeline.build(visible, entries, now)
+    } ?: emptyList()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -119,63 +143,38 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(padding)
-                .padding(16.dp),
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DemographicsCard(
-                birthYear = birthYear,
-                anatomy = anatomy,
-                onEdit = { showDemographicsDialog = true },
-            )
-            ManifestoCard()
+            item(key = "demographics") {
+                DemographicsCard(
+                    birthYear = birthYear,
+                    anatomy = anatomy,
+                    onEdit = { showDemographicsDialog = true },
+                )
+            }
+            item(key = "manifesto") { ManifestoCard() }
 
             if (demographics == null) {
-                Text(
-                    "Set your birth year above to see what's recommended for your age.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                item(key = "prompt") {
+                    Text(
+                        "Set your birth year above to see what's recommended for your age.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
-                val statuses = ScreeningCadenceEngine.evaluateAll(
-                    catalog = ScreeningCatalog.combined,
-                    demographics = demographics,
-                    latestByKey = { key ->
-                        entries[key]?.let { date ->
-                            com.bios.app.model.ScreeningEntry(
-                                screeningKey = key,
-                                performedDate = date,
-                            )
-                        }
-                    },
-                    riskProfile = riskProfile,
+                preventiveCareTimeline(
+                    items = timeline,
+                    now = now,
+                    notApplicableExpanded = notApplicableExpanded,
+                    onToggleNotApplicable = { notApplicableExpanded = !notApplicableExpanded },
+                    onRecord = { showRecordDialog = it },
                 )
-                // Hide risk-gated entries the owner doesn't qualify for —
-                // showing the entire NCCN hereditary list to every
-                // non-carrier owner would be noise. The owner's
-                // risk-profile screen is the entry point to surface
-                // these; once a syndrome flag is set, the engine
-                // returns a non-`Requires owner-recorded ...` status
-                // and the row appears here.
-                val visible = statuses.filterNot { (_, status) ->
-                    status is ScreeningStatus.NotEligible &&
-                        status.reason.startsWith("Requires owner-recorded")
-                }
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 4.dp)
-                ) {
-                    items(visible, key = { it.first.key }) { (entry, status) ->
-                        ScreeningRow(
-                            entry = entry,
-                            status = status,
-                            onRecord = { showRecordDialog = entry },
-                        )
-                    }
-                }
             }
         }
     }
@@ -219,14 +218,15 @@ private fun ManifestoCard() {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("How Bios uses this", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
-                "Bios reads the USPSTF adult screening schedule, routine " +
-                    "checkup intervals (dental, eye, periodic exam), and your " +
-                    "own history to answer one question: what are you due for? " +
-                    "Routine checkups show a recommended delay since your last " +
-                    "visit — never an 'overdue', because that's advice, not a " +
-                    "deadline. Nothing here pushes a notification; the screen " +
-                    "waits until you ask. Cadence math is just math — your " +
-                    "provider applies the local guideline for diagnosis.",
+                "Bios reads the USPSTF and WHO adult screening schedules, " +
+                    "routine checkup intervals (dental, eye, periodic exam), and " +
+                    "your own history, then lays them on one timeline: what's " +
+                    "coming up sits above today, what you've done and are current " +
+                    "on sits below. Routine checkups show a recommended delay " +
+                    "since your last visit — never an 'overdue', because that's " +
+                    "advice, not a deadline. Nothing here pushes a notification; " +
+                    "the screen waits until you ask. Cadence math is just math — " +
+                    "your provider applies the local guideline for diagnosis.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -273,66 +273,6 @@ private fun anatomySummary(anatomy: AnatomyProfile): String {
     if (anatomy.hasProstate == true) parts += "prostate"
     if (parts.isEmpty()) return "anatomy noted"
     return parts.joinToString(", ")
-}
-
-@Composable
-private fun ScreeningRow(
-    entry: ScreeningCatalogEntry,
-    status: ScreeningStatus,
-    onRecord: () -> Unit,
-) {
-    // One-time tests (Lp(a), HIV / hepatitis serology, AAA) carry a
-    // sentinel Int.MAX_VALUE cadence; once recorded they're "current"
-    // effectively forever, so we render that plainly instead of leaking
-    // the astronomically large "next in N mo" the cadence math produces.
-    val oneTime = entry.cadenceMonths == Int.MAX_VALUE
-    val statusText = when (status) {
-        is ScreeningStatus.NotEligible -> status.reason
-        ScreeningStatus.NoRecord ->
-            if (oneTime) "Recommended once — no record yet" else "No record yet"
-        is ScreeningStatus.Current ->
-            if (oneTime) "Recorded ${status.monthsSinceLast} mo ago — one-time, no repeat needed"
-            else "Last ${status.monthsSinceLast} mo ago — next in ${status.monthsUntilDue} mo"
-        is ScreeningStatus.DueNow ->
-            if (status.monthsOverdue > 0)
-                "Overdue by ${status.monthsOverdue} mo"
-            else "Due now (last ${status.monthsSinceLast} mo ago)"
-        // Minimum-interval (routine checkup) states — neutral wording, no
-        // "overdue". A recommended delay you can't be late for.
-        is ScreeningStatus.WithinInterval ->
-            "Recommended again in ${status.monthsUntilEligible} mo (last ${status.monthsSinceLast} mo ago)"
-        is ScreeningStatus.IntervalElapsed ->
-            "Eligible again (last ${status.monthsSinceLast} mo ago)"
-    }
-    val statusColor = when (status) {
-        is ScreeningStatus.DueNow -> MaterialTheme.colorScheme.error
-        ScreeningStatus.NoRecord -> MaterialTheme.colorScheme.secondary
-        is ScreeningStatus.Current -> MaterialTheme.colorScheme.primary
-        is ScreeningStatus.WithinInterval -> MaterialTheme.colorScheme.primary
-        is ScreeningStatus.IntervalElapsed -> MaterialTheme.colorScheme.secondary
-        is ScreeningStatus.NotEligible -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(entry.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Text(statusText, style = MaterialTheme.typography.bodySmall, color = statusColor)
-            Text(
-                "${cadenceDescriptor(entry)} • ${ageLabel(entry)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (status !is ScreeningStatus.NotEligible) {
-                OutlinedButton(
-                    onClick = onRecord,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Record date") }
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -386,28 +326,6 @@ private fun RecordScreeningDialog(
         ) { DatePicker(state = state) }
     }
 }
-
-private fun cadenceLabel(months: Int): String = when {
-    months == Int.MAX_VALUE -> "one-time"
-    months % 12 == 0 -> "${months / 12} yr"
-    else -> "$months mo"
-}
-
-/**
- * Cadence wording by [CadenceKind]. Recurring entries read "every X";
- * minimum-interval checkups read "recommended delay: X" so the owner sees
- * a delay-since-last advice, not a clock to fail.
- */
-private fun cadenceDescriptor(entry: ScreeningCatalogEntry): String =
-    when (entry.cadenceKind) {
-        CadenceKind.RECURRING -> "Cadence: every ${cadenceLabel(entry.cadenceMonths)}"
-        CadenceKind.MIN_INTERVAL_SINCE_LAST ->
-            "Recommended delay: ${cadenceLabel(entry.cadenceMonths)} since last"
-    }
-
-private fun ageLabel(entry: ScreeningCatalogEntry): String =
-    if (entry.maxAge != null) "ages ${entry.minAge}–${entry.maxAge}"
-    else "from age ${entry.minAge}"
 
 private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
 private fun formatDate(millis: Long): String = dateFormat.format(Date(millis))
