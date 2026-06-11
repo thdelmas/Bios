@@ -86,10 +86,11 @@ fun PreventiveCareScreen(onBack: () -> Unit) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
     suspend fun refresh() {
-        val all = repo.fetchAll()
-        // Group most-recent per key.
-        entries = all.groupBy { it.screeningKey }
-            .mapValues { (_, list) -> list.maxOfOrNull { it.performedDate } }
+        // Most-recent-per-key, merging the manual ledger with dates Bios can
+        // derive from existing health data (e.g. a BP reading satisfies the
+        // blood-pressure check). Shared with the Settings due badge so both
+        // compute "what's due" the same way (#400).
+        entries = PreventiveCareData.latestPerformedByKey(context)
         riskProfile = riskRepo.fetch()
     }
 
