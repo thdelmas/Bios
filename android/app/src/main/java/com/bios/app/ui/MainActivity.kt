@@ -233,6 +233,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigateToPpgCapture = { navController.navigate("ppg_capture") },
                     onNavigateToBiomarkerEntry = { navController.navigate("biomarker_entry") },
                     onNavigateToClinicalEntry = { navController.navigate("clinical_entry") },
+                    onNavigateToBloodPressureEntry = { navController.navigate("blood_pressure_entry") },
                     onNavigateToSleepEntry = { navController.navigate("sleep_entry") },
                     onNavigateToBbtEntry = { navController.navigate("bbt_entry") },
                     onNavigateToPeriodEntry = { navController.navigate("period_entry") },
@@ -363,6 +364,13 @@ fun BiosApp(viewModel: AppViewModel) {
                 com.bios.app.ui.clinical.ClinicalReadingEntryScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
+                )
+            }
+            composable("blood_pressure_entry") {
+                com.bios.app.ui.clinical.ClinicalReadingEntryScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    initialPreset = com.bios.app.ui.clinical.MeasurementPreset.BLOOD_PRESSURE,
                 )
             }
             composable(
