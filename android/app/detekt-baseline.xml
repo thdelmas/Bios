@@ -19,7 +19,6 @@
     <ID>CyclomaticComplexMethod:PdfReportExporter.kt$private fun renderPage( canvas: Canvas, focalMetric: MetricType, focalReadings: List&lt;MetricReading&gt;, focalBaseline: PersonalBaseline?, biomarkerLatest: List&lt;Pair&lt;MetricType, MetricReading&gt;&gt;, bands: Map&lt;MetricType, BiomarkerBands&gt;, startMillis: Long, endMillis: Long, ownerNote: String?, versionName: String, generatedAtMillis: Long, )</ID>
     <ID>CyclomaticComplexMethod:PpgSignalProcessor.kt$PpgSignalProcessor$internal fun computeWaveformFeatures( smoothed: DoubleArray, peakIndices: List&lt;Int&gt;, samplingRateHz: Double, peakAmpCov: Double ): PulseWaveformFeatures?</ID>
     <ID>CyclomaticComplexMethod:PrivacyDashboardScreen.kt$@Composable fun PrivacyDashboardScreen(viewModel: AppViewModel)</ID>
-    <ID>CyclomaticComplexMethod:SettingsScreen.kt$@Composable fun SettingsScreen( viewModel: AppViewModel, onNavigate: (route: String) -&gt; Unit = {}, )</ID>
     <ID>CyclomaticComplexMethod:Spectral.kt$Spectral$fun lfHfPowers(ibisMs: List&lt;Double&gt;): LfHfPowers</ID>
     <ID>CyclomaticComplexMethod:SyncManager.kt$SyncManager$suspend fun pull(serverUrl: String, accountId: String)</ID>
     <ID>CyclomaticComplexMethod:SyncSerializationTest.kt$SyncSerializationTest$@Test fun `Anomaly with nullable fields round-trips through JSON`()</ID>
@@ -809,7 +808,6 @@
     <ID>MaxLineLength:SettingsHelperText.kt$SettingsHelperText$const val WITHINGS = "Paste a Withings API access token. Obtain one through a Withings developer-account OAuth exchange against developer.withings.com — Bios does not perform the OAuth dance itself yet."</ID>
     <ID>MaxLineLength:SettingsScreen.kt$PrivacyTier.COMMUNITY -&gt; "Send anonymous aggregates. Off by default. Aggregation happens on-device before transmission — raw data never leaves."</ID>
     <ID>MaxLineLength:SettingsScreen.kt$text = { Text("This will permanently delete all your health data, baselines, and alerts from Bios. This action cannot be undone.") }</ID>
-    <ID>MaxLineLength:SettingsScreen.kt$viewModel.apiTokenStore.saveToken(WithingsApiAdapter.PROVIDER_KEY, token); isWithingsConnected = true; showWithingsDialog = false</ID>
     <ID>MaxLineLength:SleepApneaPattern.kt$SleepApneaPattern$"AASM scoring manual (Berry et al. 2020) — AHI ≥5 events/h is the mild-OSA threshold; severity tiers 5–15 mild, 15–30 moderate, ≥30 severe"</ID>
     <ID>MaxLineLength:SleepApneaPattern.kt$SleepApneaPattern$"Berry et al. 2020 — sustained nocturnal SpO2 desaturation is the canonical wearable signature of sleep-disordered breathing"</ID>
     <ID>MaxLineLength:SleepApneaPattern.kt$SleepApneaPattern$"Bonzini et al. 2020 — apnea-driven micro-arousals raise the post-onset awakening count even when total sleep time appears normal"</ID>

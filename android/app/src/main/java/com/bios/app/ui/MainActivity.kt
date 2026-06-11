@@ -305,6 +305,13 @@ fun BiosApp(viewModel: AppViewModel) {
                     onLongPressVersion = { navController.navigate("metric_readings_debug") },
                 )
             }
+            composable("data_sources") {
+                com.bios.app.ui.settings.DataSourcesScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onNavigate = { route -> navController.navigate(route) },
+                )
+            }
             composable("metric_sources") {
                 com.bios.app.ui.settings.MetricSourcesScreen(
                     viewModel = viewModel,
