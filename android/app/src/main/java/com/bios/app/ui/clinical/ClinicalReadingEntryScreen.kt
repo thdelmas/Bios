@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -205,7 +206,10 @@ fun ClinicalReadingEntryScreen(
                 fontWeight = FontWeight.Bold,
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FilterChip(
                     selected = preset == MeasurementPreset.TRIAGE,
                     onClick = {
@@ -227,6 +231,17 @@ fun ClinicalReadingEntryScreen(
                         }
                     },
                     label = { Text("Body composition") },
+                )
+                FilterChip(
+                    selected = preset == MeasurementPreset.BLOOD_PRESSURE,
+                    onClick = {
+                        if (preset != MeasurementPreset.BLOOD_PRESSURE) {
+                            preset = MeasurementPreset.BLOOD_PRESSURE
+                            rows.clear()
+                            defaultRowsFor(MeasurementPreset.BLOOD_PRESSURE).forEach { rows.add(it) }
+                        }
+                    },
+                    label = { Text("Blood pressure") },
                 )
             }
 
