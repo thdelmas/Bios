@@ -30,3 +30,8 @@ db-backups/
 
 # Claude Code session artifacts
 .claude/worktrees/
+
+# Owner personal lab/medical records — health data stays on-device, never
+# pushed to the (public) remote. Generic owner-subject docs (PROFILE,
+# VESSEL_WATCH, LAB_PANEL_ORDER) remain tracked; raw result dumps do not.
+docs/subjects/owner/LAB_RESULTS_*.md
