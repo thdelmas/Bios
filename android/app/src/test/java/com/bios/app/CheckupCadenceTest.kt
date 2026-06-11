@@ -149,4 +149,31 @@ class CheckupCadenceTest {
         assertTrue("blood_pressure_check should link to the diastolic metric key",
             linked?.contains(MetricType.BLOOD_PRESSURE_DIASTOLIC.key) == true)
     }
+
+    @Test
+    fun lab_backed_screenings_link_to_their_biomarker_metric_keys() {
+        // An imported / manually-entered biomarker reading is the screening,
+        // so the owner never re-logs a lab Bios already holds.
+        val links = CheckupHealthDataLink.metricKeysByScreeningKey
+        assertEquals(listOf(MetricType.HBA1C.key), links["hba1c"])
+        assertEquals(listOf(MetricType.LIPOPROTEIN_A.key), links["lpa_one_time"])
+        // A lipid panel is satisfied by any of its component analytes.
+        val lipid = links["lipid_panel"].orEmpty()
+        for (component in listOf(
+            MetricType.TOTAL_CHOLESTEROL.key, MetricType.LDL_CHOLESTEROL.key,
+            MetricType.HDL_CHOLESTEROL.key, MetricType.TRIGLYCERIDES.key,
+        )) {
+            assertTrue("lipid_panel should link to $component", component in lipid)
+        }
+    }
+
+    @Test
+    fun every_linked_screening_key_exists_in_the_catalog() {
+        // A link to a key no catalog defines would silently never fire;
+        // guard against that drift.
+        val catalogKeys = ScreeningCatalog.combined.map { it.key }.toSet()
+        for (screeningKey in CheckupHealthDataLink.metricKeysByScreeningKey.keys) {
+            assertTrue("$screeningKey is linked but not in the catalog", screeningKey in catalogKeys)
+        }
+    }
 }
