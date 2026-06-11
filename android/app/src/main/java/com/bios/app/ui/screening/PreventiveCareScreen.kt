@@ -281,11 +281,18 @@ private fun ScreeningRow(
     status: ScreeningStatus,
     onRecord: () -> Unit,
 ) {
+    // One-time tests (Lp(a), HIV / hepatitis serology, AAA) carry a
+    // sentinel Int.MAX_VALUE cadence; once recorded they're "current"
+    // effectively forever, so we render that plainly instead of leaking
+    // the astronomically large "next in N mo" the cadence math produces.
+    val oneTime = entry.cadenceMonths == Int.MAX_VALUE
     val statusText = when (status) {
         is ScreeningStatus.NotEligible -> status.reason
-        ScreeningStatus.NoRecord -> "No record yet"
+        ScreeningStatus.NoRecord ->
+            if (oneTime) "Recommended once — no record yet" else "No record yet"
         is ScreeningStatus.Current ->
-            "Last ${status.monthsSinceLast} mo ago — next in ${status.monthsUntilDue} mo"
+            if (oneTime) "Recorded ${status.monthsSinceLast} mo ago — one-time, no repeat needed"
+            else "Last ${status.monthsSinceLast} mo ago — next in ${status.monthsUntilDue} mo"
         is ScreeningStatus.DueNow ->
             if (status.monthsOverdue > 0)
                 "Overdue by ${status.monthsOverdue} mo"
