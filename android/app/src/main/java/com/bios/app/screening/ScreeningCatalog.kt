@@ -69,6 +69,38 @@ enum class RiskGate {
 }
 
 /**
+ * How a catalog entry's recommended interval should be read.
+ *
+ * The distinction matters for owner-facing framing, not just arithmetic
+ * (audit follow-up: periodic checkups). Disease screenings recur on a
+ * target cadence and read "overdue" once you pass it; routine checkups
+ * are often phrased as a *minimum recommended delay since the last one*,
+ * where doing it sooner adds little and being "late" is not a failure.
+ *
+ * Manifesto guard: the no-shame rule means a delay you can't fail must
+ * never render in the error / overdue treatment. The engine honours that
+ * by returning distinct statuses per kind.
+ */
+enum class CadenceKind {
+    /**
+     * Recurring periodic screening. `cadenceMonths` is a *target* — once
+     * the owner passes it (plus the grace window) the entry reads as due
+     * / overdue. The default so every pre-existing entry is unchanged.
+     */
+    RECURRING,
+
+    /**
+     * Recommended *delay since the last occurrence*. `cadenceMonths` is a
+     * minimum recommended interval, not a target to chase. Before it
+     * elapses the entry reads "recommended again after …"; once it does,
+     * "eligible again" — neutral either way, never overdue. Used for
+     * routine checkups (dental recall, eye exam, periodic wellness visit)
+     * whose interval is advice, not a clock you fail.
+     */
+    MIN_INTERVAL_SINCE_LAST,
+}
+
+/**
  * One screening recommendation. Pinned to the USPSTF adult schedule v1
  * (#155, audit gap §2.2), with hereditary-syndrome / cardiology
  * one-time / Ob/Gyn-society / IHS extensions added in #191.
@@ -105,6 +137,13 @@ data class ScreeningCatalogEntry(
      * [com.bios.app.model.RiskProfile] flag is set.
      */
     val riskGate: RiskGate = RiskGate.NONE,
+    /**
+     * How [cadenceMonths] should be interpreted. Defaults to
+     * [CadenceKind.RECURRING] so every existing entry keeps its current
+     * due/overdue behaviour; routine checkups opt into
+     * [CadenceKind.MIN_INTERVAL_SINCE_LAST].
+     */
+    val cadenceKind: CadenceKind = CadenceKind.RECURRING,
 )
 
 /**
@@ -127,7 +166,10 @@ object ScreeningCatalog {
             displayName = "Colorectal cancer (colonoscopy or FIT)",
             minAge = 45, maxAge = 75, cadenceMonths = 12,
             applicability = Applicability.UNIVERSAL,
-            citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual FIT or 10-yr colonoscopy. Cadence here is the annual-FIT pace; the engine treats long-interval modalities (colonoscopy) as still-current when within 10 years.",
+            citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual " +
+                "FIT or 10-yr colonoscopy. The 12-mo cadence here is the annual-FIT pace. Bios doesn't " +
+                "know which modality you used, so if you had a colonoscopy record its date and read the " +
+                "next-due as the 10-yr interval your provider set — the displayed cadence assumes FIT.",
         ),
         ScreeningCatalogEntry(
             key = "mammogram",
@@ -212,11 +254,30 @@ object ScreeningCatalog {
     val ihsPaho: List<ScreeningCatalogEntry> = IhsPahoCatalog.entries
 
     /**
+     * Routine periodic medical checkups (periodic-checkup follow-up) —
+     * the recurring clinical encounters that aren't disease-specific
+     * screenings or vaccines: periodic wellness visit, BP check, dental,
+     * eye, skin, hearing. Several use
+     * [CadenceKind.MIN_INTERVAL_SINCE_LAST] so they read as a recommended
+     * delay, never as overdue.
+     */
+    val checkups: List<ScreeningCatalogEntry> = CheckupCatalog.entries
+
+    /**
+     * WHO globally-scoped recommendations (maximum-coverage follow-up) —
+     * total cardiovascular-risk assessment (WHO PEN / HEARTS) and the
+     * at-least-once infectious-disease tests (HIV, HBsAg, anti-HCV). Adds
+     * coverage the USPSTF-anchored set lacks without duplicating entries
+     * WHO merely restates at a different threshold. See [WhoScreeningCatalog].
+     */
+    val who: List<ScreeningCatalogEntry> = WhoScreeningCatalog.entries
+
+    /**
      * Everything the engine should evaluate in the default cadence
      * screen. The UI iterates this list; each entry's [riskGate] +
      * [applicability] + age-band decide whether it actually renders for
      * the active owner.
      */
     val combined: List<ScreeningCatalogEntry> =
-        uspstf + hereditary + obGynSociety + cardiology + ihsPaho
+        uspstf + hereditary + obGynSociety + cardiology + ihsPaho + checkups + who
 }

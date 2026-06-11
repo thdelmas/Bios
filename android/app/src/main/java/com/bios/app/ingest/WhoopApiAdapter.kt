@@ -10,14 +10,12 @@ import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 /**
  * Fetches health data from the WHOOP v2 REST API.
@@ -37,10 +35,7 @@ class WhoopApiAdapter(
         hasToken = { tokenStore.hasToken(PROVIDER_KEY) }
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val client = defaultApiClient()
 
     val isConnected: Boolean get() = hasToken()
 
@@ -303,14 +298,11 @@ class WhoopApiAdapter(
             .header("Authorization", "Bearer $token")
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return@withContext null
-        val body = response.body?.string() ?: return@withContext null
-        JSONObject(body)
+        client.getJson(request)
     }
 
     private fun parseTimestamp(isoString: String): Long =
-        Instant.parse(isoString).toEpochMilli()
+        parseIsoTimestampOrNull(isoString) ?: 0L
 
     companion object {
         internal const val BASE_URL = "https://api.prod.whoop.com/developer/v1"
