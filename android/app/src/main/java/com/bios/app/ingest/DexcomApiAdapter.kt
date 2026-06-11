@@ -5,13 +5,11 @@ import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.TimeUnit
 
 /**
  * Fetches continuous glucose monitor (CGM) data from the Dexcom API (OAuth 2.0).
@@ -30,10 +28,7 @@ class DexcomApiAdapter(
         hasToken = { tokenStore.hasToken(PROVIDER_KEY) }
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val client = defaultApiClient()
 
     val isConnected: Boolean get() = hasToken()
 
@@ -94,30 +89,18 @@ class DexcomApiAdapter(
             .header("Authorization", "Bearer $token")
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return@withContext null
-        val body = response.body?.string() ?: return@withContext null
-        JSONObject(body)
+        client.getJson(request)
     }
 
     private fun formatDateTime(instant: Instant): String =
         instant.atZone(ZoneId.of("UTC"))
             .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 
-    private fun parseDisplayTime(displayTime: String): Long {
-        return try {
-            Instant.parse(displayTime + "Z").toEpochMilli()
-        } catch (_: Exception) {
-            try {
-                java.time.LocalDateTime.parse(displayTime)
-                    .atZone(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli()
-            } catch (_: Exception) {
-                System.currentTimeMillis()
-            }
-        }
-    }
+    // Dexcom's displayTime is zone-less ("2024-01-01T12:00:00"); the shared
+    // parser handles that (interpreted as UTC). Falls back to "now" for the
+    // rare unparseable case, as before.
+    private fun parseDisplayTime(displayTime: String): Long =
+        parseIsoTimestampOrNull(displayTime) ?: System.currentTimeMillis()
 
     companion object {
         internal const val BASE_URL = "https://api.dexcom.com/v3/users/self"

@@ -6,12 +6,10 @@ import com.bios.contracts.MetricType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 
 /**
  * Fetches health data from the Withings Health Mate API (OAuth 2.0).
@@ -30,10 +28,7 @@ class WithingsApiAdapter(
         hasToken = { tokenStore.hasToken(PROVIDER_KEY) }
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val client = defaultApiClient()
 
     val isConnected: Boolean get() = hasToken()
 
@@ -153,10 +148,7 @@ class WithingsApiAdapter(
             .post(bodyBuilder.build())
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return@withContext null
-        val respBody = response.body?.string() ?: return@withContext null
-        JSONObject(respBody)
+        client.getJson(request)
     }
 
     private fun formatDate(instant: Instant): String =

@@ -10,13 +10,11 @@ import com.bios.contracts.MetricType
 import com.bios.app.model.SleepStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 /**
  * Fetches health data from the Garmin Connect API (OAuth 1.0a).
@@ -35,10 +33,7 @@ class GarminApiAdapter(
         hasToken = { tokenStore.hasToken(PROVIDER_KEY) }
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val client = defaultApiClient()
 
     val isConnected: Boolean get() = hasToken()
 
@@ -299,10 +294,7 @@ class GarminApiAdapter(
             .header("Authorization", "Bearer $token")
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return@withContext null
-        val body = response.body?.string() ?: return@withContext null
-        JSONObject(body)
+        client.getJson(request)
     }
 
     companion object {
