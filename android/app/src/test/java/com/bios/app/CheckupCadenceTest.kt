@@ -2,10 +2,12 @@ package com.bios.app
 
 import com.bios.app.model.ScreeningEntry
 import com.bios.app.screening.CadenceKind
+import com.bios.app.screening.CheckupHealthDataLink
 import com.bios.app.screening.OwnerDemographics
 import com.bios.app.screening.ScreeningCadenceEngine
 import com.bios.app.screening.ScreeningCatalog
 import com.bios.app.screening.ScreeningStatus
+import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -104,5 +106,47 @@ class CheckupCadenceTest {
             now = now,
         )
         assertEquals(ScreeningStatus.NoRecord, status)
+    }
+
+    @Test
+    fun checkup_below_min_age_is_NotEligible() {
+        // Hearing check is gated to 50+; a 28-yo is below the band and the
+        // engine must exclude it regardless of record state (#402).
+        val hearing = ScreeningCatalog.checkups.first { it.key == "hearing_test" }
+        assertEquals(50, hearing.minAge)
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = hearing,
+            demographics = OwnerDemographics(ageYears = 28),
+            latest = null,
+            now = now,
+        )
+        assertTrue("28yo should be NotEligible for a 50+ check, got $status", status is ScreeningStatus.NotEligible)
+    }
+
+    @Test
+    fun recurring_checkup_within_window_reads_Current() {
+        // Periodic exam is RECURRING at 36mo; performed 12mo ago is well
+        // inside the window, so it reads Current — not DueNow (#402).
+        val exam = ScreeningCatalog.checkups.first { it.key == "periodic_health_exam" }
+        assertEquals(CadenceKind.RECURRING, exam.cadenceKind)
+        val latest = ScreeningEntry(screeningKey = exam.key, performedDate = monthsAgo(12))
+        val status = ScreeningCadenceEngine.evaluate(
+            entry = exam,
+            demographics = OwnerDemographics(ageYears = 28),
+            latest = latest,
+            now = now,
+        )
+        assertTrue("expected Current, got $status", status is ScreeningStatus.Current)
+    }
+
+    @Test
+    fun blood_pressure_check_links_to_the_bp_metric_keys() {
+        // The health-data link is what stops blood_pressure_check showing
+        // "No record" when Bios already holds a BP reading (#400).
+        val linked = CheckupHealthDataLink.metricKeysByScreeningKey["blood_pressure_check"]
+        assertTrue("blood_pressure_check should link to the systolic metric key",
+            linked?.contains(MetricType.BLOOD_PRESSURE_SYSTOLIC.key) == true)
+        assertTrue("blood_pressure_check should link to the diastolic metric key",
+            linked?.contains(MetricType.BLOOD_PRESSURE_DIASTOLIC.key) == true)
     }
 }
