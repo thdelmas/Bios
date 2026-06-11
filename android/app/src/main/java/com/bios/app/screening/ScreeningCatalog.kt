@@ -264,11 +264,20 @@ object ScreeningCatalog {
     val checkups: List<ScreeningCatalogEntry> = CheckupCatalog.entries
 
     /**
+     * WHO globally-scoped recommendations (maximum-coverage follow-up) —
+     * total cardiovascular-risk assessment (WHO PEN / HEARTS) and the
+     * at-least-once infectious-disease tests (HIV, HBsAg, anti-HCV). Adds
+     * coverage the USPSTF-anchored set lacks without duplicating entries
+     * WHO merely restates at a different threshold. See [WhoScreeningCatalog].
+     */
+    val who: List<ScreeningCatalogEntry> = WhoScreeningCatalog.entries
+
+    /**
      * Everything the engine should evaluate in the default cadence
      * screen. The UI iterates this list; each entry's [riskGate] +
      * [applicability] + age-band decide whether it actually renders for
      * the active owner.
      */
     val combined: List<ScreeningCatalogEntry> =
-        uspstf + hereditary + obGynSociety + cardiology + ihsPaho + checkups
+        uspstf + hereditary + obGynSociety + cardiology + ihsPaho + checkups + who
 }
