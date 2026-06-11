@@ -28,9 +28,9 @@ data class AnatomyProfile(
     val hasBreastTissue: Boolean? = null,
     /** Owner has a cervix (drives cervical-cancer screening cadence). */
     val hasCervix: Boolean? = null,
-    /** Owner has a uterus (drives endometrial-cancer surveillance discussions). */
+    /** Owner has a uterus (the closest anatomy proxy for DEXA routing). */
     val hasUterus: Boolean? = null,
-    /** Owner has a prostate (drives PSA-discussion cadence). */
+    /** Owner has a prostate (drives the AAA one-time-ultrasound gate). */
     val hasProstate: Boolean? = null,
     /**
      * Owner has had gender-affirming surgery affecting screened anatomy.
@@ -69,7 +69,6 @@ data class AnatomyProfile(
         return when (screeningKey) {
             "mammogram" -> resolve(hasBreastTissue)
             "cervical_cancer" -> resolve(hasCervix)
-            "endometrial_cancer" -> resolve(hasUterus)
             "dexa_bone_density" -> {
                 // DEXA in the USPSTF schedule pins to postmenopausal
                 // owners with uterine / ovarian history; we route on
@@ -78,7 +77,7 @@ data class AnatomyProfile(
                 // can still record it — [Unset] keeps it elective.
                 resolve(hasUterus)
             }
-            "aaa_one_time", "psa_discussion" -> resolve(hasProstate)
+            "aaa_one_time" -> resolve(hasProstate)
             else -> ApplicabilityResolution.Match
         }
     }

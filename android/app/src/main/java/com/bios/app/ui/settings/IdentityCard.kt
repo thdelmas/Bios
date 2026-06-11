@@ -1,16 +1,32 @@
 package com.bios.app.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -18,68 +34,141 @@ import androidx.compose.ui.unit.dp
  * Identity card — owner-annotated medical and physiological context;
  * not configuration. Extracted from [SettingsScreen] to give "Self"
  * surfaces a dedicated landing zone. Adding a new identity entry means
- * adding a nav callback param + a row here, in one place.
+ * adding a `label to "route"` row in the matching group below, in one
+ * place — every entry navigates by route through [onNavigate].
  *
- * Each `onNavigateTo*` callback is a no-op by default so new entries
- * can be wired progressively without breaking the existing call sites.
+ * Entries are organised into collapsible groups so the card reads as a
+ * handful of scannable headers rather than a wall of buttons. All groups
+ * are collapsed by default; the owner expands the area they're looking for.
  */
 @Composable
 internal fun IdentityCard(
-    onNavigateToMedications: () -> Unit = {},
-    onNavigateToImmunisations: () -> Unit = {},
-    onNavigateToPreventiveCare: () -> Unit = {},
-    onNavigateToRiskProfile: () -> Unit = {},
-    onNavigateToPhysiologyState: () -> Unit = {},
-    onNavigateToFrailAssessment: () -> Unit = {},
-    onNavigateToGoalsOfCare: () -> Unit = {},
-    onNavigateToHeadacheDiary: () -> Unit = {},
-    onNavigateToFastStroke: () -> Unit = {},
-    onNavigateToEsasCapture: () -> Unit = {},
-    onNavigateToTraditionalMedicine: () -> Unit = {},
-    onNavigateToEnvironmentalContext: () -> Unit = {},
-    onNavigateToEmergencyContacts: () -> Unit = {},
-    onNavigateToEcgStrips: () -> Unit = {},
-    onNavigateToSurgicalRecovery: () -> Unit = {},
-    onNavigateToInterventionEvents: () -> Unit = {},
-    onNavigateToTreatmentCourses: () -> Unit = {},
-    onNavigateToAnthropometry: () -> Unit = {},
-    onNavigateToGeriatricTrajectory: () -> Unit = {},
-    onNavigateToTremorTrend: () -> Unit = {},
-    onNavigateToReproductive: (route: String) -> Unit = {},
+    onNavigate: (route: String) -> Unit = {},
+    dueByRoute: Map<String, Int> = emptyMap(),
 ) {
+    val sections = listOf(
+        "Body & baseline" to listOf(
+            "Anthropometry" to "anthropometry",
+            "Physiology state" to "physiology_state",
+            "Environmental context" to "environmental_context",
+        ),
+        "Medical record" to listOf(
+            "Current medications" to "medications",
+            "Immunisation record" to "immunisations",
+            "Treatment courses" to "treatment_courses",
+            "Intervention events" to "intervention_events",
+            "Surgical recovery" to "surgical_recovery",
+            "ECG strips" to "ecg_strips",
+        ),
+        "Prevention & risk" to listOf(
+            "Preventive care" to "preventive_care",
+            "Risk profile" to "risk_profile",
+            "FRAIL assessment" to "frail_assessment",
+            "Geriatric trajectory" to "geriatric_trajectory",
+        ),
+        "Symptoms & assessments" to listOf(
+            "Headache & migraine diary" to "headache_diary",
+            "Tremor / movement trends" to "tremor_trend",
+            "FAST stroke check" to "fast_stroke",
+            "Symptom report (ESAS-r)" to "esas_capture",
+        ),
+        "Reproductive" to listOf(
+            "Contraception" to "contraception",
+            "Menopause / perimenopause" to "menopause_stage",
+            "Gender-affirming care" to "gender_affirming_care",
+            "PCOS / Endometriosis context" to "pcos_endometriosis",
+        ),
+        "Care & contacts" to listOf(
+            "Goals of care" to "goals_of_care",
+            "Emergency contacts" to "emergency_contacts",
+            "Traditional medicine" to "traditional_medicine_context",
+        ),
+    )
+
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Identity", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(8.dp))
-            listOf(
-                "Anthropometry" to onNavigateToAnthropometry,
-                "Current medications" to onNavigateToMedications,
-                "Immunisation record" to onNavigateToImmunisations,
-                "Preventive care" to onNavigateToPreventiveCare,
-                "Risk profile" to onNavigateToRiskProfile,
-                "Physiology state" to onNavigateToPhysiologyState,
-                "Environmental context" to onNavigateToEnvironmentalContext,
-                "FRAIL assessment" to onNavigateToFrailAssessment,
-                "Goals of care" to onNavigateToGoalsOfCare,
-                "Geriatric trajectory" to onNavigateToGeriatricTrajectory,
-                "Tremor / movement trends" to onNavigateToTremorTrend,
-                "Headache & migraine diary" to onNavigateToHeadacheDiary,
-                "FAST stroke check" to onNavigateToFastStroke,
-                "Symptom report (ESAS-r)" to onNavigateToEsasCapture,
-                "Traditional medicine" to onNavigateToTraditionalMedicine,
-                "Emergency contacts" to onNavigateToEmergencyContacts,
-                "ECG strips" to onNavigateToEcgStrips,
-                "Surgical recovery" to onNavigateToSurgicalRecovery,
-                "Intervention events" to onNavigateToInterventionEvents,
-                "Treatment courses" to onNavigateToTreatmentCourses,
-                "Contraception" to { onNavigateToReproductive("contraception") },
-                "Menopause / perimenopause" to { onNavigateToReproductive("menopause_stage") },
-                "Gender-affirming care" to { onNavigateToReproductive("gender_affirming_care") },
-                "PCOS / Endometriosis context" to { onNavigateToReproductive("pcos_endometriosis") },
-            ).forEachIndexed { idx, (label, action) ->
-                if (idx > 0) Spacer(Modifier.height(4.dp))
-                OutlinedButton(onClick = action, modifier = Modifier.fillMaxWidth()) { Text(label) }
+            sections.forEach { (title, entries) ->
+                Spacer(Modifier.height(8.dp))
+                IdentitySection(
+                    title = title,
+                    entries = entries,
+                    onNavigate = onNavigate,
+                    dueByRoute = dueByRoute,
+                )
             }
         }
+    }
+}
+
+/**
+ * A collapsible group of identity entries. Collapsed by default; the
+ * header toggles visibility of the contained rows.
+ */
+@Composable
+private fun IdentitySection(
+    title: String,
+    entries: List<Pair<String, String>>,
+    onNavigate: (route: String) -> Unit,
+    dueByRoute: Map<String, Int> = emptyMap(),
+) {
+    var expanded by remember { mutableStateOf(false) }
+    // Sum the section's row counts so the collapsed header still signals
+    // that something inside is due — the owner sees it without expanding.
+    val sectionDue = entries.sumOf { dueByRoute[it.second] ?: 0 }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!expanded && sectionDue > 0) {
+                DueBadge(sectionDue)
+                Spacer(Modifier.width(8.dp))
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+            )
+        }
+    }
+    AnimatedVisibility(visible = expanded) {
+        Column {
+            entries.forEachIndexed { idx, (label, route) ->
+                if (idx > 0) Spacer(Modifier.height(4.dp))
+                OutlinedButton(onClick = { onNavigate(route) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(label)
+                    val due = dueByRoute[route] ?: 0
+                    if (due > 0) {
+                        Spacer(Modifier.weight(1f))
+                        DueBadge(due)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Neutral status pill — a passive count, never an alarm. Uses the
+ * secondary container colour (not error); a checkup being due is
+ * information, not a failure. Manifesto: instrument, not coach.
+ */
+@Composable
+private fun DueBadge(count: Int) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(percent = 50),
+    ) {
+        Text(
+            text = "$count due",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
