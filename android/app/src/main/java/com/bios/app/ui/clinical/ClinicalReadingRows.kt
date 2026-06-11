@@ -210,8 +210,12 @@ internal data class ReadingRowState(
  *  - [BODY_COMPOSITION] is the pharmacy / scale shape (weight, height, BMI,
  *    body fat %, lean + fat mass, blood pressure) — the bundle a body-
  *    composition station prints at a weekly weigh-in.
+ *  - [BLOOD_PRESSURE] is the home-cuff shape (systolic / diastolic / pulse) a
+ *    consumer monitor reports in one measurement. It is the Vessel Watch's
+ *    top missing dial (#390); the dedicated `blood_pressure_entry` route lands
+ *    the owner here so logging a cuff reading is one tap, not a triage form.
  */
-enum class MeasurementPreset { TRIAGE, BODY_COMPOSITION }
+enum class MeasurementPreset { TRIAGE, BODY_COMPOSITION, BLOOD_PRESSURE }
 
 internal fun defaultRowsFor(preset: MeasurementPreset): List<ReadingRowState> = when (preset) {
     MeasurementPreset.TRIAGE -> listOf(
@@ -234,6 +238,11 @@ internal fun defaultRowsFor(preset: MeasurementPreset): List<ReadingRowState> = 
         ReadingRowState(metric = MetricType.FAT_MASS_KG),
         ReadingRowState(metric = MetricType.BLOOD_PRESSURE_SYSTOLIC),
         ReadingRowState(metric = MetricType.BLOOD_PRESSURE_DIASTOLIC),
+    )
+    MeasurementPreset.BLOOD_PRESSURE -> listOf(
+        ReadingRowState(metric = MetricType.BLOOD_PRESSURE_SYSTOLIC),
+        ReadingRowState(metric = MetricType.BLOOD_PRESSURE_DIASTOLIC),
+        ReadingRowState(metric = MetricType.HEART_RATE),
     )
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Button
@@ -52,6 +53,7 @@ fun LogScreen(
     onNavigateToPpgCapture: () -> Unit,
     onNavigateToBiomarkerEntry: () -> Unit,
     onNavigateToClinicalEntry: () -> Unit,
+    onNavigateToBloodPressureEntry: () -> Unit,
     onNavigateToSleepEntry: () -> Unit,
     onNavigateToBbtEntry: () -> Unit,
     onNavigateToPeriodEntry: () -> Unit,
@@ -83,10 +85,46 @@ fun LogScreen(
         })
 
         Spacer(Modifier.height(4.dp))
+        TakeAReadingSection(
+            onNavigateToPpgCapture = onNavigateToPpgCapture,
+            onNavigateToBiomarkerEntry = onNavigateToBiomarkerEntry,
+            onNavigateToClinicalEntry = onNavigateToClinicalEntry,
+            onNavigateToBloodPressureEntry = onNavigateToBloodPressureEntry,
+        )
+
+        Spacer(Modifier.height(4.dp))
+        TrackOverTimeSection(
+            onNavigateToSleepEntry = onNavigateToSleepEntry,
+            onNavigateToBbtEntry = onNavigateToBbtEntry,
+            onNavigateToPeriodEntry = onNavigateToPeriodEntry,
+        )
+    }
+}
+
+/**
+ * One-shot readings the owner takes when prompted — vitals captured in the
+ * moment. Blood pressure leads: it is the Vessel Watch's top missing dial
+ * (#390) and the cheapest clinical check, so it sits above the camera/bundle
+ * surfaces.
+ */
+@Composable
+private fun TakeAReadingSection(
+    onNavigateToPpgCapture: () -> Unit,
+    onNavigateToBiomarkerEntry: () -> Unit,
+    onNavigateToClinicalEntry: () -> Unit,
+    onNavigateToBloodPressureEntry: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             "Take a reading",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        HomeEntryCard(
+            icon = Icons.Default.MonitorHeart,
+            title = "Blood pressure",
+            subtitle = "Systolic, diastolic & pulse from a home cuff",
+            onClick = onNavigateToBloodPressureEntry,
         )
         HomeEntryCard(
             icon = Icons.Default.CameraAlt,
@@ -106,8 +144,20 @@ fun LogScreen(
             subtitle = "Biomarker panels from blood work",
             onClick = onNavigateToBiomarkerEntry,
         )
+    }
+}
 
-        Spacer(Modifier.height(4.dp))
+/**
+ * Recurring trackers the owner enters on a cadence rather than on demand —
+ * each writes the same SELF_REPORTED shape through its dedicated screen.
+ */
+@Composable
+private fun TrackOverTimeSection(
+    onNavigateToSleepEntry: () -> Unit,
+    onNavigateToBbtEntry: () -> Unit,
+    onNavigateToPeriodEntry: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             "Track over time",
             style = MaterialTheme.typography.titleSmall,
