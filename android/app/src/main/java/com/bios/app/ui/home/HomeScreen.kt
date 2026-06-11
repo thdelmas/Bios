@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
@@ -78,6 +79,7 @@ fun HomeScreen(
     viewModel: AppViewModel,
     onNavigateToActiveSubstances: () -> Unit = {},
     onNavigateToBodyLevels: () -> Unit = {},
+    onNavigateToVesselWatch: () -> Unit = {},
     onNavigateToMetric: (MetricType) -> Unit = {}
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
@@ -97,27 +99,7 @@ fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Text(
-                    "Bios",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                lastSync?.let { ts ->
-                    val timeFormat = remember {
-                        SimpleDateFormat("h:mm a", Locale.getDefault())
-                    }
-                    Text(
-                        "Synced ${timeFormat.format(Date(ts))}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            HomeHeader(lastSync = lastSync)
 
             MetricSearchBar(onSelect = onNavigateToMetric)
 
@@ -134,49 +116,17 @@ fun HomeScreen(
 
             Text("Today's Vitals", style = MaterialTheme.typography.titleMedium)
 
-            val metrics = listOf(
-                Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
-                Triple(MetricType.SLEEP_EFFICIENCY, "Sleep Eff.", Icons.Default.Percent),
-                Triple(MetricType.HEART_RATE, "Heart Rate", Icons.Default.Favorite),
-                Triple(MetricType.HEART_RATE_VARIABILITY, "HRV", Icons.AutoMirrored.Filled.ShowChart),
-                Triple(MetricType.BLOOD_OXYGEN, "SpO2", Icons.Default.Air),
-                Triple(MetricType.RESPIRATORY_RATE, "Resp. Rate", Icons.Default.Air),
-                Triple(MetricType.STEPS, "Steps", Icons.AutoMirrored.Filled.DirectionsWalk),
-                Triple(MetricType.SKIN_TEMPERATURE_DEVIATION, "Skin Temp", Icons.Default.Thermostat),
+            VitalsGrid(
+                viewModel = viewModel,
+                refreshKey = lastSync,
+                onNavigateToMetric = onNavigateToMetric,
+                onInfoClick = { infoMetric = it },
             )
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.height(510.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                userScrollEnabled = false
-            ) {
-                items(metrics) { (metricType, label, icon) ->
-                    MetricCard(
-                        metricType = metricType,
-                        label = label,
-                        icon = icon,
-                        viewModel = viewModel,
-                        refreshKey = lastSync,
-                        onClick = { onNavigateToMetric(metricType) },
-                        onInfoClick = { infoMetric = metricType },
-                    )
-                }
-            }
-
-            HomeEntryCard(
-                icon = Icons.Default.Medication,
-                title = "Active Substances",
-                subtitle = "Caffeine, alcohol, tobacco, cannabis — concentration + event log",
-                onClick = onNavigateToActiveSubstances,
-            )
-
-            HomeEntryCard(
-                icon = Icons.Default.Science,
-                title = "Body Levels",
-                subtitle = "Biomarker panels — most-recent lab values",
-                onClick = onNavigateToBodyLevels,
+            SubSurfaceCards(
+                onNavigateToActiveSubstances = onNavigateToActiveSubstances,
+                onNavigateToBodyLevels = onNavigateToBodyLevels,
+                onNavigateToVesselWatch = onNavigateToVesselWatch,
             )
 
             if (dataAge < BaselineEngine.MINIMUM_DATA_DAYS) {
@@ -194,6 +144,108 @@ fun HomeScreen(
             onDismiss = { infoMetric = null },
         )
     }
+}
+
+/** Screen title + last-sync timestamp. Extracted to keep [HomeScreen] short. */
+@Composable
+private fun HomeHeader(lastSync: Long?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        Text(
+            "Bios",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+        lastSync?.let { ts ->
+            val timeFormat = remember {
+                SimpleDateFormat("h:mm a", Locale.getDefault())
+            }
+            Text(
+                "Synced ${timeFormat.format(Date(ts))}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * The "Today's Vitals" grid of metric cards. Extracted from [HomeScreen] to
+ * keep the screen body within the method-length limit; the metric list is the
+ * curated home set, each card self-fetching its own latest value.
+ */
+@Composable
+private fun VitalsGrid(
+    viewModel: AppViewModel,
+    refreshKey: Long?,
+    onNavigateToMetric: (MetricType) -> Unit,
+    onInfoClick: (MetricType) -> Unit,
+) {
+    val metrics = listOf(
+        Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
+        Triple(MetricType.SLEEP_EFFICIENCY, "Sleep Eff.", Icons.Default.Percent),
+        Triple(MetricType.HEART_RATE, "Heart Rate", Icons.Default.Favorite),
+        Triple(MetricType.HEART_RATE_VARIABILITY, "HRV", Icons.AutoMirrored.Filled.ShowChart),
+        Triple(MetricType.BLOOD_OXYGEN, "SpO2", Icons.Default.Air),
+        Triple(MetricType.RESPIRATORY_RATE, "Resp. Rate", Icons.Default.Air),
+        Triple(MetricType.STEPS, "Steps", Icons.AutoMirrored.Filled.DirectionsWalk),
+        Triple(MetricType.SKIN_TEMPERATURE_DEVIATION, "Skin Temp", Icons.Default.Thermostat),
+    )
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = Modifier.height(510.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        userScrollEnabled = false
+    ) {
+        items(metrics) { (metricType, label, icon) ->
+            MetricCard(
+                metricType = metricType,
+                label = label,
+                icon = icon,
+                viewModel = viewModel,
+                refreshKey = refreshKey,
+                onClick = { onNavigateToMetric(metricType) },
+                onInfoClick = { onInfoClick(metricType) },
+            )
+        }
+    }
+}
+
+/**
+ * Navigation cards to the curated sub-surfaces reached from Read. Kept out of
+ * [HomeScreen] so the screen body stays within the method-length limit.
+ */
+@Composable
+private fun SubSurfaceCards(
+    onNavigateToActiveSubstances: () -> Unit,
+    onNavigateToBodyLevels: () -> Unit,
+    onNavigateToVesselWatch: () -> Unit,
+) {
+    HomeEntryCard(
+        icon = Icons.Default.Medication,
+        title = "Active Substances",
+        subtitle = "Caffeine, alcohol, tobacco, cannabis — concentration + event log",
+        onClick = onNavigateToActiveSubstances,
+    )
+
+    HomeEntryCard(
+        icon = Icons.Default.Science,
+        title = "Body Levels",
+        subtitle = "Biomarker panels — most-recent lab values",
+        onClick = onNavigateToBodyLevels,
+    )
+
+    HomeEntryCard(
+        icon = Icons.Default.MonitorHeart,
+        title = "Vessel Watch",
+        subtitle = "The long dials — vascular, metabolic, recovery, aging, reserve",
+        onClick = onNavigateToVesselWatch,
+    )
 }
 
 /**

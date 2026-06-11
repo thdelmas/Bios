@@ -218,6 +218,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     viewModel = viewModel,
                     onNavigateToActiveSubstances = { navController.navigate("active_substances") },
                     onNavigateToBodyLevels = { navController.navigate("body_levels") },
+                    onNavigateToVesselWatch = { navController.navigate("vessel_watch") },
                     onNavigateToMetric = { metric ->
                         navController.navigate("trends?metric=${metric.key}") {
                             popUpTo("home") { saveState = true }
@@ -354,25 +355,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigate = { route -> navController.navigate(route) }
                 )
             }
-            composable("biomarker_entry") {
-                com.bios.app.ui.biomarkers.BiomarkerEntryScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable("clinical_entry") {
-                com.bios.app.ui.clinical.ClinicalReadingEntryScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable("blood_pressure_entry") {
-                com.bios.app.ui.clinical.ClinicalReadingEntryScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
-                    initialPreset = com.bios.app.ui.clinical.MeasurementPreset.BLOOD_PRESSURE,
-                )
-            }
+            entryAndReadoutRoutes(navController, viewModel)
             composable(
                 route = "add_reading?metric={metric}",
                 arguments = listOf(navArgument("metric") { type = NavType.StringType; nullable = true; defaultValue = null })
