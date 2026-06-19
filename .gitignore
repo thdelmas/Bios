@@ -28,16 +28,9 @@ Thumbs.db
 # Pre-install on-device DB snapshots — see `make db-backup`
 db-backups/
 
-# Claude Code session artifacts
-.claude/worktrees/
-
-# Owner personal lab/medical records — health data stays on-device, never
-# pushed to the (public) remote. Generic owner-subject docs (PROFILE,
-# VESSEL_WATCH, LAB_PANEL_ORDER) remain tracked; raw result dumps do not.
-docs/subjects/owner/LAB_RESULTS_*.md
-
-# Claude Code local config — never ship to auditors
+# Claude Code local config — never ship (leaks dev workflow / device serials)
 .claude/
 
-# Owner subject data — personal medical, never commit
+# Owner subject data — personal medical records (lab panels, profile,
+# vessel-watch). Health data stays on-device; never pushed to the public remote.
 docs/subjects/owner/
