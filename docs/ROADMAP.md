@@ -473,6 +473,32 @@ Bios owns autonomic state).
 
 ---
 
+## Phase 10: Lab-report OCR ingestion — read the report off the page [DESIGN]
+
+> §8.6 shipped the lab inbound surface (FHIR import + manual entry), but the
+> artifact in the owner's hand is almost always a **PDF or a photo** — their
+> portal (La Meva Salut, Synlab, Cerba, hospital labs) does not export FHIR.
+> Today that means typing ~25 values by hand on a phone keyboard. Phase 10
+> lets the owner photograph or pick the report, parse it **on-device**,
+> eyeball the pre-filled values, and confirm. OCR proposes, the owner
+> disposes — nothing is written until confirmed.
+
+A thin extraction layer in front of the existing §8.6 pipeline: no new
+metric keys, no new persistence, no network, no Play Services. Photo/PDF →
+on-device OCR (ML Kit bundled, or Tesseract for a degoogled-purist flavor,
+behind a `LabOcrEngine` interface) → multilingual analyte resolution via an
+alias table **derived from `MetricType`** (same anti-drift pattern as
+`FhirImporter.loincToMetricType`) → a `LabScanSummary` (mirrors
+`FhirImportSummary`) → a pre-filled review screen the owner confirms → the
+existing `BiomarkerEntryRepo` `SELF_REPORTED` write path. Unit
+incompatibility skips-and-reports rather than guessing; no line is dropped
+silently.
+
+Full design: [LAB_OCR_INGESTION.md](LAB_OCR_INGESTION.md). Targets v0.3
+(MVP) → v0.4 (broader language coverage, multi-page tables).
+
+---
+
 ## Phase 9 (deferred): New companions if earned
 
 Two companions are noted in the audit but explicitly *not* committed:
