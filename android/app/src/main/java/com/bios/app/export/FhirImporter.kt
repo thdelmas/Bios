@@ -369,23 +369,12 @@ object FhirImporter {
         if (incoming == targetUcum || incoming == metric.unit.symbol) {
             return UnitConversion.Same(value)
         }
-        val factor = conversionFactor(incoming, targetUcum)
+        // Shared conversion table — the single source of truth used by both
+        // this importer and lab-report OCR ingestion (see LabUnitConversion.kt).
+        // canonicaliseUnitToken folds real-lab spellings (mg/dl → mg/dL) first.
+        val factor = conversionFactor(canonicaliseUnitToken(incoming), targetUcum)
             ?: return UnitConversion.Mismatch(incoming, targetUcum)
         return UnitConversion.Converted(value * factor)
-    }
-
-    /**
-     * Returns the multiplicative factor to convert [from] to [to], or null
-     * when no conversion is registered. Kept minimal on purpose: every
-     * entry here represents a unit pair Bios has seen in real FHIR imports.
-     */
-    private fun conversionFactor(from: String, to: String): Double? {
-        if (from == to) return 1.0
-        // mg/dL ↔ mg/L. UCUM canonical codes plus the `unit` text fallbacks
-        // that real labs emit. mg/dL × 10 = mg/L.
-        if ((from == "mg/dL" || from == "mg/dl") && to == "mg/L") return 10.0
-        if (from == "mg/L" && (to == "mg/dL" || to == "mg/dl")) return 0.1
-        return null
     }
 
     private sealed class UnitConversion {

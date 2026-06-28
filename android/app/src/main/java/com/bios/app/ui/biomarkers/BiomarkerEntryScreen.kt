@@ -64,7 +64,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun BiomarkerEntryScreen(
     viewModel: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenScanReview: () -> Unit = {},
 ) {
     val biomarkers = remember {
         MetricType.entries.filter { it.domain == MetricDomain.BIOMARKER }
@@ -372,6 +373,8 @@ fun BiomarkerEntryScreen(
                     }
                 }
             }
+
+            LabScanEntryCard(viewModel = viewModel, onOpenScanReview = onOpenScanReview)
 
             Text("Recent entries", style = MaterialTheme.typography.titleSmall)
             if (recent.isEmpty()) {

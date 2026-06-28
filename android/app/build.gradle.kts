@@ -149,6 +149,12 @@ dependencies {
     implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
 
+    // Tesseract OCR (lab-report ingestion, Phase 10) — tess-two is Apache-2.0
+    // and fully Google-Play-Services-free, so it runs on a degoogled build.
+    // Trained-data models are operator-provisioned, never vendored — see
+    // app/src/main/assets/tessdata/README.md.
+    implementation("com.rmtheis:tess-two:9.1.0")
+
     // Ed25519 signature verification (model updates) — needed for API < 33
     implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 
