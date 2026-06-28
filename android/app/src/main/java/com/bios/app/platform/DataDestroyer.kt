@@ -33,6 +33,9 @@ object DataDestroyer {
 
     private const val TAG = "BiosDataDestroyer"
 
+    /** cacheDir subfolder holding lab-report camera captures (see labocr/). */
+    private const val LAB_SCAN_CACHE_DIR = "labocr"
+
     /**
      * Destroy only reproductive health data.
      * Called by LETHE duress PIN as the fastest path to protecting the most dangerous data.
@@ -75,6 +78,12 @@ object DataDestroyer {
 
         // 4. Delete export files from cache
         destroyExportFiles(context)
+
+        // 4.5. Delete cached lab-report scan sources (camera captures the
+        // owner photographed for OCR ingestion — see labocr/LabScanner). The
+        // readings they produced die with the DB key above; this clears the
+        // raw images too.
+        destroyLabScanSources(context)
 
         // 5. Cancel all background work
         cancelAllWork(context)
@@ -145,6 +154,15 @@ object DataDestroyer {
             Log.d(TAG, "Export files deleted")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete export files", e)
+        }
+    }
+
+    private fun destroyLabScanSources(context: Context) {
+        try {
+            File(context.cacheDir, LAB_SCAN_CACHE_DIR).deleteRecursively()
+            Log.d(TAG, "Lab-scan source images deleted")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete lab-scan sources", e)
         }
     }
 

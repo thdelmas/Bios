@@ -6,7 +6,7 @@
     <ID>ComplexCondition:RhythmClassifier.kt$RhythmClassifier$(curr &gt; prev &amp;&amp; curr &gt; next) || (curr &lt; prev &amp;&amp; curr &lt; next)</ID>
     <ID>CyclomaticComplexMethod:AnomalyDetector.kt$AnomalyDetector$private suspend fun evaluatePattern(pattern: ConditionPattern): Anomaly?</ID>
     <ID>CyclomaticComplexMethod:AnomalyDetector.kt$AnomalyDetector$private suspend fun scorePattern(pattern: ConditionPattern): DiagnosticResult</ID>
-    <ID>CyclomaticComplexMethod:BiomarkerEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiomarkerEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:BiomarkerEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiomarkerEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onOpenScanReview: () -&gt; Unit = {}, )</ID>
     <ID>CyclomaticComplexMethod:CameraPpgAdapter.kt$CameraPpgAdapter$@OptIn(ExperimentalCamera2Interop::class) suspend fun capture( lifecycleOwner: LifecycleOwner, durationSec: Int, sourceId: String, surfaceProvider: Preview.SurfaceProvider? = null, qualityFlow: MutableStateFlow&lt;CaptureQuality&gt;? = null ): CaptureResult</ID>
     <ID>CyclomaticComplexMethod:ClinicalReadingEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ClinicalReadingEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, initialPreset: MeasurementPreset = MeasurementPreset.TRIAGE, )</ID>
     <ID>CyclomaticComplexMethod:ConditionDetailScreen.kt$@Composable private fun SignalDetailRow(signal: SignalStatus)</ID>
@@ -64,7 +64,7 @@
     <ID>LongMethod:AnomalyDetector.kt$AnomalyDetector$private suspend fun scorePattern(pattern: ConditionPattern): DiagnosticResult</ID>
     <ID>LongMethod:AnthropometryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AnthropometryScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:BbtEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BbtEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit )</ID>
-    <ID>LongMethod:BiomarkerEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiomarkerEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit )</ID>
+    <ID>LongMethod:BiomarkerEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiomarkerEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onOpenScanReview: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:BleAirQualityPairScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BleAirQualityPairScreen( viewModel: BleAirQualityPairViewModel, onBack: () -&gt; Unit )</ID>
     <ID>LongMethod:CameraPpgAdapter.kt$CameraPpgAdapter$@OptIn(ExperimentalCamera2Interop::class) suspend fun capture( lifecycleOwner: LifecycleOwner, durationSec: Int, sourceId: String, surfaceProvider: Preview.SurfaceProvider? = null, qualityFlow: MutableStateFlow&lt;CaptureQuality&gt;? = null ): CaptureResult</ID>
     <ID>LongMethod:CameraPpgResultMapper.kt$CameraPpgResultMapper$fun toResult( ppg: PpgResult, hrv: HrvAnalyzer.HrvResult?, sourceId: String, timestamp: Long, ): CaptureResult</ID>
@@ -91,13 +91,12 @@
     <ID>LongMethod:HeadacheDiaryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HeadacheDiaryScreen( onBack: () -&gt; Unit, onNavigateToClusterPeriodicity: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:HealthEventCard.kt$@Composable fun HealthEventCard( event: HealthEvent, actionItems: List&lt;ActionItem&gt;, childEvents: List&lt;HealthEvent&gt;, onStatusChange: (HealthEventStatus) -&gt; Unit, onAddFollowUp: () -&gt; Unit, onToggleAction: (String, Boolean) -&gt; Unit, onDeleteAction: (String) -&gt; Unit, onAddAction: (String) -&gt; Unit )</ID>
     <ID>LongMethod:HealthEventSheet.kt$@OptIn(ExperimentalLayoutApi::class) @Composable private fun HealthEventForm( onSave: (HealthEventInput) -&gt; Unit, parentEventId: String?, defaultType: HealthEventType? )</ID>
-    <ID>LongMethod:HomeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HomeScreen( viewModel: AppViewModel, onNavigateToActiveSubstances: () -&gt; Unit = {}, onNavigateToBodyLevels: () -&gt; Unit = {}, onNavigateToMetric: (MetricType) -&gt; Unit = {} )</ID>
     <ID>LongMethod:IdentityRoutes.kt$internal fun NavGraphBuilder.identityRoutes(navController: NavController)</ID>
     <ID>LongMethod:ImmunisationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ImmunisationsScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:ImmunisationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddImmunisationDialog( onDismiss: () -&gt; Unit, onSave: ( name: String, cvxCode: String?, date: Long, doseNumber: Int?, lotNumber: String?, note: String? ) -&gt; Unit, )</ID>
     <ID>LongMethod:InterventionEventsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun InterventionEventsScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:InterventionEventsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddInterventionDialog( availableCourses: List&lt;TreatmentCourse&gt;, onDismiss: () -&gt; Unit, onSave: ( category: InterventionCategory, timestamp: Long, subType: String?, tradition: MedicalTradition?, bodyRegion: String?, notes: String?, courseId: String?, ) -&gt; Unit, )</ID>
-    <ID>LongMethod:LogScreen.kt$@Composable fun LogScreen( viewModel: AppViewModel, onNavigateToPpgCapture: () -&gt; Unit, onNavigateToBiomarkerEntry: () -&gt; Unit, onNavigateToClinicalEntry: () -&gt; Unit, onNavigateToSleepEntry: () -&gt; Unit, onNavigateToBbtEntry: () -&gt; Unit, onNavigateToPeriodEntry: () -&gt; Unit, )</ID>
+    <ID>LongMethod:LabScanReviewScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun LabScanReviewScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onAddManually: () -&gt; Unit, )</ID>
     <ID>LongMethod:LongevityReferenceScreen.kt$@Composable private fun BiomarkerCard( biomarker: BiomarkerReference, trackedMetrics: Set&lt;MetricType&gt;, latestDirectValue: Double? = null, biomarkerBands: com.bios.app.config.BiomarkerBands? = null )</ID>
     <ID>LongMethod:LongevityReferenceScreen.kt$@Composable private fun CoverageSummaryCard(trackedMetrics: Set&lt;MetricType&gt;)</ID>
     <ID>LongMethod:LongevityReferenceScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun LongevityReferenceScreen( trackedMetrics: Set&lt;MetricType&gt;, latestDirectBiomarkerValues: Map&lt;MetricType, Double&gt; = emptyMap(), onBack: () -&gt; Unit )</ID>
@@ -166,6 +165,7 @@
     <ID>MatchingDeclarationName:AppViewModelEntries.kt$RecentEntry</ID>
     <ID>MatchingDeclarationName:BiosPushReceiver.kt$BiosPushService : PushService</ID>
     <ID>MatchingDeclarationName:HealthEventSheet.kt$HealthEventInput</ID>
+    <ID>MatchingDeclarationName:LabUnitConversion.kt$CanonicalUnit</ID>
     <ID>MatchingDeclarationName:Statistics.kt$Stats</ID>
     <ID>MatchingDeclarationName:TimelineScreen.kt$TimelineItem</ID>
     <ID>MaxLineLength:AcuteWindowPatterns.kt$AcuteWindowPatterns$"ACEP / SCCM consensus — sustained SpO2 ≤88 % is the supplemental-oxygen threshold in adult respiratory depression; pairs with RR ≤8 in opioid / sedative / COPD-exacerbation respiratory failure"</ID>
@@ -212,7 +212,6 @@
     <ID>MaxLineLength:AfibRhythmPattern.kt$AfibRhythmPattern$suggestedAction = "Discuss these readings with a healthcare provider. The standard follow-up is a clinical ECG — single-lead (Apple Watch, KardiaMobile, Withings ScanWatch) or 12-lead in office — to confirm or rule out atrial fibrillation. The burden trend and individual session data can be exported and shared with a cardiologist."</ID>
     <ID>MaxLineLength:AnomalyDetectorReadingKindFilterTest.kt$AnomalyDetectorReadingKindFilterTest$"${metric.key} is WOMENS_HEALTH — readingKindFilterFor must return null so the SELF_REPORTED BBT rows in ReproductiveDatabase resolve"</ID>
     <ID>MaxLineLength:AppViewModel.kt$AppViewModel$codeSystem: String? = null</ID>
-    <ID>MaxLineLength:AppViewModel.kt$AppViewModel$val bleAirQualityAdapter = BleAirQualityAdapter(application, db.metricReadingDao(), com.bios.app.ingest.BlePairedDeviceStore(application))</ID>
     <ID>MaxLineLength:AutonomicPatternShiftPattern.kt$AutonomicPatternShiftPattern$earlyDetection = "Acute autonomic shifts produce a recognisable wearable signature: HRV widens, resting heart rate climbs, and SpO2 may drift mildly downward. The combination is sensitive but non-specific. Bios surfaces this pattern as an observation; the PPG-derived AFib screen (which classifies the RR-interval series itself) is a separate surface."</ID>
     <ID>MaxLineLength:AutonomicPatternShiftPattern.kt$AutonomicPatternShiftPattern$explanation = "Heart-rate variability is showing baseline-relative irregularity alongside a sustained resting-HR elevation. This autonomic pattern is non-specific — infection, dehydration, alcohol withdrawal, thyroid perturbation, and post-vaccination autonomic shifts can all produce it."</ID>
     <ID>MaxLineLength:AutonomicPatternShiftPattern.kt$AutonomicPatternShiftPattern$healing = "Rest, hydration, and watching for symptoms over the next 24–48 hours is the first step. If symptoms develop or persist — palpitations, lightheadedness, breathlessness, chest pain — clinical evaluation is the appropriate next step. The pull-side detail view shows the HRV and resting-HR trends."</ID>
@@ -785,7 +784,6 @@
     <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2016 (B recommendation) — statin primary prevention assessment with periodic lipid measurement; 5-yr cadence reflects the standard primary-care interval for stable values"</ID>
     <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2018 (A recommendation) — 5-yr HPV co-testing 30–65; 3-yr cytology 21–29 (cadence pinned to the lighter-burden HPV-era schedule)"</ID>
     <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2018 (B recommendation) — postmenopausal women ≥65; biennial cadence reflects clinical convention for stable T-scores"</ID>
-    <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2021 (A recommendation) — colorectal cancer screening 45–75; annual FIT or 10-yr colonoscopy. Cadence here is the annual-FIT pace; the engine treats long-interval modalities (colonoscopy) as still-current when within 10 years."</ID>
     <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2021 (B recommendation) — prediabetes/T2DM screening 35–70 in overweight/obese adults, 3-yr cadence in normoglycemic owners"</ID>
     <ID>MaxLineLength:SepsisScreenPattern.kt$SepsisScreenPattern$"Evans L et al. (2021) — Surviving Sepsis Campaign: International Guidelines for Management of Sepsis and Septic Shock. Critical Care Medicine"</ID>
     <ID>MaxLineLength:SepsisScreenPattern.kt$SepsisScreenPattern$"Kumar A et al. (2006) — Duration of hypotension before initiation of effective antimicrobial therapy is the critical determinant of survival in human septic shock. Critical Care Medicine"</ID>
@@ -909,6 +907,7 @@
     <ID>ThrowsCount:SyncProtocol.kt$SyncProtocol$fun decryptBlob(blob: ByteArray, syncKey: ByteArray): DecryptedBlob</ID>
     <ID>TooGenericExceptionCaught:AppViewModel.kt$AppViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AppViewModel.kt$AppViewModel$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:AppViewModelLabScan.kt$AppViewModelLabScan$e: Exception</ID>
     <ID>TooGenericExceptionCaught:CameraPpgAdapter.kt$CameraPpgAdapter$e: Exception</ID>
     <ID>TooGenericExceptionCaught:CommunityApiClient.kt$CommunityApiClient$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ContributionWorker.kt$ContributionWorker$e: Exception</ID>
@@ -917,6 +916,7 @@
     <ID>TooGenericExceptionCaught:HealthApiServer.kt$HealthApiServer$e: Exception</ID>
     <ID>TooGenericExceptionCaught:IpfsClient.kt$IpfsClient$e: Exception</ID>
     <ID>TooGenericExceptionCaught:IrohNode.kt$IrohNode$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LabScanner.kt$LabScanner$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LetheCompatImpl.kt$LetheCompatImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LocalNetworkTransport.kt$LocalNetworkTransport$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ModelUpdateManager.kt$ModelUpdateManager$e: Exception</ID>
@@ -934,6 +934,7 @@
     <ID>TooGenericExceptionCaught:SleepTileService.kt$SleepTileService$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:SyncManager.kt$SyncManager$e: Exception</ID>
     <ID>TooGenericExceptionCaught:SyncWorker.kt$SyncWorker$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TesseractLabOcrEngine.kt$TesseractLabOcrEngine$e: Exception</ID>
     <ID>TooGenericExceptionCaught:WillowSyncAdapter.kt$WillowSyncAdapter$e: Exception</ID>
     <ID>TooManyFunctions:AppViewModel.kt$AppViewModel : AndroidViewModel</ID>
     <ID>TooManyFunctions:BiosDatabase.kt$BiosDatabase : RoomDatabase</ID>

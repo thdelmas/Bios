@@ -4,6 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.bios.app.ui.biomarkers.BiomarkerEntryScreen
+import com.bios.app.ui.biomarkers.LabScanReviewScreen
 import com.bios.app.ui.clinical.ClinicalReadingEntryScreen
 import com.bios.app.ui.clinical.MeasurementPreset
 import com.bios.app.ui.vessel.VesselWatchScreen
@@ -19,7 +20,21 @@ fun NavGraphBuilder.entryAndReadoutRoutes(
     viewModel: AppViewModel,
 ) {
     composable("biomarker_entry") {
-        BiomarkerEntryScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        BiomarkerEntryScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onOpenScanReview = { navController.navigate("lab_scan_review") },
+        )
+    }
+    composable("lab_scan_review") {
+        LabScanReviewScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onAddManually = {
+                navController.popBackStack()
+                navController.navigate("biomarker_entry")
+            },
+        )
     }
     composable("clinical_entry") {
         ClinicalReadingEntryScreen(viewModel = viewModel, onBack = { navController.popBackStack() })

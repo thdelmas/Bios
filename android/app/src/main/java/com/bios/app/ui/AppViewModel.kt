@@ -474,5 +474,9 @@ class AppViewModel(
     fun addManualBiomarker(metricType: MetricType, value: Double, timestamp: Long, context: BiomarkerContext = BiomarkerContext()) =
         biomarkers.addManual(metricType, value, timestamp, context)
 
+    // MARK: - Lab-report OCR ingestion (Phase 10)
+
+    val labScan = AppViewModelLabScan(biomarkers, viewModelScope, _error)
+
     val manualReadingRepo: ManualReadingRepo = ManualReadingRepo(db)
 }
