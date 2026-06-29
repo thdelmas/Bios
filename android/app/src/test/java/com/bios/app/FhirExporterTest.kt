@@ -1,6 +1,7 @@
 package com.bios.app
 
 import com.bios.app.export.FhirExporter
+import com.bios.app.export.capMostRecent
 import com.bios.app.export.loincCode
 import com.bios.app.export.ucumCode
 import com.bios.contracts.MetricDomain
@@ -15,6 +16,29 @@ import org.junit.Test
  * test calls them directly.
  */
 class FhirExporterTest {
+
+    // --- Per-metric cap (data-completeness, never silent) ---
+
+    @Test
+    fun `capMostRecent keeps all rows when under the cap`() {
+        val rows = (1..10).toList()
+        val (kept, total) = capMostRecent(rows, FhirExporter.MAX_READINGS_PER_METRIC)
+        assertEquals(rows, kept)
+        assertEquals(10, total)
+        assertEquals("no drop when under cap", kept.size, total)
+    }
+
+    @Test
+    fun `capMostRecent keeps the most recent rows and reports the true total`() {
+        // Input is timestamp-ASC, so the newest rows are at the end.
+        val cap = FhirExporter.MAX_READINGS_PER_METRIC
+        val rows = (1..(cap + 50)).toList()
+        val (kept, total) = capMostRecent(rows, cap)
+        assertEquals("kept is capped", cap, kept.size)
+        assertEquals("total is the pre-cap count", cap + 50, total)
+        assertEquals("keeps the newest, not the oldest", cap + 50, kept.last())
+        assertEquals(51, kept.first())
+    }
 
     // --- LOINC code coverage ---
 

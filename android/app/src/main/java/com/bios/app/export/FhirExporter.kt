@@ -1,6 +1,7 @@
 package com.bios.app.export
 
 import android.content.Context
+import android.util.Log
 import com.bios.app.data.BiomarkerContext
 import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.data.BiosDatabase
@@ -54,6 +55,17 @@ class FhirExporter(
     private val fastStrokeDao = db.fastStrokeEventDao()
 
     companion object {
+        private const val TAG = "FhirExporter"
+
+        /**
+         * Per-metric ceiling on observations emitted into a single bundle, to
+         * keep the file a manageable size for clinician tooling. When a metric
+         * exceeds this, the export keeps the MOST RECENT rows (not the oldest)
+         * and records the drop in Bundle.meta.tag — the cap is never silent.
+         * See [buildBundle].
+         */
+        internal const val MAX_READINGS_PER_METRIC = 500
+
         /**
          * The MetricTypes the default FHIR export enumerates: everything except
          * the WOMENS_HEALTH (reproductive) domain.
@@ -97,10 +109,19 @@ class FhirExporter(
         // WOMENS_HEALTH (reproductive) keys are excluded — see
         // [defaultExportMetricTypes] for why the main-DB exporter must never
         // touch the isolated ReproductiveDatabase.
+        // metricKey -> [kept, total] for any metric whose readings exceeded the
+        // per-metric cap; surfaced in Bundle.meta.tag so the omission is visible.
+        val truncated = LinkedHashMap<String, IntArray>()
+
         for (metricType in defaultExportMetricTypes()) {
             val isBiomarker = metricType.domain == MetricDomain.BIOMARKER
             val readings = readingDao.fetch(metricType.key, thirtyDaysAgo, Long.MAX_VALUE)
-            for (reading in readings.take(500)) {
+            // fetch() returns rows ORDER BY timestamp ASC; capMostRecent keeps the
+            // newest rows (what a clinician most wants), not the oldest. Any drop
+            // is recorded (never silent) below.
+            val (capped, total) = capMostRecent(readings, MAX_READINGS_PER_METRIC)
+            if (total > capped.size) truncated[metricType.key] = intArrayOf(capped.size, total)
+            for (reading in capped) {
                 // Biomarker readings carry optional provenance (lab name,
                 // fasting status, specimen type) in the event-payload sidecar.
                 // The owner-recall note in MetricReading.note is intentionally
@@ -131,12 +152,36 @@ class FhirExporter(
             }
         }
 
-        return buildBundleResource(entries)
+        val bundle = buildBundleResource(entries)
+        if (truncated.isNotEmpty()) {
+            val meta = bundle.getJSONObject("meta")
+            val tags = meta.optJSONArray("tag") ?: JSONArray().also { meta.put("tag", it) }
+            truncated.forEach { (key, counts) ->
+                tags.put(JSONObject().apply {
+                    put("system", "https://bios.health/fhir/data-completeness")
+                    put("code", "truncated")
+                    put("display", "$key: exported ${counts[0]} most-recent of ${counts[1]} readings in the 30-day window")
+                })
+            }
+            Log.w(TAG, "FHIR export capped ${truncated.size} metric(s) at $MAX_READINGS_PER_METRIC most-recent rows: " +
+                truncated.entries.joinToString { "${it.key}=${it.value[0]}/${it.value[1]}" })
+        }
+        return bundle
     }
 
     private fun timestamp(): String =
         SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())
 }
+
+/**
+ * Caps a per-metric, timestamp-ASC reading list to [cap] rows, keeping the
+ * MOST RECENT (so a clinician sees the latest data, not the oldest). Returns the
+ * kept slice paired with the original count, so the caller can record any drop in
+ * Bundle.meta.tag. Pure (no Context/DB) so the unit test can exercise it directly.
+ */
+internal fun <T> capMostRecent(readings: List<T>, cap: Int): Pair<List<T>, Int> =
+    if (readings.size > cap) readings.takeLast(cap) to readings.size
+    else readings to readings.size
 
 // --- Pure FHIR R4 resource builders ---------------------------------------
 // These are top-level `internal` so tests can exercise them without a Context.
