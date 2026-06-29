@@ -1,6 +1,7 @@
 package com.bios.app.ui.settings
 
-import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import com.bios.app.export.PdfReportExporter
 import com.bios.app.ui.AppViewModel
 import com.bios.contracts.MetricType
@@ -55,6 +55,31 @@ fun PdfSummaryButton(
     var focalMetric by remember { mutableStateOf(MetricType.HEART_RATE) }
     var ownerNote by remember { mutableStateOf("") }
 
+    // Save-to-device path: the system picker returns a destination URI, then we
+    // generate the PDF (with the metric/note the owner just chose) and stream it
+    // there. Works offline with no other app installed — the reliable path on
+    // degoogled builds where the share sheet may be empty.
+    val saveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        if (uri != null) {
+            isExporting = true
+            scope.launch {
+                try {
+                    val file = PdfReportExporter(context, viewModel.db).exportToPdf(
+                        focalMetric = focalMetric,
+                        ownerNote = ownerNote.trim().ifBlank { null },
+                    )
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        file.inputStream().use { it.copyTo(out) }
+                    }
+                } finally {
+                    isExporting = false
+                }
+            }
+        }
+    }
+
     OutlinedButton(
         onClick = { showDialog = true },
         enabled = enabled && !isExporting,
@@ -64,19 +89,19 @@ fun PdfSummaryButton(
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
         }
-        Text(if (isExporting) "Generating PDF…" else "Share PDF summary (for doctors)")
+        Text(if (isExporting) "Generating PDF…" else "PDF summary (for doctors)")
     }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Share PDF summary") },
+            title = { Text("PDF summary") },
             text = {
                 Column {
                     Text(
                         "Pick the metric to feature on the chart and (optionally) " +
                             "add a short note for the doctor. The PDF is generated " +
-                            "on-device and shared through the standard share sheet.",
+                            "on-device — save it here or share it.",
                     )
                     Spacer(Modifier.height(12.dp))
                     Text("Focal metric")
@@ -105,39 +130,38 @@ fun PdfSummaryButton(
                 }
             },
             confirmButton = {
-                TextButton(
-                    enabled = !isExporting,
-                    onClick = {
-                        val pickedNote = ownerNote.trim().ifBlank { null }
-                        val pickedMetric = focalMetric
-                        showDialog = false
-                        isExporting = true
-                        scope.launch {
-                            try {
-                                val exporter = PdfReportExporter(context, viewModel.db)
-                                val file = exporter.exportToPdf(
-                                    focalMetric = pickedMetric,
-                                    ownerNote = pickedNote,
-                                )
-                                val uri = FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    file,
-                                )
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "application/pdf"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        enabled = !isExporting,
+                        onClick = {
+                            showDialog = false
+                            saveLauncher.launch("bios_doctor_summary.pdf")
+                        },
+                    ) { Text("Save to device") }
+                    TextButton(
+                        enabled = !isExporting,
+                        onClick = {
+                            val pickedNote = ownerNote.trim().ifBlank { null }
+                            val pickedMetric = focalMetric
+                            showDialog = false
+                            isExporting = true
+                            scope.launch {
+                                try {
+                                    val file = PdfReportExporter(context, viewModel.db).exportToPdf(
+                                        focalMetric = pickedMetric,
+                                        ownerNote = pickedNote,
+                                    )
+                                    shareFile(
+                                        context, file, "application/pdf",
+                                        "Share summary with your doctor",
+                                    )
+                                } finally {
+                                    isExporting = false
                                 }
-                                context.startActivity(
-                                    Intent.createChooser(shareIntent, "Share summary with your doctor"),
-                                )
-                            } finally {
-                                isExporting = false
                             }
-                        }
-                    },
-                ) { Text("Generate & share") }
+                        },
+                    ) { Text("Share") }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showDialog = false }) { Text("Cancel") }

@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -90,8 +91,9 @@ fun DataExportScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "Your data is yours. Take a copy off the device in an open format, " +
-                    "or share a clinician-ready summary. Nothing leaves until you send it.",
+                "Your data is yours. Save a copy to the device in an open format, " +
+                    "or share a clinician-ready summary. Save works offline with no " +
+                    "other app installed; nothing leaves until you choose where it goes.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -124,28 +126,31 @@ private fun YourDataCard(viewModel: AppViewModel) {
 
             Spacer(Modifier.height(8.dp))
             ImportFhirButton(viewModel = viewModel)
-            Spacer(Modifier.height(4.dp))
-            ExportButton(
-                label = "Export as JSON",
+            Spacer(Modifier.height(12.dp))
+            ExportRow(
+                label = "JSON — all data",
                 enabled = totalReadings > 0,
                 mimeType = "application/json",
-                chooserTitle = "Export Bios Data",
+                suggestedName = "bios_export.json",
+                shareChooserTitle = "Export Bios Data",
             ) { DataExporter(it, viewModel.db).exportToFile() }
-            Spacer(Modifier.height(4.dp))
-            ExportButton(
-                label = "Export as CSV",
+            Spacer(Modifier.height(12.dp))
+            ExportRow(
+                label = "CSV — all data (zip)",
                 enabled = totalReadings > 0,
                 mimeType = "application/zip",
-                chooserTitle = "Export Bios Data (CSV)",
+                suggestedName = "bios_export.zip",
+                shareChooserTitle = "Export Bios Data (CSV)",
             ) { DataExporter(it, viewModel.db).exportToCsvZip() }
-            Spacer(Modifier.height(4.dp))
-            ExportButton(
-                label = "Export as FHIR Bundle (for doctors)",
+            Spacer(Modifier.height(12.dp))
+            ExportRow(
+                label = "FHIR bundle — for doctors",
                 enabled = totalReadings > 0,
                 mimeType = "application/fhir+json",
-                chooserTitle = "Share FHIR Bundle with your doctor",
+                suggestedName = "bios_fhir.json",
+                shareChooserTitle = "Share FHIR Bundle with your doctor",
             ) { FhirExporter(it, viewModel.db).exportToFhirBundle() }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(12.dp))
             PdfSummaryButton(viewModel = viewModel, enabled = totalReadings > 0)
         }
     }
@@ -207,50 +212,102 @@ private fun ImportFhirButton(viewModel: AppViewModel) {
 }
 
 /**
- * Shared export-and-share button: runs [produceFile] off the main thread,
- * wraps the result in a FileProvider URI, and fires a share chooser.
- * Manages its own in-flight state so each export is independent.
+ * One export format, offered two ways:
+ *
+ *  - **Save to device** — the Storage Access Framework ([CreateDocument])
+ *    writes the file straight to a location the owner picks. This needs no
+ *    other app installed, so it is the reliable path on degoogled builds
+ *    (LETHE) where the share sheet can be empty. Listed first for that reason.
+ *  - **Share** — the original [ACTION_SEND] chooser, for handing the file to
+ *    mail / a clinician app / cloud when one is present.
+ *
+ * Both run [produceFile] off the main thread; [produceFile] writes a temp
+ * copy to cache, which Save streams to the chosen URI and Share exposes via
+ * FileProvider. Manages its own in-flight state so each row is independent.
  */
 @Composable
-private fun ExportButton(
+private fun ExportRow(
     label: String,
     enabled: Boolean,
     mimeType: String,
-    chooserTitle: String,
+    suggestedName: String,
+    shareChooserTitle: String,
     produceFile: suspend (android.content.Context) -> File,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var isExporting by remember { mutableStateOf(false) }
-    OutlinedButton(
-        onClick = {
-            isExporting = true
+    var busy by remember { mutableStateOf(false) }
+
+    // SAF: the system picker returns the destination URI; we then produce the
+    // export and stream its bytes there. A null URI means the owner backed out.
+    val saveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(mimeType)
+    ) { uri ->
+        if (uri != null) {
+            busy = true
             scope.launch {
                 try {
                     val file = produceFile(context)
-                    val uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file
-                    )
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = mimeType
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        file.inputStream().use { it.copyTo(out) }
                     }
-                    context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
                 } finally {
-                    isExporting = false
+                    busy = false
                 }
             }
-        },
-        enabled = enabled && !isExporting,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        if (isExporting) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
         }
-        Text(if (isExporting) "Exporting..." else label)
     }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = { saveLauncher.launch(suggestedName) },
+                enabled = enabled && !busy,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (busy) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text("Save to device")
+            }
+            OutlinedButton(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            shareFile(context, produceFile(context), mimeType, shareChooserTitle)
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = enabled && !busy,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Share")
+            }
+        }
+    }
+}
+
+/** Hand [file] to the system share sheet via FileProvider (read-only grant). */
+internal fun shareFile(
+    context: android.content.Context,
+    file: File,
+    mimeType: String,
+    chooserTitle: String,
+) {
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = mimeType
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
 }
