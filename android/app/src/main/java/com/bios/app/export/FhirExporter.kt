@@ -31,8 +31,10 @@ import java.util.UUID
  *   Anomaly       → DetectedIssue resource
  *   PersonalBaseline → Observation (with interpretation = "baseline")
  *
- * The export is encrypted by default using [EncryptedExporter]'s passphrase scheme.
- * The owner can share with their doctor — no cloud intermediary.
+ * The bundle is produced as plaintext so a clinician can read it directly. The
+ * owner can opt into password protection at export time, which wraps the file
+ * in a standard AES-256 zip ([EncryptedZipExporter]) any tool can open with the
+ * passphrase — no cloud intermediary either way.
  *
  * FHIR R4 spec: https://hl7.org/fhir/R4/
  *
@@ -73,7 +75,8 @@ class FhirExporter(
 
     /**
      * Export all Bios data as a FHIR R4 Bundle (JSON).
-     * Returns the file path. The file is plaintext — encrypt with [EncryptedExporter] before sharing.
+     * Returns the file path. The file is plaintext; the export UI can wrap it in
+     * a password-protected AES-256 zip ([EncryptedZipExporter]) on request.
      */
     suspend fun exportToFhirBundle(): File {
         val bundle = buildBundle()

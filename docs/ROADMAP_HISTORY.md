@@ -86,6 +86,12 @@ On LETHE and other degoogled devices, Health Connect may not be available. Bios 
 
 **Acceptance:** Exported file is indistinguishable from random data without the passphrase. Plaintext export requires explicit confirmation.
 
+> **Superseded (PR #411):** the `.bios` custom container and "encrypted by
+> default" shape were dropped. Password protection is now opt-in and uses a
+> standard AES-256 zip (`EncryptedZipExporter`) so a clinician/agent can open it
+> outside Bios — a Bios-only format defeated the purpose. See
+> [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md) → Encryption Design → Exports.
+
 ---
 
 ## Phase 2: Guardian — Make Bios a health guardian on LETHE [COMPLETE]

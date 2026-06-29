@@ -128,6 +128,11 @@ dependencies {
     // Encrypted preferences (API token storage)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
+    // Password-protected AES-256 zip exports — pure-Java, no Play deps. The
+    // encrypted export opens outside Bios with just the password (7-Zip, Keka,
+    // pyzipper), so a clinician/agent can read it. See EncryptedZipExporter.
+    implementation("net.lingala.zip4j:zip4j:2.11.5")
+
     // UnifiedPush (Google-free push notifications)
     implementation("org.unifiedpush.android:connector:3.0.10") {
         exclude(group = "com.google.crypto.tink", module = "tink")

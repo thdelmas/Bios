@@ -902,8 +902,6 @@
     <ID>SwallowedException:FrailScoreTest.kt$FrailScoreTest$e: IllegalArgumentException</ID>
     <ID>SwallowedException:LocalNetworkTransport.kt$LocalNetworkTransport$e: Exception</ID>
     <ID>SwallowedException:ModelUpdateManagerTest.kt$ModelUpdateManagerTest$e: Exception</ID>
-    <ID>ThrowsCount:EncryptedExporter.kt$EncryptedExporter$fun decrypt(encryptedFile: File, passphrase: String): ByteArray</ID>
-    <ID>ThrowsCount:EncryptedExporterTest.kt$EncryptedExporterTest$private fun decrypt(data: ByteArray, passphrase: String): ByteArray</ID>
     <ID>ThrowsCount:SyncProtocol.kt$SyncProtocol$fun decryptBlob(blob: ByteArray, syncKey: ByteArray): DecryptedBlob</ID>
     <ID>TooGenericExceptionCaught:AppViewModel.kt$AppViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AppViewModel.kt$AppViewModel$e: Throwable</ID>
@@ -971,14 +969,6 @@
     <ID>UseCheckOrError:ReproductiveDatabase.kt$ReproductiveDatabase.Companion$throw IllegalStateException("Reproductive database not initialized. Call initialize() first.")</ID>
     <ID>UseCheckOrError:SyncManager.kt$SyncManager$throw IllegalStateException("Sync not initialized")</ID>
     <ID>VariableNaming:BaselineEngine.kt$BaselineEngine$private val TRACKED_METRICS = listOf( MetricType.HEART_RATE, MetricType.HEART_RATE_VARIABILITY, MetricType.LF_HF_RATIO, MetricType.RESTING_HEART_RATE, MetricType.BLOOD_OXYGEN, MetricType.RESPIRATORY_RATE, MetricType.SKIN_TEMPERATURE_DEVIATION, MetricType.STEPS, MetricType.SLEEP_DURATION, )</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$// Constants mirrored from EncryptedExporter private val MAGIC = "BIOS".toByteArray(Charsets.US_ASCII)</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val CIPHER_TRANSFORM = "AES/GCM/NoPadding"</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val FORMAT_VERSION = 1</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val GCM_IV_LENGTH = 12</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val GCM_TAG_BITS = 128</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val KEY_LENGTH_BITS = 256</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val PBKDF2_ITERATIONS = 310_000</ID>
-    <ID>VariableNaming:EncryptedExporterTest.kt$EncryptedExporterTest$private val SALT_LENGTH = 32</ID>
     <ID>VariableNaming:MedicationOveruseHeadacheEvaluatorTest.kt$MedicationOveruseHeadacheEvaluatorTest$private val UTC = ZoneId.of("UTC")</ID>
     <ID>VariableNaming:MetricCoverageEngineTest.kt$MetricCoverageEngineTest$private val D = 24L * H</ID>
     <ID>VariableNaming:MetricCoverageEngineTest.kt$MetricCoverageEngineTest$private val H = 60L * 60_000L</ID>
@@ -1018,7 +1008,6 @@
     <ID>WildcardImport:DiagnosticCard.kt$import androidx.compose.material.icons.filled.*</ID>
     <ID>WildcardImport:DiagnosticCard.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:DiagnosticCard.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:EncryptedExporterTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:FeedbackPrompt.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:FeedbackPrompt.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:FeedbackPrompt.kt$import androidx.compose.runtime.*</ID>

@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -36,18 +38,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.export.DataExporter
+import com.bios.app.export.EncryptedZipExporter
 import com.bios.app.export.FhirExporter
 import com.bios.app.export.FhirImportSummary
 import com.bios.app.export.FhirImporter
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.biomarkers.FhirImportSummaryDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -90,8 +96,9 @@ fun DataExportScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "Your data is yours. Take a copy off the device in an open format, " +
-                    "or share a clinician-ready summary. Nothing leaves until you send it.",
+                "Your data is yours. Save a copy to the device in an open format, " +
+                    "or share a clinician-ready summary. Save works offline with no " +
+                    "other app installed; nothing leaves until you choose where it goes.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -104,6 +111,13 @@ fun DataExportScreen(
 private fun YourDataCard(viewModel: AppViewModel) {
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     var totalReadings by remember { mutableIntStateOf(0) }
+
+    // Encryption is opt-in and applies to every export below. The passphrase is
+    // collected once and held only in this screen's transient state; it produces
+    // a standard AES-256 zip (see EncryptedZipExporter) any tool can open.
+    var encrypt by remember { mutableStateOf(false) }
+    var passphrase by remember { mutableStateOf<String?>(null) }
+    var showPassphraseDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         totalReadings = viewModel.db.metricReadingDao().countAll()
@@ -124,30 +138,112 @@ private fun YourDataCard(viewModel: AppViewModel) {
 
             Spacer(Modifier.height(8.dp))
             ImportFhirButton(viewModel = viewModel)
-            Spacer(Modifier.height(4.dp))
-            ExportButton(
-                label = "Export as JSON",
+
+            Spacer(Modifier.height(12.dp))
+            EncryptionToggleRow(
+                encrypt = encrypt,
+                onEnable = { showPassphraseDialog = true },
+                onDisable = { encrypt = false; passphrase = null },
+            )
+
+            Spacer(Modifier.height(12.dp))
+            ExportFormatList(
+                viewModel = viewModel,
                 enabled = totalReadings > 0,
-                mimeType = "application/json",
-                chooserTitle = "Export Bios Data",
-            ) { DataExporter(it, viewModel.db).exportToFile() }
-            Spacer(Modifier.height(4.dp))
-            ExportButton(
-                label = "Export as CSV",
-                enabled = totalReadings > 0,
-                mimeType = "application/zip",
-                chooserTitle = "Export Bios Data (CSV)",
-            ) { DataExporter(it, viewModel.db).exportToCsvZip() }
-            Spacer(Modifier.height(4.dp))
-            ExportButton(
-                label = "Export as FHIR Bundle (for doctors)",
-                enabled = totalReadings > 0,
-                mimeType = "application/fhir+json",
-                chooserTitle = "Share FHIR Bundle with your doctor",
-            ) { FhirExporter(it, viewModel.db).exportToFhirBundle() }
-            Spacer(Modifier.height(4.dp))
-            PdfSummaryButton(viewModel = viewModel, enabled = totalReadings > 0)
+                encrypt = encrypt,
+                passphrase = passphrase,
+            )
         }
+    }
+
+    if (showPassphraseDialog) {
+        ExportPassphraseDialog(
+            onConfirm = { pw ->
+                passphrase = pw
+                encrypt = true
+                showPassphraseDialog = false
+            },
+            onDismiss = { showPassphraseDialog = false },
+        )
+    }
+}
+
+/** The four export formats, each offering Save-to-device and Share, honoring
+ *  the screen-level [encrypt]/[passphrase]. Split out to keep [YourDataCard] short. */
+@Composable
+private fun ExportFormatList(
+    viewModel: AppViewModel,
+    enabled: Boolean,
+    encrypt: Boolean,
+    passphrase: String?,
+) {
+    ExportRow(
+        label = "JSON — all data",
+        enabled = enabled,
+        mimeType = "application/json",
+        suggestedName = "bios_export.json",
+        shareChooserTitle = "Export Bios Data",
+        encrypt = encrypt,
+        passphrase = passphrase,
+    ) { DataExporter(it, viewModel.db).exportToFile() }
+    Spacer(Modifier.height(12.dp))
+    ExportRow(
+        label = "CSV — all data (zip)",
+        enabled = enabled,
+        mimeType = "application/zip",
+        suggestedName = "bios_export.zip",
+        shareChooserTitle = "Export Bios Data (CSV)",
+        encrypt = encrypt,
+        passphrase = passphrase,
+    ) { DataExporter(it, viewModel.db).exportToCsvZip() }
+    Spacer(Modifier.height(12.dp))
+    ExportRow(
+        label = "FHIR bundle — for doctors",
+        enabled = enabled,
+        mimeType = "application/fhir+json",
+        suggestedName = "bios_fhir.json",
+        shareChooserTitle = "Share FHIR Bundle with your doctor",
+        encrypt = encrypt,
+        passphrase = passphrase,
+    ) { FhirExporter(it, viewModel.db).exportToFhirBundle() }
+    Spacer(Modifier.height(12.dp))
+    PdfSummaryButton(
+        viewModel = viewModel,
+        enabled = enabled,
+        encrypt = encrypt,
+        passphrase = passphrase,
+    )
+}
+
+/**
+ * Opt-in switch that turns every export below into a password-protected
+ * AES-256 zip. Enabling routes through the passphrase dialog ([onEnable]);
+ * disabling clears the held passphrase ([onDisable]).
+ */
+@Composable
+private fun EncryptionToggleRow(
+    encrypt: Boolean,
+    onEnable: () -> Unit,
+    onDisable: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Password-protect exports", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                if (encrypt) "AES-256 zip · opens anywhere with the password"
+                else "Off · exports are unencrypted",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = encrypt,
+            onCheckedChange = { on -> if (on) onEnable() else onDisable() },
+        )
     }
 }
 
@@ -207,50 +303,139 @@ private fun ImportFhirButton(viewModel: AppViewModel) {
 }
 
 /**
- * Shared export-and-share button: runs [produceFile] off the main thread,
- * wraps the result in a FileProvider URI, and fires a share chooser.
- * Manages its own in-flight state so each export is independent.
+ * One export format, offered two ways:
+ *
+ *  - **Save to device** — the Storage Access Framework ([CreateDocument])
+ *    writes the file straight to a location the owner picks. This needs no
+ *    other app installed, so it is the reliable path on degoogled builds
+ *    (LETHE) where the share sheet can be empty. Listed first for that reason.
+ *  - **Share** — the original [ACTION_SEND] chooser, for handing the file to
+ *    mail / a clinician app / cloud when one is present.
+ *
+ * Both run [produceFile] off the main thread; [produceFile] writes a temp
+ * copy to cache, which Save streams to the chosen URI and Share exposes via
+ * FileProvider. Manages its own in-flight state so each row is independent.
  */
 @Composable
-private fun ExportButton(
+private fun ExportRow(
     label: String,
     enabled: Boolean,
     mimeType: String,
-    chooserTitle: String,
+    suggestedName: String,
+    shareChooserTitle: String,
+    encrypt: Boolean,
+    passphrase: String?,
     produceFile: suspend (android.content.Context) -> File,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var isExporting by remember { mutableStateOf(false) }
-    OutlinedButton(
-        onClick = {
-            isExporting = true
-            scope.launch {
-                try {
-                    val file = produceFile(context)
-                    val uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file
-                    )
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = mimeType
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
-                } finally {
-                    isExporting = false
+    var busy by remember { mutableStateOf(false) }
+
+    // When encrypting, the delivered artifact is an AES-256 zip, so the file the
+    // owner saves/shares is named ".zip" and typed application/zip regardless of
+    // the underlying format.
+    val deliveredMime = if (encrypt) "application/zip" else mimeType
+    val deliveredName = if (encrypt) "$suggestedName.zip" else suggestedName
+
+    // SAF: the system picker returns the destination URI; we then produce (and,
+    // if requested, encrypt) the export and stream its bytes there. A null URI
+    // means the owner backed out. CreateDocument's mime is fixed at composition,
+    // so we keep one launcher per delivered type and pick by [encrypt] on tap.
+    fun onSaveTarget(uri: android.net.Uri?) {
+        if (uri == null) return
+        busy = true
+        scope.launch {
+            try {
+                val file = deliverExport(context, produceFile(context), encrypt, passphrase)
+                context.contentResolver.openOutputStream(uri)?.use { out ->
+                    file.inputStream().use { it.copyTo(out) }
                 }
+            } finally {
+                busy = false
             }
-        },
-        enabled = enabled && !isExporting,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        if (isExporting) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
         }
-        Text(if (isExporting) "Exporting..." else label)
     }
+    val savePlainLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(mimeType)
+    ) { uri -> onSaveTarget(uri) }
+    val saveZipLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri -> onSaveTarget(uri) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = {
+                    if (encrypt) saveZipLauncher.launch(deliveredName)
+                    else savePlainLauncher.launch(deliveredName)
+                },
+                enabled = enabled && !busy,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (busy) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text("Save to device")
+            }
+            OutlinedButton(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            val file = deliverExport(context, produceFile(context), encrypt, passphrase)
+                            shareFile(context, file, deliveredMime, shareChooserTitle)
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = enabled && !busy,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Share")
+            }
+        }
+    }
+}
+
+/**
+ * Produce the artifact to deliver: [plaintext] as-is, or — when [encrypt] is on
+ * and a [passphrase] is set — an AES-256 zip ([EncryptedZipExporter]) that opens
+ * outside Bios with the password. Encrypting deletes the plaintext copy so no
+ * cleartext lingers in cache. Runs blocking IO off the main thread.
+ */
+internal suspend fun deliverExport(
+    context: android.content.Context,
+    plaintext: File,
+    encrypt: Boolean,
+    passphrase: String?,
+): File {
+    if (!encrypt || passphrase.isNullOrEmpty()) return plaintext
+    return withContext(Dispatchers.IO) {
+        val zip = EncryptedZipExporter.encrypt(context, plaintext, passphrase)
+        plaintext.delete()
+        zip
+    }
+}
+
+/** Hand [file] to the system share sheet via FileProvider (read-only grant). */
+internal fun shareFile(
+    context: android.content.Context,
+    file: File,
+    mimeType: String,
+    chooserTitle: String,
+) {
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = mimeType
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
 }
