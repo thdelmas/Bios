@@ -313,6 +313,12 @@ fun BiosApp(viewModel: AppViewModel) {
                     onNavigate = { route -> navController.navigate(route) },
                 )
             }
+            composable("your_data") {
+                com.bios.app.ui.settings.DataExportScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable("metric_sources") {
                 com.bios.app.ui.settings.MetricSourcesScreen(
                     viewModel = viewModel,
