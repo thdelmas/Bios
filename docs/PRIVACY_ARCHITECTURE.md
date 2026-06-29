@@ -236,6 +236,27 @@ The database key is:
 - Destroyed if the user chooses "Delete all data"
 - On LETHE: also destroyed by dead man's switch or burner mode reboot
 
+### Exports (off-device)
+
+Exports (JSON / CSV / FHIR / PDF) leave the SQLCipher boundary, so the owner
+controls their protection at export time:
+
+- **Plaintext** by default — a clinician needs to read the FHIR bundle or PDF,
+  and an owner backup is often re-imported. Files are written to app-private
+  cache and delivered via SAF "Save to device" or the share sheet; nothing
+  leaves until the owner picks a destination.
+- **Password-protected** when the owner enables it — the export is wrapped in a
+  standard **AES-256 zip** (`EncryptedZipExporter`, Zip4j; passphrase entered
+  twice, unrecoverable if lost). Crucially this is an *interoperable* container:
+  it opens outside Bios with the password (7-Zip, Keka, `pyzipper`), so a
+  doctor or agent can read it without Bios. The plaintext cache copy is deleted
+  once the encrypted zip is produced.
+
+> Superseded design note: an earlier plan used a Bios-only `.bios` container
+> (`EncryptedExporter`, custom AES-GCM format). It was never wired to the UI and
+> was retired because a Bios-only format can't be read by the clinician/agent
+> the export is for. The AES-256 zip replaces it.
+
 ### In Transit (sync)
 
 ```

@@ -231,7 +231,7 @@ bios/
                              BiomarkerReference, DailyDigestWorker, FollowUpWorker
       privacy/            -- CommunityAggregator, ContributionWorker, PopulationHealthSignals,
                              ResearchPipeline
-      export/             -- DataExporter, EncryptedExporter, FhirExporter
+      export/             -- DataExporter, EncryptedZipExporter, FhirExporter, PdfReportExporter
       sync/               -- SyncProtocol, SyncManager (E2E encrypted multi-device)
       ui/                 -- 11 Jetpack Compose screens
         home/ trends/ alerts/ settings/ onboarding/
