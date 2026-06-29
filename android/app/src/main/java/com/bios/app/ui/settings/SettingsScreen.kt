@@ -131,12 +131,16 @@ fun SettingsScreen(
             }
         }
 
-        // Data & sources — wearable/API connections and export — live behind
-        // their own screen so the Self tab stays a short, scannable hub.
+        // Data — owner's own data first (export/import is a one-tap autonomy
+        // feature, kept prominent so owners can find it), then the wearable/API
+        // connections that feed it. Both live behind their own screens so the
+        // Self tab stays a short, scannable hub.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Data", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
+                SettingsActionButton("Your data & export") { onNavigate("your_data") }
+                Spacer(Modifier.height(4.dp))
                 SettingsActionButton("Data & sources") { onNavigate("data_sources") }
             }
         }
