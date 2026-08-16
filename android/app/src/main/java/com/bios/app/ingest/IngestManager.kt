@@ -90,62 +90,62 @@ class IngestManager(
     suspend fun setup() {
         // Health Connect (preferred if available)
         if (healthConnect.isAvailable) {
-            healthConnectSourceId = getOrCreateSource(
+            healthConnectSourceId = sourceDao.getOrCreate(
                 SourceType.HEALTH_CONNECT, "Android Wearable", SensorType.OPTICAL_HR
             )
         }
 
         // Gadgetbridge (fallback for degoogled devices)
         if (gadgetbridgeAdapter?.isAvailable == true) {
-            gadgetbridgeSourceId = getOrCreateSource(
+            gadgetbridgeSourceId = sourceDao.getOrCreate(
                 SourceType.GADGETBRIDGE, "Gadgetbridge Device", SensorType.OPTICAL_HR
             )
         }
 
         // Direct sensor APIs (HR, HRV from hardware sensors)
         if (directSensorAdapter?.hasAnySensor == true) {
-            directSensorSourceId = getOrCreateSource(
+            directSensorSourceId = sourceDao.getOrCreate(
                 SourceType.DIRECT_SENSOR, "Direct Sensors", SensorType.OPTICAL_HR
             )
         }
 
         // Oura API
         if (ouraAdapter?.isConnected == true) {
-            ouraSourceId = getOrCreateSource(
+            ouraSourceId = sourceDao.getOrCreate(
                 SourceType.OURA_API, "Oura Ring", SensorType.OPTICAL_HR
             )
         }
 
         // Withings API (scale-first device — body composition, BP, sleep summary)
         if (withingsAdapter?.isConnected == true) {
-            withingsSourceId = getOrCreateSource(
+            withingsSourceId = sourceDao.getOrCreate(
                 SourceType.WITHINGS_API, "Withings", SensorType.DERIVED
             )
         }
 
         // WHOOP API (strap — recovery, sleep, workouts)
         if (whoopAdapter?.isConnected == true) {
-            whoopSourceId = getOrCreateSource(
+            whoopSourceId = sourceDao.getOrCreate(
                 SourceType.WHOOP_API, "WHOOP", SensorType.OPTICAL_HR
             )
         }
 
         // Garmin API (watch — HR, sleep, steps, SpO2, respiration, activities)
         if (garminAdapter?.isConnected == true) {
-            garminSourceId = getOrCreateSource(
+            garminSourceId = sourceDao.getOrCreate(
                 SourceType.GARMIN_API, "Garmin", SensorType.OPTICAL_HR
             )
         }
 
         // Polar API (clinical-grade HR/HRV from H10 + Verity Sense)
-        if (polarAdapter?.isConnected == true) polarSourceId = getOrCreateSource(SourceType.POLAR_API, "Polar", SensorType.OPTICAL_HR)
+        if (polarAdapter?.isConnected == true) polarSourceId = sourceDao.getOrCreate(SourceType.POLAR_API, "Polar", SensorType.OPTICAL_HR)
 
         // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
             phoneSensorAdapter?.hasStepCounter == true ||
             phoneSensorAdapter?.hasAmbientLight == true
         ) {
-            phoneSensorSourceId = getOrCreateSource(
+            phoneSensorSourceId = sourceDao.getOrCreate(
                 SourceType.PHONE_SENSOR, "Phone Sensors", SensorType.ACCELEROMETER
             )
         }
@@ -154,7 +154,7 @@ class IngestManager(
         // its DataSource row and open the GATT connection so the streaming
         // notifications have a sourceId to route through.
         if (bleAirQualityAdapter?.isPaired == true) {
-            val sourceId = getOrCreateSource(
+            val sourceId = sourceDao.getOrCreate(
                 SourceType.BLE_PERIPHERAL, "BLE Air-Quality Sensor", SensorType.DERIVED
             )
             bleAirQualitySourceId = sourceId
@@ -163,13 +163,20 @@ class IngestManager(
 
         updateDataAge()
 
+        IngestTelemetry.log(
+            "setup: hc=${healthConnectSourceId != null} gadgetbridge=${gadgetbridgeSourceId != null} " +
+                "phone=${phoneSensorSourceId != null} dataAgeDays=${_dataAgeDays.value}"
+        )
+
         // Backfill on first launch (no data at all) OR when a primary metric is
         // empty — handles the case where the user installed Bios, granted HC
         // permission later, or only just connected a watch. Without this, the
         // 24h syncRecentData loop would never recover the missing history.
         if (_dataAgeDays.value == 0 || hasEmptyPrimaryMetric()) {
+            IngestTelemetry.log("setup: entering 30-day historical backfill")
             syncHistoricalData()
         } else {
+            IngestTelemetry.log("setup: entering recent-24h sync")
             syncRecentData()
         }
     }
@@ -207,16 +214,16 @@ class IngestManager(
                 val allReadings = coroutineScope {
                     val jobs = listOfNotNull(
                         healthConnectSourceId?.let { id ->
-                            async { healthConnect.fetchReadings(start, end, id) }
+                            async { IngestTelemetry.timedFetch("health_connect") { healthConnect.fetchReadings(start, end, id) } }
                         },
-                        async { fetchGadgetbridgeReadings(start, end) },
-                        async { fetchDirectSensorReadings() },
-                        async { fetchOuraReadings(start, end) },
-                        async { fetchWithingsReadings(start, end) },
-                        async { fetchWhoopReadings(start, end) },
-                        async { fetchGarminReadings(start, end) },
-                        async { fetchPolarReadings(start, end) },
-                        async { fetchPhoneSensorReadings() }
+                        async { IngestTelemetry.timedFetch("gadgetbridge") { fetchGadgetbridgeReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("direct_sensor") { fetchDirectSensorReadings() } },
+                        async { IngestTelemetry.timedFetch("oura") { fetchOuraReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("withings") { fetchWithingsReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("whoop") { fetchWhoopReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("garmin") { fetchGarminReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("polar") { fetchPolarReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("phone_sensor") { fetchPhoneSensorReadings() } }
                     )
                     jobs.awaitAll().flatten()
                 }
@@ -224,8 +231,13 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                readingDao.insertAll(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
+                val toWrite = SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao)
+                readingDao.insertAll(toWrite)
                 updateLastReadings(quality)
+                IngestTelemetry.syncSummary(
+                    "recent24h", healthConnectSourceId != null, allReadings.size,
+                    deduped.size, quality.size, derived.size, toWrite.size
+                )
 
                 // Composite events (EXERCISE_SESSION) take a parallel path —
                 // the scalar dedupe/quality filter can't keep payload rows in
@@ -293,8 +305,13 @@ class IngestManager(
                 val deduped = deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                readingDao.insertAll(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
+                val toWrite = SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao)
+                readingDao.insertAll(toWrite)
                 updateLastReadings(quality)
+                IngestTelemetry.syncSummary(
+                    "historical day ${completedDays + 1}/30", healthConnectSourceId != null,
+                    allReadings.size, deduped.size, quality.size, derived.size, toWrite.size
+                )
 
                 healthConnectSourceId?.let { id ->
                     persistSessions(healthConnect.fetchExerciseSessions(current, chunkEnd, id))
@@ -382,24 +399,7 @@ class IngestManager(
         HrRecoveryPersister.persistFor(sessions, readingDao)
     }
 
-    // MARK: - Helpers
-
-    private suspend fun getOrCreateSource(
-        type: SourceType,
-        deviceName: String,
-        sensorType: SensorType
-    ): String {
-        val existing = sourceDao.findByType(type.key)
-        if (existing != null) return existing.id
-
-        val source = DataSource(
-            sourceType = type.key,
-            deviceName = deviceName,
-            sensorType = sensorType.name
-        )
-        sourceDao.insert(source)
-        return source.id
-    }
+    // MARK: - Helpers (getOrCreateSource → SourceRegistry.kt, 500-line ceiling)
 
     /** Generic adapter-fetch helper. Returns empty when the source row
      *  hasn't been registered or the adapter is null; swallows fetch
@@ -461,7 +461,7 @@ class IngestManager(
      */
     suspend fun onBleAirQualityPaired() {
         val adapter = bleAirQualityAdapter ?: return
-        val sourceId = bleAirQualitySourceId ?: getOrCreateSource(
+        val sourceId = bleAirQualitySourceId ?: sourceDao.getOrCreate(
             SourceType.BLE_PERIPHERAL, "BLE Air-Quality Sensor", SensorType.DERIVED
         ).also { bleAirQualitySourceId = it }
         adapter.connect(sourceId)

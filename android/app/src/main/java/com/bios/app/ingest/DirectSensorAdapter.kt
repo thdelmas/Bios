@@ -171,54 +171,75 @@ class DirectSensorAdapter(context: Context) {
         )
     }
 
+    // Both collectors resume only from inside onSensorChanged, and a sensor
+    // that never fires (TYPE_STEP_COUNTER on a stationary phone delivers
+    // nothing until the next step) suspends the coroutine FOREVER without an
+    // outer timeout — this wedged every ingest's awaitAll: the UI sync hit
+    // its 2-minute timeout and the SyncWorker died by cancellation on every
+    // run. Same hazard PhoneSensorAdapter already guards with
+    // withTimeoutOrNull; the samples list is hoisted so a timeout still
+    // returns whatever arrived (e.g. the registration-time step-counter
+    // event) instead of discarding it.
+
     private suspend fun collectFloatSamples(
         sensor: Sensor,
         durationMs: Long
-    ): List<Double> = suspendCancellableCoroutine { cont ->
+    ): List<Double> {
         val samples = mutableListOf<Double>()
-        val startTime = System.currentTimeMillis()
-
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                samples.add(event.values[0].toDouble())
-                if (System.currentTimeMillis() - startTime >= durationMs) {
-                    sensorManager.unregisterListener(this)
-                    if (cont.isActive) cont.resume(samples)
+        kotlinx.coroutines.withTimeoutOrNull(sampleTimeoutMs(durationMs)) {
+            suspendCancellableCoroutine<Unit> { cont ->
+                val startTime = System.currentTimeMillis()
+                val listener = object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent) {
+                        samples.add(event.values[0].toDouble())
+                        if (System.currentTimeMillis() - startTime >= durationMs) {
+                            sensorManager.unregisterListener(this)
+                            if (cont.isActive) cont.resume(Unit)
+                        }
+                    }
+                    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
                 }
+                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+                cont.invokeOnCancellation { sensorManager.unregisterListener(listener) }
             }
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
-
-        sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-        cont.invokeOnCancellation { sensorManager.unregisterListener(listener) }
+        return samples
     }
 
     private suspend fun collectTimestampSamples(
         sensor: Sensor,
         durationMs: Long
-    ): List<Double> = suspendCancellableCoroutine { cont ->
+    ): List<Double> {
         val timestamps = mutableListOf<Double>()
-        val startTime = System.currentTimeMillis()
-
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                // TYPE_HEART_BEAT reports confidence in values[0]; timestamp is event.timestamp (nanos)
-                if (event.values[0] > 0) {
-                    timestamps.add(event.timestamp / 1_000_000.0) // Convert nanos to millis
+        kotlinx.coroutines.withTimeoutOrNull(sampleTimeoutMs(durationMs)) {
+            suspendCancellableCoroutine<Unit> { cont ->
+                val startTime = System.currentTimeMillis()
+                val listener = object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent) {
+                        // TYPE_HEART_BEAT reports confidence in values[0]; timestamp is event.timestamp (nanos)
+                        if (event.values[0] > 0) {
+                            timestamps.add(event.timestamp / 1_000_000.0) // Convert nanos to millis
+                        }
+                        if (System.currentTimeMillis() - startTime >= durationMs) {
+                            sensorManager.unregisterListener(this)
+                            if (cont.isActive) cont.resume(Unit)
+                        }
+                    }
+                    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
                 }
-                if (System.currentTimeMillis() - startTime >= durationMs) {
-                    sensorManager.unregisterListener(this)
-                    if (cont.isActive) cont.resume(timestamps)
-                }
+                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_FASTEST)
+                cont.invokeOnCancellation { sensorManager.unregisterListener(listener) }
             }
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
-
-        sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_FASTEST)
-        cont.invokeOnCancellation { sensorManager.unregisterListener(listener) }
+        return timestamps
     }
 
     companion object {
         private const val STEP_SAMPLE_MS = 500L
+        private const val SAMPLE_TIMEOUT_FLOOR_MS = 5_000L
+
+        /** Same shape as PhoneSensorAdapter: double the window, floor 5s. */
+        private fun sampleTimeoutMs(durationMs: Long): Long =
+            (durationMs * 2L).coerceAtLeast(SAMPLE_TIMEOUT_FLOOR_MS)
     }
 }

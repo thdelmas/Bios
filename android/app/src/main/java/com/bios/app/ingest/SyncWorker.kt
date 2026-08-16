@@ -45,8 +45,14 @@ class SyncWorker(
                 withingsAdapter = withings
             )
 
-            // Stage 1: Sync recent data
-            ingestManager.syncRecentData()
+            // Stage 1: Register sources, then sync. setup() is what binds the
+            // adapter sourceIds — without it every fetch block no-ops on a
+            // null sourceId and the worker "succeeds" while ingesting nothing
+            // (the reservoir stayed empty for months exactly this way; the UI
+            // path in AppViewModel was the only caller). setup() ends by
+            // running the right sync itself: 30-day historical backfill when a
+            // primary metric is empty, else the recent-24h pass.
+            ingestManager.setup()
 
             // Stage 2: Prune readings older than retention window
             try {
