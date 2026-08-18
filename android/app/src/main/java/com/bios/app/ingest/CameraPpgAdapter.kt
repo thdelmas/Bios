@@ -68,7 +68,10 @@ class CameraPpgAdapter(private val context: Context) {
      *    are pushed during capture so the UI can coach the owner if the
      *    finger drifts or motion is detected. Updates ~2 Hz.
      */
-    @OptIn(ExperimentalCamera2Interop::class)
+    // androidx.annotation.OptIn (not kotlin.OptIn) — the camera interop
+    // marker is a Java @Experimental annotation, so lint's
+    // UnsafeOptInUsageError only honors the androidx form.
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
     suspend fun capture(
         lifecycleOwner: LifecycleOwner,
         durationSec: Int,

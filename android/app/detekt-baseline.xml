@@ -7,7 +7,7 @@
     <ID>CyclomaticComplexMethod:AnomalyDetector.kt$AnomalyDetector$private suspend fun evaluatePattern(pattern: ConditionPattern): Anomaly?</ID>
     <ID>CyclomaticComplexMethod:AnomalyDetector.kt$AnomalyDetector$private suspend fun scorePattern(pattern: ConditionPattern): DiagnosticResult</ID>
     <ID>CyclomaticComplexMethod:BiomarkerEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiomarkerEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onOpenScanReview: () -&gt; Unit = {}, )</ID>
-    <ID>CyclomaticComplexMethod:CameraPpgAdapter.kt$CameraPpgAdapter$@OptIn(ExperimentalCamera2Interop::class) suspend fun capture( lifecycleOwner: LifecycleOwner, durationSec: Int, sourceId: String, surfaceProvider: Preview.SurfaceProvider? = null, qualityFlow: MutableStateFlow&lt;CaptureQuality&gt;? = null ): CaptureResult</ID>
+    <ID>CyclomaticComplexMethod:CameraPpgAdapter.kt$CameraPpgAdapter$@androidx.annotation.OptIn(ExperimentalCamera2Interop::class) suspend fun capture( lifecycleOwner: LifecycleOwner, durationSec: Int, sourceId: String, surfaceProvider: Preview.SurfaceProvider? = null, qualityFlow: MutableStateFlow&lt;CaptureQuality&gt;? = null ): CaptureResult</ID>
     <ID>CyclomaticComplexMethod:ClinicalReadingEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ClinicalReadingEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, initialPreset: MeasurementPreset = MeasurementPreset.TRIAGE, )</ID>
     <ID>CyclomaticComplexMethod:ConditionDetailScreen.kt$@Composable private fun SignalDetailRow(signal: SignalStatus)</ID>
     <ID>CyclomaticComplexMethod:FhirExporter.kt$internal fun buildObservationResource( reading: MetricReading, metricType: MetricType, context: BiomarkerContext? = null, ): JSONObject</ID>
@@ -66,7 +66,7 @@
     <ID>LongMethod:BbtEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BbtEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit )</ID>
     <ID>LongMethod:BiomarkerEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiomarkerEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onOpenScanReview: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:BleAirQualityPairScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BleAirQualityPairScreen( viewModel: BleAirQualityPairViewModel, onBack: () -&gt; Unit )</ID>
-    <ID>LongMethod:CameraPpgAdapter.kt$CameraPpgAdapter$@OptIn(ExperimentalCamera2Interop::class) suspend fun capture( lifecycleOwner: LifecycleOwner, durationSec: Int, sourceId: String, surfaceProvider: Preview.SurfaceProvider? = null, qualityFlow: MutableStateFlow&lt;CaptureQuality&gt;? = null ): CaptureResult</ID>
+    <ID>LongMethod:CameraPpgAdapter.kt$CameraPpgAdapter$@androidx.annotation.OptIn(ExperimentalCamera2Interop::class) suspend fun capture( lifecycleOwner: LifecycleOwner, durationSec: Int, sourceId: String, surfaceProvider: Preview.SurfaceProvider? = null, qualityFlow: MutableStateFlow&lt;CaptureQuality&gt;? = null ): CaptureResult</ID>
     <ID>LongMethod:CameraPpgResultMapper.kt$CameraPpgResultMapper$fun toResult( ppg: PpgResult, hrv: HrvAnalyzer.HrvResult?, sourceId: String, timestamp: Long, ): CaptureResult</ID>
     <ID>LongMethod:ClinicalReadingEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ClinicalReadingEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, initialPreset: MeasurementPreset = MeasurementPreset.TRIAGE, )</ID>
     <ID>LongMethod:CompanionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CompanionsScreen(viewModel: AppViewModel, onBack: () -&gt; Unit)</ID>
@@ -111,8 +111,6 @@
     <ID>LongMethod:NoticeScreen.kt$@Composable fun NoticeScreen( viewModel: AppViewModel, onNavigateToCondition: (String) -&gt; Unit, onNavigateToCompanions: () -&gt; Unit, onNavigateToReference: () -&gt; Unit, )</ID>
     <ID>LongMethod:OnboardingScreen.kt$@Composable fun OnboardingScreen( onRequestPermissions: () -&gt; Unit, permissionDenied: Boolean )</ID>
     <ID>LongMethod:PdfReportExporter.kt$private fun renderPage( canvas: Canvas, focalMetric: MetricType, focalReadings: List&lt;MetricReading&gt;, focalBaseline: PersonalBaseline?, biomarkerLatest: List&lt;Pair&lt;MetricType, MetricReading&gt;&gt;, bands: Map&lt;MetricType, BiomarkerBands&gt;, startMillis: Long, endMillis: Long, ownerNote: String?, versionName: String, generatedAtMillis: Long, )</ID>
-    <ID>LongMethod:PdfSummaryButton.kt$@Composable fun PdfSummaryButton( viewModel: AppViewModel, enabled: Boolean, )</ID>
-    <ID>LongMethod:PeriodEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PeriodEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit )</ID>
     <ID>LongMethod:PhoneSleepWorker.kt$PhoneSleepWorker$override suspend fun doWork(): Result</ID>
     <ID>LongMethod:PhysiologyStateScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PhysiologyStateScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:PpgSignalProcessor.kt$PpgSignalProcessor$fun extract( luminanceSamples: List&lt;Double&gt;, samplingRateHz: Double, profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT, ): PpgResult</ID>
