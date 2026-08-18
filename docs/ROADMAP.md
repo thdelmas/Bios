@@ -70,6 +70,13 @@
 
 **ML pipeline:** Trained anomaly detection model (`anomaly_detector.tflite`) shipped in app assets. Training pipeline in `ml/` (synthetic data generation + training script).
 
+**Pull-side surface parity (2026-08-18)** — landed after a gap analysis against the Google Health app relaunch (ex-Fitbit, 2026-05-19). All owner-invoked, zero push-side change:
+- Owner-curated Today's Vitals tiles: pin/remove/reorder any contract metric (`VitalsTileStore`); historical 8 remain the default.
+- Per-night hypnogram + derived sleep score line on the sleep dashboard (stage rows had six writers and no reader; closes the "per-night stage breakdown" follow-up from #135).
+- Cycle dashboard: phase-painted month calendar + cycle-length history (median/range, as-logged, no prediction, no grading).
+- VO2max audit: Bios already ingests vendor values as `VENDOR_DERIVED` pass-through and never estimates from demographics — no change needed; vendors' methodology improvements flow through.
+- Explicitly NOT matched, manifesto grounds: coach/chat surface (push-side coaching is a CI-failing AlertContentPolicy violation; a pull-side owner-invoked variant is an **open fork, owner's call**), goals/streaks/leaderboards (banned), nutrition (out of Bios; siblings are condition-shaped fronts, not domain owners). Naps/24h sleep view deferred: needs a real sleep-session concept (no session id in `MetricReading`) — schema work, not UI work.
+
 ---
 
 ## Completed phases (1–6)
