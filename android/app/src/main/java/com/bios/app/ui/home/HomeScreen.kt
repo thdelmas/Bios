@@ -19,23 +19,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
@@ -87,6 +83,10 @@ fun HomeScreen(
     val lastSync by viewModel.ingestManager.lastSyncTime.collectAsState()
     val isSyncing by viewModel.ingestManager.isSyncing.collectAsState()
     var infoMetric by remember { mutableStateOf<MetricType?>(null) }
+    val context = LocalContext.current
+    val tileStore = remember(context) { VitalsTileStore(context) }
+    var tiles by remember { mutableStateOf(tileStore.current()) }
+    var editingTiles by remember { mutableStateOf(false) }
 
     PullToRefreshBox(
         isRefreshing = isSyncing,
@@ -103,20 +103,16 @@ fun HomeScreen(
 
             MetricSearchBar(onSelect = onNavigateToMetric)
 
-            val staleThresholdMillis = SyncWorker.STALE_THRESHOLD_HOURS * 3600 * 1000L
-            val isStale = lastSync != null &&
-                (System.currentTimeMillis() - lastSync!!) > staleThresholdMillis
-            if (isStale) {
-                StaleDataBanner()
-            }
+            StaleDataBannerIfStale(lastSync)
 
             if (unacknowledged.isNotEmpty()) {
                 AlertStatusStrip(count = unacknowledged.size)
             }
 
-            Text("Today's Vitals", style = MaterialTheme.typography.titleMedium)
+            VitalsHeader(onEdit = { editingTiles = true })
 
             VitalsGrid(
+                metrics = tiles,
                 viewModel = viewModel,
                 refreshKey = lastSync,
                 onNavigateToMetric = onNavigateToMetric,
@@ -143,6 +139,41 @@ fun HomeScreen(
             metricType = metric,
             onDismiss = { infoMetric = null },
         )
+    }
+
+    if (editingTiles) {
+        VitalsEditSheet(
+            tiles = tiles,
+            onSave = {
+                tileStore.set(it)
+                tiles = it
+                editingTiles = false
+            },
+            onDismiss = { editingTiles = false },
+        )
+    }
+}
+
+/**
+ * "Today's Vitals" section title + the edit affordance that opens
+ * [VitalsEditSheet]. Extracted to keep [HomeScreen] short.
+ */
+@Composable
+private fun VitalsHeader(onEdit: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Today's Vitals", style = MaterialTheme.typography.titleMedium)
+        IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = "Edit vitals tiles",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -175,38 +206,35 @@ private fun HomeHeader(lastSync: Long?) {
 /**
  * The "Today's Vitals" grid of metric cards. Extracted from [HomeScreen] to
  * keep the screen body within the method-length limit; the metric list is the
- * curated home set, each card self-fetching its own latest value.
+ * owner-curated tile set from [VitalsTileStore], each card self-fetching its
+ * own latest value. Height is computed from the row count (the historical
+ * 8-tile grid measured 510dp over 4 rows) because the grid sits inside the
+ * screen's scroll column with its own scrolling disabled.
  */
 @Composable
 private fun VitalsGrid(
+    metrics: List<MetricType>,
     viewModel: AppViewModel,
     refreshKey: Long?,
     onNavigateToMetric: (MetricType) -> Unit,
     onInfoClick: (MetricType) -> Unit,
 ) {
-    val metrics = listOf(
-        Triple(MetricType.SLEEP_DURATION, "Sleep", Icons.Default.Bedtime),
-        Triple(MetricType.SLEEP_EFFICIENCY, "Sleep Eff.", Icons.Default.Percent),
-        Triple(MetricType.HEART_RATE, "Heart Rate", Icons.Default.Favorite),
-        Triple(MetricType.HEART_RATE_VARIABILITY, "HRV", Icons.AutoMirrored.Filled.ShowChart),
-        Triple(MetricType.BLOOD_OXYGEN, "SpO2", Icons.Default.Air),
-        Triple(MetricType.RESPIRATORY_RATE, "Resp. Rate", Icons.Default.Air),
-        Triple(MetricType.STEPS, "Steps", Icons.AutoMirrored.Filled.DirectionsWalk),
-        Triple(MetricType.SKIN_TEMPERATURE_DEVIATION, "Skin Temp", Icons.Default.Thermostat),
-    )
+    if (metrics.isEmpty()) return
+    val rows = (metrics.size + 1) / 2
+    val gridHeight = (rows * 119 + (rows - 1) * 12).dp
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        modifier = Modifier.height(510.dp),
+        modifier = Modifier.height(gridHeight),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         userScrollEnabled = false
     ) {
-        items(metrics) { (metricType, label, icon) ->
+        items(metrics) { metricType ->
             MetricCard(
                 metricType = metricType,
-                label = label,
-                icon = icon,
+                label = vitalsTileLabel(metricType),
+                icon = vitalsTileIcon(metricType),
                 viewModel = viewModel,
                 refreshKey = refreshKey,
                 onClick = { onNavigateToMetric(metricType) },
@@ -368,6 +396,17 @@ private fun MetricSearchBar(onSelect: (MetricType) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** Renders [StaleDataBanner] only when the last sync exceeds the stale threshold. */
+@Composable
+private fun StaleDataBannerIfStale(lastSync: Long?) {
+    val staleThresholdMillis = SyncWorker.STALE_THRESHOLD_HOURS * 3600 * 1000L
+    val isStale = lastSync != null &&
+        (System.currentTimeMillis() - lastSync) > staleThresholdMillis
+    if (isStale) {
+        StaleDataBanner()
     }
 }
 
