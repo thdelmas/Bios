@@ -5,13 +5,16 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 
 /**
- * Nav-graph extension registering the four reproductive-completeness
- * routes added in #209: contraception, menopause stage, gender-affirming
- * care, and PCOS / endometriosis context. Extracted from
- * [com.bios.app.ui.MainActivity] so the host file stays within the
- * 500-line code-quality bound.
+ * Nav-graph extension registering the reproductive routes: the four
+ * completeness surfaces added in #209 (contraception, menopause stage,
+ * gender-affirming care, PCOS / endometriosis context) plus the cycle
+ * dashboard. Extracted from [com.bios.app.ui.MainActivity] so the host
+ * file stays within the 500-line code-quality bound.
  */
 fun NavGraphBuilder.reproductiveCompletenessRoutes(navController: NavController) {
+    composable("cycle_dashboard") {
+        com.bios.app.ui.period.CycleDashboardScreen(onBack = { navController.popBackStack() })
+    }
     composable("contraception") {
         ContraceptionScreen(onBack = { navController.popBackStack() })
     }

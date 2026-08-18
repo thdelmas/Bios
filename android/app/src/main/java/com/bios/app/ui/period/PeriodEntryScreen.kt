@@ -49,7 +49,8 @@ import java.util.Locale
 @Composable
 fun PeriodEntryScreen(
     viewModel: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenDashboard: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val repo = remember(context) { PeriodEntryRepo(context) }
@@ -86,91 +87,127 @@ fun PeriodEntryScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Menstruation onset", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Logging the first day of your period anchors cycle-day numbering " +
-                            "(day 1 = first day of menstruation) and marks the first five days as " +
-                            "the menstrual phase. Stays on device in the reproductive database, " +
-                            "never used by the sensor baseline engine.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    OutlinedButton(
-                        onClick = { showDatePicker = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Period started on: ${formatDate(selectedDate)}")
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                repo.addOnset(selectedDate)
-                                refresh()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Save")
+            OnsetLogCard(
+                selectedDate = selectedDate,
+                onPickDate = { showDatePicker = true },
+                onSave = {
+                    scope.launch {
+                        repo.addOnset(selectedDate)
+                        refresh()
                     }
                 }
+            )
+
+            latestCycleDay?.let { CycleDayCard(it) }
+
+            OutlinedButton(
+                onClick = onOpenDashboard,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cycle calendar & lengths")
             }
 
-            latestCycleDay?.let { day ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Cycle day ${day.value.toInt()}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Anchored on the most recent onset you logged",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-
-            Text("Recent onsets", style = MaterialTheme.typography.titleSmall)
-            if (recent.isEmpty()) {
-                Text(
-                    "No onsets logged yet. Each entry resets the cycle-day counter to 1.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    contentPadding = PaddingValues(vertical = 4.dp)
-                ) {
-                    items(recent, key = { it.id }) { onset ->
-                        RecentOnsetRow(onset)
-                    }
-                }
-            }
+            RecentOnsets(recent)
         }
     }
 
     if (showDatePicker) {
-        val state = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    state.selectedDateMillis?.let { selectedDate = it }
-                    showDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
-        ) {
-            DatePicker(state = state)
+        OnsetDatePickerDialog(
+            initialMillis = selectedDate,
+            onConfirm = { selectedDate = it; showDatePicker = false },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+}
+
+@Composable
+private fun CycleDayCard(day: MetricReading) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Cycle day ${day.value.toInt()}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Anchored on the most recent onset you logged",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
+    }
+}
+
+@Composable
+private fun RecentOnsets(recent: List<MetricReading>) {
+    Text("Recent onsets", style = MaterialTheme.typography.titleSmall)
+    if (recent.isEmpty()) {
+        Text(
+            "No onsets logged yet. Each entry resets the cycle-day counter to 1.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } else {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            contentPadding = PaddingValues(vertical = 4.dp)
+        ) {
+            items(recent, key = { it.id }) { onset ->
+                RecentOnsetRow(onset)
+            }
+        }
+    }
+}
+
+/** The onset-logging card: date choice + save. Extracted for the method-length limit. */
+@Composable
+private fun OnsetLogCard(
+    selectedDate: Long,
+    onPickDate: () -> Unit,
+    onSave: () -> Unit
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Menstruation onset", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Logging the first day of your period anchors cycle-day numbering " +
+                    "(day 1 = first day of menstruation) and marks the first five days as " +
+                    "the menstrual phase. Stays on device in the reproductive database, " +
+                    "never used by the sensor baseline engine.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            OutlinedButton(onClick = onPickDate, modifier = Modifier.fillMaxWidth()) {
+                Text("Period started on: ${formatDate(selectedDate)}")
+            }
+
+            OutlinedButton(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
+                Text("Save")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OnsetDatePickerDialog(
+    initialMillis: Long,
+    onConfirm: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                state.selectedDateMillis?.let(onConfirm) ?: onDismiss()
+            }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    ) {
+        DatePicker(state = state)
     }
 }
 

@@ -381,7 +381,8 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("period_entry") {
                 com.bios.app.ui.period.PeriodEntryScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onOpenDashboard = { navController.navigate("cycle_dashboard") }
                 )
             }
             composable("sleep_entry") {

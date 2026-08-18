@@ -54,4 +54,12 @@ class PeriodEntryRepo(context: Context) {
 
     suspend fun fetchLatestCycleDay(): MetricReading? =
         db.readingDao().fetchLatest(MetricType.CYCLE_DAY.key, limit = 1).firstOrNull()
+
+    /** Derived CYCLE_PHASE rows in a window — the calendar's paint data. */
+    suspend fun fetchPhases(startMillis: Long, endMillis: Long): List<MetricReading> =
+        db.readingDao().fetch(MetricType.CYCLE_PHASE.key, startMillis, endMillis)
+
+    /** All onsets since [sinceMillis] — feeds cycle-length statistics. */
+    suspend fun fetchOnsetsSince(sinceMillis: Long): List<MetricReading> =
+        db.readingDao().fetch(MetricType.MENSTRUATION_ONSET.key, sinceMillis, Long.MAX_VALUE)
 }
