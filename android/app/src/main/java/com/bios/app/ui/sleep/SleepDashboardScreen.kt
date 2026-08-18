@@ -77,6 +77,7 @@ fun SleepDashboardScreen(
     var windowDays by remember { mutableStateOf(7) }
     var refreshTick by remember { mutableStateOf(0) }
     var nights by remember { mutableStateOf<List<MetricReading>>(emptyList()) }
+    var selectedNightId by remember { mutableStateOf<String?>(null) }
     var sourceLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var inferring by remember { mutableStateOf(false) }
     var inferenceMessage by remember { mutableStateOf<String?>(null) }
@@ -224,6 +225,11 @@ fun SleepDashboardScreen(
             item { RegularityCard(regularity) }
             item { SummaryCard(nights) }
             item {
+                // Stage timeline for the tapped night, newest by default.
+                val selectedNight = nights.find { it.id == selectedNightId } ?: nights.firstOrNull()
+                SleepStageSection(viewModel = viewModel, night = selectedNight)
+            }
+            item {
                 Text(
                     "Recent nights",
                     style = MaterialTheme.typography.titleSmall,
@@ -243,7 +249,12 @@ fun SleepDashboardScreen(
                 }
             } else {
                 items(nights, key = { it.id }) { night ->
-                    NightRow(night, sourceLabels)
+                    NightRow(
+                        reading = night,
+                        sourceLabels = sourceLabels,
+                        isSelected = night.id == selectedNightId,
+                        onClick = { selectedNightId = night.id },
+                    )
                 }
             }
         }
@@ -359,9 +370,18 @@ private fun StatCell(label: String, value: String) {
 }
 
 @Composable
-private fun NightRow(reading: MetricReading, sourceLabels: Map<String, String>) {
+private fun NightRow(
+    reading: MetricReading,
+    sourceLabels: Map<String, String>,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant
+            else MaterialTheme.colorScheme.surface
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
