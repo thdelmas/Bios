@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Hawaiian (haw) — base UI strings (permissions + monthly ask).
+    Honest scope statement: machine-assisted translation, pending native
+    review — same caveat as the pattern_strings.xml overlay.
+-->
+<resources>
+    <string name="permission_read_health_desc">ʻAe i nā polokalamu hoa i kau inoa ʻia me ke kī hoʻokahi e heluhelu i ka ʻikepili ana olakino mai iā Bios.</string>
+    <string name="permission_write_companion_desc">ʻAe i nā polokalamu hoa i kau inoa ʻia me ke kī hoʻokahi e kākau i nā hōʻailona i helu ʻia (ka pana kikokiko, ka māhele pō a me ke ao, ka helu neʻe) iā Bios.</string>
+
+    <string name="monthly_ask_title">He leka mai ka mea hana polokalamu</string>
+    <string name="monthly_ask_body">Ua hana ʻia ʻo Bios e ke kanaka hoʻokahi a he manuahi ia, ʻaʻohe hoʻolaha, ʻaʻohe hahai, ʻaʻohe pae uku. Inā ua kōkua ʻo ia iā ʻoe, eia nā ala ʻekolu e kōkua ai i kona holomua.</string>
+    <string name="monthly_ask_donate">Hāʻawi manawaleʻa</string>
+    <string name="monthly_ask_review">Waiho i ka loiloi</string>
+    <string name="monthly_ask_feedback">Hoʻouna manaʻo</string>
+    <string name="monthly_ask_dismiss">Ma hope paha</string>
+    <string name="monthly_ask_feedback_subject">Nā manaʻo no Bios</string>
+</resources>

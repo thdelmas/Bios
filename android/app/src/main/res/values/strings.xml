@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Bios</string>
+    <string name="app_name" translatable="false">Bios</string>
     <string name="permission_read_health_desc">Allows companion apps signed with the same key to read health metric data from Bios.</string>
     <string name="permission_write_companion_desc">Allows companion apps signed with the same key to write computed signals (typing cadence, circadian phase, drift score) to Bios.</string>
 

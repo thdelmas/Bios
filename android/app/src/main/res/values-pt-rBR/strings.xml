@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Portuguese (pt-BR) — base UI strings (permissions + monthly ask).
+    Register mirrors the pattern_strings.xml overlays: neutral,
+    descriptive, no judgmental second-person phrasing.
+-->
+<resources>
+    <string name="permission_read_health_desc">Permite que aplicativos associados assinados com a mesma chave leiam os dados de métricas de saúde do Bios.</string>
+    <string name="permission_write_companion_desc">Permite que aplicativos associados assinados com a mesma chave gravem sinais calculados (cadência de digitação, fase circadiana, pontuação de desvio) no Bios.</string>
+
+    <string name="monthly_ask_title">Uma nota do desenvolvedor</string>
+    <string name="monthly_ask_body">O Bios é feito por uma só pessoa e é gratuito, sem anúncios, sem rastreamento e sem nível pago. Se ele foi útil para você, aqui estão três maneiras de ajudar a mantê-lo.</string>
+    <string name="monthly_ask_donate">Doar</string>
+    <string name="monthly_ask_review">Deixar uma avaliação</string>
+    <string name="monthly_ask_feedback">Enviar feedback</string>
+    <string name="monthly_ask_dismiss">Talvez mais tarde</string>
+    <string name="monthly_ask_feedback_subject">Feedback sobre o Bios</string>
+</resources>

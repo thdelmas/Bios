@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Swahili (sw) — base UI strings (permissions + monthly ask).
+    Neutral descriptive register, matching the pattern_strings.xml
+    overlay conventions.
+-->
+<resources>
+    <string name="permission_read_health_desc">Huruhusu programu shirikishi zilizosainiwa kwa ufunguo ule ule kusoma data ya vipimo vya afya kutoka Bios.</string>
+    <string name="permission_write_companion_desc">Huruhusu programu shirikishi zilizosainiwa kwa ufunguo ule ule kuandika ishara zilizokokotolewa (mdundo wa kuchapa, awamu ya saa ya mwili, alama ya mabadiliko) kwenye Bios.</string>
+
+    <string name="monthly_ask_title">Ujumbe kutoka kwa msanidi</string>
+    <string name="monthly_ask_body">Bios imetengenezwa na mtu mmoja na ni bure, bila matangazo, bila ufuatiliaji, na bila kiwango cha malipo. Ikiwa imekufaa, hizi ni njia tatu za kusaidia iendelee.</string>
+    <string name="monthly_ask_donate">Changia</string>
+    <string name="monthly_ask_review">Andika tathmini</string>
+    <string name="monthly_ask_feedback">Tuma maoni</string>
+    <string name="monthly_ask_dismiss">Labda baadaye</string>
+    <string name="monthly_ask_feedback_subject">Maoni kuhusu Bios</string>
+</resources>

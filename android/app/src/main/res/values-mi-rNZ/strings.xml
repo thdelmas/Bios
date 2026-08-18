@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Māori (mi-NZ) — base UI strings (permissions + monthly ask).
+    Honest scope statement: machine-assisted translation, pending native
+    review — same caveat as the pattern_strings.xml overlay.
+-->
+<resources>
+    <string name="permission_read_health_desc">Ka whakaae ki ngā taupānga hoa kua hainatia ki te kī ōrite kia pānui i ngā raraunga inenga hauora mai i a Bios.</string>
+    <string name="permission_write_companion_desc">Ka whakaae ki ngā taupānga hoa kua hainatia ki te kī ōrite kia tuhi i ngā tohu kua tātaihia (te manawataki patopato, te wāhanga mataaho-rā, te piro rerekē) ki a Bios.</string>
+
+    <string name="monthly_ask_title">He kupu nā te kaiwhakawhanake</string>
+    <string name="monthly_ask_body">Nā te tangata kotahi a Bios i hanga, ā, he kore utu, kāore he pānui hokohoko, kāore he aroturuki, kāore hoki he taumata utu. Mēnā i whai hua koe, anei ngā huarahi e toru hei āwhina kia haere tonu ai.</string>
+    <string name="monthly_ask_donate">Tuku koha</string>
+    <string name="monthly_ask_review">Waiho he arotake</string>
+    <string name="monthly_ask_feedback">Tukua he urupare</string>
+    <string name="monthly_ask_dismiss">Ākuanei pea</string>
+    <string name="monthly_ask_feedback_subject">Urupare mō Bios</string>
+</resources>

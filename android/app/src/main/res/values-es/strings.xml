@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Spanish (es) — base UI strings (permissions + monthly ask).
+    Register follows values-es/pattern_strings.xml notes: formal/neutral
+    (usted), descriptive, no second-person imperatives toward the owner.
+-->
+<resources>
+    <string name="permission_read_health_desc">Permite que las aplicaciones asociadas firmadas con la misma clave lean los datos de métricas de salud de Bios.</string>
+    <string name="permission_write_companion_desc">Permite que las aplicaciones asociadas firmadas con la misma clave escriban señales calculadas (cadencia de tecleo, fase circadiana, puntuación de deriva) en Bios.</string>
+
+    <string name="monthly_ask_title">Una nota del desarrollador</string>
+    <string name="monthly_ask_body">Bios está hecho por una sola persona y es gratuito, sin anuncios, sin rastreo y sin nivel de pago. Si le ha resultado útil, aquí tiene tres maneras de ayudar a que siga adelante.</string>
+    <string name="monthly_ask_donate">Donar</string>
+    <string name="monthly_ask_review">Dejar una reseña</string>
+    <string name="monthly_ask_feedback">Enviar comentarios</string>
+    <string name="monthly_ask_dismiss">Quizás más tarde</string>
+    <string name="monthly_ask_feedback_subject">Comentarios sobre Bios</string>
+</resources>

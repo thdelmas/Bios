@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Northern Sami (se) — base UI strings (permissions + monthly ask).
+    Honest scope statement: machine-assisted translation, pending native
+    review — same caveat as the pattern_strings.xml overlay.
+-->
+<resources>
+    <string name="permission_read_health_desc">Diktá guoibmeaplikašuvnnaid, mat leat vuolláičállojuvvon seamma čoavdagiin, lohkat dearvvašvuođa mihtidandieđuid Bios:as.</string>
+    <string name="permission_write_companion_desc">Diktá guoibmeaplikašuvnnaid, mat leat vuolláičállojuvvon seamma čoavdagiin, čállit rehkenaston signálaid (čállinritma, cirkadiána fáset, sirdinárvvu) Bios:ii.</string>
+
+    <string name="monthly_ask_title">Sáhka ovddideaddjis</string>
+    <string name="monthly_ask_body">Bios lea ovtta olbmo ráhkaduvvon ja lea nuvttá, almmá almmuhusaid, čuovvuma dahje máksodási haga. Jos das lea leamaš ávki dutnje, de leat golbma vuogi veahkehit dan joatkit.</string>
+    <string name="monthly_ask_donate">Attes doarjaga</string>
+    <string name="monthly_ask_review">Čále árvvoštallama</string>
+    <string name="monthly_ask_feedback">Sádde máhcahaga</string>
+    <string name="monthly_ask_dismiss">Soaitá maŋŋel</string>
+    <string name="monthly_ask_feedback_subject">Máhcahat Bios birra</string>
+</resources>
