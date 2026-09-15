@@ -45,6 +45,7 @@ class AppViewModel(
     val withingsAdapter = deps.withingsAdapter
     val whoopAdapter = deps.whoopAdapter
     val garminAdapter = deps.garminAdapter
+    val corosAdapter = deps.corosAdapter
     val polarAdapter = deps.polarAdapter
     val phoneSensorAdapter = deps.phoneSensorAdapter
     val gadgetbridgeAdapter = deps.gadgetbridgeAdapter

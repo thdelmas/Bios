@@ -10,6 +10,7 @@ import com.bios.app.ingest.ApiTokenStore
 import com.bios.app.ingest.BleAirQualityAdapter
 import com.bios.app.ingest.DirectSensorAdapter
 import com.bios.app.ingest.GadgetbridgeAdapter
+import com.bios.app.ingest.CorosApiAdapter
 import com.bios.app.ingest.GarminApiAdapter
 import com.bios.app.ingest.HealthConnectAdapter
 import com.bios.app.ingest.IngestManager
@@ -40,6 +41,7 @@ interface AppDependencies {
     val whoopAdapter: WhoopApiAdapter
     val garminAdapter: GarminApiAdapter
     val polarAdapter: PolarApiAdapter
+    val corosAdapter: CorosApiAdapter
     val phoneSensorAdapter: PhoneSensorAdapter
     val gadgetbridgeAdapter: GadgetbridgeAdapter
     val directSensorAdapter: DirectSensorAdapter

@@ -130,6 +130,8 @@ private fun DataSourcesCard(
                 Spacer(Modifier.height(4.dp))
                 ApiTokenSourceRow(source)
             }
+            Spacer(Modifier.height(4.dp))
+            CorosSourceRow(viewModel)
 
             Spacer(Modifier.height(4.dp))
             ConnectableSourceRow(

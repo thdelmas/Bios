@@ -195,6 +195,7 @@ internal val SourceType.label: String
         SourceType.WITHINGS_API -> "Withings"
         SourceType.DEXCOM_API -> "Dexcom"
         SourceType.POLAR_API -> "Polar"
+        SourceType.COROS_API -> "COROS"
         SourceType.DIRECT_SENSOR -> "Direct sensor"
         SourceType.PHONE_SENSOR -> "Phone sensor"
         SourceType.PHONE_SENSOR_DERIVED -> "Phone sleep fusion"

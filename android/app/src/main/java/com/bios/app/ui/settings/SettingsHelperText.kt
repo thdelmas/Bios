@@ -7,5 +7,8 @@ internal object SettingsHelperText {
     const val WITHINGS = "Paste a Withings API access token. Obtain one through a Withings developer-account OAuth exchange against developer.withings.com — Bios does not perform the OAuth dance itself yet."
     const val WHOOP = "Paste a WHOOP API access token. Obtain one through a WHOOP developer-account OAuth exchange against developer.whoop.com — Bios does not perform the OAuth dance itself yet."
     const val GARMIN = "Paste a Garmin Wellness API access token (or a pre-signed session token from a Garmin proxy). Bios does not perform the OAuth 1.0a dance itself yet — see the connection notes for what works today."
+    const val COROS = "Sign in with the COROS account used in the COROS app. Bios exchanges the " +
+        "credentials for a session token on the device and keeps only the token. Pulled nightly: " +
+        "sleep HRV and resting heart rate, the two signals the COROS app never writes to Health Connect."
     const val POLAR = "Paste a Polar AccessLink API access token from admin.polaraccesslink.com. Bios uses it as a bearer; refresh-aware OAuth lands when a Bios Polar app is registered."
 }

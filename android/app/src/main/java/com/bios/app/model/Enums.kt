@@ -16,6 +16,9 @@ enum class SourceType(val key: String) {
     WITHINGS_API("withings_api"),
     DEXCOM_API("dexcom_api"),
     POLAR_API("polar_api"),
+    // COROS Training Hub (unofficial web API): nightly sleep HRV + resting HR.
+    // The COROS phone app writes sleep/HR/steps to Health Connect but not HRV.
+    COROS_API("coros_api"),
     PHONE_SENSOR("phone_sensor"),
     // Phone-sensor fusion that produces derived signals (not raw samples) —
     // currently the rule-based sleep inference (issue #134). Distinct from

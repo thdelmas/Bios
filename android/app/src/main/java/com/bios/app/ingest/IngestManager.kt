@@ -36,7 +36,7 @@ import java.util.Calendar
  * 4. Third-party API adapters (Oura, etc.)
  * 5. Phone sensor adapter (accelerometer, step counter — always available)
  */
-class IngestManager(
+class IngestManager @Suppress("LongParameterList") constructor(
     private val healthConnect: HealthConnectAdapter,
     private val db: BiosDatabase,
     private val ouraAdapter: OuraApiAdapter? = null,
@@ -48,7 +48,8 @@ class IngestManager(
     private val garminAdapter: GarminApiAdapter? = null,
     private val polarAdapter: PolarApiAdapter? = null,
     private val bleAirQualityAdapter: BleAirQualityAdapter? = null,
-    private val latencyTracker: DetectionLatencyTracker? = null
+    private val latencyTracker: DetectionLatencyTracker? = null,
+    private val corosAdapter: CorosApiAdapter? = null
 ) {
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
@@ -83,6 +84,7 @@ class IngestManager(
     private var whoopSourceId: String? = null
     private var garminSourceId: String? = null
     private var polarSourceId: String? = null
+    private var corosSourceId: String? = null
     private var bleAirQualitySourceId: String? = null
 
     // MARK: - Setup
@@ -139,6 +141,7 @@ class IngestManager(
 
         // Polar API (clinical-grade HR/HRV from H10 + Verity Sense)
         if (polarAdapter?.isConnected == true) polarSourceId = sourceDao.getOrCreate(SourceType.POLAR_API, "Polar", SensorType.OPTICAL_HR)
+        if (corosAdapter?.isConnected == true) corosSourceId = sourceDao.getOrCreate(SourceType.COROS_API, "COROS", SensorType.OPTICAL_HR)
 
         // Phone sensors (always available as last resort)
         if (phoneSensorAdapter?.hasAccelerometer == true ||
@@ -185,13 +188,10 @@ class IngestManager(
         // Only worth retrying the historical pull when a wearable-history
         // source actually exists. Phone-only setups can't backfill HR no
         // matter how many times we ask, so don't burn syncs.
-        val hasWearableHistorySource = healthConnectSourceId != null ||
-            gadgetbridgeSourceId != null ||
-            ouraSourceId != null ||
-            withingsSourceId != null ||
-            whoopSourceId != null ||
-            garminSourceId != null ||
-            polarSourceId != null
+        val hasWearableHistorySource = listOfNotNull(
+            healthConnectSourceId, gadgetbridgeSourceId, ouraSourceId, withingsSourceId,
+            whoopSourceId, garminSourceId, polarSourceId, corosSourceId
+        ).isNotEmpty()
         if (!hasWearableHistorySource) return false
         for (metric in PRIMARY_METRICS_FOR_BACKFILL) {
             if (readingDao.count(metric.key) == 0) return true
@@ -223,12 +223,13 @@ class IngestManager(
                         async { IngestTelemetry.timedFetch("whoop") { fetchWhoopReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("garmin") { fetchGarminReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("polar") { fetchPolarReadings(start, end) } },
+                        async { IngestTelemetry.timedFetch("coros") { fetchCorosReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("phone_sensor") { fetchPhoneSensorReadings() } }
                     )
                     jobs.awaitAll().flatten()
                 }
 
-                val deduped = deduplicate(allReadings)
+                val deduped = Deduplicator.deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
                 val toWrite = SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao)
@@ -297,12 +298,13 @@ class IngestManager(
                         async { fetchWithingsReadings(current, chunkEnd) },
                         async { fetchWhoopReadings(current, chunkEnd) },
                         async { fetchGarminReadings(current, chunkEnd) },
-                        async { fetchPolarReadings(current, chunkEnd) }
+                        async { fetchPolarReadings(current, chunkEnd) },
+                        async { fetchCorosReadings(current, chunkEnd) }
                     )
                     jobs.awaitAll().flatten()
                 }
 
-                val deduped = deduplicate(allReadings)
+                val deduped = Deduplicator.deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
                 val toWrite = SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao)
@@ -365,11 +367,6 @@ class IngestManager(
         }
         return derived
     }
-
-    // MARK: - Deduplication
-
-    private fun deduplicate(readings: List<MetricReading>): List<MetricReading> =
-        Deduplicator.deduplicate(readings)
 
     /**
      * Writes composite EXERCISE_SESSION readings + their payload rows.
@@ -435,6 +432,8 @@ class IngestManager(
     private suspend fun fetchWhoopReadings(s: Instant, e: Instant) = fetchApiReadings(whoopSourceId, whoopAdapter) { a, id -> a.fetchReadings(s, e, id) }
     private suspend fun fetchGarminReadings(s: Instant, e: Instant) = fetchApiReadings(garminSourceId, garminAdapter) { a, id -> a.fetchReadings(s, e, id) }
     private suspend fun fetchPolarReadings(s: Instant, e: Instant) = fetchApiReadings(polarSourceId, polarAdapter) { a, id -> a.fetchReadings(s, e, id) }
+    private suspend fun fetchCorosReadings(s: Instant, e: Instant) =
+        fetchApiReadings(corosSourceId, corosAdapter) { a, id -> a.fetchReadings(s, e, id) }
 
     private suspend fun fetchPhoneSensorReadings(): List<MetricReading> {
         val sourceId = phoneSensorSourceId ?: return emptyList()

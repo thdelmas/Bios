@@ -35,6 +35,9 @@ class SyncWorker(
             val withings = if (apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY)) {
                 WithingsApiAdapter(apiTokenStore)
             } else null
+            val coros = if (apiTokenStore.hasToken(CorosApiAdapter.PROVIDER_KEY)) {
+                CorosApiAdapter(apiTokenStore)
+            } else null
             val phoneSensor = PhoneSensorAdapter(applicationContext)
             val gadgetbridge = GadgetbridgeAdapter(applicationContext)
             val directSensor = DirectSensorAdapter(applicationContext)
@@ -42,7 +45,8 @@ class SyncWorker(
                 healthConnect, db, ouraAdapter, phoneSensor,
                 gadgetbridgeAdapter = gadgetbridge,
                 directSensorAdapter = directSensor,
-                withingsAdapter = withings
+                withingsAdapter = withings,
+                corosAdapter = coros
             )
 
             // Stage 1: Register sources, then sync. setup() is what binds the
