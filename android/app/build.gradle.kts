@@ -83,6 +83,8 @@ android {
     }
 
     testOptions {
+        // Robolectric: validation replays (tools/validation) run the real Room DAOs in-memory.
+        unitTests.isIncludeAndroidResources = true
         unitTests.all {
             // FHIR R4 JSON Schema validation (FhirSchemaValidationTest) loads
             // the full ~3 MB schema and eagerly constructs thousands of
@@ -175,6 +177,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.json:json:20231013")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
     // HAPI FHIR R4 parser for strict validation of emitted resources
     // (test-only — not shipped in the APK).
     testImplementation("ca.uhn.hapi.fhir:hapi-fhir-base:7.4.0")

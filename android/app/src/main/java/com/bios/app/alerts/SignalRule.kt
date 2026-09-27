@@ -133,7 +133,10 @@ enum class DeviationDirection {
      * No readings of this metric in the [SignalRule.minDurationHours] window.
      * Intended for EVENT-unit metrics where "no event for N hours" is the signal
      * (e.g. tobacco-use absence as a cessation marker). Doesn't read a baseline;
-     * [SignalRule.thresholdSigma] is unused for this direction.
+     * [SignalRule.thresholdSigma] is unused for this direction. Active only when the
+     * metric had readings in the preceding
+     * [com.bios.app.engine.AnomalyDetector.ABSENT_PRIOR_LOOKBACK_HOURS] — an owner
+     * who never produced the metric is not "absent", just unconnected.
      */
     ABSENT,
 }

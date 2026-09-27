@@ -21,6 +21,9 @@ Severity: **P0** corrupts data integrity / trust · **P1** loses data or coverag
 | G6 | P2 | Manual / companion streams lapse silently | Substances & mood are manual; typing-cadence + mood-drift arrive via the **W2F companion** over the ContentProvider — no logging nudges, no companion-liveness check | Adherence | Open |
 | G7 | P3 | Only 3 personal baselines | `BaselineEngine` gate: ≥10 SENSOR samples / 14-day window, manual entries excluded | By-design | Open (surface progress only) |
 | G8 | P3 | No owner-authorised one-command read | ContentProvider catch-22: `adb` shell lacks `READ_HEALTH`; the app uid lacks the system `ACCESS_CONTENT_PROVIDERS_EXTERNALLY`. An authorised agent on the owner's own machine must tap through the export UI | Friction | Open |
+| G9 | P0 | `infection_onset` cannot fire on wearables without HRV, skin temperature or respiratory rate (COROS via Health Connect today) | Pattern gate `minActiveSignals = 3` over 6 rules; Fitbit-class data carries 3, and the steps/sleep rules never trigger. Mishra 2020 replay: 0/24 detected, RHR rule alone 21/24 — see `docs/validation/mishra-2020-replay.md` | Defect | Open (2026-09-27) |
+| G10 | P1 | Steps rule scores hourly buckets, not daily totals | `AnomalyDetector.evaluatePattern` averages the last 24 h of hourly readings against the SD of hourly readings; a day whose total fell 3,100→700 does not reach −1σ (replay, A0NVTRV) | Defect | Open (2026-09-27) |
+| G11 | P1 | Daily RHR z-score at +1.5σ over a 14-day window alarms 3.2×/person-month on healthy days (paper's CuSum: 0.66) | No cumulative evidence, 14-day window includes the current day, one-day crossing fires; `BaselineDeviationPatterns.infectionOnset` RHR rule | Defect | Open (2026-09-27) |
 
 ### Open question
 

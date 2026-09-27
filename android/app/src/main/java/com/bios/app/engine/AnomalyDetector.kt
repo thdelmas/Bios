@@ -24,6 +24,7 @@ import kotlin.math.min
  * `medicationRepo` (#154) freezes annotated medications on alert creation.
  * `physiologyState` (#159, CARDIOLOGY_POV §2.4) filters patterns via [appliesIn].
  */
+@Suppress("LongParameterList") // each param is an owner-state gate; the clock is the validation hook
 class AnomalyDetector(
     private val db: BiosDatabase,
     private val mlModel: TFLiteAnomalyModel? = null,
@@ -40,6 +41,8 @@ class AnomalyDetector(
     private val environmentalContext: com.bios.app.model.EnvironmentalContext? = null,
     /** #190: sub-window acute-event detector. Null disables the acute path. */
     private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
+    /** Engine clock; injectable so validation replays can step through historical days. */
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
     private val readingDao = db.metricReadingDao()
@@ -128,7 +131,7 @@ class AnomalyDetector(
         val cooldownMillis = 24 * 3600 * 1000L
         val hasCooldown = recentAnomalies.any { anomaly ->
             anomaly.patternId == ML_PATTERN_ID &&
-            (System.currentTimeMillis() - anomaly.detectedAt) < cooldownMillis
+            (clock() - anomaly.detectedAt) < cooldownMillis
         }
         if (hasCooldown) return null
 
@@ -143,6 +146,7 @@ class AnomalyDetector(
         val scoresJson = "{${deviating.entries.joinToString(",") { "\"${it.key}\":${it.value}" }}}"
 
         return Anomaly(
+            detectedAt = clock(),
             metricTypes = metricTypesJson,
             deviationScores = scoresJson,
             combinedScore = score.toDouble(),
@@ -162,7 +166,7 @@ class AnomalyDetector(
         )
 
         val zScores = mutableMapOf<String, Double>()
-        val endMillis = System.currentTimeMillis()
+        val endMillis = clock()
         val startMillis = endMillis - 24L * 3600 * 1000
 
         for (metric in metrics) {
@@ -282,6 +286,10 @@ class AnomalyDetector(
     }
 
     companion object {
+        /** Prior-presence lookback for ABSENT rules: 90 days, the upper bound of the
+         *  cessation-recovery literature window (Mahmud & Feely 2003: 2–12 weeks). */
+        const val ABSENT_PRIOR_LOOKBACK_HOURS = 90L * 24
+
         const val ML_PATTERN_ID = "ml_holistic_anomaly"
     }
 
@@ -305,7 +313,11 @@ class AnomalyDetector(
             val recentValues = fetchRecentValues(rule.metricType, rule.minDurationHours)
             val (isActive, contributedScore) = when (rule.direction) {
                 DeviationDirection.ABSENT -> {
-                    val active = recentValues.isEmpty()
+                    // Absence is a signal only when the metric was present before
+                    // the window. An owner who never had a tobacco companion must
+                    // not read as "72 h without tobacco" (Mishra replay 2026-09-27:
+                    // cessation_recovery fired on every wearable-only participant).
+                    val active = recentValues.isEmpty() && hadReadingsBeforeWindow(rule)
                     Pair(active, if (active) rule.weight else 0.0)
                 }
                 else -> {
@@ -349,7 +361,7 @@ class AnomalyDetector(
         val cooldownMillis = 24 * 3600 * 1000L
         val hasCooldown = recentAnomalies.any { anomaly ->
             anomaly.patternId == pattern.id &&
-            (System.currentTimeMillis() - anomaly.detectedAt) < cooldownMillis
+            (clock() - anomaly.detectedAt) < cooldownMillis
         }
         if (hasCooldown) return null
 
@@ -387,6 +399,7 @@ class AnomalyDetector(
         val explanation = if (medsContext != null) "$baseExplanation $medsContext" else baseExplanation
 
         return Anomaly(
+            detectedAt = clock(),
             metricTypes = metricTypesJson,
             deviationScores = deviationScoresJson,
             combinedScore = combinedScore,
@@ -398,8 +411,21 @@ class AnomalyDetector(
         )
     }
 
+    /**
+     * ABSENT gate: true when the metric has at least one primary reading in the
+     * [ABSENT_PRIOR_LOOKBACK_HOURS] before the rule window starts. Empty
+     * needs a control — "never present" is not "now absent".
+     */
+    private suspend fun hadReadingsBeforeWindow(rule: com.bios.app.alerts.SignalRule): Boolean {
+        val windowStart = clock() - rule.minDurationHours.toLong() * 3600 * 1000
+        val lookbackStart = windowStart - ABSENT_PRIOR_LOOKBACK_HOURS * 3600 * 1000
+        return daoFor(rule.metricType).countInRange(
+            rule.metricType.key, lookbackStart, windowStart, readingKindFilterFor(rule.metricType)
+        ) > 0
+    }
+
     private suspend fun fetchRecentValues(metricType: MetricType, hours: Int): List<Double> {
-        val endMillis = System.currentTimeMillis()
+        val endMillis = clock()
         val startMillis = endMillis - hours.toLong() * 3600 * 1000
         val dao = daoFor(metricType)
         return dao.fetchValues(
@@ -418,7 +444,7 @@ class AnomalyDetector(
         if (minDuration == null && excludePayload == null) {
             return fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
         }
-        val endMillis = System.currentTimeMillis()
+        val endMillis = clock()
         val startMillis = endMillis - rule.absoluteWindowHours.toLong() * 3600 * 1000
         var rows = daoFor(rule.metricType).fetch(rule.metricType.key, startMillis, endMillis)
         if (minDuration != null) rows = filterDurationAtLeast(rows, minDuration)

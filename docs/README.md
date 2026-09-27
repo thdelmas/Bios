@@ -20,6 +20,7 @@
 
 ## Research
 - [WEARABLES_AND_DETECTION.md](WEARABLES_AND_DETECTION.md) — Wearable device sensor matrix (40+ devices)
+- [validation/mishra-2020-replay.md](validation/mishra-2020-replay.md) — Measured detection figures from the Mishra 2020 Fitbit replay (harness: `tools/validation/`)
 - [research/health-prevention-apps-investigation.md](research/health-prevention-apps-investigation.md) — Market analysis and competitive landscape
 
 ## Project Identity (root level)

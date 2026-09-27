@@ -23,7 +23,9 @@ import java.time.ZoneId
 class BaselineEngine(
     private val db: BiosDatabase,
     private val latencyTracker: DetectionLatencyTracker? = null,
-    private val reproductiveReadingDao: MetricReadingDao? = null
+    private val reproductiveReadingDao: MetricReadingDao? = null,
+    /** Engine clock; injectable so validation replays can step through historical days. */
+    private val clock: () -> Long = System::currentTimeMillis
 ) {
 
     private val readingDao = db.metricReadingDao()
@@ -55,7 +57,7 @@ class BaselineEngine(
         metricType: MetricType,
         windowDays: Int = DEFAULT_WINDOW_DAYS
     ): Coverage {
-        val endMillis = System.currentTimeMillis()
+        val endMillis = clock()
         val startMillis = endMillis - windowDays.toLong() * 24 * 3600 * 1000
         val sensor = readingDao.countInRange(
             metricType.key, startMillis, endMillis, ReadingKind.SENSOR.name
@@ -141,7 +143,7 @@ class BaselineEngine(
         context: BaselineContext = BaselineContext.ALL,
         windowDays: Int = DEFAULT_WINDOW_DAYS
     ) {
-        val endMillis = System.currentTimeMillis()
+        val endMillis = clock()
         val startMillis = endMillis - windowDays.toLong() * 24 * 3600 * 1000
 
         val isReproductive = metricType.domain == MetricDomain.WOMENS_HEALTH
@@ -181,7 +183,7 @@ class BaselineEngine(
             metricType = metricType.key,
             context = context.name,
             windowDays = windowDays,
-            computedAt = System.currentTimeMillis(),
+            computedAt = clock(),
             mean = stats.mean,
             stdDev = stats.stdDev,
             p5 = stats.p5,
