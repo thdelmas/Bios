@@ -50,6 +50,26 @@ date. Dates are shifted per participant by the study authors.
   fire once on 30 confirmed cases.
 - Any sensitivity or lead-time claim must cite this page and its date.
 
+## Variant: 28-day baseline window (2026-09-28)
+
+Same replay with `BIOS_MISHRA_WINDOW_DAYS=28`; minimum samples unchanged
+(10), so the density requirement loosens from 10-of-14 to 10-of-28.
+
+| Figure | 14 d (shipped) | 28 d |
+|---|---|---|
+| Participants evaluable before onset | 24 | 25 |
+| `infection_onset` pre-symptomatic | 0/24 | 0/25 |
+| RHR rule alone, pre-symptomatic | 21/24 (88%) | 21/25 (84%) |
+| RHR rule alone, median lead (days) | 9 | 6 |
+| RHR rule alone, false alarms per person-month | 3.16 | 2.79 |
+
+The window on its own buys about a 12% cut in false alarms and costs
+three days of median lead. The paper's 0.14–1 alarms/month comes from the
+cumulative statistic and the per-person threshold (G11), not from the
+window length.
+
+---
+
 ## Limits of this replay
 
 - RHR was derived here (mean of 00:00–07:00 samples with zero steps in the

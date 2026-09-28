@@ -62,6 +62,8 @@ class MishraReplayTest {
     private val preWindowDays = 14L   // Mishra 2020: detection window starts 14 d before onset
     private val postWindowDays = 7L
     private val healthyGapDays = 21L  // healthy window = > 21 d before onset or > 7 d after recovery
+    /** Baseline window in days; `BIOS_MISHRA_WINDOW_DAYS` overrides the engine default (14) for what-if runs. */
+    private val windowDays = System.getenv("BIOS_MISHRA_WINDOW_DAYS")?.toIntOrNull() ?: BaselineEngine.DEFAULT_WINDOW_DAYS
 
     @Test
     fun replayMishra2020() = runBlocking {
@@ -146,7 +148,7 @@ class MishraReplayTest {
             var day = first
             while (!day.isAfter(last)) {
                 now = day.atTime(23, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
-                for (m in tracked) baselines.computeBaseline(m)
+                for (m in tracked) baselines.computeBaseline(m, windowDays = windowDays)
                 val fired = detector.runDetection()
                 fired.forEach { a ->
                     alerts += Alert(day, a.patternId ?: "ml", a.severity, a.combinedScore)
@@ -267,10 +269,10 @@ class MishraReplayTest {
     private fun buildReport(results: List<UserResult>): String {
         val st = Stats(results)
         val sb = StringBuilder()
-        sb.appendLine("# Mishra 2020 replay — `infection_onset` pattern")
+        sb.appendLine("# Mishra 2020 replay — `infection_onset` pattern (baseline window $windowDays d)")
         sb.appendLine()
         sb.appendLine(
-            "Shipped engine (BaselineEngine 14-day window, AnomalyDetector, all applicable patterns) replayed " +
+            "Shipped engine (BaselineEngine $windowDays-day window, AnomalyDetector, all applicable patterns) replayed " +
                 "day by day, clock at 23:00 UTC, over Fitbit data of COVID-19-positive participants from " +
                 "Mishra et al. (2020), Nat Biomed Eng. Inputs: daily resting HR (mean of 00:00–07:00 HR samples " +
                 "with zero steps in the preceding 12 min), hourly steps, sleep-stage segments. No HRV, skin " +
@@ -306,7 +308,7 @@ class MishraReplayTest {
         sb.appendLine()
         sb.appendLine(row("Rule", "Participants with ≥1 hit"))
         sb.appendLine("|---|---|")
-        sb.appendLine(row("RHR > +1.5σ (24 h mean vs 14 d baseline)", hits { it.rhrRuleHitPre }))
+        sb.appendLine(row("RHR > +1.5σ (24 h mean vs $windowDays d baseline)", hits { it.rhrRuleHitPre }))
         sb.appendLine(row("Steps < −1.0σ", hits { it.stepsRuleHitPre }))
         sb.appendLine(row("Sleep-stage mean < −1.0σ", hits { it.sleepRuleHitPre }))
         sb.appendLine(row("≥3 rules active on the same day (the pattern's gate)", hits { it.maxActivePre >= 3 }))
