@@ -15,6 +15,8 @@ import com.bios.app.platform.PlatformDetector
 import com.bios.contracts.BiosHealthContract
 import com.bios.contracts.MetricType
 import kotlinx.coroutines.runBlocking
+import com.bios.app.ingest.SourceHealthStore
+import com.bios.app.alerts.SourceLivenessReporter
 
 /**
  * ContentProvider exposing Bios health data to companion apps (W2F).
@@ -25,6 +27,7 @@ import kotlinx.coroutines.runBlocking
  *   content://com.bios.app.health/baselines/{metricType}
  *   content://com.bios.app.health/status                  — one row per known metricType
  *   content://com.bios.app.health/status/{metricType}     — one row for that metricType
+ *   content://com.bios.app.health/sources                 — one row per ingest source (liveness)
  *   content://com.bios.app.health/payload/{readingId}     — composite-event fields
  *
  * Write URI (companion signals only):
@@ -55,6 +58,7 @@ class BiosHealthProvider : ContentProvider() {
         private const val STATUS_ALL = 5
         private const val STATUS_TYPE = 6
         private const val PAYLOAD = 7
+        private const val SOURCES = 8
 
         private const val DAY_MILLIS = 24L * 60L * 60L * 1000L
 
@@ -66,12 +70,14 @@ class BiosHealthProvider : ContentProvider() {
             addURI(AUTHORITY, BiosHealthContract.PATH_STATUS, STATUS_ALL)
             addURI(AUTHORITY, "${BiosHealthContract.PATH_STATUS}/*", STATUS_TYPE)
             addURI(AUTHORITY, "${BiosHealthContract.PATH_PAYLOAD}/*", PAYLOAD)
+            addURI(AUTHORITY, BiosHealthContract.PATH_SOURCES, SOURCES)
         }
 
         val READING_COLUMNS = BiosHealthContract.READING_COLUMNS
         val BASELINE_COLUMNS = BiosHealthContract.BASELINE_COLUMNS
         val STATUS_COLUMNS = BiosHealthContract.STATUS_COLUMNS
         val PAYLOAD_COLUMNS = BiosHealthContract.PAYLOAD_COLUMNS
+        val SOURCES_COLUMNS = BiosHealthContract.SOURCES_COLUMNS
     }
 
     private lateinit var db: BiosDatabase
@@ -142,6 +148,7 @@ class BiosHealthProvider : ContentProvider() {
             STATUS_ALL -> queryStatus(null)
             STATUS_TYPE -> queryStatus(uri.lastPathSegment)
             PAYLOAD -> queryPayload(uri.lastPathSegment)
+            SOURCES -> querySources()
             else -> null
         }
     }
@@ -266,6 +273,31 @@ class BiosHealthProvider : ContentProvider() {
                 row?.lastTimestamp ?: 0L,
                 row?.count24h ?: 0,
                 row?.countTotal ?: 0,
+            ))
+        }
+        return cursor
+    }
+
+    /**
+     * One row per registered ingest source with its consumer-side liveness
+     * (docs/specs/source-liveness.md). Lets a companion tell "the watch has
+     * no HRV" from "the bridge that carries HRV is dark" before it asks the
+     * owner for anything.
+     */
+    private fun querySources(): Cursor {
+        val ctx = context ?: return MatrixCursor(SOURCES_COLUMNS, 0)
+        val rows = runBlocking { SourceLivenessReporter(db, SourceHealthStore(ctx)).report() }
+        val cursor = MatrixCursor(SOURCES_COLUMNS, rows.size)
+        for (row in rows) {
+            cursor.addRow(arrayOf(
+                row.sourceType.key,
+                row.label,
+                row.state.name,
+                row.since,
+                row.ownerAction.name,
+                row.message,
+                row.lastDeliveredAt,
+                row.metricTypes.joinToString(","),
             ))
         }
         return cursor

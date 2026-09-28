@@ -49,7 +49,9 @@ class IngestManager @Suppress("LongParameterList") constructor(
     private val polarAdapter: PolarApiAdapter? = null,
     private val bleAirQualityAdapter: BleAirQualityAdapter? = null,
     private val latencyTracker: DetectionLatencyTracker? = null,
-    private val corosAdapter: CorosApiAdapter? = null
+    private val corosAdapter: CorosApiAdapter? = null,
+    /** Where a delivery clears an adapter's open refusal (docs/specs/source-liveness.md). */
+    private val healthStore: SourceHealthStore? = null
 ) {
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
@@ -214,17 +216,28 @@ class IngestManager @Suppress("LongParameterList") constructor(
                 val allReadings = coroutineScope {
                     val jobs = listOfNotNull(
                         healthConnectSourceId?.let { id ->
-                            async { IngestTelemetry.timedFetch("health_connect") { healthConnect.fetchReadings(start, end, id) } }
+                            async {
+                                IngestTelemetry.timedFetch("health_connect") { healthConnect.fetchReadings(start, end, id) }
+                                    .also { noteDelivery(SourceType.HEALTH_CONNECT, it) }
+                            }
                         },
                         async { IngestTelemetry.timedFetch("gadgetbridge") { fetchGadgetbridgeReadings(start, end) } },
-                        async { IngestTelemetry.timedFetch("direct_sensor") { fetchDirectSensorReadings() } },
+                        async {
+                            IngestTelemetry.timedFetch("direct_sensor") {
+                                fetchDirectSensorReadings(directSensorAdapter, directSensorSourceId)
+                            }
+                        },
                         async { IngestTelemetry.timedFetch("oura") { fetchOuraReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("withings") { fetchWithingsReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("whoop") { fetchWhoopReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("garmin") { fetchGarminReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("polar") { fetchPolarReadings(start, end) } },
                         async { IngestTelemetry.timedFetch("coros") { fetchCorosReadings(start, end) } },
-                        async { IngestTelemetry.timedFetch("phone_sensor") { fetchPhoneSensorReadings() } }
+                        async {
+                            IngestTelemetry.timedFetch("phone_sensor") {
+                                fetchPhoneSensorReadings(phoneSensorAdapter, phoneSensorSourceId)
+                            }
+                        }
                     )
                     jobs.awaitAll().flatten()
                 }
@@ -396,59 +409,22 @@ class IngestManager @Suppress("LongParameterList") constructor(
         HrRecoveryPersister.persistFor(sessions, readingDao)
     }
 
-    // MARK: - Helpers (getOrCreateSource → SourceRegistry.kt, 500-line ceiling)
+    // MARK: - Helpers (getOrCreateSource → SourceRegistry.kt; fetch helpers → IngestFetchHelpers.kt; 500-line ceiling)
 
-    /** Generic adapter-fetch helper. Returns empty when the source row
-     *  hasn't been registered or the adapter is null; swallows fetch
-     *  failures so a transient 5xx from one adapter doesn't kill the sync. */
-    private suspend inline fun <T> fetchApiReadings(
-        sourceId: String?,
-        adapter: T?,
-        crossinline fetch: suspend (T, String) -> List<MetricReading>,
-    ): List<MetricReading> {
-        if (sourceId == null || adapter == null) return emptyList()
-        return runCatching { fetch(adapter, sourceId) }.getOrDefault(emptyList())
-    }
+    private suspend fun fetchGadgetbridgeReadings(s: Instant, e: Instant) = fetchApiReadings(gadgetbridgeSourceId, gadgetbridgeAdapter) { a, id -> a.fetchReadings(s, e, id) }.also { noteDelivery(SourceType.GADGETBRIDGE, it) }
 
-    private suspend fun fetchGadgetbridgeReadings(s: Instant, e: Instant) = fetchApiReadings(gadgetbridgeSourceId, gadgetbridgeAdapter) { a, id -> a.fetchReadings(s, e, id) }
-
-    private suspend fun fetchDirectSensorReadings(): List<MetricReading> {
-        val sourceId = directSensorSourceId ?: return emptyList()
-        val adapter = directSensorAdapter ?: return emptyList()
-        return try {
-            val readings = mutableListOf<MetricReading>()
-            readings += adapter.sampleHeartRate(SENSOR_SAMPLE_DURATION_MS, sourceId)
-            readings += adapter.sampleHrv(SENSOR_SAMPLE_DURATION_MS, sourceId)
-            val steps = adapter.readSteps(sourceId)
-            if (steps != null) readings += steps
-            readings
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private suspend fun fetchOuraReadings(s: Instant, e: Instant) = fetchApiReadings(ouraSourceId, ouraAdapter) { a, id -> a.fetchReadings(s, e, id) }
-    private suspend fun fetchWithingsReadings(s: Instant, e: Instant) = fetchApiReadings(withingsSourceId, withingsAdapter) { a, id -> a.fetchReadings(s, e, id) }
-    private suspend fun fetchWhoopReadings(s: Instant, e: Instant) = fetchApiReadings(whoopSourceId, whoopAdapter) { a, id -> a.fetchReadings(s, e, id) }
-    private suspend fun fetchGarminReadings(s: Instant, e: Instant) = fetchApiReadings(garminSourceId, garminAdapter) { a, id -> a.fetchReadings(s, e, id) }
-    private suspend fun fetchPolarReadings(s: Instant, e: Instant) = fetchApiReadings(polarSourceId, polarAdapter) { a, id -> a.fetchReadings(s, e, id) }
+    private suspend fun fetchOuraReadings(s: Instant, e: Instant) = fetchApiReadings(ouraSourceId, ouraAdapter) { a, id -> a.fetchReadings(s, e, id) }.also { noteDelivery(SourceType.OURA_API, it) }
+    private suspend fun fetchWithingsReadings(s: Instant, e: Instant) = fetchApiReadings(withingsSourceId, withingsAdapter) { a, id -> a.fetchReadings(s, e, id) }.also { noteDelivery(SourceType.WITHINGS_API, it) }
+    private suspend fun fetchWhoopReadings(s: Instant, e: Instant) = fetchApiReadings(whoopSourceId, whoopAdapter) { a, id -> a.fetchReadings(s, e, id) }.also { noteDelivery(SourceType.WHOOP_API, it) }
+    private suspend fun fetchGarminReadings(s: Instant, e: Instant) = fetchApiReadings(garminSourceId, garminAdapter) { a, id -> a.fetchReadings(s, e, id) }.also { noteDelivery(SourceType.GARMIN_API, it) }
+    private suspend fun fetchPolarReadings(s: Instant, e: Instant) = fetchApiReadings(polarSourceId, polarAdapter) { a, id -> a.fetchReadings(s, e, id) }.also { noteDelivery(SourceType.POLAR_API, it) }
     private suspend fun fetchCorosReadings(s: Instant, e: Instant) =
         fetchApiReadings(corosSourceId, corosAdapter) { a, id -> a.fetchReadings(s, e, id) }
+            .also { noteDelivery(SourceType.COROS_API, it) }
 
-    private suspend fun fetchPhoneSensorReadings(): List<MetricReading> {
-        val sourceId = phoneSensorSourceId ?: return emptyList()
-        val adapter = phoneSensorAdapter ?: return emptyList()
-        return try {
-            val readings = mutableListOf<MetricReading>()
-            readings += adapter.sampleAccelerometer(SENSOR_SAMPLE_DURATION_MS, sourceId)
-            val stepReading = adapter.readStepCounter(sourceId)
-            if (stepReading != null) readings += stepReading
-            val lightReading = adapter.sampleAmbientLight(sourceId)
-            if (lightReading != null) readings += lightReading
-            readings
-        } catch (_: Exception) {
-            emptyList()
-        }
+    /** A non-empty delivery is the consumer's word that the source is alive. */
+    private fun noteDelivery(type: SourceType, readings: List<MetricReading>) {
+        if (readings.isNotEmpty()) healthStore?.recordOk(type)
     }
 
     /**
@@ -484,7 +460,6 @@ class IngestManager @Suppress("LongParameterList") constructor(
     }
 
     companion object {
-        private const val SENSOR_SAMPLE_DURATION_MS = 10_000L // 10 seconds
 
         // Metrics whose absence triggers a re-backfill on the next setup().
         // Limited to wearable-sourced metrics so a phone-only run (steps from

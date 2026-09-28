@@ -98,6 +98,42 @@ val fresh24h = cursor.getInt(cursor.getColumnIndexOrThrow("reading_count_24h"))
 val useBios = last != 0L && fresh24h > 0
 ```
 
+### `content://com.bios.app.health/sources`
+
+One row per registered ingest source with its consumer-side liveness
+(`docs/specs/source-liveness.md`). Lets a companion tell "no source carries
+this metric" from "the source that carries it has stopped delivering" before
+it asks the owner for anything.
+
+Cursor columns:
+
+| column | type | notes |
+|---|---|---|
+| `source_type` | String | `SourceType.key`, e.g. `coros_api`, `health_connect` |
+| `label` | String | owner-facing name (device name when known) |
+| `state` | String | `NEVER_DELIVERED`, `HEALTHY`, `STALE`, `ATTENTION` |
+| `since` | Long | epoch ms the state began (last delivery for STALE, refusal for ATTENTION), `0` if unknown |
+| `owner_action` | String | `NONE`, `REAUTH`, `SYNC_DEVICE` |
+| `message` | String? | the adapter's last error, when any |
+| `last_delivered_at` | Long | epoch ms of the newest primary reading, `0` if none |
+| `metric_types` | String | comma-separated metric keys the source has delivered |
+
+Staleness is measured in the source's own cadence (a nightly API is stale
+after two missed nights, an in-process sensor after two missed hours), never
+in row counts. An older Bios without this path returns an empty cursor;
+treat that as unknown and keep the behaviour you had.
+
+Suggested consumer logic:
+
+```kotlin
+val hrvSources = sources.filter { "heart_rate_variability" in it.metricTypes && it.isWearable }
+when {
+    hrvSources.isEmpty() -> offerAlternativeCapture()
+    hrvSources.any { it.state == "ATTENTION" || it.state == "STALE" } -> tellOwnerWhichSourceAndWhat()
+    else -> waitForTheNextDelivery()
+}
+```
+
 ## Write URI (companion signals)
 
 ### `content://com.bios.app.health/companion/{metric_type}`

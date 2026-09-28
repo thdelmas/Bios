@@ -105,18 +105,30 @@ interface MetricReadingDao {
     data class SourceFreshnessRow(
         val sourceId: String,
         val lastTimestamp: Long,
+        val firstTimestamp: Long,
         val readingCount: Int,
     )
 
     @Query("""
         SELECT sourceId AS sourceId,
                COALESCE(MAX(timestamp), 0) AS lastTimestamp,
+               COALESCE(MIN(timestamp), 0) AS firstTimestamp,
                COUNT(*) AS readingCount
         FROM metric_readings
         WHERE isPrimary = 1
         GROUP BY sourceId
     """)
     suspend fun sourceFreshness(): List<SourceFreshnessRow>
+
+    data class SourceMetricRow(val sourceId: String, val metricType: String)
+
+    /** Which metric types each source has ever delivered (primary rows only). */
+    @Query("""
+        SELECT DISTINCT sourceId AS sourceId, metricType AS metricType
+        FROM metric_readings
+        WHERE isPrimary = 1
+    """)
+    suspend fun sourceMetricTypes(): List<SourceMetricRow>
 
     data class MetricStatusRow(
         val metricType: String,

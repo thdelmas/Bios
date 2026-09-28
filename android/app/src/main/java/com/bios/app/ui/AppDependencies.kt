@@ -11,6 +11,7 @@ import com.bios.app.ingest.BleAirQualityAdapter
 import com.bios.app.ingest.DirectSensorAdapter
 import com.bios.app.ingest.GadgetbridgeAdapter
 import com.bios.app.ingest.CorosApiAdapter
+import com.bios.app.ingest.SourceHealthStore
 import com.bios.app.ingest.GarminApiAdapter
 import com.bios.app.ingest.HealthConnectAdapter
 import com.bios.app.ingest.IngestManager
@@ -37,6 +38,7 @@ interface AppDependencies {
     val ouraTokenStore: OuraTokenStore
     val ouraAdapter: OuraApiAdapter
     val apiTokenStore: ApiTokenStore
+    val sourceHealthStore: SourceHealthStore
     val withingsAdapter: WithingsApiAdapter
     val whoopAdapter: WhoopApiAdapter
     val garminAdapter: GarminApiAdapter

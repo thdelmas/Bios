@@ -31,6 +31,7 @@ object BiosHealthContract {
     const val PATH_STATUS = "status"
     const val PATH_COMPANION = "companion"
     const val PATH_PAYLOAD = "payload"
+    const val PATH_SOURCES = "sources"
 
     /** Reading-row column names returned by `/readings/{metricType}` queries. */
     val READING_COLUMNS = arrayOf(
@@ -47,6 +48,18 @@ object BiosHealthContract {
     /** Status-row column names returned by `/status[/...]` queries. */
     val STATUS_COLUMNS = arrayOf(
         "metric_type", "last_ingested_at", "reading_count_24h", "reading_count_total"
+    )
+
+    /**
+     * Source-row column names returned by `/sources` queries: one row per
+     * registered ingest source with its consumer-side liveness.
+     * `state` is one of NEVER_DELIVERED, HEALTHY, STALE, ATTENTION;
+     * `owner_action` one of NONE, REAUTH, SYNC_DEVICE; `metric_types` is a
+     * comma-separated list of the metric keys the source has delivered.
+     */
+    val SOURCES_COLUMNS = arrayOf(
+        "source_type", "label", "state", "since", "owner_action", "message",
+        "last_delivered_at", "metric_types"
     )
 
     /**

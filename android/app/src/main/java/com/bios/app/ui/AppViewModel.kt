@@ -42,6 +42,7 @@ class AppViewModel(
     val ouraTokenStore = deps.ouraTokenStore
     val ouraAdapter = deps.ouraAdapter
     val apiTokenStore = deps.apiTokenStore
+    val sourceHealthStore = deps.sourceHealthStore
     val withingsAdapter = deps.withingsAdapter
     val whoopAdapter = deps.whoopAdapter
     val garminAdapter = deps.garminAdapter

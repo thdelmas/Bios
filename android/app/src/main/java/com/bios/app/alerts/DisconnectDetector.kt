@@ -1,10 +1,13 @@
 package com.bios.app.alerts
 
 import com.bios.app.data.BiosDatabase
-import com.bios.app.data.dao.MetricReadingDao
+import com.bios.app.ingest.OwnerAction
+import com.bios.app.ingest.SourceCadence
+import com.bios.app.ingest.SourceHealthStore
 import com.bios.app.model.DataSource
 import com.bios.app.model.SourceType
 import java.util.concurrent.TimeUnit
+
 
 /**
  * Detects when a previously-active ingest adapter has stopped syncing long
@@ -18,19 +21,22 @@ import java.util.concurrent.TimeUnit
  * AlertContentPolicy banlist doesn't constrain this surface by
  * construction; it targets person-judgment patterns, not system-state.
  *
- * Trigger contract:
+ * Trigger contract (docs/specs/source-liveness.md):
  *
- *  - **Previously active**: source has ≥ [MIN_READINGS_FOR_ACTIVE]
- *    historical readings. One-off connection blips don't count.
- *  - **Stale**: source's most recent reading is older than the
- *    source-type-specific threshold. OAuth-backed sources (Oura,
- *    Withings, WHOOP, Garmin, Dexcom) get a tighter 5-day threshold —
- *    token expiry is the dominant failure mode. Passive sources
- *    (Health Connect, Gadgetbridge) get 7 days; their failure modes
- *    are slower and less owner-actionable.
+ *  - **Previously active**: the source delivered across at least
+ *    [com.bios.app.ingest.SourceCadence.ACTIVE_SPAN_INTERVALS] of its own
+ *    intervals. A one-off pairing the owner abandoned never qualifies; a
+ *    two-rows-a-day nightly API qualifies after two nights.
+ *  - **Needs attention**: the adapter recorded a vendor refusal with an
+ *    owner action (re-authenticate) newer than its last delivery. Pushes
+ *    on the next sync.
+ *  - **Stale**: no delivery for [com.bios.app.ingest.SourceCadence.PUSH_STALE_INTERVALS]
+ *    of the source's own intervals. In-app the row turns stale earlier
+ *    (STALE_INTERVALS); the push waits longer so a watch left unsynced
+ *    over a weekend stays quiet.
  *  - **Cool-down**: at most one push per source per 7 days. Owner
- *    dismissal isn't tracked separately — staleness persisting past
- *    the next cool-down window pushes again.
+ *    dismissal isn't tracked separately — a state persisting past the
+ *    next cool-down window pushes again.
  *
  * Reproductive sources are excluded by construction — reproductive
  * readings live in [com.bios.app.data.ReproductiveDatabase] and the
@@ -38,66 +44,40 @@ import java.util.concurrent.TimeUnit
  */
 class DisconnectDetector(
     db: BiosDatabase,
+    healthStore: SourceHealthStore,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) {
-    private val readingDao: MetricReadingDao = db.metricReadingDao()
-    private val sourceDao = db.dataSourceDao()
+    private val reporter = SourceLivenessReporter(db, healthStore, now)
 
     /**
-     * Returns the list of stale-enough sources that earn a push *now*
-     * given the supplied last-pushed-at lookup. Pure-function helper
-     * [decidePush] is what tests exercise; this orchestrator combines it
-     * with DB state.
+     * Returns the sources that earn a push *now* given the supplied
+     * last-pushed-at lookup. Pure-function helper [decidePush] is what tests
+     * exercise; this orchestrator feeds it liveness rows from the reporter.
      */
     suspend fun findSourcesToPush(
         lastPushedAtFor: (SourceType) -> Long,
         ownerEnabled: Boolean,
     ): List<DisconnectAlert> {
         if (!ownerEnabled) return emptyList()
-        val freshnessBySourceId =
-            readingDao.sourceFreshness().associateBy { it.sourceId }
         val currentTime = now()
-        return sourceDao.getAll().mapNotNull { source ->
-            val sourceType = SourceType.entries.firstOrNull { it.key == source.sourceType }
-                ?: return@mapNotNull null
-            if (sourceType !in PUSHABLE_SOURCE_TYPES) return@mapNotNull null
-            val freshness = freshnessBySourceId[source.id] ?: return@mapNotNull null
-            val decision = decidePush(
-                sourceType = sourceType,
-                readingCount = freshness.readingCount,
-                lastReadingAt = freshness.lastTimestamp,
-                lastPushedAt = lastPushedAtFor(sourceType),
-                now = currentTime,
-            )
+        return reporter.report().mapNotNull { row ->
+            if (row.sourceType !in PUSHABLE_SOURCE_TYPES) return@mapNotNull null
+            val decision = decidePush(row, lastPushedAtFor(row.sourceType), currentTime)
             if (decision.push) {
                 DisconnectAlert(
-                    sourceType = sourceType,
-                    displayName = source.deviceName ?: sourceType.label,
-                    lastSyncAt = freshness.lastTimestamp,
+                    sourceType = row.sourceType,
+                    displayName = row.label,
+                    lastSyncAt = row.lastDeliveredAt,
+                    state = row.state,
+                    ownerAction = row.ownerAction,
+                    message = row.message,
                 )
             } else null
         }
     }
 
     companion object {
-        const val MIN_READINGS_FOR_ACTIVE = 50
-        val OAUTH_STALE_THRESHOLD_MILLIS: Long = TimeUnit.DAYS.toMillis(5)
-        val PASSIVE_STALE_THRESHOLD_MILLIS: Long = TimeUnit.DAYS.toMillis(7)
         val COOLDOWN_MILLIS: Long = TimeUnit.DAYS.toMillis(7)
-
-        /**
-         * OAuth-backed source types — failure mode is dominated by token
-         * expiry. Tighter staleness threshold so the owner sees the gap
-         * before three weeks of silent degradation pile up.
-         */
-        private val OAUTH_SOURCE_TYPES: Set<SourceType> = setOf(
-            SourceType.OURA_API,
-            SourceType.WITHINGS_API,
-            SourceType.WHOOP_API,
-            SourceType.GARMIN_API,
-            SourceType.DEXCOM_API,
-            SourceType.POLAR_API,
-        )
 
         /**
          * Source types we push for. Excludes SELF_REPORTED (the owner
@@ -114,48 +94,40 @@ class DisconnectDetector(
             SourceType.WITHINGS_API,
             SourceType.DEXCOM_API,
             SourceType.POLAR_API,
+            SourceType.COROS_API,
         )
-
-        /**
-         * Stale threshold for [sourceType]. OAuth-backed gets the tighter
-         * window; passive gets the looser one. Unknown types (caller
-         * already filtered, but defensive) get the looser default.
-         */
-        internal fun staleThreshold(sourceType: SourceType): Long =
-            if (sourceType in OAUTH_SOURCE_TYPES) OAUTH_STALE_THRESHOLD_MILLIS
-            else PASSIVE_STALE_THRESHOLD_MILLIS
     }
 }
 
 /**
- * Pure-function trigger: given a source's state, decide whether *now* is
- * a moment to push. No DB, no Context — exposed so unit tests can pin
- * every edge of the trigger contract without Room or notification
+ * Pure-function trigger: given a source's liveness row, decide whether
+ * *now* is a moment to push. No DB, no Context — exposed so unit tests can
+ * pin every edge of the trigger contract without Room or notification
  * scaffolding.
  *
  * Returns [PushDecision] with [PushDecision.push] = true exactly when:
- *   1. [readingCount] ≥ [DisconnectDetector.MIN_READINGS_FOR_ACTIVE]
- *      (the source was previously active, not a connection blip), AND
- *   2. ([now] − [lastReadingAt]) ≥ source-type-specific staleness
- *      threshold (the source is currently stale), AND
- *   3. ([now] − [lastPushedAt]) ≥ [DisconnectDetector.COOLDOWN_MILLIS]
- *      (we haven't pushed about this source recently).
+ *   1. [SourceLivenessRow.previouslyActive] (not a connection blip), AND
+ *   2. the row is ATTENTION with an owner action, OR STALE for at least
+ *      [SourceCadence.PUSH_STALE_INTERVALS] of its own intervals, AND
+ *   3. ([now] − [lastPushedAt]) ≥ [DisconnectDetector.COOLDOWN_MILLIS].
  *
  * [lastPushedAt] = 0 means "never pushed about this source," which always
  * clears the cool-down gate. Negative values are clamped to 0.
  */
 internal fun decidePush(
-    sourceType: SourceType,
-    readingCount: Int,
-    lastReadingAt: Long,
+    row: SourceLivenessRow,
     lastPushedAt: Long,
     now: Long,
 ): PushDecision {
-    if (readingCount < DisconnectDetector.MIN_READINGS_FOR_ACTIVE) {
+    if (!row.previouslyActive) {
         return PushDecision(push = false, reason = SkipReason.NEVER_ACTIVE)
     }
-    val staleMillis = now - lastReadingAt
-    if (staleMillis < DisconnectDetector.staleThreshold(sourceType)) {
+    val actionable = when (row.state) {
+        LivenessState.ATTENTION -> row.ownerAction != OwnerAction.NONE
+        LivenessState.STALE -> row.missedIntervals(now) >= SourceCadence.PUSH_STALE_INTERVALS
+        LivenessState.HEALTHY, LivenessState.NEVER_DELIVERED -> false
+    }
+    if (!actionable) {
         return PushDecision(push = false, reason = SkipReason.NOT_STALE)
     }
     val sinceLastPush = now - maxOf(lastPushedAt, 0L)
@@ -172,12 +144,16 @@ enum class SkipReason { NEVER_ACTIVE, NOT_STALE, IN_COOLDOWN }
 /**
  * One source's reason to push. [displayName] is what the owner sees in the
  * notification body — `DataSource.deviceName` when present, falls back to
- * the source-type label (e.g. "Oura").
+ * the source-type label (e.g. "Oura"). [ownerAction] picks the wording:
+ * a re-authentication is a different ask from "sync your watch".
  */
 data class DisconnectAlert(
     val sourceType: SourceType,
     val displayName: String,
     val lastSyncAt: Long,
+    val state: LivenessState = LivenessState.STALE,
+    val ownerAction: OwnerAction = OwnerAction.SYNC_DEVICE,
+    val message: String? = null,
 )
 
 /**

@@ -1,6 +1,7 @@
 package com.bios.app
 
 import com.bios.app.ingest.CorosApiAdapter
+import com.bios.app.ingest.OwnerAction
 import com.bios.contracts.MetricType
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -68,6 +69,14 @@ class CorosApiAdapterTest {
     fun `malformed happenDay is dropped`() {
         assertNull(CorosApiAdapter.wakeDayTimestamp(0, zone))
         assertNull(CorosApiAdapter.wakeDayTimestamp(20261399, zone))
+    }
+
+    @Test
+    fun `a dead session token is the owner's to fix, other refusals are not`() {
+        assertEquals(OwnerAction.REAUTH, CorosApiAdapter.ownerActionFor("1019", "Access token is invalid"))
+        assertEquals(OwnerAction.REAUTH, CorosApiAdapter.ownerActionFor("9999", "Token expired"))
+        assertEquals(OwnerAction.NONE, CorosApiAdapter.ownerActionFor("1030", "Rate limited"))
+        assertEquals(OwnerAction.NONE, CorosApiAdapter.ownerActionFor("", null))
     }
 
     @Test

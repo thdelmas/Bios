@@ -1,129 +1,126 @@
 package com.bios.app
 
 import com.bios.app.alerts.DisconnectDetector
-import com.bios.app.alerts.PushDecision
+import com.bios.app.alerts.LivenessState
 import com.bios.app.alerts.SkipReason
+import com.bios.app.alerts.SourceLivenessRow
 import com.bios.app.alerts.decidePush
+import com.bios.app.ingest.OwnerAction
+import com.bios.app.ingest.SourceCadence
 import com.bios.app.model.SourceType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * Deterministic trigger-contract tests for [DisconnectDetector] (#113).
- *
- * Three gates govern the trigger: previously-active, currently-stale,
- * past-cool-down. Each test isolates one gate. The full surface (DB
- * reads, NotificationManager, PendingIntent plumbing) requires Android
- * runtime and is covered by build-and-eyeball; the deterministic part
- * is what fails first under regressions to the contract.
+ * Deterministic trigger-contract tests for [DisconnectDetector]
+ * (docs/specs/source-liveness.md). Three gates govern the trigger:
+ * previously-active, actionable (attention with an owner action, or stale
+ * past the push window), past-cool-down. Each test isolates one gate. The
+ * full surface (DB reads, NotificationManager, PendingIntent plumbing)
+ * requires Android runtime and is covered by build-and-eyeball.
  */
 class DisconnectDetectorTest {
 
-    private val now: Long = 1_733_400_000_000L // arbitrary fixed "now"
+    private val now: Long = 1_733_400_000_000L
     private val day: Long = TimeUnit.DAYS.toMillis(1)
+
+    private fun row(
+        type: SourceType = SourceType.COROS_API,
+        state: LivenessState = LivenessState.STALE,
+        last: Long = now - 6 * day,
+        first: Long = now - 30 * day,
+        action: OwnerAction = OwnerAction.SYNC_DEVICE,
+        message: String? = null,
+    ) = SourceLivenessRow(
+        sourceType = type, label = "COROS", state = state, since = last,
+        ownerAction = action, message = message, lastDeliveredAt = last,
+        firstDeliveredAt = first, metricTypes = listOf("heart_rate_variability"),
+    )
 
     // --- Gate 1: previously active ---
 
     @Test
-    fun `source with too few readings is skipped as NEVER_ACTIVE even when very stale`() {
-        // A briefly-connected source that produced a handful of readings then
-        // dropped off is not "previously active." Pushing about a one-off
-        // pairing the owner abandoned would be noise.
+    fun `source that delivered for less than two intervals is skipped as NEVER_ACTIVE even on a refusal`() {
         val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = DisconnectDetector.MIN_READINGS_FOR_ACTIVE - 1,
-            lastReadingAt = now - 30 * day,
-            lastPushedAt = 0L,
-            now = now,
+            row(state = LivenessState.ATTENTION, action = OwnerAction.REAUTH, first = now - day, last = now - day),
+            lastPushedAt = 0L, now = now,
         )
-        assertSkipped(decision, SkipReason.NEVER_ACTIVE)
+        assertFalse(decision.push)
+        assertEquals(SkipReason.NEVER_ACTIVE, decision.reason)
     }
 
     @Test
-    fun `source exactly at the active-threshold count is eligible`() {
-        // Boundary check — `≥ MIN_READINGS_FOR_ACTIVE` not `>`.
+    fun `two nights of a two-rows-a-day source count as active`() {
         val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = DisconnectDetector.MIN_READINGS_FOR_ACTIVE,
-            lastReadingAt = now - 10 * day,
-            lastPushedAt = 0L,
-            now = now,
+            row(state = LivenessState.ATTENTION, action = OwnerAction.REAUTH,
+                first = now - 3 * day, last = now - day),
+            lastPushedAt = 0L, now = now,
         )
-        assertTrue("source at exactly the threshold should push", decision.push)
+        assertTrue(decision.push)
     }
 
-    // --- Gate 2: currently stale (with per-source-type thresholds) ---
+    // --- Gate 2: actionable ---
 
     @Test
-    fun `OAuth source stale just over 5 days pushes`() {
-        // OAuth-backed sources (Oura / Withings / WHOOP / Garmin / Dexcom /
-        // Polar) get the tighter 5-day window — token-expiry is the
-        // dominant failure mode.
+    fun `a refusal with an owner action pushes on the next sync`() {
         val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - (5 * day + 1),
-            lastPushedAt = 0L,
-            now = now,
+            row(state = LivenessState.ATTENTION, action = OwnerAction.REAUTH, last = now - day, message = "1019"),
+            lastPushedAt = 0L, now = now,
+        )
+        assertTrue(decision.push)
+        assertNull(decision.reason)
+    }
+
+    @Test
+    fun `a refusal without an owner action does not push`() {
+        val decision = decidePush(
+            row(state = LivenessState.ATTENTION, action = OwnerAction.NONE, last = now - day),
+            lastPushedAt = 0L, now = now,
+        )
+        assertFalse(decision.push)
+        assertEquals(SkipReason.NOT_STALE, decision.reason)
+    }
+
+    @Test
+    fun `stale at the in-app threshold is NOT_STALE for the push`() {
+        val decision = decidePush(
+            row(last = now - SourceCadence.STALE_INTERVALS * day),
+            lastPushedAt = 0L, now = now,
+        )
+        assertFalse(decision.push)
+        assertEquals(SkipReason.NOT_STALE, decision.reason)
+    }
+
+    @Test
+    fun `stale for the push window pushes`() {
+        val decision = decidePush(
+            row(last = now - SourceCadence.PUSH_STALE_INTERVALS * day),
+            lastPushedAt = 0L, now = now,
         )
         assertTrue(decision.push)
     }
 
     @Test
-    fun `OAuth source stale just under 5 days is NOT_STALE`() {
-        // One-millisecond-under-the-threshold doesn't push. The 5-day window
-        // exists so a single missed sync doesn't fire — only persistent
-        // disconnects do.
-        val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - (5 * day - 1),
-            lastPushedAt = 0L,
-            now = now,
+    fun `push window is measured in the source's own interval`() {
+        val hour = TimeUnit.HOURS.toMillis(1)
+        val phone = row(
+            type = SourceType.HEALTH_CONNECT,
+            last = now - SourceCadence.PUSH_STALE_INTERVALS * day + hour,
+            first = now - 30 * day,
         )
-        assertSkipped(decision, SkipReason.NOT_STALE)
+        assertEquals(SkipReason.NOT_STALE, decidePush(phone, 0L, now).reason)
     }
 
     @Test
-    fun `passive source stale at 6 days is NOT_STALE (uses 7-day window)`() {
-        // Health Connect / Gadgetbridge get the looser 7-day window. Their
-        // failure modes are slower and less owner-actionable (no token to
-        // re-grant), so the bar to push is higher.
-        val decision = decidePush(
-            sourceType = SourceType.HEALTH_CONNECT,
-            readingCount = 100,
-            lastReadingAt = now - 6 * day,
-            lastPushedAt = 0L,
-            now = now,
-        )
-        assertSkipped(decision, SkipReason.NOT_STALE)
-    }
-
-    @Test
-    fun `passive source stale at 8 days pushes`() {
-        val decision = decidePush(
-            sourceType = SourceType.HEALTH_CONNECT,
-            readingCount = 100,
-            lastReadingAt = now - 8 * day,
-            lastPushedAt = 0L,
-            now = now,
-        )
-        assertTrue(decision.push)
-    }
-
-    @Test
-    fun `OAuth + passive thresholds are actually different`() {
-        // Anti-regression: this would have caught me lazily reusing the
-        // OAuth threshold for everything.
-        assertTrue(
-            "OAuth threshold must be tighter than passive",
-            DisconnectDetector.OAUTH_STALE_THRESHOLD_MILLIS <
-                DisconnectDetector.PASSIVE_STALE_THRESHOLD_MILLIS,
+    fun `healthy and never-delivered rows never push`() {
+        assertEquals(SkipReason.NOT_STALE, decidePush(row(state = LivenessState.HEALTHY, last = now - day), 0L, now).reason)
+        assertEquals(
+            SkipReason.NEVER_ACTIVE,
+            decidePush(row(state = LivenessState.NEVER_DELIVERED, last = 0L, first = 0L), 0L, now).reason,
         )
     }
 
@@ -131,111 +128,44 @@ class DisconnectDetectorTest {
 
     @Test
     fun `recently-pushed source is IN_COOLDOWN even when persistently stale`() {
-        // The cool-down is the *de-nag* guarantee — owner gets one push
-        // per disconnected source per 7 days, no matter how many sync
-        // cycles fire in between.
-        val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - 30 * day,
-            lastPushedAt = now - 1 * day,
-            now = now,
-        )
-        assertSkipped(decision, SkipReason.IN_COOLDOWN)
+        val decision = decidePush(row(last = now - 20 * day), lastPushedAt = now - 6 * day, now = now)
+        assertFalse(decision.push)
+        assertEquals(SkipReason.IN_COOLDOWN, decision.reason)
     }
 
     @Test
     fun `cool-down expires after the documented window`() {
         val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - 30 * day,
-            lastPushedAt = now - (DisconnectDetector.COOLDOWN_MILLIS + 1),
-            now = now,
+            row(last = now - 20 * day),
+            lastPushedAt = now - DisconnectDetector.COOLDOWN_MILLIS, now = now,
         )
         assertTrue(decision.push)
     }
 
     @Test
     fun `never-pushed source (lastPushedAt = 0) clears cool-down regardless of clock`() {
-        // A fresh install: the prefs value is the SharedPreferences default
-        // of 0L. Don't trip on "0L was a long time ago" arithmetic.
-        val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - 10 * day,
-            lastPushedAt = 0L,
-            now = now,
-        )
-        assertTrue(decision.push)
+        assertTrue(decidePush(row(last = now - 20 * day), lastPushedAt = 0L, now = now).push)
     }
 
     @Test
     fun `negative lastPushedAt is treated as never-pushed, not as a future timestamp`() {
-        // Defensive: corrupted prefs shouldn't soft-lock the surface.
-        val decision = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - 10 * day,
-            lastPushedAt = -1L,
-            now = now,
-        )
-        assertTrue(decision.push)
+        assertTrue(decidePush(row(last = now - 20 * day), lastPushedAt = -1L, now = now).push)
     }
-
-    // --- Gate ordering / interaction ---
 
     @Test
     fun `gate ordering — not-active beats not-stale beats cool-down`() {
-        // Skip reasons are diagnostic — they tell us *why* a source didn't
-        // push, which matters for logging and future tuning. The ordering
-        // must be stable so log-mining doesn't lie about prevalence.
-        val notActive = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 0,
-            lastReadingAt = now - 30 * day,
-            lastPushedAt = now - 1 * day,
-            now = now,
-        )
-        assertEquals(SkipReason.NEVER_ACTIVE, notActive.reason)
-
-        val notStale = decidePush(
-            sourceType = SourceType.OURA_API,
-            readingCount = 100,
-            lastReadingAt = now - 1 * day,
-            lastPushedAt = now - 1 * day,
-            now = now,
-        )
-        assertEquals(SkipReason.NOT_STALE, notStale.reason)
+        val r = row(state = LivenessState.HEALTHY, first = now - day, last = now - day)
+        assertEquals(SkipReason.NEVER_ACTIVE, decidePush(r, now - day, now).reason)
+        val r2 = row(state = LivenessState.HEALTHY, last = now - day)
+        assertEquals(SkipReason.NOT_STALE, decidePush(r2, now - day, now).reason)
     }
+
+    // --- Source-type set ---
 
     @Test
-    fun `pushable-source-type set excludes SELF_REPORTED and in-process sources`() {
-        // SELF_REPORTED: the owner decides cadence, not Bios.
-        // CAMERA_PPG: one-shot capture surface, not a continuous source.
-        // DIRECT_SENSOR / PHONE_SENSOR: in-process — when these stop, the
-        // whole app has stopped and no notification is going to fire anyway.
-        assertFalse(SourceType.SELF_REPORTED in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
-        assertFalse(SourceType.CAMERA_PPG in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
-        assertFalse(SourceType.DIRECT_SENSOR in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
+    fun `COROS is a pushable source`() {
+        assertTrue(SourceType.COROS_API in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
         assertFalse(SourceType.PHONE_SENSOR in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
-        // Sanity: every adapter we ship with sync-failure modes IS in the set.
-        assertTrue(SourceType.OURA_API in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
-        assertTrue(SourceType.HEALTH_CONNECT in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
-        assertTrue(SourceType.GADGETBRIDGE in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
-    }
-
-    // --- Helpers ---
-
-    private fun assertSkipped(decision: PushDecision, expected: SkipReason) {
-        assertFalse("Expected skip", decision.push)
-        assertNotNull("Skip must carry a reason for log mining", decision.reason)
-        assertEquals(expected, decision.reason)
-    }
-
-    @Suppress("unused")
-    private fun assertPushed(decision: PushDecision) {
-        assertTrue(decision.push)
-        assertNull(decision.reason)
+        assertFalse(SourceType.SELF_REPORTED in DisconnectDetector.PUSHABLE_SOURCE_TYPES)
     }
 }

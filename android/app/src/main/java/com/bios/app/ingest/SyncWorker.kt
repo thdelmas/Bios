@@ -35,8 +35,9 @@ class SyncWorker(
             val withings = if (apiTokenStore.hasToken(WithingsApiAdapter.PROVIDER_KEY)) {
                 WithingsApiAdapter(apiTokenStore)
             } else null
+            val healthStore = SourceHealthStore(applicationContext)
             val coros = if (apiTokenStore.hasToken(CorosApiAdapter.PROVIDER_KEY)) {
-                CorosApiAdapter(apiTokenStore)
+                CorosApiAdapter(apiTokenStore, healthStore)
             } else null
             val phoneSensor = PhoneSensorAdapter(applicationContext)
             val gadgetbridge = GadgetbridgeAdapter(applicationContext)
@@ -46,7 +47,8 @@ class SyncWorker(
                 gadgetbridgeAdapter = gadgetbridge,
                 directSensorAdapter = directSensor,
                 withingsAdapter = withings,
-                corosAdapter = coros
+                corosAdapter = coros,
+                healthStore = healthStore
             )
 
             // Stage 1: Register sources, then sync. setup() is what binds the
@@ -112,7 +114,7 @@ class SyncWorker(
             // category-3-push framing.
             try {
                 val notifier = com.bios.app.alerts.DisconnectNotifier(applicationContext)
-                val disconnectDetector = com.bios.app.alerts.DisconnectDetector(db)
+                val disconnectDetector = com.bios.app.alerts.DisconnectDetector(db, healthStore)
                 val alerts = disconnectDetector.findSourcesToPush(
                     lastPushedAtFor = { notifier.lastPushedAt(it) },
                     ownerEnabled = notifier.isEnabled(),

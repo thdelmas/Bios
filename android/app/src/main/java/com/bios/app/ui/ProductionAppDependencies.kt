@@ -15,6 +15,7 @@ import com.bios.app.ingest.BlePairedDeviceStore
 import com.bios.app.ingest.DirectSensorAdapter
 import com.bios.app.ingest.GadgetbridgeAdapter
 import com.bios.app.ingest.CorosApiAdapter
+import com.bios.app.ingest.SourceHealthStore
 import com.bios.app.ingest.GarminApiAdapter
 import com.bios.app.ingest.HealthConnectAdapter
 import com.bios.app.ingest.IngestManager
@@ -40,11 +41,12 @@ class ProductionAppDependencies(application: Application) : AppDependencies {
     override val ouraTokenStore = OuraTokenStore(application)
     override val ouraAdapter = OuraApiAdapter(ouraTokenStore)
     override val apiTokenStore = ApiTokenStore(application)
+    override val sourceHealthStore = SourceHealthStore(application)
     override val withingsAdapter = WithingsApiAdapter(apiTokenStore)
     override val whoopAdapter = WhoopApiAdapter(apiTokenStore)
     override val garminAdapter = GarminApiAdapter(apiTokenStore)
     override val polarAdapter = PolarApiAdapter(apiTokenStore)
-    override val corosAdapter = CorosApiAdapter(apiTokenStore)
+    override val corosAdapter = CorosApiAdapter(apiTokenStore, sourceHealthStore)
     override val phoneSensorAdapter = PhoneSensorAdapter(application)
     override val gadgetbridgeAdapter = GadgetbridgeAdapter(application)
     override val directSensorAdapter = DirectSensorAdapter(application)
@@ -56,7 +58,8 @@ class ProductionAppDependencies(application: Application) : AppDependencies {
         healthConnect, db, ouraAdapter, phoneSensorAdapter,
         gadgetbridgeAdapter, directSensorAdapter, withingsAdapter, whoopAdapter,
         garminAdapter, polarAdapter, bleAirQualityAdapter, latencyTracker,
-        corosAdapter = corosAdapter
+        corosAdapter = corosAdapter,
+        healthStore = sourceHealthStore
     )
 
     private val reproductiveReadingDao = ReproductiveDatabase.readingDaoOrNull(application)

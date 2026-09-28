@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.bios.app.ingest.OwnerAction
 import com.bios.app.model.SourceType
 import com.bios.app.ui.MainActivity
 import java.text.SimpleDateFormat
@@ -70,12 +71,11 @@ class DisconnectNotifier(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val lastSyncDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(alert.lastSyncAt))
-        val text = "${alert.displayName} hasn't synced since $lastSyncDate. Reconnect in Bios?"
+        val (title, text) = wording(alert)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("${alert.displayName} stopped syncing")
+            .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(pending)
@@ -89,6 +89,27 @@ class DisconnectNotifier(private val context: Context) {
         } catch (_: SecurityException) {
             // POST_NOTIFICATIONS race between manager.areNotificationsEnabled()
             // and notify(). Swallow — the next sync will retry.
+        }
+    }
+
+    /**
+     * Title and body name the action the owner can take. A refusal from
+     * the vendor is a different ask from a watch left unsynced, and the
+     * spec (docs/specs/source-liveness.md) requires the push to say which.
+     */
+    private fun wording(alert: DisconnectAlert): Pair<String, String> {
+        val name = alert.displayName
+        return when (alert.ownerAction) {
+            OwnerAction.REAUTH -> {
+                val why = alert.message?.let { " ($it)" } ?: ""
+                "$name needs sign-in" to
+                    "$name refused Bios's session$why. Sign in again in Bios, Data & sources."
+            }
+            OwnerAction.SYNC_DEVICE, OwnerAction.NONE -> {
+                val lastSyncDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(alert.lastSyncAt))
+                "$name stopped delivering" to
+                    "$name hasn't delivered since $lastSyncDate. Sync the device or open its app, then check Bios, Data & sources."
+            }
         }
     }
 

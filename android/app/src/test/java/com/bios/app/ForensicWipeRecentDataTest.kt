@@ -131,6 +131,7 @@ private class WipeFakeMetricReadingDao : MetricReadingDao {
     ): List<Double> = notUsed()
     override suspend fun oldestTimestamp(): Long? = notUsed()
     override suspend fun sourceFreshness(): List<MetricReadingDao.SourceFreshnessRow> = notUsed()
+    override suspend fun sourceMetricTypes(): List<MetricReadingDao.SourceMetricRow> = emptyList()
     override suspend fun statusSummary(since24h: Long): List<MetricReadingDao.MetricStatusRow> = notUsed()
     override suspend fun fetchCreatedAfter(sinceMillis: Long): List<MetricReading> = notUsed()
     override suspend fun metricTypeCounts(): List<MetricReadingDao.MetricTypeCountRow> = notUsed()

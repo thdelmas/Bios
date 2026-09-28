@@ -136,6 +136,9 @@ object DataDestroyer {
             // ApiTokenStore: WHOOP, Garmin, Dexcom) wipes in one call —
             // clearAll() drops every provider key in the encrypted prefs.
             com.bios.app.ingest.ApiTokenStore(context).clearAll()
+            // Adapter health (last refusal per source) names no secret but
+            // names the sources the owner had; it goes with the tokens.
+            com.bios.app.ingest.SourceHealthStore(context).clearAll()
             Log.d(TAG, "API tokens cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear API tokens", e)
