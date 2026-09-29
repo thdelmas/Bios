@@ -38,3 +38,22 @@ untouched; only its clock is injected.
 
 Results are copied to `docs/validation/` with the date and commit they were
 produced at.
+
+## TimesFM 2.5 as the RHR baseline (what-if, Python only)
+
+Tests whether a pretrained forecaster makes a better resting-heart-rate
+detector than the shipped z-score rule. It reads the same `derived/` folder,
+re-implements the shipped rule as a control, and refuses comparison unless the
+control reproduces the Kotlin harness figures.
+
+```
+python3 -m venv venv
+venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch
+venv/bin/pip install "timesfm[torch]" numpy
+venv/bin/python tools/validation/timesfm_replay.py derived out          # ~35 min on 12 CPU threads
+venv/bin/python tools/validation/timesfm_report.py out/result.json
+```
+
+`--no-model` runs the control only (seconds). Weights: `google/timesfm-2.5-200m-pytorch`
+(Apache-2.0). TimesFM 3.0 weights are non-commercial and are not used here.
+Results: `docs/validation/timesfm-2.5-replay.md`.
