@@ -204,7 +204,7 @@ val vesselWatchGroups: List<VesselGroup> = listOf(
             VesselDial(
                 label = "Cognitive throughput",
                 availability = DialAvailability.PLANNED,
-                note = "SDMT / keystroke dynamics via Fil — planned.",
+                note = "Planned — SDMT / keystroke dynamics.",
             ),
         ),
     ),

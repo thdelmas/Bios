@@ -2,7 +2,7 @@
 
 ## Core Architecture
 - [ARCHITECTURE.md](ARCHITECTURE.md) — System design, platform abstraction, build flavors
-- [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) — What belongs to Bios vs. companion apps (Fil, Virgil, W2F)
+- [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) — What belongs to Bios vs. companion apps (Virgil, W2F)
 - [DATA_MODEL.md](DATA_MODEL.md) — Unified metric schema, temporal design, FHIR exportability
 - [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md) — On-device processing, encryption, threat model
 - [TECH_STACK.md](TECH_STACK.md) — Technology choices and platform strategy

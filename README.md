@@ -2,7 +2,7 @@
 
 Health guardian that detects early signs of illness using wearable sensor data. All processing on-device — the owner decides what leaves it, and nothing does by default. Instrument, not coach. Evaluation belongs to the owner.
 
-Hub of the Bios ecosystem (Bios, Fil, W2F, Smokeless, Virgil, SoulRadio) — exposes `BiosHealthProvider` for companion apps to write events and read metrics.
+Hub of the Bios ecosystem (Bios, W2F, Smokeless, Virgil, SoulRadio) — exposes `BiosHealthProvider` for companion apps to write events and read metrics.
 
 For full context: [CLAUDE.md](CLAUDE.md), [MANIFESTO.md](MANIFESTO.md), [docs/](docs/README.md).
 

@@ -184,7 +184,7 @@ and there's a clear, listener-facing reason to ship it.
 
 `cross-repo-contracts.yml` publishes `bios-contracts` to a per-job
 mavenLocal, then builds each public companion (Smokeless, SoulRadio,
-Virgil, Fil) against it through `.github/scripts/consumer-init.gradle`.
+Virgil) against it through `.github/scripts/consumer-init.gradle`.
 Runs on every change to `android/bios-contracts/**` or the workflow
 itself, plus manual dispatch. Until a companion adds
 `implementation("com.bios:bios-contracts:0.1.0")`, this also serves as a

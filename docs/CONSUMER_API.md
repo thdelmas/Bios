@@ -259,7 +259,7 @@ The source of truth is `MetricType` in
 ## Contracts forward/backward compatibility
 
 `MetricType`, `MetricUnit`, and `MetricDomain` ship from the `bios-contracts`
-AAR. Companions (W2F, Smokeless, Virgil, Fil) pin a version of that AAR and
+AAR. Companions (W2F, Smokeless, Virgil) pin a version of that AAR and
 release on their own cadence, so at any given moment some companion will be
 running against an older — or newer — contracts version than the installed
 Bios. The data plane already tolerates this by accident

@@ -75,9 +75,6 @@ jobs:
           - name: Virgil
             repo: thdelmas/Virgil
             gradle-dir: android
-          - name: Fil
-            repo: thdelmas/Fil
-            gradle-dir: android
     steps:
       - name: Checkout Bios (for init script)
         uses: actions/checkout@v4

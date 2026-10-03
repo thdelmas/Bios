@@ -60,7 +60,7 @@ Monetization follows the boundary in [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDAR
   baselines, the 12 generic condition patterns, the ContentProvider. It is **not** a vertical and
   **not** a consumer cash cow. It is free, full, private-by-default infrastructure.
 - **Companions** are the apps people install for a domain. Some are clinical-grade instruments
-  (Fil, W2F); some are consumer/lifestyle (SoulRadio, Idun, Smokeless); some are safety (Virgil).
+  (W2F); some are consumer/lifestyle (SoulRadio, Idun, Smokeless); some are safety (Virgil).
   They monetize differently — see the per-app map.
 
 The revenue does not come from the backbone. It comes from (a) the **clinical specialists** sold to
@@ -78,8 +78,8 @@ Three layers, in priority order. None requires betraying on-device privacy.
    Calibrate the *shipped baseline* on these. This is the answer to the recurring calibration gap
    (e.g. Virgil's fall thresholds): you do not need *your users'* events if the physiology is covered
    by public data. **Highest-leverage, lowest-friction, do this first.**
-2. **On-device n=1 personalization.** Already the pattern — Bios personal baselines/z-scores, Fil's
-   drift engine, Virgil's `ActivityBaseline` EWMA. The model adapts to the individual, on their device,
+2. **On-device n=1 personalization.** Already the pattern — Bios personal baselines/z-scores, W2F's
+   ADA-1/HDA-1 models, Virgil's `ActivityBaseline` EWMA. The model adapts to the individual, on their device,
    sharing nothing. Real learning; just not global.
 3. **The consent rail — opt-in, owner-driven contribution** for population-level gains. Explicit,
    per-purpose, revocable. Two forms:
@@ -104,8 +104,8 @@ Per-app consumer pricing is **pocket money and fights the values** (one-time €
 
 The clinical specialists are the real revenue.
 
-- **Fil** (MS / neurology) and **W2F** (mood / bipolar) are clinical-grade instruments: gait/drift/fall,
-  typing-cadence/ADA-1/HDA-1, active micro-tests.
+- **W2F** (mood / bipolar) is the clinical-grade instrument: typing-cadence/ADA-1/HDA-1, active
+  micro-tests. (Fil, the planned MS / neurology instrument, was dropped 2026-10-03 before it was built.)
 - The buyer is **not the patient** paying €3 — it's **neurology & psychiatry clinics, academic
   researchers, and pharma running decentralized clinical trials (DCTs)**, who pay substantially for
   *compliant, privacy-preserving remote measurement* that runs on the patient's own phone.
@@ -117,7 +117,7 @@ The clinical specialists are the real revenue.
   (cost + 6–18mo timeline) — and once done, it's a deep moat few indie health apps can cross.
 
 > Why this is manifesto-clean: nobody's data is sold. The patient owns it and chooses to share it with
-> the institution already in their care. Bios/Fil/W2F are paid as the *instrument*, not as a data broker.
+> the institution already in their care. Bios/W2F are paid as the *instrument*, not as a data broker.
 
 ### Stream B — Grants fund the backbone
 
@@ -154,7 +154,6 @@ Archetypes (col. 2) follow the portfolio-wide taxonomy in
 | App | Archetype | Role | Model | Notes |
 |---|---|---|---|---|
 | **Bios** | **1 + 3** | Backbone / hub | **Free, full, private-by-default.** Funded by grants (Stream B) + as the substrate enabling Stream A. Optional voluntary supporter / one-time "Pro" for power-user *export* extras only (never gating health signal). | No "pay for privacy" tier — privacy is total, nothing to sell. |
-| **Fil** | **1** (free patient app) | Clinical specialist (neurology/MS) | **Clinical B2B (Stream A).** Patient app free; clinics/MS-research/DCTs license the instrument. | Gated on clinical validation. Primary engine. |
 | **W2F** | **1** (free patient app) | Clinical specialist (mood/bipolar) | **Clinical B2B (Stream A).** Patient app free; psychiatry/mood-research/DCTs license it. | Gated on clinical validation. Primary engine. |
 | **Virgil** | **3** (+ optional 2) | Safety (standalone) | **Protection tier free, always.** Optional low-cost *convenience* tier (family dashboard, check-in history). Possible secondary B2B: elder-care / assisted-living licensing. | Never paywall the safety net. |
 | **SoulRadio** | **2** | Ambient (standalone) | **One-time €3.99** (shipped decision). Subscription as library grows, later. | Base layer. Wellness-audio category. Pure consumer — no data bus, no B2B. |
@@ -178,7 +177,7 @@ Tie to reality (see the income-pipeline frame):
 | Window | Move |
 |---|---|
 | **Now** | Ship SoulRadio (€3.99, done) + Idun (after clearance) — base validation + funnel. Build the **consent rail** in Bios (serves learning *and* B2B). |
-| **Mid (6–12 mo)** | Clinical validation for Fil / W2F. First grant applications for Bios (SDG/privacy-tech). First clinic/research pilots. |
+| **Mid (6–12 mo)** | Clinical validation for W2F. First grant applications for Bios (SDG/privacy-tech). First clinic/research pilots. |
 | **Long (12–24 mo)** | Clinical B2B contracts + DCT data-collection deals. Research-grade consent rail at scale. Ecosystem supporter license. |
 
 ---
@@ -208,7 +207,7 @@ examples incl. concurrent multi-study enrollment): [B2B_PARTNER_MODEL.md](B2B_PA
 | "You're selling health data" accusation | We don't. Publish the consent rail's exact mechanics; open-source it. The patient is the sharer, the institution the recipient, always per-consent. |
 | Clinical B2B never closes (validation cost sinks it) | Validation is staged and partly grant-fundable (Stream B can fund the work that unlocks Stream A). Public datasets de-risk the algorithmic side. |
 | Consumer apps mistaken for the business | Stated plainly above: base layer, pocket money, not salary. The business is B2B + grants. |
-| Regulatory (medical claims) | "Instrument, not coach / inform not diagnose" positioning holds. Clinical-grade claims (Fil/W2F B2B) require the validation + appropriate regulatory path (e.g. CE/FDA SaMD) — budget for it as part of Stream A. |
+| Regulatory (medical claims) | "Instrument, not coach / inform not diagnose" positioning holds. Clinical-grade claims (W2F B2B) require the validation + appropriate regulatory path (e.g. CE/FDA SaMD) — budget for it as part of Stream A. |
 | Federated-learning / weight-sync stretches no-cloud vow | Flagged as an explicit owner decision, not assumed. Default plan ships without it (public datasets + n=1 + opt-in donation suffice for v1). |
 
 ---

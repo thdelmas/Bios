@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 /**
  * Frozen snapshot of every `MetricType.key` string that has shipped in a
  * released `bios-contracts` artifact. Out-of-tree companions (W2F, Smokeless,
- * Virgil, Fil) pin a contracts version and assume these keys keep resolving.
+ * Virgil) pin a contracts version and assume these keys keep resolving.
  *
  * **How to update this file.**
  *  - Adding a key: append the new string. That is the only valid edit when

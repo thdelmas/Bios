@@ -10,7 +10,7 @@ Bios is the **sensor backbone and generic body guardian**. Domain specialists
 (neurological, mood, safety) live in separate companion apps that read from
 Bios and — where applicable — push computed scores back into Bios's metric
 bus. See [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) for the full rule
-and per-app breakdown (Fil, W2F, Virgil).
+and per-app breakdown (W2F, Virgil).
 
 In short, Bios owns: ingestion adapters, encrypted storage, personal
 baselines, canonical metric vocabulary, and the generic multi-system

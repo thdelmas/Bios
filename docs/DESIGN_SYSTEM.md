@@ -2,7 +2,7 @@
 
 **Status:** Canonical. Lives in Bios; mirrored in Miam KB; referenced by each specialist's CLAUDE.md.
 **Created:** 2026-05-24
-**Scope:** Bios + all current specialists (Smokeless, Fil, W2F, Virgil, SoulRadio) + Idun, and any future Bios-ecosystem app.
+**Scope:** Bios + all current specialists (Smokeless, W2F, Virgil, SoulRadio) + Idun, and any future Bios-ecosystem app.
 
 ## Philosophy
 
@@ -26,9 +26,9 @@ Each app owns one primary identity hue. New apps pick a hue that does not collid
         ↑                  ↑
    Sand  Virgil           Orange  Smokeless
     #E0E1DD                #FF7300
-        ↑                  ↑
-   White  Fil ←──→  Apple-Red  Idun
-    #FFFFFF             #B33A3A
+                           ↑
+                    Apple-Red  Idun
+                        #B33A3A
                            ↑
                     Coral  Rooster
                      #FF8E53
@@ -196,7 +196,6 @@ Each app picks once and locks. Mixed-mode within the ecosystem is allowed and in
 | Idun | Light (locked) | Parchment / artisanal warmth |
 | Virgil | TBD | Likely Light — safety/guide register |
 | SoulRadio | Dark | Broadcast warmth on black |
-| Fil | TBD | |
 
 If an app supports both modes (`Theme.Material3.DayNight`), its dark variant MUST keep its identity hue intact — Smokeless's mint is mint in both modes.
 

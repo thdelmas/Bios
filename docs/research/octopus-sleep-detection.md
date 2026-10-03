@@ -46,7 +46,7 @@ Four tentacles converged on the same diagnosis with surprising consistency: **th
 - **OxWearables `asleep`** — npj Digital Medicine 2024, wrist-accel-only PyTorch model worth re-evaluating after we have a wearable validation pipeline
 - **HypnosPy** — Python actigraphy lib with Cole-Kripke, Sadeh, Oakley implementations as cross-check
 - **DPSleep** — longitudinal accel pipeline; cites actigraphy thresholds Bios could reuse
-- **SleepTk (wasp-os)** — clever "turn-on-to-wake" cycle-position UX worth surfacing in Fil
+- **SleepTk (wasp-os)** — clever "turn-on-to-wake" cycle-position UX worth surfacing in Bios
 
 ---
 
@@ -114,7 +114,7 @@ Four tentacles converged on the same diagnosis with surprising consistency: **th
 - **C4DMH org** — other repos may have ecological-momentary-assessment code; their domain (digital mental health) overlaps Bios's evaluation-belongs-to-owner stance
 - **HypnosPy** (https://github.com/HypnosPy/HypnosPy) — Python lib for actigraphy sleep analysis. Cole-Kripke and Sadeh algorithms implemented. (Tentacle B covers this thoroughly.)
 - **DPSleep paper** (PMC8529474) — academic open-source pipeline; cites actigraphy ground-truth thresholds Bios could reuse
-- **SleepTk** (Pinetime, wasp-os micropython) — their "wake when you turn the screen on, compute cycle position" UX is a clever insomnia-mode addition Bios could surface in Fil
+- **SleepTk** (Pinetime, wasp-os micropython) — their "wake when you turn the screen on, compute cycle position" UX is a clever insomnia-mode addition Bios could surface
 - **Sleep As Android sonar** — proprietary but documented at sleep.urbandroid.org/docs/sleep/sensors.html. Ultrasonic chirp + microphone reflection for breath rate. Not portable to Bios (mic-during-sleep is privacy-hostile and battery-expensive) but the *concept* of mic-based stillness detection is a fallback when accel is unavailable.
 
 ### Recommendations for Bios

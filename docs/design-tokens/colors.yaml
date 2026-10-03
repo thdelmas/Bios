@@ -108,11 +108,6 @@ apps:
     background: "#000000"
     notes: "Black + gold. Most reduced palette in the ecosystem."
 
-  fil:
-    mode: tbd
-    primary: "#FFFFFF"
-    notes: "Minimal. Identity unfinished — pick a hue before next release."
-
   rooster:
     mode: dark  # locked
     primary: "#FF8E53"          # Sunrise coral

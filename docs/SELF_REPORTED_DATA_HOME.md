@@ -2,7 +2,7 @@
 
 Bios was built around sensor data: continuous, probabilistic, dedup-by-timestamp.
 A 2026-05 audit of the ecosystem (Bios, W2F, Smokeless, Virgil, SoulRadio,
-Fil) surfaced ~80 distinct data points sitting in companion apps that never
+and Fil, a neurology companion dropped 2026-10-03 before it was built) surfaced ~80 distinct data points sitting in companion apps that never
 reach Bios's metric bus — much of it self-reported by the owner (mood
 ratings, symptom severity, intake events, active-test outcomes).
 
@@ -109,7 +109,7 @@ free-text fallback) with 0–3 severity. Lives in `bios-contracts` so any
 companion can produce conforming entries.
 
 **Why:** Cross-app correlation requires a shared vocabulary. W2F's
-photophobia + Fil's gait drift could be a migraine prodrome — but only if
+photophobia + a neurology companion's gait drift could be a migraine prodrome — but only if
 both apps speak the same word. Today Bios's `QuickSymptomCard` is
 free-text; nothing can correlate against it.
 
@@ -123,11 +123,11 @@ existing scheme to avoid breaking already-shipped W2F UX.
 
 Add `reaction_time_ms` to `MetricType` now, without whitelisting any
 companion to write it yet. W2F has PVT data today (`cognitive_probes`
-table); Fil plans SDMT. The second-consumer trigger is implicit but already
+table); a neurology companion would add SDMT. The second-consumer trigger is implicit but already
 firing.
 
 **Why:** Reserving an enum key is essentially free. Coordinating a
-multi-app PR after Fil ships is not. Pre-reservation cuts future
+multi-app PR after a second producer ships is not. Pre-reservation cuts future
 coordination cost and forces an upfront commitment to the key shape before
 two apps invent two different shapes for the same signal.
 
@@ -158,7 +158,7 @@ are all silent; clinical vitals (BP cuff, pulse-ox, thermometer, triage
 chart) are typed because the LETHE-correct case is a degoogled phone
 with no Health Connect at all — the owner *is* the producer, not just
 the reader. Bios is *not* the entry point for data a companion uniquely
-owns — typing cadence belongs in W2F, SDMT in Fil, fall-event in
+owns — typing cadence belongs in W2F, SDMT in a neurology companion, fall-event in
 Virgil.
 
 The gate is now per-metric: [MetricType.allowsManualEntry] declares

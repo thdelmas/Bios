@@ -5,7 +5,7 @@ name: Release APK
 #
 # Per-repo customisation: set WORKING_DIR below.
 #   - `.`        for repos with gradle at root  (Smokeless, SoulRadio, W2F)
-#   - `android`  for repos with gradle nested   (Bios, Fil, Virgil)
+#   - `android`  for repos with gradle nested   (Bios, Virgil)
 
 on:
   push:

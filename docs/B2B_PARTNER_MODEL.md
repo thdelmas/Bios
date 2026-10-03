@@ -32,7 +32,7 @@ consent" makes the sponsor's burden smaller.
 
 A partner is **a named recipient + a config + an API key** — not a codebase.
 
-- **One instrument app per *domain*** (Bios-generic; Fil neuro; W2F mood). Never one per partner.
+- **One instrument app per *domain*** (Bios-generic; W2F mood; a neurology instrument only if one is ever built). Never one per partner.
 - A new partner onboards as: a recipient registered in the partner console, a config (which metrics,
   cadence, study ID), an API/export to their system, optional branding badge. **A new partner is a
   database row, not a sprint.**
@@ -103,10 +103,10 @@ case to handle — it's the model proving it was right.
 
 Bios-direct has a **lower validation bar than the specialists.** For background physiology it mostly
 **aggregates already-validated wearable data** (Oura HRV, Garmin sleep, Health Connect activity) — leaning
-on the device-makers' validation rather than inventing a biomarker. Fil's novel gait algorithm needs its own
+on the device-makers' validation rather than inventing a biomarker. A novel gait algorithm would need its own
 clinical validation before a trial trusts it; Bios orchestrating Garmin HRV does not. So the sequencing is
 likely: **Bios-generic remote-physiology monitoring first** (lower validation, no specialty, it's the substrate
-you're building anyway) → specialist digital-biomarker plays (Fil, W2F) after a clinical champion + validation exist.
+you're building anyway) → specialist digital-biomarker plays (W2F) after a clinical champion + validation exist.
 
 ## Why this fits a non-medical solo founder
 
