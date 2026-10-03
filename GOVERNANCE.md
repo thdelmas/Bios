@@ -103,11 +103,11 @@ A meeting without a written summary is a meeting that didn't happen.
 | Channel | Purpose |
 |---|---|
 | **GitHub Issues** | Proposals, decisions, bug reports |
-| **GitHub Discussions** | Open questions, ideas not yet ready for a proposal |
+| **[Discord](https://discord.gg/cEdE8yYHkh)** | Questions, feedback, ideas not yet ready for a proposal (GitHub Discussions is disabled) |
 | **Pull Requests** | Code review, implementation discussion |
 | **Git commit messages** | "Why" behind each change (conventional format required) |
 
-No Slack, no Discord, no email threads for project decisions. These are allowed for social/community purposes but never for technical decisions.
+No Slack, no Discord, no email threads for project decisions. Discord is the community and feedback space; anything that becomes a proposal or a decision moves to a GitHub Issue.
 
 ---
 

@@ -6,6 +6,12 @@ Hub of the Bios ecosystem (Bios, Fil, W2F, Smokeless, Virgil, SoulRadio) — exp
 
 For full context: [CLAUDE.md](CLAUDE.md), [MANIFESTO.md](MANIFESTO.md), [docs/](docs/README.md).
 
+## Community
+
+Questions, feedback, bug reports and ideas: join the **[Bios Discord](https://discord.gg/cEdE8yYHkh)**.
+Please keep personal health data (values, screenshots, symptoms) out of public channels.
+Bugs with a clear reproduction can also go straight to [GitHub Issues](https://github.com/thdelmas/Bios/issues/new).
+
 ## Install
 
 ### Option 1: Direct download

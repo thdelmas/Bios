@@ -17,10 +17,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
- * Settings → Feedback & Community card. Two outlinks: GitHub Discussions
- * and a fresh issue. Extracted from [SettingsScreen] to keep the host
- * file under the 500-line cap.
+ * Settings → Feedback & Community card. Two outlinks: the Bios Discord
+ * (community, questions, feedback; GitHub Discussions is disabled on the
+ * repo) and a fresh GitHub issue. Extracted from [SettingsScreen] to keep
+ * the host file under the 500-line cap.
  */
+internal const val DISCORD_INVITE_URL = "https://discord.gg/cEdE8yYHkh"
+
 @Composable
 internal fun SettingsFeedbackCard() {
     val context = LocalContext.current
@@ -29,7 +32,8 @@ internal fun SettingsFeedbackCard() {
             Text("Feedback", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Help improve Bios by reporting detection accuracy, requesting features, or flagging issues.",
+                "Help improve Bios by reporting detection accuracy, requesting features, or flagging issues. " +
+                    "Please keep personal health data out of public posts.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -38,12 +42,12 @@ internal fun SettingsFeedbackCard() {
                 onClick = {
                     val intent = Intent(
                         Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://github.com/thdelmas/Bios/discussions"),
+                        android.net.Uri.parse(DISCORD_INVITE_URL),
                     )
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Open GitHub Discussions") }
+            ) { Text("Join the Bios Discord") }
             Spacer(Modifier.height(4.dp))
             OutlinedButton(
                 onClick = {
