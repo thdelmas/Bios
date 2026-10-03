@@ -2,6 +2,8 @@ package com.bios.app.ingest
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
+import androidx.health.connect.client.feature.ExperimentalFeatureAvailabilityApi
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -21,29 +23,34 @@ import java.time.Instant
 /**
  * Bridges Health Connect data into Bios unified MetricReadings.
  */
+@OptIn(ExperimentalFeatureAvailabilityApi::class)
 class HealthConnectAdapter(private val context: Context) {
 
     private val client: HealthConnectClient by lazy {
         HealthConnectClient.getOrCreate(context)
     }
 
-    // Permissions we request
-    val permissions = setOf(
-        HealthPermission.getReadPermission(HeartRateRecord::class),
-        HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class),
-        HealthPermission.getReadPermission(RestingHeartRateRecord::class),
-        HealthPermission.getReadPermission(OxygenSaturationRecord::class),
-        HealthPermission.getReadPermission(RespiratoryRateRecord::class),
-        HealthPermission.getReadPermission(SkinTemperatureRecord::class),
-        HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-        HealthPermission.getReadPermission(Vo2MaxRecord::class),
-        // SyncWorker runs in the background; without this the HC service returns
-        // only Bios' own written records (none) instead of Google Fit / Fitbit data.
-        HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND,
-    ) + HealthConnectBodyComposition.permissions  // body comp lives in a sibling
+    /**
+     * Permissions we request: the core set plus whatever optional features
+     * this device's Health Connect supports. Skin temperature and background
+     * read are unknown to older HC builds (Android 14 platform HC among them):
+     * requesting them there can never be granted, and onboarding demanded the
+     * full set, so the owner was stuck on the first screen forever.
+     */
+    val permissions: Set<String> by lazy {
+        permissionsFor(skinTempSupported = skinTempSupported, backgroundReadSupported = backgroundReadSupported)
+    }
+
+    /** False on HC builds without skin temperature; its read would fail the whole batch. */
+    val skinTempSupported: Boolean by lazy { featureAvailable(HealthConnectFeatures.FEATURE_SKIN_TEMPERATURE) }
+
+    private val backgroundReadSupported: Boolean by lazy {
+        featureAvailable(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND)
+    }
+
+    private fun featureAvailable(feature: Int): Boolean = runCatching {
+        client.features.getFeatureStatus(feature) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+    }.getOrDefault(false)
 
     val isAvailable: Boolean
         get() = HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
@@ -66,7 +73,9 @@ class HealthConnectAdapter(private val context: Context) {
             async { HealthConnectReads.restingHr(client, startTime, endTime, sourceId) },
             async { HealthConnectReads.spo2(client, startTime, endTime, sourceId) },
             async { HealthConnectReads.respiratoryRate(client, startTime, endTime, sourceId) },
-            async { HealthConnectReads.skinTemp(client, startTime, endTime, sourceId) },
+            async {
+                if (skinTempSupported) HealthConnectReads.skinTemp(client, startTime, endTime, sourceId) else emptyList()
+            },
             async { HealthConnectReads.sleep(client, startTime, endTime, sourceId) },
             async { HealthConnectReads.steps(client, startTime, endTime, sourceId) },
             async { HealthConnectReads.activeCalories(client, startTime, endTime, sourceId) },
@@ -190,6 +199,25 @@ class HealthConnectAdapter(private val context: Context) {
     internal data class HrSample(val timestampMs: Long, val bpm: Double)
 
     companion object {
+        /** Pure so the feature gating is unit-testable without a device. */
+        fun permissionsFor(skinTempSupported: Boolean, backgroundReadSupported: Boolean): Set<String> = buildSet {
+            add(HealthPermission.getReadPermission(HeartRateRecord::class))
+            add(HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class))
+            add(HealthPermission.getReadPermission(RestingHeartRateRecord::class))
+            add(HealthPermission.getReadPermission(OxygenSaturationRecord::class))
+            add(HealthPermission.getReadPermission(RespiratoryRateRecord::class))
+            if (skinTempSupported) add(HealthPermission.getReadPermission(SkinTemperatureRecord::class))
+            add(HealthPermission.getReadPermission(SleepSessionRecord::class))
+            add(HealthPermission.getReadPermission(StepsRecord::class))
+            add(HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class))
+            add(HealthPermission.getReadPermission(ExerciseSessionRecord::class))
+            add(HealthPermission.getReadPermission(Vo2MaxRecord::class))
+            // SyncWorker runs in the background; without this the HC service returns
+            // only Bios' own written records (none) instead of Google Fit / Fitbit data.
+            if (backgroundReadSupported) add(HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND)
+            addAll(HealthConnectBodyComposition.permissions) // body comp lives in a sibling
+        }
+
         /**
          * Maps a Health Connect `ExerciseSessionRecord.exerciseType` int to
          * Bios's coarse modality bucket. Unknown / unmapped types fall to
