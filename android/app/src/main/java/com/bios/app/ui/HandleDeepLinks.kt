@@ -4,11 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.bios.app.alerts.AlertNotificationIntents
 import com.bios.app.alerts.DisconnectNotifier
 import com.bios.app.provider.CompanionAccessNotifier
+import com.bios.app.ui.alerts.alertDetailRoute
 
 /**
  * Cross-process deep links delivered via the launching Intent:
+ *  - AlertManager / FollowUpWorker notifications → the alert detail screen
  *  - CompanionAccessNotifier → Settings → Companion Apps
  *  - DisconnectNotifier → Data Coverage (so the owner can reconnect a
  *    failing source)
@@ -47,6 +50,15 @@ fun HandleDeepLinks(navController: NavController) {
             intent.removeExtra(DisconnectNotifier.EXTRA_NAVIGATE_TO_DATA_COVERAGE)
             navController.navigate("data_coverage")
         }
+    }
+
+    LaunchedEffect(Unit) {
+        val activity = context as? android.app.Activity ?: return@LaunchedEffect
+        val intent = activity.intent ?: return@LaunchedEffect
+        val alertId = intent.getStringExtra(AlertNotificationIntents.EXTRA_OPEN_ALERT_ID)
+            ?: return@LaunchedEffect
+        intent.removeExtra(AlertNotificationIntents.EXTRA_OPEN_ALERT_ID)
+        navController.navigate(alertDetailRoute(alertId))
     }
 
     LaunchedEffect(Unit) {

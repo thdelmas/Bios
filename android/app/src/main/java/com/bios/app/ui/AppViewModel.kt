@@ -230,6 +230,8 @@ class AppViewModel(
         }
     }
 
+    suspend fun loadAlertDetail(id: String) = com.bios.app.alerts.AlertDetailLoader(db).load(id)
+
     fun acknowledgeAlert(id: String) {
         viewModelScope.launch {
             alertManager.acknowledge(id)

@@ -51,6 +51,11 @@ class FollowUpWorker(
             .setContentTitle("How are you feeling?")
             .setContentText("You had an alert: $alertTitle. Tap to update your health journal.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(
+                AlertNotificationIntents.openAlert(
+                    applicationContext, anomalyId, "followup_$anomalyId".hashCode()
+                )
+            )
             .setAutoCancel(true)
             .build()
 

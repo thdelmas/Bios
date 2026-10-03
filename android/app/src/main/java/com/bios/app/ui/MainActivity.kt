@@ -1,5 +1,7 @@
 package com.bios.app.ui
 
+import com.bios.app.ui.alerts.alertDetailRoute
+import com.bios.app.ui.alerts.alertRoutes
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -281,6 +283,7 @@ fun BiosApp(viewModel: AppViewModel) {
                     },
                     onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToReference = { navController.navigate("longevity_reference") },
+                    onNavigateToAlert = { navController.navigate(alertDetailRoute(it)) },
                 )
             }
             composable("timeline") {
@@ -339,6 +342,7 @@ fun BiosApp(viewModel: AppViewModel) {
             // Self-surface routes — extracted to IdentityRoutes.kt to keep this file
             // under the 500-line cap and give new self-screens a single landing zone.
             identityRoutes(navController)
+            alertRoutes(navController, viewModel)
             composable("ble_pair") {
                 val bleVm = remember(viewModel) {
                     com.bios.app.ui.ble.BleAirQualityPairViewModel(

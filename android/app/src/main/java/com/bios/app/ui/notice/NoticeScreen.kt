@@ -53,6 +53,7 @@ fun NoticeScreen(
     onNavigateToCondition: (String) -> Unit,
     onNavigateToCompanions: () -> Unit,
     onNavigateToReference: () -> Unit,
+    onNavigateToAlert: (String) -> Unit = {},
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val recent by viewModel.recentAlerts.collectAsState()
@@ -124,6 +125,7 @@ fun NoticeScreen(
                         )
                     },
                     onOpenPattern = onNavigateToCondition,
+                    onOpenDetail = { onNavigateToAlert(anomaly.id) },
                 )
             }
         }
@@ -155,6 +157,7 @@ fun NoticeScreen(
                         )
                     },
                     onOpenPattern = onNavigateToCondition,
+                    onOpenDetail = { onNavigateToAlert(anomaly.id) },
                 )
             }
         }

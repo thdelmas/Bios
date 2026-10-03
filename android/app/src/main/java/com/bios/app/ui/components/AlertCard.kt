@@ -36,7 +36,8 @@ fun AlertCard(
     onAcknowledge: () -> Unit,
     onSaveFeedback: (FeedbackInput) -> Unit = {},
     onRequestReview: (() -> Unit)? = null,
-    onOpenPattern: ((String) -> Unit)? = null
+    onOpenPattern: ((String) -> Unit)? = null,
+    onOpenDetail: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showFeedback by remember { mutableStateOf(false) }
@@ -127,6 +128,12 @@ fun AlertCard(
                         }
                     }
 
+                    onOpenDetail?.let { open ->
+                        TextButton(onClick = open, modifier = Modifier.fillMaxWidth()) {
+                            Text("What this means and what to watch")
+                        }
+                    }
+
                     // Existing feedback summary
                     if (hasFeedback) {
                         FeedbackSummary(anomaly)
@@ -210,7 +217,7 @@ private fun ParagraphText(text: String) {
 }
 
 @Composable
-private fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
+internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
     var feltSick by remember { mutableStateOf<Boolean?>(null) }
     var visitedDoctor by remember { mutableStateOf<Boolean?>(null) }
     var diagnosis by remember { mutableStateOf("") }
@@ -328,7 +335,7 @@ private fun YesNoQuestion(
 }
 
 @Composable
-private fun FeedbackSummary(anomaly: Anomaly) {
+internal fun FeedbackSummary(anomaly: Anomaly) {
     val tint = BiosTokens.success
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -377,7 +384,7 @@ private fun FeedbackSummary(anomaly: Anomaly) {
 }
 
 @Composable
-private fun SeverityBadge(tier: AlertTier, color: Color) {
+internal fun SeverityBadge(tier: AlertTier, color: Color) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = color.copy(alpha = 0.15f)

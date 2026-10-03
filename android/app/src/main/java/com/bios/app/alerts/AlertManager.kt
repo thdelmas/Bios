@@ -79,6 +79,20 @@ class AlertManager(
             UrgentEscalationGate.shouldSuppress(tier, state, interventionLevel)
 
         /**
+         * Regional alert disclaimer, resolved through the localization overlay
+         * when available (issue #210), else the English source on RegionConfig.
+         * Shared by the notification body and the alert detail screen.
+         */
+        fun resolveDisclaimer(context: Context): String {
+            val regionConfig = RegionConfigProvider.forCurrentLocale()
+            val localized = regionConfig.regulatory.alertDisclaimerKey?.let { key ->
+                val resId = context.resources.getIdentifier(key, "string", context.packageName)
+                if (resId != 0) context.resources.getString(resId).takeIf { it.isNotBlank() } else null
+            }
+            return localized ?: regionConfig.regulatory.alertDisclaimer
+        }
+
+        /**
          * Channel + notification priority for an alert. When the goals-of-care
          * gate has silenced an URGENT alert it lands on the low-importance
          * NOTICE channel with PRIORITY_LOW so no sound or vibration fires.
@@ -146,13 +160,7 @@ class AlertManager(
         // resolved through the localization overlay when available
         // (issue #210) — falls back to the English source on the
         // RegionConfig when no resource is declared for the active locale.
-        val regionConfig = RegionConfigProvider.forCurrentLocale()
-        val disclaimerKey = regionConfig.regulatory.alertDisclaimerKey
-        val localizedDisclaimer = disclaimerKey?.let { key ->
-            val resId = context.resources.getIdentifier(key, "string", context.packageName)
-            if (resId != 0) context.resources.getString(resId).takeIf { it.isNotBlank() } else null
-        }
-        val disclaimer = localizedDisclaimer ?: regionConfig.regulatory.alertDisclaimer
+        val disclaimer = resolveDisclaimer(context)
         val baseExplanation = if (urgentEscalationSuppressed) {
             "${anomaly.explanation}\n\n$GOALS_OF_CARE_NOTE"
         } else {
@@ -166,6 +174,9 @@ class AlertManager(
             .setContentText(anomaly.explanation.take(150))
             .setStyle(NotificationCompat.BigTextStyle().bigText(fullExplanation))
             .setPriority(priority)
+            .setContentIntent(
+                AlertNotificationIntents.openAlert(context, anomaly.id, anomaly.id.hashCode())
+            )
             .setAutoCancel(true)
             .build()
 

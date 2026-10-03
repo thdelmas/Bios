@@ -1,6 +1,8 @@
 package com.bios.app.engine
 
+import com.bios.app.alerts.AlertDetailContent
 import com.bios.app.alerts.ConditionPatterns
+import com.bios.app.alerts.MeasuredSignal
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.config.RegionConfig
@@ -108,7 +110,8 @@ class AnomalyDetector(
     }
 
     private suspend fun runMlDetection(): Anomaly? {
-        val zScores = computeCurrentZScores()
+        val signals = computeCurrentSignals()
+        val zScores = signals.mapValues { it.value.zScore }
         if (zScores.isEmpty()) return null
 
         val features = TFLiteAnomalyModel.buildFeatureVector(zScores)
@@ -153,43 +156,34 @@ class AnomalyDetector(
             patternId = ML_PATTERN_ID,
             severity = severity.level,
             title = "Unusual health pattern detected",
-            explanation = buildMlExplanation(deviating),
+            explanation = buildMlExplanation(deviating.keys.mapNotNull { signals[it] }),
             suggestedAction = "Review your recent health trends and note any symptoms."
         )
     }
 
-    private suspend fun computeCurrentZScores(): Map<String, Double> {
-        val metrics = listOf(
-            "heart_rate", "heart_rate_variability", "resting_heart_rate",
-            "blood_oxygen", "respiratory_rate", "skin_temperature_deviation",
-            "sleep_duration", "steps", "active_calories"
-        )
-
-        val zScores = mutableMapOf<String, Double>()
+    private suspend fun computeCurrentSignals(): Map<String, MeasuredSignal> {
+        val signals = mutableMapOf<String, MeasuredSignal>()
         val endMillis = clock()
-        val startMillis = endMillis - 24L * 3600 * 1000
+        val startMillis = endMillis - AlertDetailContent.WINDOW_MILLIS
 
-        for (metric in metrics) {
+        for (metric in AlertDetailContent.WATCHED_METRICS) {
             val baseline = baselineDao.fetch(metric) ?: continue
             // SENSOR-only z-scores: docs/SELF_REPORTED_DATA_HOME.md decision 3.
             val values = readingDao.fetchValues(metric, startMillis, endMillis, ReadingKind.SENSOR.name)
             if (values.isEmpty()) continue
-            zScores[metric] = baseline.zScore(values.average())
+            signals[metric] = AlertDetailContent.signal(metric, values.average(), baseline)
         }
 
-        return zScores
+        return signals
     }
 
-    private fun buildMlExplanation(deviations: Map<String, Double>): String {
+    /** Data statements in real units ("Resting heart rate 66 bpm … usual 53–60 bpm."). */
+    private fun buildMlExplanation(deviations: List<MeasuredSignal>): String {
         if (deviations.isEmpty()) return "Multiple health metrics deviate from your baselines."
-        return deviations.entries
-            .sortedByDescending { abs(it.value) }
+        return deviations
+            .sortedByDescending { abs(it.zScore) }
             .take(3)
-            .joinToString(" ") { (metric, z) ->
-                val dir = if (z > 0) "above" else "below"
-                val name = metric.replace("_", " ")
-                "Your $name is ${String.format("%.1f", abs(z))} std devs $dir baseline."
-            }
+            .joinToString(" ") { AlertDetailContent.notificationLine(it) }
     }
 
     suspend fun scoreAllPatterns(): List<DiagnosticResult> {
