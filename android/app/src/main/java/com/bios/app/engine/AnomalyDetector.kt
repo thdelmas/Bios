@@ -1,8 +1,6 @@
 package com.bios.app.engine
 
-import com.bios.app.alerts.AlertDetailContent
 import com.bios.app.alerts.ConditionPatterns
-import com.bios.app.alerts.MeasuredSignal
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
 import com.bios.app.config.RegionConfig
@@ -110,7 +108,8 @@ class AnomalyDetector(
     }
 
     private suspend fun runMlDetection(): Anomaly? {
-        val signals = computeCurrentSignals()
+        val timed = HolisticSignals.current(readingDao, baselineDao, clock())
+        val signals = timed.mapValues { it.value.first }
         val zScores = signals.mapValues { it.value.zScore }
         if (zScores.isEmpty()) return null
 
@@ -139,6 +138,8 @@ class AnomalyDetector(
         if (hasCooldown) return null
 
         val deviating = zScores.filter { (_, z) -> abs(z) > 1.5 }
+        val newest = deviating.keys.mapNotNull { timed[it]?.second }.maxOrNull()
+        if (newest != null && WindowCoverage.evidenceAlreadyAlerted(deviating.keys, newest, recentAnomalies)) return null
         val severity = when {
             score > 0.85 -> AlertTier.ADVISORY
             score > 0.7 -> AlertTier.NOTICE
@@ -156,34 +157,9 @@ class AnomalyDetector(
             patternId = ML_PATTERN_ID,
             severity = severity.level,
             title = "Unusual health pattern detected",
-            explanation = buildMlExplanation(deviating.keys.mapNotNull { signals[it] }),
+            explanation = HolisticSignals.explanation(deviating.keys.mapNotNull { signals[it] }),
             suggestedAction = "Review your recent health trends and note any symptoms."
         )
-    }
-
-    private suspend fun computeCurrentSignals(): Map<String, MeasuredSignal> {
-        val signals = mutableMapOf<String, MeasuredSignal>()
-        val endMillis = clock()
-        val startMillis = endMillis - AlertDetailContent.WINDOW_MILLIS
-
-        for (metric in AlertDetailContent.WATCHED_METRICS) {
-            val baseline = baselineDao.fetch(metric) ?: continue
-            // SENSOR-only z-scores: docs/SELF_REPORTED_DATA_HOME.md decision 3.
-            val values = readingDao.fetchValues(metric, startMillis, endMillis, ReadingKind.SENSOR.name)
-            if (values.isEmpty()) continue
-            signals[metric] = AlertDetailContent.signal(metric, values.average(), baseline)
-        }
-
-        return signals
-    }
-
-    /** Data statements in real units ("Resting heart rate 66 bpm … usual 53–60 bpm."). */
-    private fun buildMlExplanation(deviations: List<MeasuredSignal>): String {
-        if (deviations.isEmpty()) return "Multiple health metrics deviate from your baselines."
-        return deviations
-            .sortedByDescending { abs(it.zScore) }
-            .take(3)
-            .joinToString(" ") { AlertDetailContent.notificationLine(it) }
     }
 
     suspend fun scoreAllPatterns(): List<DiagnosticResult> {
@@ -204,6 +180,7 @@ class AnomalyDetector(
             var zScore: Double? = null
             var isActive = false
             var hasBaseline = false
+            var insufficient = false
 
             if (rule.isAbsolute) {
                 // Absolute clinical threshold — no baseline, no time window.
@@ -233,9 +210,10 @@ class AnomalyDetector(
                 if (hasBaseline) baselinesFound++
 
                 if (baseline != null) {
-                    val values = fetchRecentValues(rule.metricType, rule.minDurationHours)
-                    if (values.isNotEmpty()) {
-                        zScore = baseline.zScore(values.average())
+                    val sample = windowSample(rule)
+                    insufficient = !sample.sufficient
+                    if (sample.sufficient) {
+                        zScore = baseline.zScore(sample.values.average())
                         isActive = when (rule.direction) {
                             DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
                             DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
@@ -260,7 +238,8 @@ class AnomalyDetector(
                 weight = rule.weight,
                 currentZScore = zScore,
                 isActive = isActive,
-                hasBaseline = hasBaseline
+                hasBaseline = hasBaseline,
+                insufficientData = insufficient,
             ))
         }
 
@@ -289,6 +268,7 @@ class AnomalyDetector(
 
     private suspend fun evaluatePattern(pattern: ConditionPattern): Anomaly? {
         val activeDeviations = mutableMapOf<MetricType, Double>()
+        var newestEvidence: Long? = null
         var totalWeightedScore = 0.0
         var totalWeight = 0.0
 
@@ -304,7 +284,9 @@ class AnomalyDetector(
                 continue
             }
 
-            val recentValues = fetchRecentValues(rule.metricType, rule.minDurationHours)
+            val absent = rule.direction == DeviationDirection.ABSENT
+            val recentValues = if (absent) fetchRecentValues(rule.metricType, rule.minDurationHours) else emptyList()
+            val sample = if (absent) null else windowSample(rule)
             val (isActive, contributedScore) = when (rule.direction) {
                 DeviationDirection.ABSENT -> {
                     // Absence is a signal only when the metric was present before
@@ -316,10 +298,10 @@ class AnomalyDetector(
                 }
                 else -> {
                     val baseline = baselineDao.fetch(rule.metricType.key)
-                    if (baseline == null || recentValues.isEmpty()) {
+                    if (baseline == null || sample == null || !sample.sufficient) {
                         Pair(false, 0.0)
                     } else {
-                        val zScore = baseline.zScore(recentValues.average())
+                        val zScore = baseline.zScore(sample.values.average())
                         val deviating = when (rule.direction) {
                             DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
                             DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
@@ -328,6 +310,7 @@ class AnomalyDetector(
                         }
                         if (deviating) {
                             activeDeviations[rule.metricType] = zScore
+                            newestEvidence = maxOf(newestEvidence ?: 0L, sample.newestTimestamp ?: 0L)
                             Pair(true, abs(zScore) * rule.weight)
                         } else {
                             Pair(false, 0.0)
@@ -350,8 +333,11 @@ class AnomalyDetector(
 
         val combinedScore = if (totalWeight > 0) totalWeightedScore / totalWeight else 0.0
 
-        // Cool-down: don't re-alert for the same pattern within 24 hours
+        // Cool-down: don't re-alert for the same pattern within 24 hours, and
+        // never re-count evidence another alert already used (rule-window-coverage).
         val recentAnomalies = anomalyDao.fetchRecent(10)
+        val metricKeys = activeDeviations.keys.map { it.key }.toSet()
+        if (newestEvidence != null && WindowCoverage.evidenceAlreadyAlerted(metricKeys, newestEvidence!!, recentAnomalies)) return null
         val cooldownMillis = 24 * 3600 * 1000L
         val hasCooldown = recentAnomalies.any { anomaly ->
             anomaly.patternId == pattern.id &&
@@ -416,6 +402,15 @@ class AnomalyDetector(
         return daoFor(rule.metricType).countInRange(
             rule.metricType.key, lookbackStart, windowStart, readingKindFilterFor(rule.metricType)
         ) > 0
+    }
+
+    /** Deviation-rule window with coverage + freshness verdict (docs/specs/rule-window-coverage.md). */
+    private suspend fun windowSample(rule: com.bios.app.alerts.SignalRule): WindowSample {
+        val end = clock()
+        val start = end - rule.minDurationHours.toLong() * 3600 * 1000
+        val readings = daoFor(rule.metricType)
+            .fetchTimedValues(rule.metricType.key, start, end, readingKindFilterFor(rule.metricType))
+        return WindowCoverage.sample(readings, rule.minDurationHours, end)
     }
 
     private suspend fun fetchRecentValues(metricType: MetricType, hours: Int): List<Double> {

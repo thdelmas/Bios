@@ -290,6 +290,7 @@ private fun SignalDetailRow(signal: SignalStatus) {
 
     val valueText = when {
         !signal.hasBaseline -> "—"
+        signal.insufficientData -> "no recent data"
         signal.currentZScore == null -> "—"
         else -> {
             val sign = if (signal.currentZScore > 0) "+" else ""

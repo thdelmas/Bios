@@ -184,6 +184,9 @@ private class FakeHrbsDao(
     override suspend fun insertAll(readings: List<MetricReading>): Unit = notUsed()
     override suspend fun insert(reading: MetricReading): Unit = notUsed()
     override suspend fun fetchValues(metricType: String, startMillis: Long, endMillis: Long, readingKind: String?): List<Double> = notUsed()
+    override suspend fun fetchTimedValues(
+        metricType: String, startMillis: Long, endMillis: Long, readingKind: String?
+    ): List<com.bios.app.data.dao.TimedValue> = notUsed()
     override suspend fun fetchLatest(metricType: String, limit: Int): List<MetricReading> = notUsed()
     override suspend fun count(metricType: String): Int = notUsed()
     override suspend fun countAll(): Int = notUsed()

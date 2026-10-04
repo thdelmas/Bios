@@ -11,7 +11,9 @@ data class SignalStatus(
     val weight: Double,
     val currentZScore: Double?,
     val isActive: Boolean,
-    val hasBaseline: Boolean
+    val hasBaseline: Boolean,
+    /** Window lacks coverage or fresh readings: shown as "no recent data", never as a deviation. */
+    val insufficientData: Boolean = false,
 )
 
 data class DiagnosticResult(

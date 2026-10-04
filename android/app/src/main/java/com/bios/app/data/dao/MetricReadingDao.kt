@@ -45,6 +45,26 @@ interface MetricReadingDao {
         readingKind: String? = null
     ): List<Double>
 
+    // Same filter as fetchValues, with timestamps: the engine's window
+    // coverage check needs to know when readings fall, not only their values
+    // (docs/specs/rule-window-coverage.md).
+    @Query("""
+        SELECT mr.timestamp AS timestamp, mr.value AS value FROM metric_readings mr
+        INNER JOIN data_sources ds ON mr.sourceId = ds.id
+        WHERE mr.metricType = :metricType
+          AND mr.timestamp >= :startMillis
+          AND mr.timestamp <= :endMillis
+          AND mr.isPrimary = 1
+          AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
+        ORDER BY mr.timestamp ASC
+    """)
+    suspend fun fetchTimedValues(
+        metricType: String,
+        startMillis: Long,
+        endMillis: Long,
+        readingKind: String? = null
+    ): List<TimedValue>
+
     @Query("""
         SELECT * FROM metric_readings
         WHERE metricType = :metricType AND isPrimary = 1
@@ -220,3 +240,6 @@ interface MetricReadingDao {
     @Query("DELETE FROM metric_readings")
     suspend fun deleteAll()
 }
+
+/** One reading as timestamp and value, for window-coverage checks. */
+data class TimedValue(val timestamp: Long, val value: Double)
