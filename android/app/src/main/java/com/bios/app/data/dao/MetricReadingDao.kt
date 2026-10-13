@@ -76,6 +76,28 @@ interface MetricReadingDao {
     @Query("SELECT COUNT(*) FROM metric_readings WHERE metricType = :metricType")
     suspend fun count(metricType: String): Int
 
+    // Calendar-bucketed sums for cumulative-daily metrics (steps, active
+    // calories, active minutes). SQLite's 'localtime' does the time-zone
+    // and DST work, so a 23 h or 25 h day is still one bucket; `fmt` is a
+    // strftime pattern from ui.trends.BucketUnit (docs/specs/day-totals.md).
+    @Query("""
+        SELECT strftime(:fmt, mr.timestamp / 1000, 'unixepoch', 'localtime') AS bucket,
+               SUM(mr.value) AS total
+        FROM metric_readings mr
+        WHERE mr.metricType = :metricType
+          AND mr.timestamp >= :startMillis
+          AND mr.timestamp <= :endMillis
+          AND mr.isPrimary = 1
+        GROUP BY bucket
+        ORDER BY bucket ASC
+    """)
+    suspend fun fetchBucketTotals(
+        metricType: String,
+        startMillis: Long,
+        endMillis: Long,
+        fmt: String
+    ): List<BucketTotal>
+
     @Query("SELECT COUNT(*) FROM metric_readings")
     suspend fun countAll(): Int
 
@@ -243,3 +265,6 @@ interface MetricReadingDao {
 
 /** One reading as timestamp and value, for window-coverage checks. */
 data class TimedValue(val timestamp: Long, val value: Double)
+
+/** One calendar bucket from [MetricReadingDao.fetchBucketTotals]; `bucket` is the strftime key. */
+data class BucketTotal(val bucket: String, val total: Double)

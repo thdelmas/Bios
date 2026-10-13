@@ -216,6 +216,9 @@ private class FakeMetricReadingDao(
     override suspend fun fetchTimedValues(
         metricType: String, startMillis: Long, endMillis: Long, readingKind: String?
     ): List<com.bios.app.data.dao.TimedValue> = notUsed()
+    override suspend fun fetchBucketTotals(
+        metricType: String, startMillis: Long, endMillis: Long, fmt: String
+    ): List<com.bios.app.data.dao.BucketTotal> = notUsed()
     override suspend fun fetchLatest(metricType: String, limit: Int): List<MetricReading> = notUsed()
     override suspend fun count(metricType: String): Int = notUsed()
     override suspend fun countAll(): Int = notUsed()

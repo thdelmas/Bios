@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bios.app.ui.components.cumulativeDailyMetrics
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.model.MetricReading
 import com.bios.app.ui.AppViewModel
@@ -75,6 +76,12 @@ fun TrendsScreen(
     }
     var chartReadings by remember { mutableStateOf<List<MetricReading>>(emptyList()) }
     var chartLoaded by remember(selectedMetric, chartWindow) { mutableStateOf(false) }
+    // Cumulative-daily metrics chart calendar totals instead of raw samples
+    // (docs/specs/day-totals.md). Hour is not offered for them.
+    val cumulative = selectedMetric in cumulativeDailyMetrics
+    if (cumulative && chartWindow !in dayTotalWindows) chartWindow = MetricChartTimeWindow.DEFAULT
+    var dayTotals by remember { mutableStateOf<List<DayTotal>>(emptyList()) }
+    var selectedBucket by remember(selectedMetric, chartWindow) { mutableIntStateOf(-1) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(selectedMetric, entriesRefreshKey) {
@@ -89,6 +96,24 @@ fun TrendsScreen(
     LaunchedEffect(selectedMetric, chartWindow, entriesRefreshKey) {
         chartLoaded = false
         val now = System.currentTimeMillis()
+        if (cumulative) {
+            val zone = java.time.ZoneId.systemDefault()
+            val unit = bucketUnitFor(chartWindow)
+            val rows = viewModel.db.metricReadingDao().fetchBucketTotals(
+                metricType = selectedMetric.key,
+                startMillis = calendarStartMillis(chartWindow, now, zone),
+                endMillis = now,
+                fmt = unit.strftime,
+            )
+            dayTotals = fillBuckets(
+                bucketKeys(chartWindow, now, zone),
+                rows.associate { it.bucket to it.total },
+            )
+            // Latest bucket that has readings (today's 23:00 slot is empty at 15:00).
+            selectedBucket = dayTotals.indexOfLast { it.hasReadings }.takeIf { it >= 0 } ?: dayTotals.lastIndex
+            chartLoaded = true
+            return@LaunchedEffect
+        }
         val raw = viewModel.db.metricReadingDao().fetch(
             metricType = selectedMetric.key,
             startMillis = chartWindow.startMillis(now),
@@ -125,13 +150,28 @@ fun TrendsScreen(
         }
 
         item(key = "metric-chart") {
-            MetricChart(
-                metric = selectedMetric,
-                readings = chartReadings,
-                loaded = chartLoaded,
-                selectedWindow = chartWindow,
-                onSelectWindow = { chartWindow = it },
-            )
+            if (cumulative) {
+                DayTotalsChart(
+                    metric = selectedMetric,
+                    state = DayTotalsChartState(
+                        totals = dayTotals,
+                        unit = bucketUnitFor(chartWindow),
+                        loaded = chartLoaded,
+                        selectedWindow = chartWindow,
+                        selectedIndex = selectedBucket,
+                    ),
+                    onSelectWindow = { chartWindow = it },
+                    onSelectIndex = { selectedBucket = it },
+                )
+            } else {
+                MetricChart(
+                    metric = selectedMetric,
+                    readings = chartReadings,
+                    loaded = chartLoaded,
+                    selectedWindow = chartWindow,
+                    onSelectWindow = { chartWindow = it },
+                )
+            }
         }
 
         item(key = "metric-baseline") {

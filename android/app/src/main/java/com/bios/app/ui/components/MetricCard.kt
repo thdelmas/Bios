@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.ui.AppViewModel
+import com.bios.app.ui.getDaySum
 import com.bios.app.ui.theme.BiosTokens
 import kotlin.math.abs
 
@@ -41,6 +42,7 @@ fun MetricCard(
 ) {
     var latestValue by remember { mutableStateOf<Double?>(null) }
     var latestTimestamp by remember { mutableStateOf<Long?>(null) }
+    var yesterdayValue by remember { mutableStateOf<Double?>(null) }
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
 
     LaunchedEffect(metricType, refreshKey) {
@@ -51,6 +53,7 @@ fun MetricCard(
             // "last bucket received," not "data freshness," so suppress it.
             latestValue = viewModel.getTodaySum(metricType)
             latestTimestamp = null
+            yesterdayValue = viewModel.getDaySum(metricType, daysAgo = 1)
         } else {
             val reading = viewModel.getLatestReading(metricType)
             latestValue = reading?.value
@@ -65,11 +68,11 @@ fun MetricCard(
     val modifier = Modifier.fillMaxWidth()
     if (onClick != null) {
         Card(modifier = modifier, onClick = onClick, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick)
+            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick, yesterdayValue)
         }
     } else {
         Card(modifier = modifier, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick)
+            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick, yesterdayValue)
         }
     }
 }
@@ -83,6 +86,7 @@ private fun MetricCardBody(
     latestTimestamp: Long?,
     baseline: PersonalBaseline?,
     onInfoClick: (() -> Unit)?,
+    yesterdayValue: Double? = null,
 ) {
     Column(modifier = Modifier.padding(12.dp)) {
         Row(
@@ -138,16 +142,26 @@ private fun MetricCardBody(
         )
 
         val ageText = ageMillis?.let { formatRelativeTime(it) }
+        val yesterdayText = yesterdayValue?.let { "yesterday ${formatValue(it, metricType)}" }
         Text(
-            text = when {
-                stale && ageText != null -> "$label · $ageText — open your watch app to refresh"
-                ageText != null -> "$label · $ageText"
-                else -> label
-            },
+            text = metricCardSubtitle(label, stale, ageText, yesterdayText),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+/** Second line of a tile: freshness for live metrics, yesterday's total for cumulative ones. */
+internal fun metricCardSubtitle(
+    label: String,
+    stale: Boolean,
+    ageText: String?,
+    yesterdayText: String?,
+): String = when {
+    stale && ageText != null -> "$label · $ageText — open your watch app to refresh"
+    ageText != null -> "$label · $ageText"
+    yesterdayText != null -> "$label · $yesterdayText"
+    else -> label
 }
 
 @Composable
@@ -224,7 +238,7 @@ internal fun formatValue(value: Double, metricType: MetricType): String {
         MetricType.BLOOD_OXYGEN ->
             "${value.toInt()}%"
         MetricType.STEPS ->
-            "${value.toInt()}"
+            java.text.NumberFormat.getIntegerInstance().format(value.toLong())
         MetricType.SKIN_TEMPERATURE_DEVIATION -> {
             val sign = if (value >= 0) "+" else ""
             "$sign${String.format("%.1f", value)}°"
