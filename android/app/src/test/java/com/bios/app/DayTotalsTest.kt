@@ -10,6 +10,9 @@ import com.bios.app.ui.trends.bucketUnitFor
 import com.bios.app.ui.trends.calendarStartMillis
 import com.bios.app.ui.trends.dayTotalWindows
 import com.bios.app.ui.trends.fillBuckets
+import com.bios.app.ui.trends.fillResolved
+import com.bios.app.ui.trends.winnerMark
+import com.bios.app.data.ResolvedBucket
 import com.bios.app.ui.trends.formatTotal
 import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
@@ -137,5 +140,22 @@ class DayTotalsTest {
         assertEquals(BucketUnit.DAY, bucketUnitFor(MetricChartTimeWindow.MONTH))
         assertEquals(BucketUnit.MONTH, bucketUnitFor(MetricChartTimeWindow.YEAR))
         assertEquals(BucketUnit.MONTH, bucketUnitFor(MetricChartTimeWindow.ALL))
+    }
+
+    @Test
+    fun resolved_buckets_fill_keys_and_carry_the_winner() {
+        val keys = listOf("2026-10-12", "2026-10-13")
+        val filled = fillResolved(keys, mapOf("2026-10-13" to ResolvedBucket("2026-10-13", 5464.0, "health_connect:com.coros.coros")))
+        assertFalse(filled[0].hasReadings)
+        assertEquals(null, filled[0].winnerKey)
+        assertTrue(filled[1].hasReadings)
+        assertEquals("health_connect:com.coros.coros", filled[1].winnerKey)
+    }
+
+    @Test
+    fun winner_mark_names_only_the_owners_own_entry() {
+        assertEquals(" · self-reported", winnerMark("self_reported"))
+        assertEquals("", winnerMark("health_connect:com.coros.coros"))
+        assertEquals("", winnerMark(null))
     }
 }

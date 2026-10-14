@@ -14,7 +14,8 @@ import androidx.compose.ui.unit.dp
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.ui.AppViewModel
-import com.bios.app.ui.getDaySum
+import com.bios.app.ui.getDayTotal
+import com.bios.app.ui.trends.winnerMark
 import com.bios.app.ui.theme.BiosTokens
 import kotlin.math.abs
 
@@ -43,6 +44,8 @@ fun MetricCard(
     var latestValue by remember { mutableStateOf<Double?>(null) }
     var latestTimestamp by remember { mutableStateOf<Long?>(null) }
     var yesterdayValue by remember { mutableStateOf<Double?>(null) }
+    var todayMark by remember { mutableStateOf("") }
+    var yesterdayMark by remember { mutableStateOf("") }
     var baseline by remember { mutableStateOf<PersonalBaseline?>(null) }
 
     LaunchedEffect(metricType, refreshKey) {
@@ -51,9 +54,13 @@ fun MetricCard(
             // reading is whatever happened in the last bucket, not today's
             // total. Sum since local midnight instead. Age would only mean
             // "last bucket received," not "data freshness," so suppress it.
-            latestValue = viewModel.getTodaySum(metricType)
+            val today = viewModel.getDayTotal(metricType, daysAgo = 0)
+            val yesterday = viewModel.getDayTotal(metricType, daysAgo = 1)
+            latestValue = today?.total
             latestTimestamp = null
-            yesterdayValue = viewModel.getDaySum(metricType, daysAgo = 1)
+            yesterdayValue = yesterday?.total
+            todayMark = winnerMark(today?.winnerKey)
+            yesterdayMark = winnerMark(yesterday?.winnerKey)
         } else {
             val reading = viewModel.getLatestReading(metricType)
             latestValue = reading?.value
@@ -66,13 +73,20 @@ fun MetricCard(
         containerColor = MaterialTheme.colorScheme.surfaceVariant
     )
     val modifier = Modifier.fillMaxWidth()
+    val yesterdayText = yesterdayValue?.let { "yesterday ${formatValue(it, metricType)}$yesterdayMark" }
     if (onClick != null) {
         Card(modifier = modifier, onClick = onClick, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick, yesterdayValue)
+            MetricCardBody(
+                metricType, label + todayMark, icon, latestValue, latestTimestamp, baseline, onInfoClick,
+                yesterdayText,
+            )
         }
     } else {
         Card(modifier = modifier, colors = colors) {
-            MetricCardBody(metricType, label, icon, latestValue, latestTimestamp, baseline, onInfoClick, yesterdayValue)
+            MetricCardBody(
+                metricType, label + todayMark, icon, latestValue, latestTimestamp, baseline, onInfoClick,
+                yesterdayText,
+            )
         }
     }
 }
@@ -86,7 +100,7 @@ private fun MetricCardBody(
     latestTimestamp: Long?,
     baseline: PersonalBaseline?,
     onInfoClick: (() -> Unit)?,
-    yesterdayValue: Double? = null,
+    yesterdayText: String? = null,
 ) {
     Column(modifier = Modifier.padding(12.dp)) {
         Row(
@@ -142,7 +156,6 @@ private fun MetricCardBody(
         )
 
         val ageText = ageMillis?.let { formatRelativeTime(it) }
-        val yesterdayText = yesterdayValue?.let { "yesterday ${formatValue(it, metricType)}" }
         Text(
             text = metricCardSubtitle(label, stale, ageText, yesterdayText),
             style = MaterialTheme.typography.labelSmall,

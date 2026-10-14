@@ -127,12 +127,12 @@ Responsible for pulling data from all supported sources and normalizing it into 
 
 **Deduplication strategy:**
 
-Two passes in `ingest/Deduplicator.kt`:
+One pass in `ingest/Deduplicator.kt`, two rules:
 
-1. **Exact-match (every metric).** Readings with identical `(metricType, timestamp)` collapse to the highest-confidence one. This is the only safe rule for point-in-time metrics (HR, HRV, RHR, SpO2, sleep stages, biomarkers) — a 1-second skew between two adapters sampling HR is legitimate sampling, not a duplicate.
-2. **Window-overlap (time-window-aggregate metrics only).** Bucketed counts — `STEPS`, `ACTIVE_CALORIES`, `ACTIVE_MINUTES` — from *different sources* within a 5-minute window collapse to the highest-confidence one. Same-source readings inside the window are preserved (consecutive buckets from one adapter are sequential data). Cross-source skew of milliseconds-to-seconds is real (Health Connect's near-realtime stream vs. Gadgetbridge's on-watch-sync writes), so exact-ms dedup alone double-counts step buckets covering the same activity.
+1. **Point-in-time metrics (HR, HRV, RHR, SpO2, sleep stages, biomarkers).** Readings with identical `(metricType, timestamp)` collapse to the highest-confidence one, across sources. A 1-second skew between two adapters sampling HR is legitimate sampling, not a duplicate.
+2. **Count metrics (`STEPS`, `ACTIVE_CALORIES`, `ACTIVE_MINUTES`).** One row per `(metricType, timestamp, sourceId)`: every witness's count is stored. Nothing collapses across sources at ingest; the day total picks **one source per calendar day** at read time by the owner's order (`data/CountSourceOrder.kt`, `data/CountTotals.kt`, spec `docs/specs/source-preference.md`). A Health Connect count record's source is the app that wrote it (`ingest/HealthConnectOrigins.kt`), so COROS, Fitbit and the handset pedometer are three sources. The earlier cross-source 5-minute window pass (issue #14) is gone: with three apps writing per-minute buckets it would have deleted the watch's minutes next to every phone bucket.
 
-Confidence tier ordering: ECG > optical chest > optical wrist > phone camera. Add new window-aggregate metrics to `Deduplicator.WINDOW_MS`.
+Confidence tier ordering: ECG > optical chest > optical wrist > phone camera.
 
 ### 2. Local Data Store
 

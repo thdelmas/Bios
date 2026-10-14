@@ -36,6 +36,22 @@ internal object HealthConnectStableIds {
         "hc-$kind-$sourceId-$hcRecordId"
 
     /**
+     * Stable ID for a count record (steps, active calories) whose Bios
+     * source is the app that wrote it, not the Health Connect transport:
+     * no source id in the key, so the same record re-read under its per-app
+     * source replaces the row it first landed on
+     * (docs/specs/source-preference.md, criterion 1).
+     * Form: `hc-{kind}-{hcRecordId}`.
+     */
+    fun forCountRecord(kind: String, hcRecordId: String): String = "hc-$kind-$hcRecordId"
+
+    /** Prefix of ids [forRecord] produced for [kind] under [sourceId]; the migration's LIKE pattern. */
+    fun sourcedPrefix(kind: String, sourceId: String): String = "hc-$kind-$sourceId-"
+
+    /** Prefix of ids [forCountRecord] produces for [kind]. */
+    fun countPrefix(kind: String): String = "hc-$kind-"
+
+    /**
      * Stable ID for a sub-record mapping (one HC record → many
      * [MetricReading]s, e.g. sleep stages within a session, deltas within
      * a skin-temperature record). [subKey] disambiguates the sub-record;

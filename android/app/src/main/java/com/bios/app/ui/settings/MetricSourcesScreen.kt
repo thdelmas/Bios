@@ -117,6 +117,7 @@ fun MetricSourcesScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            item(key = "count_source_order") { CountSourceOrderSection(viewModel) }
             byDomain.forEach { (domain, metrics) ->
                 item(key = "h_${domain.name}") {
                     Text(

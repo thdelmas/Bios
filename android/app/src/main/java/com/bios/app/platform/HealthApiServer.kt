@@ -35,7 +35,8 @@ import java.time.temporal.ChronoUnit
  */
 class HealthApiServer(
     private val db: BiosDatabase,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val context: android.content.Context,
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
@@ -165,28 +166,37 @@ class HealthApiServer(
 
         val metrics = JSONArray()
         for (type in summaryMetrics) {
-            val baseline = db.personalBaselineDao().fetch(type.key)
-            val readings = db.metricReadingDao().fetchValues(type.key, dayStart, nowMillis)
-            if (readings.isEmpty()) continue
-
-            val current = readings.last()
-            val json = JSONObject().apply {
-                put("metric", type.key)
-                put("current", current)
-                put("unit", type.unit.symbol)
-                if (baseline != null) {
-                    put("baselineMean", baseline.mean)
-                    put("baselineStdDev", baseline.stdDev)
-                    put("trend", baseline.trend)
-                }
-            }
-            metrics.put(json)
+            summaryEntry(type, dayStart, nowMillis)?.let { metrics.put(it) }
         }
 
         return JSONObject().apply {
             put("metrics", metrics)
             put("timestamp", System.currentTimeMillis())
         }.toString()
+    }
+
+    /** Count metrics report today's one-witness total, not the last bucket (docs/specs/source-preference.md). */
+    private suspend fun summaryEntry(type: MetricType, dayStart: Long, nowMillis: Long): JSONObject? {
+        val baseline = db.personalBaselineDao().fetch(type.key)
+        val readings = db.metricReadingDao().fetchValues(type.key, dayStart, nowMillis)
+        if (readings.isEmpty()) return null
+        val current = if (type in com.bios.app.ui.components.cumulativeDailyMetrics) {
+            val zone = java.time.ZoneId.systemDefault()
+            com.bios.app.data.CountTotals(db, context)
+                .dayTotal(type, java.time.LocalDate.now(zone), zone)?.total ?: return null
+        } else {
+            readings.last()
+        }
+        return JSONObject().apply {
+            put("metric", type.key)
+            put("current", current)
+            put("unit", type.unit.symbol)
+            if (baseline != null) {
+                put("baselineMean", baseline.mean)
+                put("baselineStdDev", baseline.stdDev)
+                put("trend", baseline.trend)
+            }
+        }
     }
 
     private suspend fun handleAlerts(): String {

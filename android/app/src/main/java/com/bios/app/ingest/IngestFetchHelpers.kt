@@ -30,8 +30,8 @@ internal suspend fun fetchDirectSensorReadings(
         val readings = mutableListOf<MetricReading>()
         readings += adapter.sampleHeartRate(SENSOR_SAMPLE_DURATION_MS, sourceId)
         readings += adapter.sampleHrv(SENSOR_SAMPLE_DURATION_MS, sourceId)
-        val steps = adapter.readSteps(sourceId)
-        if (steps != null) readings += steps
+        // Steps come from PhoneSensorAdapter alone: one hardware pedometer,
+        // one source (docs/specs/source-preference.md, criterion 7).
         readings
     } catch (_: Exception) {
         emptyList()

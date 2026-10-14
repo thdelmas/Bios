@@ -37,8 +37,12 @@ internal data class DayTotalsChartState(
     val selectedIndex: Int,
 )
 
-/** One bar. [hasReadings] is false for calendar slots the query returned nothing for. */
-data class DayTotal(val key: String, val total: Double, val hasReadings: Boolean)
+/**
+ * One bar. [hasReadings] is false for calendar slots the query returned
+ * nothing for. [winnerKey] is the source that counted the day
+ * (docs/specs/source-preference.md); null for months and empty slots.
+ */
+data class DayTotal(val key: String, val total: Double, val hasReadings: Boolean, val winnerKey: String? = null)
 
 /** The window chips offered for cumulative metrics; Hour is not one of them (spec criterion 2). */
 val dayTotalWindows: List<MetricChartTimeWindow> = listOf(
@@ -100,6 +104,17 @@ fun fillBuckets(keys: List<String>, totals: Map<String, Double>): List<DayTotal>
         val t = totals[key]
         DayTotal(key = key, total = t ?: 0.0, hasReadings = t != null)
     }
+
+/** Same, from resolved one-witness buckets; carries the winner for the header mark. */
+fun fillResolved(keys: List<String>, buckets: Map<String, com.bios.app.data.ResolvedBucket>): List<DayTotal> =
+    keys.map { key ->
+        val b = buckets[key]
+        DayTotal(key = key, total = b?.total ?: 0.0, hasReadings = b != null, winnerKey = b?.winnerKey)
+    }
+
+/** " · self-reported" when the owner's own entry counted the day (spec criterion 9), else "". */
+fun winnerMark(winnerKey: String?): String =
+    if (winnerKey == com.bios.app.model.SourceType.SELF_REPORTED.key) " · self-reported" else ""
 
 /**
  * Owner-facing name of a bucket: "Today", "Yesterday", "Sat 10 Oct";

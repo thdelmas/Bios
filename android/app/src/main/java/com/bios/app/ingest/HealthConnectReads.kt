@@ -201,37 +201,42 @@ internal object HealthConnectReads {
         stageReadings + durationReading
     }
 
+    // Count records are keyed by the app that wrote them, resolved through
+    // [sourceFor] (docs/specs/source-preference.md, criterion 1).
     suspend fun steps(
-        client: HealthConnectClient, start: Instant, end: Instant, sourceId: String,
+        client: HealthConnectClient, start: Instant, end: Instant, sourceFor: suspend (String) -> String,
     ): List<MetricReading> = client.readRecords(
         ReadRecordsRequest(StepsRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end))
     ).records.map { record ->
         val durationSec = java.time.Duration.between(record.startTime, record.endTime).seconds.toInt()
         MetricReading(
-            id = HealthConnectStableIds.forRecord("steps", sourceId, record.metadata.id),
+            id = HealthConnectStableIds.forCountRecord(STEPS_KIND, record.metadata.id),
             metricType = MetricType.STEPS.key,
             value = record.count.toDouble(),
             timestamp = record.startTime.toEpochMilli(),
             durationSec = durationSec,
-            sourceId = sourceId,
+            sourceId = sourceFor(record.metadata.dataOrigin.packageName),
             confidence = ConfidenceTier.MEDIUM.level,
         )
     }
 
     suspend fun activeCalories(
-        client: HealthConnectClient, start: Instant, end: Instant, sourceId: String,
+        client: HealthConnectClient, start: Instant, end: Instant, sourceFor: suspend (String) -> String,
     ): List<MetricReading> = client.readRecords(
         ReadRecordsRequest(ActiveCaloriesBurnedRecord::class, timeRangeFilter = TimeRangeFilter.between(start, end))
     ).records.map { record ->
         MetricReading(
-            id = HealthConnectStableIds.forRecord("active-calories", sourceId, record.metadata.id),
+            id = HealthConnectStableIds.forCountRecord(ACTIVE_CALORIES_KIND, record.metadata.id),
             metricType = MetricType.ACTIVE_CALORIES.key,
             value = record.energy.inKilocalories,
             timestamp = record.startTime.toEpochMilli(),
-            sourceId = sourceId,
+            sourceId = sourceFor(record.metadata.dataOrigin.packageName),
             confidence = ConfidenceTier.MEDIUM.level,
         )
     }
+
+    const val STEPS_KIND = "steps"
+    const val ACTIVE_CALORIES_KIND = "active-calories"
 
     // VO2 max is vendor-derived (Garmin / Fitbit / Apple fitness models); not a clinical CPET.
     suspend fun vo2Max(

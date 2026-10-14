@@ -98,17 +98,10 @@ fun TrendsScreen(
         val now = System.currentTimeMillis()
         if (cumulative) {
             val zone = java.time.ZoneId.systemDefault()
-            val unit = bucketUnitFor(chartWindow)
-            val rows = viewModel.db.metricReadingDao().fetchBucketTotals(
-                metricType = selectedMetric.key,
-                startMillis = calendarStartMillis(chartWindow, now, zone),
-                endMillis = now,
-                fmt = unit.strftime,
-            )
-            dayTotals = fillBuckets(
-                bucketKeys(chartWindow, now, zone),
-                rows.associate { it.bucket to it.total },
-            )
+            // One witness per calendar day (docs/specs/source-preference.md).
+            val buckets = com.bios.app.data.CountTotals(viewModel.db, viewModel.getApplication<android.app.Application>())
+                .buckets(selectedMetric, chartWindow, now, zone)
+            dayTotals = fillResolved(bucketKeys(chartWindow, now, zone), buckets)
             // Latest bucket that has readings (today's 23:00 slot is empty at 15:00).
             selectedBucket = dayTotals.indexOfLast { it.hasReadings }.takeIf { it >= 0 } ?: dayTotals.lastIndex
             chartLoaded = true

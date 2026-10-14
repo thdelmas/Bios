@@ -39,7 +39,6 @@ class DirectSensorAdapter(context: Context) {
     private val stepCounter: Sensor? =
         sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
-    private val stepDelta = StepCounterDelta(context)
 
     val hasHeartRate: Boolean get() = heartRateSensor != null
     val hasHeartBeat: Boolean get() = heartBeatSensor != null
@@ -148,29 +147,6 @@ class DirectSensorAdapter(context: Context) {
         )
     }
 
-    /**
-     * Read steps from the hardware pedometer as a delta since the previous
-     * sample. TYPE_STEP_COUNTER is cumulative since boot, so emitting the
-     * raw value on every sync would double-count; the delta tracker
-     * persists the last seen cumulative per source and handles reboot
-     * resets.
-     */
-    suspend fun readSteps(sourceId: String): MetricReading? {
-        val sensor = stepCounter ?: return null
-        val samples = collectFloatSamples(sensor, STEP_SAMPLE_MS)
-        if (samples.isEmpty()) return null
-
-        val cumulative = samples.last().toLong()
-        val delta = stepDelta.computeDelta(cumulative, sourceId) ?: return null
-        return MetricReading(
-            metricType = MetricType.STEPS.key,
-            value = delta.toDouble(),
-            timestamp = System.currentTimeMillis(),
-            sourceId = sourceId,
-            confidence = ConfidenceTier.LOW.level
-        )
-    }
-
     // Both collectors resume only from inside onSensorChanged, and a sensor
     // that never fires (TYPE_STEP_COUNTER on a stationary phone delivers
     // nothing until the next step) suspends the coroutine FOREVER without an
@@ -235,7 +211,6 @@ class DirectSensorAdapter(context: Context) {
     }
 
     companion object {
-        private const val STEP_SAMPLE_MS = 500L
         private const val SAMPLE_TIMEOUT_FLOOR_MS = 5_000L
 
         /** Same shape as PhoneSensorAdapter: double the window, floor 5s. */

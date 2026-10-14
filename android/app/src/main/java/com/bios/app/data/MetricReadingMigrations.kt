@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * 1. **Migration:** dedupe existing rows by `(sourceId, metricType,
  *    timestamp)`, keeping the highest-confidence survivor (ties broken
  *    by newest `createdAt`, then by id as a stable last tie-break).
- *    Mirrors [com.bios.app.ingest.Deduplicator.exactMatchDedup]'s
+ *    Mirrors [com.bios.app.ingest.Deduplicator.deduplicate]'s
  *    pick-best rule — same semantics, just applied to disk.
  * 2. **Unique index:** prevent future double-inserts at the SQL layer.
  *    `INSERT OR REPLACE` on a conflicting unique index updates the

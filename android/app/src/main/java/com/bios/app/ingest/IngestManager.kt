@@ -58,6 +58,8 @@ class IngestManager @Suppress("LongParameterList") constructor(
     private val payloadDao = db.eventPayloadFieldDao()
     private val toggleDao = db.sourceMetricToggleDao()
     private val circadianEngine = CircadianEngine(readingDao); private val hrbsEngine = HrbsEngine(readingDao)
+    /** One Bios source per app writing into Health Connect (docs/specs/source-preference.md). */
+    private val hcOrigins = HealthConnectOrigins(sourceDao, healthConnect::appLabel)
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
     val lastSyncTime: StateFlow<Long?> = _lastSyncTime
@@ -177,13 +179,24 @@ class IngestManager @Suppress("LongParameterList") constructor(
         // empty — handles the case where the user installed Bios, granted HC
         // permission later, or only just connected a watch. Without this, the
         // 24h syncRecentData loop would never recover the missing history.
-        if (_dataAgeDays.value == 0 || hasEmptyPrimaryMetric()) {
+        if (needsHistoricalBackfill()) {
             IngestTelemetry.log("setup: entering 30-day historical backfill")
             syncHistoricalData()
         } else {
             IngestTelemetry.log("setup: entering recent-24h sync")
             syncRecentData()
         }
+    }
+
+    /** Count records keyed by the app that wrote them (docs/specs/source-preference.md). */
+    private suspend fun fetchHealthConnect(start: Instant, end: Instant, sourceId: String) =
+        healthConnect.fetchReadings(start, end, sourceId, hcOrigins::sourceFor)
+
+    private suspend fun needsHistoricalBackfill(): Boolean {
+        val originResyncOwed = healthConnectSourceId?.let {
+            HealthConnectOriginSplit.run(readingDao, it, System.currentTimeMillis())
+        } ?: false
+        return _dataAgeDays.value == 0 || originResyncOwed || hasEmptyPrimaryMetric()
     }
 
     private suspend fun hasEmptyPrimaryMetric(): Boolean {
@@ -217,7 +230,7 @@ class IngestManager @Suppress("LongParameterList") constructor(
                     val jobs = listOfNotNull(
                         healthConnectSourceId?.let { id ->
                             async {
-                                IngestTelemetry.timedFetch("health_connect") { healthConnect.fetchReadings(start, end, id) }
+                                IngestTelemetry.timedFetch("health_connect") { fetchHealthConnect(start, end, id) }
                                     .also { noteDelivery(SourceType.HEALTH_CONNECT, it) }
                             }
                         },
@@ -304,7 +317,7 @@ class IngestManager @Suppress("LongParameterList") constructor(
                 val allReadings = coroutineScope {
                     val jobs = listOfNotNull(
                         healthConnectSourceId?.let { id ->
-                            async { healthConnect.fetchReadings(current, chunkEnd, id) }
+                            async { fetchHealthConnect(current, chunkEnd, id) }
                         },
                         async { fetchGadgetbridgeReadings(current, chunkEnd) },
                         async { fetchOuraReadings(current, chunkEnd) },

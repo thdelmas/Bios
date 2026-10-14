@@ -27,24 +27,23 @@ class DailyDigestWorker(
         if (!isEnabled(applicationContext)) return Result.success()
 
         val db = BiosDatabase.getInstance(applicationContext)
-        val summary = buildSummary(db)
+        val summary = buildSummary(db, applicationContext)
         sendNotification(summary)
         return Result.success()
     }
 
-    internal suspend fun buildSummary(db: BiosDatabase): DigestSummary {
-        val now = System.currentTimeMillis()
-        val yesterday = now - 24 * 3600 * 1000L
-
+    internal suspend fun buildSummary(db: BiosDatabase, context: android.content.Context): DigestSummary {
         val unacknowledged = db.anomalyDao().fetchUnacknowledged().size
 
         val rhr = db.metricReadingDao()
             .fetchLatest(MetricType.HEART_RATE.key).firstOrNull()
         val hrv = db.metricReadingDao()
             .fetchLatest(MetricType.HEART_RATE_VARIABILITY.key).firstOrNull()
-        val steps = db.metricReadingDao()
-            .fetchValues(MetricType.STEPS.key, yesterday, now)
-            .sum().toLong()
+        // Yesterday's calendar day, counted by one source (docs/specs/source-preference.md).
+        val zone = java.time.ZoneId.systemDefault()
+        val steps = com.bios.app.data.CountTotals(db, context)
+            .dayTotal(MetricType.STEPS, java.time.LocalDate.now(zone).minusDays(1), zone)
+            ?.total?.toLong() ?: 0L
 
         return DigestSummary(
             rhr = rhr?.value?.toInt(),
@@ -63,7 +62,7 @@ class DailyDigestWorker(
         val parts = mutableListOf<String>()
         summary.rhr?.let { parts += "RHR ${it}bpm" }
         summary.hrv?.let { parts += "HRV ${it}ms" }
-        if (summary.steps > 0) parts += "${summary.steps} steps"
+        if (summary.steps > 0) parts += "yesterday ${summary.steps} steps"
 
         val body = if (parts.isEmpty())
             "Open Bios to sync your latest health data."

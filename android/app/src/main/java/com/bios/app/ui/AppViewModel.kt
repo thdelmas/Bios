@@ -272,13 +272,7 @@ class AppViewModel(
      * daily metrics — Health Connect emits one StepsRecord per sample bucket,
      * so the latest is the last hour, not the day total. Null when no readings.
      */
-    suspend fun getTodaySum(metricType: MetricType): Double? {
-        val startOfDay = java.time.LocalDate.now()
-            .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val values = db.metricReadingDao()
-            .fetchValues(metricType.key, startOfDay, System.currentTimeMillis())
-        return if (values.isEmpty()) null else values.sum()
-    }
+    suspend fun getTodaySum(metricType: MetricType): Double? = getDayTotal(metricType, daysAgo = 0)?.total
 
     suspend fun getBaseline(metricType: MetricType): PersonalBaseline? {
         return db.personalBaselineDao().fetch(metricType.key)

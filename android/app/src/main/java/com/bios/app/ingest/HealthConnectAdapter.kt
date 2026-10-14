@@ -31,6 +31,27 @@ class HealthConnectAdapter(private val context: Context) {
     }
 
     /**
+     * Owner-readable name of a Health Connect writer: the installed app's
+     * label when this app may see it (package visibility hides most apps
+     * on Android 11+), else a known health app, else the phone's own name
+     * for a platform writer (an origin that is not a package), else the
+     * package's last segment.
+     */
+    fun appLabel(packageName: String): String {
+        if (packageName.isBlank()) return "Unknown app"
+        runCatching {
+            val pm = context.packageManager
+            return pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+        }
+        KNOWN_WRITERS.entries.firstOrNull { packageName.startsWith(it.key) }?.let { return it.value }
+        if (!packageName.contains('.')) {
+            return android.provider.Settings.Global.getString(context.contentResolver, "device_name")
+                ?.takeIf { it.isNotBlank() } ?: "This phone"
+        }
+        return packageName.substringAfterLast('.').replaceFirstChar { it.uppercase() }
+    }
+
+    /**
      * Permissions we request: the core set plus whatever optional features
      * this device's Health Connect supports. Skin temperature and background
      * read are unknown to older HC builds (Android 14 platform HC among them):
@@ -62,10 +83,16 @@ class HealthConnectAdapter(private val context: Context) {
 
     // MARK: - Fetch all readings
 
+    /**
+     * [originSource] maps a writing app's package name to the Bios source
+     * that owns its count records (docs/specs/source-preference.md); the
+     * default keeps everything under [sourceId].
+     */
     suspend fun fetchReadings(
         startTime: Instant,
         endTime: Instant,
-        sourceId: String
+        sourceId: String,
+        originSource: suspend (String) -> String = { sourceId },
     ): List<MetricReading> = coroutineScope {
         val jobs = listOf(
             async { HealthConnectReads.heartRate(client, startTime, endTime, sourceId) },
@@ -77,8 +104,8 @@ class HealthConnectAdapter(private val context: Context) {
                 if (skinTempSupported) HealthConnectReads.skinTemp(client, startTime, endTime, sourceId) else emptyList()
             },
             async { HealthConnectReads.sleep(client, startTime, endTime, sourceId) },
-            async { HealthConnectReads.steps(client, startTime, endTime, sourceId) },
-            async { HealthConnectReads.activeCalories(client, startTime, endTime, sourceId) },
+            async { HealthConnectReads.steps(client, startTime, endTime, originSource) },
+            async { HealthConnectReads.activeCalories(client, startTime, endTime, originSource) },
             async { HealthConnectReads.vo2Max(client, startTime, endTime, sourceId) },
             async { HealthConnectBodyComposition.fetchAll(client, startTime, endTime, sourceId) },
         )
@@ -199,6 +226,23 @@ class HealthConnectAdapter(private val context: Context) {
     internal data class HrSample(val timestampMs: Long, val bpm: Double)
 
     companion object {
+        /** Health apps whose label the package manager will not give us (package visibility). */
+        private val KNOWN_WRITERS = mapOf(
+            "com.yf.smart.coros" to "COROS",
+            "com.fitbit" to "Fitbit",
+            "com.google.android.apps.fitness" to "Google Fit",
+            "com.ouraring" to "Oura",
+            "com.whoop" to "WHOOP",
+            "com.garmin" to "Garmin",
+            "fi.polar" to "Polar",
+            "com.withings" to "Withings",
+            "com.sec.android.app.shealth" to "Samsung Health",
+            "com.huami" to "Zepp",
+            "com.xiaomi.wearable" to "Mi Fitness",
+            "com.huawei.health" to "Huawei Health",
+            "nodomain.freeyourgadget.gadgetbridge" to "Gadgetbridge",
+        )
+
         /** Pure so the feature gating is unit-testable without a device. */
         fun permissionsFor(skinTempSupported: Boolean, backgroundReadSupported: Boolean): Set<String> = buildSet {
             add(HealthPermission.getReadPermission(HeartRateRecord::class))

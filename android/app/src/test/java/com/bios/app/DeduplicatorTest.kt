@@ -11,17 +11,14 @@ import org.junit.Test
 /**
  * Exercises the real [Deduplicator] used by the ingestion pipeline.
  *
- * Two regimes are covered:
- * - Point-in-time metrics (HR, HRV, etc.) — exact `(metricType, timestamp)`
- *   collisions collapse to the highest-confidence reading.
- * - Time-window-aggregate metrics (steps, active calories/minutes) — bucketed
- *   counts from different sources within the dedup window collapse to the
- *   highest-confidence reading. Same-source readings inside the window are
- *   preserved (consecutive buckets are sequential data, not duplicates).
- *
- * The cross-source step-bucket case is the regression bait for issue #14 —
- * Health Connect + Gadgetbridge reporting the same activity with a few-hundred-ms
- * clock skew used to inflate `SUM(value)` downstream.
+ * Two regimes:
+ * - Point-in-time metrics (HR, HRV, etc.): exact `(metricType, timestamp)`
+ *   collisions collapse to the highest-confidence reading, across sources.
+ * - Count metrics (steps, active calories/minutes): one row per
+ *   `(metricType, timestamp, sourceId)`. Every witness is stored; the day
+ *   total picks one witness per calendar day at read time
+ *   (docs/specs/source-preference.md). The old cross-source window pass
+ *   would have deleted the watch's minutes next to a phone bucket.
  */
 class DeduplicatorTest {
 
@@ -94,184 +91,69 @@ class DeduplicatorTest {
         assertTrue(Deduplicator.deduplicate(emptyList()).isEmpty())
     }
 
-    // ---- Pass 2: window-overlap dedup (steps, active calories, active minutes) ----
+    // ---- Count metrics: every source's rows survive ----
+
+    private fun steps(ts: Long, source: String, value: Double, confidence: Int = ConfidenceTier.MEDIUM.level) =
+        reading(metricType = MetricType.STEPS.key, value = value, timestamp = ts, sourceId = source, confidence = confidence)
 
     @Test
-    fun `cross-source step buckets within window collapse to higher confidence`() {
-        // The issue #14 scenario: HC StepsRecord vs Gadgetbridge bucket covering
-        // the same activity, separated by sub-second clock skew.
-        val hc = reading(
-            metricType = MetricType.STEPS.key,
-            value = 200.0,
-            timestamp = 12_000_000L,
-            sourceId = "health_connect",
-            confidence = ConfidenceTier.HIGH.level,
-        )
-        val gadgetbridge = reading(
-            metricType = MetricType.STEPS.key,
-            value = 200.0,
-            timestamp = 12_000_347L,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(hc, gadgetbridge))
-        assertEquals(1, result.size)
-        assertEquals("health_connect", result[0].sourceId)
-    }
-
-    @Test
-    fun `cross-source step buckets outside window both survive`() {
-        // 10 minutes apart — beyond the 5-minute window — these are genuinely
-        // distinct buckets, not duplicates.
-        val a = reading(
-            metricType = MetricType.STEPS.key,
-            timestamp = 0L,
-            sourceId = "health_connect",
-            confidence = ConfidenceTier.HIGH.level,
-        )
-        val b = reading(
-            metricType = MetricType.STEPS.key,
-            timestamp = 10L * 60_000L,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(a, b))
+    fun `cross-source step buckets at the same minute both survive`() {
+        val coros = steps(12_000_000L, "hc-coros", 60.0)
+        val fitbit = steps(12_000_000L, "hc-fitbit", 58.0)
+        val result = Deduplicator.deduplicate(listOf(coros, fitbit))
         assertEquals(2, result.size)
+        assertEquals(setOf("hc-coros", "hc-fitbit"), result.map { it.sourceId }.toSet())
     }
 
     @Test
-    fun `same-source consecutive step buckets inside window are kept`() {
-        // Within one source, sequential buckets are real data — not duplicates.
-        // E.g. Gadgetbridge sometimes emits per-minute step rows during a sync.
-        val first = reading(
-            metricType = MetricType.STEPS.key,
-            timestamp = 0L,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val second = reading(
-            metricType = MetricType.STEPS.key,
-            timestamp = 60_000L,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(first, second))
-        assertEquals(2, result.size)
+    fun `cross-source step buckets a few hundred ms apart both survive`() {
+        val hc = steps(12_000_000L, "health_connect", 200.0, ConfidenceTier.HIGH.level)
+        val phone = steps(12_000_347L, "phone_sensor", 200.0, ConfidenceTier.LOW.level)
+        assertEquals(2, Deduplicator.deduplicate(listOf(hc, phone)).size)
     }
 
     @Test
-    fun `step window boundary is inclusive`() {
-        // Exactly at the window edge counts as colliding — the bucket boundary
-        // is well within the noise envelope of real cross-source skew.
-        val window = 5L * 60_000L
-        val hc = reading(
-            metricType = MetricType.STEPS.key,
-            timestamp = 0L,
-            sourceId = "health_connect",
-            confidence = ConfidenceTier.HIGH.level,
-        )
-        val gadgetbridge = reading(
-            metricType = MetricType.STEPS.key,
-            timestamp = window,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(hc, gadgetbridge))
+    fun `same-source step bucket at the same timestamp collapses to the better confidence`() {
+        val low = steps(12_000_000L, "hc-coros", 50.0, ConfidenceTier.LOW.level)
+        val high = steps(12_000_000L, "hc-coros", 60.0, ConfidenceTier.HIGH.level)
+        val result = Deduplicator.deduplicate(listOf(low, high))
         assertEquals(1, result.size)
-        assertEquals("health_connect", result[0].sourceId)
+        assertEquals(60.0, result[0].value, 0.01)
     }
 
     @Test
-    fun `active calories also use windowed dedup`() {
-        val hc = reading(
-            metricType = MetricType.ACTIVE_CALORIES.key,
-            timestamp = 1000L,
-            sourceId = "health_connect",
-            confidence = ConfidenceTier.HIGH.level,
-        )
-        val gadgetbridge = reading(
-            metricType = MetricType.ACTIVE_CALORIES.key,
-            timestamp = 1500L,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(hc, gadgetbridge))
-        assertEquals(1, result.size)
-        assertEquals(ConfidenceTier.HIGH.level, result[0].confidence)
+    fun `active calories and active minutes keep per-source rows too`() {
+        val a = reading(metricType = MetricType.ACTIVE_CALORIES.key, timestamp = 1L, sourceId = "s1")
+        val b = reading(metricType = MetricType.ACTIVE_CALORIES.key, timestamp = 1L, sourceId = "s2")
+        val c = reading(metricType = MetricType.ACTIVE_MINUTES.key, timestamp = 1L, sourceId = "s1")
+        val d = reading(metricType = MetricType.ACTIVE_MINUTES.key, timestamp = 1L, sourceId = "s2")
+        assertEquals(4, Deduplicator.deduplicate(listOf(a, b, c, d)).size)
     }
 
-    @Test
-    fun `active minutes also use windowed dedup`() {
-        val hc = reading(
-            metricType = MetricType.ACTIVE_MINUTES.key,
-            timestamp = 1000L,
-            sourceId = "health_connect",
-            confidence = ConfidenceTier.HIGH.level,
-        )
-        val gadgetbridge = reading(
-            metricType = MetricType.ACTIVE_MINUTES.key,
-            timestamp = 1500L,
-            sourceId = "gadgetbridge",
-            confidence = ConfidenceTier.MEDIUM.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(hc, gadgetbridge))
-        assertEquals(1, result.size)
-        assertEquals(ConfidenceTier.HIGH.level, result[0].confidence)
-    }
-
-    // ---- Regression: point-in-time metrics keep exact-match-only behavior ----
+    // ---- Point-in-time metrics keep the cross-source exact rule ----
 
     @Test
     fun `heart rate from different sources at near-but-not-equal timestamps both survive`() {
-        // HR is point-in-time — even a 1-second skew between two adapters is
-        // legitimate sampling, not a duplicate. Exact-ms collisions still dedupe.
-        val a = reading(
-            metricType = MetricType.HEART_RATE.key,
-            timestamp = 1000L,
-            sourceId = "oura",
-        )
-        val b = reading(
-            metricType = MetricType.HEART_RATE.key,
-            timestamp = 1500L,
-            sourceId = "health_connect",
-        )
-        val result = Deduplicator.deduplicate(listOf(a, b))
-        assertEquals(2, result.size)
+        val a = reading(timestamp = 1000L, sourceId = "s1")
+        val b = reading(timestamp = 1300L, sourceId = "s2")
+        assertEquals(2, Deduplicator.deduplicate(listOf(a, b)).size)
     }
 
     @Test
     fun `hrv exact-ms collision across sources still dedupes`() {
-        val low = reading(
-            metricType = MetricType.HEART_RATE_VARIABILITY.key,
-            timestamp = 1000L,
-            sourceId = "phone_sensor",
-            confidence = ConfidenceTier.LOW.level,
-        )
-        val high = reading(
-            metricType = MetricType.HEART_RATE_VARIABILITY.key,
-            timestamp = 1000L,
-            sourceId = "oura",
-            confidence = ConfidenceTier.HIGH.level,
-        )
-        val result = Deduplicator.deduplicate(listOf(low, high))
+        val hrv = MetricType.HEART_RATE_VARIABILITY.key
+        val a = reading(metricType = hrv, timestamp = 1000L, sourceId = "s1", confidence = ConfidenceTier.LOW.level)
+        val b = reading(metricType = hrv, timestamp = 1000L, sourceId = "s2", confidence = ConfidenceTier.HIGH.level)
+        val result = Deduplicator.deduplicate(listOf(a, b))
         assertEquals(1, result.size)
-        assertEquals(ConfidenceTier.HIGH.level, result[0].confidence)
-    }
-
-    // ---- Window-policy surface ----
-
-    @Test
-    fun `point-in-time metrics report zero window`() {
-        assertEquals(0L, Deduplicator.windowMs(MetricType.HEART_RATE.key))
-        assertEquals(0L, Deduplicator.windowMs(MetricType.HEART_RATE_VARIABILITY.key))
-        assertEquals(0L, Deduplicator.windowMs(MetricType.RESTING_HEART_RATE.key))
-        assertEquals(0L, Deduplicator.windowMs(MetricType.BLOOD_OXYGEN.key))
+        assertEquals("s2", result[0].sourceId)
     }
 
     @Test
-    fun `bucketed activity metrics report a non-zero window`() {
-        assertTrue(Deduplicator.windowMs(MetricType.STEPS.key) > 0L)
-        assertTrue(Deduplicator.windowMs(MetricType.ACTIVE_CALORIES.key) > 0L)
-        assertTrue(Deduplicator.windowMs(MetricType.ACTIVE_MINUTES.key) > 0L)
+    fun `only count metrics keep per-source rows`() {
+        assertTrue(Deduplicator.keepsPerSource(MetricType.STEPS.key))
+        assertTrue(Deduplicator.keepsPerSource(MetricType.ACTIVE_CALORIES.key))
+        assertTrue(Deduplicator.keepsPerSource(MetricType.ACTIVE_MINUTES.key))
+        assertTrue(!Deduplicator.keepsPerSource(MetricType.HEART_RATE.key))
     }
 }

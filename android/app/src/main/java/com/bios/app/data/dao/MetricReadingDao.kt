@@ -98,6 +98,44 @@ interface MetricReadingDao {
         fmt: String
     ): List<BucketTotal>
 
+    // Same buckets, one row per source, for the one-witness-per-day rule
+    // (docs/specs/source-preference.md). Grouping by sourceId keeps COROS,
+    // Fitbit and the phone apart so the reader can pick one per day.
+    @Query("""
+        SELECT strftime(:fmt, mr.timestamp / 1000, 'unixepoch', 'localtime') AS bucket,
+               mr.sourceId AS sourceId,
+               SUM(mr.value) AS total
+        FROM metric_readings mr
+        WHERE mr.metricType = :metricType
+          AND mr.timestamp >= :startMillis
+          AND mr.timestamp <= :endMillis
+          AND mr.isPrimary = 1
+        GROUP BY bucket, mr.sourceId
+        ORDER BY bucket ASC
+    """)
+    suspend fun fetchBucketTotalsBySource(
+        metricType: String,
+        startMillis: Long,
+        endMillis: Long,
+        fmt: String
+    ): List<SourceBucketTotal>
+
+    // Re-keys Health Connect count rows in place so the per-app re-read
+    // lands on the same primary key (source-preference criterion 1).
+    @Query("""
+        UPDATE metric_readings
+        SET id = :newPrefix || substr(id, length(:oldPrefix) + 1)
+        WHERE id LIKE :oldPrefix || '%'
+    """)
+    suspend fun rekeyIds(oldPrefix: String, newPrefix: String): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM metric_readings
+        WHERE sourceId = :sourceId AND metricType = :metricType
+          AND timestamp >= :startMillis AND timestamp <= :endMillis
+    """)
+    suspend fun countBySourceInRange(sourceId: String, metricType: String, startMillis: Long, endMillis: Long): Int
+
     @Query("SELECT COUNT(*) FROM metric_readings")
     suspend fun countAll(): Int
 
@@ -268,3 +306,6 @@ data class TimedValue(val timestamp: Long, val value: Double)
 
 /** One calendar bucket from [MetricReadingDao.fetchBucketTotals]; `bucket` is the strftime key. */
 data class BucketTotal(val bucket: String, val total: Double)
+
+/** One source's share of a calendar bucket. */
+data class SourceBucketTotal(val bucket: String, val sourceId: String, val total: Double)

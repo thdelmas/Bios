@@ -70,4 +70,16 @@ class HealthConnectStableIdsTest {
         val child = HealthConnectStableIds.forSubRecord("sleep-stage", "hc-src", "session-abc", 0L)
         assertNotEquals(parent, child)
     }
+
+    @Test
+    fun `count records key on the HC record alone so a per-app re-read replaces the old row`() {
+        val old = HealthConnectStableIds.forRecord("steps", "hc-src", "rec-1")
+        val new = HealthConnectStableIds.forCountRecord("steps", "rec-1")
+        assertEquals("hc-steps-rec-1", new)
+        assertEquals(
+            new,
+            HealthConnectStableIds.countPrefix("steps") +
+                old.removePrefix(HealthConnectStableIds.sourcedPrefix("steps", "hc-src")),
+        )
+    }
 }

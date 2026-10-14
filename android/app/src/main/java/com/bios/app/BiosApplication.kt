@@ -45,7 +45,7 @@ class BiosApplication : Application() {
         // Start local health API for LETHE agent (LETHE only)
         if (PlatformDetector.isLethe(this)) {
             val db = BiosDatabase.getInstance(this)
-            healthApiServer = HealthApiServer(db, applicationScope)
+            healthApiServer = HealthApiServer(db, applicationScope, this)
             healthApiServer?.start()
         }
 
