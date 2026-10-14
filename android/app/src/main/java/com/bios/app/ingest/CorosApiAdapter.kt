@@ -59,6 +59,8 @@ class CorosApiAdapter(
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val getCredentials: () -> Pair<String, String>? = { null },
     private val saveToken: (String) -> Unit = {},
+    private val getMobileToken: () -> String? = { null },
+    private val saveMobileToken: (String) -> Unit = {},
     private val recordHealth: (ok: Boolean, message: String?, action: OwnerAction) -> Unit = { _, _, _ -> },
 ) {
     constructor(tokenStore: ApiTokenStore, healthStore: SourceHealthStore? = null) : this(
@@ -72,6 +74,8 @@ class CorosApiAdapter(
             if (email != null && password != null) email to password else null
         },
         saveToken = { tokenStore.saveToken(PROVIDER_KEY, it) },
+        getMobileToken = { tokenStore.getToken(MOBILE_TOKEN_KEY) },
+        saveMobileToken = { tokenStore.saveToken(MOBILE_TOKEN_KEY, it) },
         recordHealth = { ok, message, action ->
             if (healthStore != null) {
                 if (ok) healthStore.recordOk(SourceType.COROS_API)
@@ -133,7 +137,8 @@ class CorosApiAdapter(
             }
             val result = json.optString("result")
             if (result == RESULT_OK) {
-                val readings = parseDayList(json, sourceId, zone)
+                val readings = parseDayList(json, sourceId, zone) +
+                    fetchDailyTotals(region, DAY_FORMAT.format(startDay).toInt(), DAY_FORMAT.format(endDay).toInt(), sourceId)
                 recordStatus("OK ${LocalDate.now(zone)}: ${readings.size} readings for $startDay..$endDay")
                 recordHealth(true, null, OwnerAction.NONE)
                 return@withContext readings
@@ -160,6 +165,65 @@ class CorosApiAdapter(
         }
         @Suppress("UNREACHABLE_CODE")
         emptyList<MetricReading>()
+    }
+
+    private val mobile = CorosMobileApi(client)
+
+    /**
+     * Whole-day totals from the mobile API (criterion 2b). A mobile token
+     * lives about an hour: on refusal the adapter signs in again from the
+     * stored password once; without one it logs and returns nothing, and
+     * the Training Hub readings are unaffected.
+     */
+    private fun fetchDailyTotals(region: String, startDay: Int, endDay: Int, sourceId: String): List<MetricReading> {
+        val token = getMobileToken() ?: mobileLogin(region) ?: return emptyList()
+        val first = requestDaily(token, region, startDay, endDay) ?: return emptyList()
+        val body = if (first.optString("result") == CorosMobileApi.RESULT_TOKEN_INVALID) {
+            val fresh = mobileLogin(region) ?: return emptyList()
+            requestDaily(fresh, region, startDay, endDay) ?: return emptyList()
+        } else {
+            first
+        }
+        if (body.optString("result") != RESULT_OK) {
+            Log.w(TAG, "mobile daily refused (${body.optString("result")}): ${body.optString("message")}")
+            return emptyList()
+        }
+        val readings = parseDailyTotals(body, sourceId, zone)
+        if (readings.isEmpty()) logDailyShape(body)
+        return readings
+    }
+
+    /**
+     * Field names of the first day record, names only, logged when no step
+     * total could be read so a changed vendor shape shows in the log. Read
+     * on the phone 2026-10-14: `step` sits at the top level beside
+     * `calorie`, `motionTime`, `rhr`, `heartRateData{}`, `sleepData{}`.
+     */
+    private fun logDailyShape(body: JSONObject) {
+        val item = body.optJSONObject("data")?.optJSONObject("statisticData")?.optJSONArray("dayDataList")
+            ?.optJSONObject(0) ?: return
+        val nested = item.keys().asSequence().filter { item.optJSONObject(it) != null }
+            .joinToString(" ") { k -> "$k{" + item.getJSONObject(k).keys().asSequence().sorted().joinToString(",") + "}" }
+        Log.i(TAG, "daily keys: " + item.keys().asSequence().sorted().joinToString(",") + " " + nested)
+    }
+
+    private fun mobileLogin(region: String): String? {
+        val creds = getCredentials()
+        if (creds == null) {
+            Log.i(TAG, "mobile: no stored credentials, daily totals skipped")
+            return null
+        }
+        return mobile.login(creds.first, creds.second, region)
+            .onFailure { Log.w(TAG, "mobile login failed: ${it.message}") }
+            .getOrNull()?.token?.also { saveMobileToken(it) }
+    }
+
+    private fun requestDaily(token: String, region: String, startDay: Int, endDay: Int): JSONObject? = try {
+        mobile.statisticDaily(token, region, startDay, endDay, DAILY_DATA_TYPES)
+    } catch (e: IOException) {
+        Log.w(TAG, "mobile daily request failed", e); null
+    } catch (e: JSONException) {
+        Log.w(TAG, "mobile daily body unparseable", e); null
     }
 
     private sealed class DayDetailOutcome {
@@ -196,6 +260,13 @@ class CorosApiAdapter(
         const val PROVIDER_KEY = "coros"
         const val REGION_KEY = "coros_region"
         const val STATUS_KEY = "coros_status"
+        const val MOBILE_TOKEN_KEY = "coros_mobile"
+        /**
+         * Statistic types asked of the mobile API. 5 is sleep (community
+         * client); asked together, the vendor answers one record per day
+         * with steps, calories, motion time and heart rate (read 2026-10-14).
+         */
+        val DAILY_DATA_TYPES: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7, 8)
         /** Set only when the owner chose to keep the password for automatic re-login. */
         const val EMAIL_KEY = "coros_email"
         const val PASSWORD_KEY = "coros_password"
@@ -277,6 +348,47 @@ class CorosApiAdapter(
             sourceId = sourceId,
             confidence = ConfidenceTier.MEDIUM.level
         )
+
+        /**
+         * `data.statisticData.dayDataList[]` → one whole-day STEPS reading per
+         * day (criterion 2a). Logs each item's field names once per sync so an
+         * unknown shape can be read from the ingest log; values are never logged.
+         */
+        fun parseDailyTotals(json: JSONObject, sourceId: String, zone: ZoneId): List<MetricReading> {
+            val list = json.optJSONObject("data")?.optJSONObject("statisticData")?.optJSONArray("dayDataList")
+                ?: return emptyList()
+            return (0 until list.length())
+                .mapNotNull { list.optJSONObject(it) }
+                .mapNotNull { dailyReading(it, sourceId, zone) }
+        }
+
+        private fun dailyReading(item: JSONObject, sourceId: String, zone: ZoneId): MetricReading? {
+            val happenDay = item.optInt("happenDay", 0)
+            val steps = dailySteps(item) ?: return null
+            val date = runCatching { LocalDate.parse(happenDay.toString(), DAY_FORMAT) }.getOrNull() ?: return null
+            return MetricReading(
+                id = readingId(MetricType.STEPS.key, happenDay),
+                metricType = MetricType.STEPS.key,
+                value = steps,
+                timestamp = date.atStartOfDay(zone).toInstant().toEpochMilli(),
+                durationSec = SECONDS_PER_DAY,
+                sourceId = sourceId,
+                confidence = ConfidenceTier.MEDIUM.level,
+            )
+        }
+
+        /** The day's step total wherever the vendor puts it; null when absent or zero. */
+        internal fun dailySteps(item: JSONObject): Double? {
+            val candidates = listOf("step", "steps", "totalStep", "totalSteps", "stepCount")
+            for (k in candidates) if (item.has(k)) return item.optDouble(k, 0.0).takeIf { it > 0 }
+            for (key in item.keys()) {
+                val obj = item.optJSONObject(key) ?: continue
+                for (k in candidates) if (obj.has(k)) return obj.optDouble(k, 0.0).takeIf { it > 0 }
+            }
+            return null
+        }
+
+        private const val SECONDS_PER_DAY = 86_400
 
         fun wakeDayTimestamp(happenDay: Int, zone: ZoneId): Long? {
             if (happenDay < 19700101) return null

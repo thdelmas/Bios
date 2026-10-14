@@ -52,9 +52,32 @@ Criteria:
    per-app source instead of beside its old row. Rows older than the re-read
    window keep the generic source, which sits in the order like any other.
 2. The winner is chosen per (metric, calendar day in the device time zone):
-   the first source type in the order with at least one primary reading that
+   the first source in the order with at least one primary reading that
    day. A day where no source has readings stays empty. Readings of every
-   other source that day do not count, whatever their timestamps.
+   other source that day do not count, whatever their timestamps. A
+   coverage rule (a lower source wins with more hours of readings) was
+   built and withdrawn the same day: on the owner's phone the phone app
+   writes a record in more hours than a complete watch mirror, so the rule
+   took five of six days from the watch, four of them days the watch had
+   right; a "partial" mark on the same measure fired on the same five days.
+   Hours with readings do not measure completeness. The answer to a partial
+   mirror is the vendor's own total (2a), not a heuristic.
+2a. A vendor adapter that can fetch a day's total from the vendor emits one
+   reading per day, stamped at the start of that day with a duration of 24
+   hours, under the adapter's own source. It is a witness like any other in
+   the order, ranked with the worn devices by default. COROS is the first
+   adapter wired; the class is generic because "some people may not use
+   COROS" (owner, 2026-10-14).
+2b. COROS wiring (owner 2026-10-14, "proceed with Coros as well"): the
+   Training Hub web API has no steps, so the adapter also signs in to the
+   COROS mobile API (the host the phone app uses) with the same e-mail and
+   password, encrypted the way the app does it, and reads the daily
+   statistics for the window. The mobile token lives about an hour, so the
+   adapter signs in again from the stored password when refused; without a
+   stored password the daily total stops after the first hour and the
+   source reads "needs attention" with the sign-in action, as
+   docs/specs/source-liveness.md already says. A refusal of the mobile
+   sign-in never touches the Training Hub readings (HRV, resting HR).
 3. The order is one owner-editable list of source types, applied to all
    cumulative metrics. Default, when the owner has set nothing:
    self-reported first, then the watch vendors' Health Connect sources and
@@ -100,14 +123,21 @@ Criteria:
 | A steps-based rule or baseline still sums every source, so an alert can cite a number the Trends chart does not show | owner | filled | Count metrics first, engine later. Accepted 2026-10-14. | A steps alert or the daily digest's baseline line names a total different from the day's Trends bar. |
 | The default order is a guess for owners with Gadgetbridge or a vendor API and no Health Connect | other owners | empty | Not asked. The owner-editable order is the remedy. | A second owner reports a day total from the wrong device. |
 | Dropping the Direct Sensors step producer loses nothing only if Phone Sensors is bound on the same phone | owner | filled | Both bind on the Pixel today; Phone Sensors binds whenever a step counter exists. | A phone with a pedometer and no Phone Sensors source shows no phone-fallback days at all. |
+| The COROS mobile sign-in imitates the phone app (a fixed device fingerprint and an encryption key read out of the app) and the vendor may refuse or change it at any time | owner | filled | Same seat the Training Hub adapter already sits in; accepted 2026-10-14 ("proceed with Coros as well"). | The mobile sign-in is refused while the Training Hub one still works: the COROS source shows "needs attention" naming the mobile sign-in, step totals fall back to the Health Connect mirror, nothing else changes. |
+| COROS's terms on automated access; the price is the account, not a fine | everyone who keeps COROS's terms (pre-existing seat) | filled | COROS Terms of Service (coros.com/terms, updated 2023-04-23), read 2026-10-14: §4(e) forbids "any robot, spider, scraper, or other automated means to access the Service" without written permission, §4(h) forbids bypassing access restrictions, §17 lets COROS terminate the account for a breach. The Training Hub adapter has sat on this seat since 2026-09-15 with the owner's knowledge; the mobile sign-in adds §4(h). Price = loss of the COROS account and its history; trust cost borne by the pair. | COROS blocks or warns the account. |
+| A password kept on the device so an hourly token can be renewed without the owner | owner | filled | Opt-in "keep password" on the COROS sign-in dialog, encrypted, wiped with everything else (source-liveness, 2026-09-28). Without it the daily total lasts one hour. | The daily-total source reads stale while Training Hub readings keep arriving: the owner did not keep the password. |
 
 ## Open
 
 - A manual entry screen for count metrics does not exist; criterion 9
   governs it when it is built. Whether a typed count without a device or
   method should be refused or only warned is unset.
-- Per-gap fallback (fill the hours the watch did not cover) is the next
-  spec if the first limit fires. Not built.
+- Per-gap fallback (fill the hours the watch did not cover) stays unbuilt.
+- In the Day window a vendor daily total has no hours; it draws as one bar
+  in the first slot and the header says so.
+- COROS's Training Hub day record carries no steps (keys read on the phone
+  2026-10-14); its mobile API does, behind an encrypted login the community
+  reverse-engineered. Wiring it is a separate decision.
 - The same order could feed baselines and rules for count metrics. Not in
   scope; see criterion 9.
 - "Pixie2" is the phone's own name (owner, 2026-10-14): the handset's

@@ -89,7 +89,11 @@ private fun SelectedBucketHeader(
             style = MaterialTheme.typography.titleSmall,
         )
         Text(
-            if (selected.hasReadings) formatTotal(selected.total, metric) + winnerMark(selected.winnerKey) else "no readings",
+            if (selected.hasReadings) {
+                formatTotal(selected.total, metric) + winnerMark(selected.winnerKey)
+            } else {
+                "no readings"
+            },
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
