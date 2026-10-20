@@ -78,6 +78,14 @@ Criteria:
    source reads "needs attention" with the sign-in action, as
    docs/specs/source-liveness.md already says. A refusal of the mobile
    sign-in never touches the Training Hub readings (HRV, resting HR).
+   Amended 2026-10-19 (owner: "it keeps logging me out"): the mobile
+   sign-in is WITHDRAWN. COROS allows one phone-app session per account;
+   each Bios mobile sign-in (hourly token, retry on every sync) logged the
+   real COROS app out, and a logged-out app does not sync the watch, so the
+   path starved its own source. Step totals come from the Health Connect
+   mirror under the COROS source (criterion 2, partial-mirror days stay
+   partial). The parser and client stay in the tree, unused. The Training
+   Hub sign-in (HRV, resting HR) is untouched; it never caused a logout.
 3. The order is one owner-editable list of source types, applied to all
    cumulative metrics. Default, when the owner has set nothing:
    self-reported first, then the watch vendors' Health Connect sources and

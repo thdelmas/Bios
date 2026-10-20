@@ -59,8 +59,6 @@ class CorosApiAdapter(
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val getCredentials: () -> Pair<String, String>? = { null },
     private val saveToken: (String) -> Unit = {},
-    private val getMobileToken: () -> String? = { null },
-    private val saveMobileToken: (String) -> Unit = {},
     private val recordHealth: (ok: Boolean, message: String?, action: OwnerAction) -> Unit = { _, _, _ -> },
 ) {
     constructor(tokenStore: ApiTokenStore, healthStore: SourceHealthStore? = null) : this(
@@ -74,8 +72,6 @@ class CorosApiAdapter(
             if (email != null && password != null) email to password else null
         },
         saveToken = { tokenStore.saveToken(PROVIDER_KEY, it) },
-        getMobileToken = { tokenStore.getToken(MOBILE_TOKEN_KEY) },
-        saveMobileToken = { tokenStore.saveToken(MOBILE_TOKEN_KEY, it) },
         recordHealth = { ok, message, action ->
             if (healthStore != null) {
                 if (ok) healthStore.recordOk(SourceType.COROS_API)
@@ -137,8 +133,7 @@ class CorosApiAdapter(
             }
             val result = json.optString("result")
             if (result == RESULT_OK) {
-                val readings = parseDayList(json, sourceId, zone) +
-                    fetchDailyTotals(region, DAY_FORMAT.format(startDay).toInt(), DAY_FORMAT.format(endDay).toInt(), sourceId)
+                val readings = parseDayList(json, sourceId, zone)
                 recordStatus("OK ${LocalDate.now(zone)}: ${readings.size} readings for $startDay..$endDay")
                 recordHealth(true, null, OwnerAction.NONE)
                 return@withContext readings
@@ -167,64 +162,15 @@ class CorosApiAdapter(
         emptyList<MetricReading>()
     }
 
-    private val mobile = CorosMobileApi(client)
-
-    /**
-     * Whole-day totals from the mobile API (criterion 2b). A mobile token
-     * lives about an hour: on refusal the adapter signs in again from the
-     * stored password once; without one it logs and returns nothing, and
-     * the Training Hub readings are unaffected.
+    /*
+     * Daily step totals from the COROS mobile API were pulled here from
+     * 2026-10-14 to 2026-10-19 (spec source-preference.md, criterion 2b).
+     * Removed 2026-10-19: COROS allows one phone-app session per account,
+     * so every mobile sign-in logged the real COROS app out, and a
+     * logged-out app no longer syncs the watch. Step totals come from the
+     * Health Connect mirror under the COROS source again. The parser
+     * (parseDailyTotals) and CorosMobileApi stay, unused by the sync.
      */
-    private fun fetchDailyTotals(region: String, startDay: Int, endDay: Int, sourceId: String): List<MetricReading> {
-        val token = getMobileToken() ?: mobileLogin(region) ?: return emptyList()
-        val first = requestDaily(token, region, startDay, endDay) ?: return emptyList()
-        val body = if (first.optString("result") == CorosMobileApi.RESULT_TOKEN_INVALID) {
-            val fresh = mobileLogin(region) ?: return emptyList()
-            requestDaily(fresh, region, startDay, endDay) ?: return emptyList()
-        } else {
-            first
-        }
-        if (body.optString("result") != RESULT_OK) {
-            Log.w(TAG, "mobile daily refused (${body.optString("result")}): ${body.optString("message")}")
-            return emptyList()
-        }
-        val readings = parseDailyTotals(body, sourceId, zone)
-        if (readings.isEmpty()) logDailyShape(body)
-        return readings
-    }
-
-    /**
-     * Field names of the first day record, names only, logged when no step
-     * total could be read so a changed vendor shape shows in the log. Read
-     * on the phone 2026-10-14: `step` sits at the top level beside
-     * `calorie`, `motionTime`, `rhr`, `heartRateData{}`, `sleepData{}`.
-     */
-    private fun logDailyShape(body: JSONObject) {
-        val item = body.optJSONObject("data")?.optJSONObject("statisticData")?.optJSONArray("dayDataList")
-            ?.optJSONObject(0) ?: return
-        val nested = item.keys().asSequence().filter { item.optJSONObject(it) != null }
-            .joinToString(" ") { k -> "$k{" + item.getJSONObject(k).keys().asSequence().sorted().joinToString(",") + "}" }
-        Log.i(TAG, "daily keys: " + item.keys().asSequence().sorted().joinToString(",") + " " + nested)
-    }
-
-    private fun mobileLogin(region: String): String? {
-        val creds = getCredentials()
-        if (creds == null) {
-            Log.i(TAG, "mobile: no stored credentials, daily totals skipped")
-            return null
-        }
-        return mobile.login(creds.first, creds.second, region)
-            .onFailure { Log.w(TAG, "mobile login failed: ${it.message}") }
-            .getOrNull()?.token?.also { saveMobileToken(it) }
-    }
-
-    private fun requestDaily(token: String, region: String, startDay: Int, endDay: Int): JSONObject? = try {
-        mobile.statisticDaily(token, region, startDay, endDay, DAILY_DATA_TYPES)
-    } catch (e: IOException) {
-        Log.w(TAG, "mobile daily request failed", e); null
-    } catch (e: JSONException) {
-        Log.w(TAG, "mobile daily body unparseable", e); null
-    }
 
     private sealed class DayDetailOutcome {
         data class Body(val json: JSONObject) : DayDetailOutcome()
@@ -262,9 +208,10 @@ class CorosApiAdapter(
         const val STATUS_KEY = "coros_status"
         const val MOBILE_TOKEN_KEY = "coros_mobile"
         /**
-         * Statistic types asked of the mobile API. 5 is sleep (community
-         * client); asked together, the vendor answers one record per day
-         * with steps, calories, motion time and heart rate (read 2026-10-14).
+         * Statistic types of the mobile API (unused by the sync since
+         * 2026-10-19, see fetch). 5 is sleep (community client); asked
+         * together, the vendor answers one record per day with steps,
+         * calories, motion time and heart rate (read 2026-10-14).
          */
         val DAILY_DATA_TYPES: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7, 8)
         /** Set only when the owner chose to keep the password for automatic re-login. */
