@@ -143,6 +143,10 @@ private fun DataSourcesCard(
             )
 
             Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = { onNavigate("known_sources") }, modifier = Modifier.fillMaxWidth()) {
+                Text("Known sources")
+            }
+            Spacer(Modifier.height(4.dp))
             OutlinedButton(onClick = { onNavigate("data_coverage") }, modifier = Modifier.fillMaxWidth()) {
                 Text("Data coverage")
             }

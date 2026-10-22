@@ -355,6 +355,15 @@ fun BiosApp(viewModel: AppViewModel) {
                     onBack = { navController.popBackStack() }
                 )
             }
+            composable("known_sources") {
+                val knownVm = remember(viewModel) {
+                    com.bios.app.ui.settings.KnownSourcesViewModel(viewModel)
+                }
+                com.bios.app.ui.settings.KnownSourcesScreen(
+                    viewModel = knownVm,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable("data_coverage") {
                 val coverageVm = remember(viewModel) {
                     com.bios.app.ui.coverage.DataCoverageViewModel(viewModel)
