@@ -9,6 +9,10 @@ internal object SettingsHelperText {
     const val GARMIN = "Paste a Garmin Wellness API access token (or a pre-signed session token from a Garmin proxy). Bios does not perform the OAuth 1.0a dance itself yet — see the connection notes for what works today."
     const val COROS = "Sign in with the COROS account used in the COROS app. Bios exchanges the " +
         "credentials for a session token on the device and keeps only the token. Pulled nightly: " +
-        "sleep HRV and resting heart rate, the two signals the COROS app never writes to Health Connect."
+        "sleep HRV and resting heart rate, the two signals the COROS app never writes to Health " +
+        "Connect — they come from the COROS cloud (Training Hub), so monitoring HRV on a COROS or " +
+        "Kiprun watch needs this account. Steps, heart rate and sleep arrive separately through " +
+        "Health Connect. The watch itself syncs only through the COROS app, so keep that app " +
+        "installed, signed in, and opened often enough to sync — it need not be used beyond that."
     const val POLAR = "Paste a Polar AccessLink API access token from admin.polaraccesslink.com. Bios uses it as a bearer; refresh-aware OAuth lands when a Bios Polar app is registered."
 }

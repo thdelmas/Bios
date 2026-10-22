@@ -10,6 +10,39 @@
 | **Samsung Galaxy Watch 7 / Ultra** | Yes | Yes | Yes | Yes | Yes (skin) | Yes (calibration required) | Yes | Yes | Yes | Body composition (BIA), AI hypertension detection, sleep apnea detection (FDA) |
 | **Google Pixel Watch 3** | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Fitbit-powered health algorithms, stress management |
 | **Garmin Venu 3 / Fenix 8** | Yes | Yes | No | Yes | No | No | Yes | Yes | Yes (multi-band) | Body Battery, training readiness, respiration rate |
+| **COROS / Kiprun GPS 500** (COROS M1D firmware) | Yes | Yes (nightly) | No | No | No | No | Yes | Yes | Yes | Resting HR, stress; **connects only through the COROS app — see caveat below** |
+
+#### COROS / Kiprun connection caveat (verified 2026-10-22)
+
+The watch this project is dogfooded on is a Kiprun GPS 500 (Decathlon,
+COROS M1D firmware, COROS app `com.yf.smart.coros.dist`). It does not
+reach Bios directly, and **monitoring its HRV requires both the COROS app
+and a COROS account**:
+
+- **Getting data off the watch needs the COROS app.** The watch syncs
+  only over Bluetooth to the COROS app. There is no app-free path: the
+  watch's own BLE login is tied to the COROS account (a per-session
+  credential the watch validates and that is not reproducible from the
+  watch itself). The investigation and why it was stopped are in
+  [specs/coros-direct-ble.md](specs/coros-direct-ble.md).
+- **HRV and resting HR reach Bios through the COROS cloud, not Health
+  Connect.** The COROS app writes steps, heart rate and sleep to Health
+  Connect, but **not HRV** (it holds the permission and never uses it;
+  stable across app updates). Bios reads nightly sleep HRV and resting HR
+  from the COROS Training Hub web API (`CorosApiAdapter`), which is the
+  COROS cloud. So HRV travels watch → COROS app → COROS cloud → Bios.
+- **Steps, heart rate and sleep** reach Bios through the Health Connect
+  mirror the COROS app writes, under a per-writer "COROS via Health
+  Connect" source.
+
+Net: to monitor HRV on this watch the owner must keep the COROS app
+installed, signed in, and opened often enough to sync; the account must
+stay active for the Training Hub path. The app need not be actively used
+beyond syncing. Dropping COROS entirely for HRV means a different device —
+one that writes HRV to Health Connect directly, or has an open or
+Gadgetbridge-supported protocol. If a future COROS app version starts
+writing HRV to Health Connect, the cloud dependency for HRV falls away
+(the app would still be needed to sync); recheck after COROS app updates.
 
 ### Smart Rings
 
