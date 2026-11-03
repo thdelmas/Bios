@@ -1,0 +1,46 @@
+name: release-please
+
+# On every push to main, release-please reads the conventional commits since the
+# last tag and keeps one "chore(main): release X.Y.Z" PR up to date (CHANGELOG.md,
+# version in android/app/build.gradle.kts, manifest). Merging that PR creates the
+# tag + GitHub Release with the changelog as notes.
+#
+# Tags created with GITHUB_TOKEN do not fire `on: push: tags` workflows, so the
+# second job dispatches release.yml explicitly to build and attach the signed APK.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build-apk:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the APK build for the new tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG" -f tag="$TAG"

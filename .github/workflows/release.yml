@@ -1,6 +1,7 @@
 name: Release APK
 
-# Trigger: push a tag like v1.2.3
+# Trigger: push a tag like v1.2.3, or the dispatch from release-please.yml
+# (tags created by release-please with GITHUB_TOKEN do not fire push events).
 # Builds a signed release APK and attaches it (plus SHA-256) to a GitHub Release.
 #
 # Per-repo customisation: set WORKING_DIR below.
@@ -114,7 +115,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.find_apk.outputs.tag }}
-          generate_release_notes: true
+          # Notes come from release-please (CHANGELOG.md); do not overwrite them.
+          generate_release_notes: false
           fail_on_unmatched_files: true
           files: |
             *.apk

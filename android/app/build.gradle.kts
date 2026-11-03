@@ -13,8 +13,12 @@ android {
         applicationId = "com.bios.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        // Bumped by release-please from conventional commits; do not edit by hand.
+        val semver = "0.2.0" // x-release-please-version
+        versionName = semver
+        // Monotonic code derived from the version: 0.2.0 -> 200, 1.0.0 -> 10000.
+        versionCode = semver.substringBefore("-").split(".").map { it.toInt() }
+            .let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

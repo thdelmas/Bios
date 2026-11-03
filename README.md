@@ -40,7 +40,7 @@ Compare against `apksigner verify --print-certs Bios-standalone-vX.Y.Z.apk` befo
 
 ## Release flow
 
-Push a tag `vX.Y.Z` from `main` → GitHub Actions builds and signs the standalone APK, publishes a Release with auto-generated notes. See [.github/workflows/release.yml](.github/workflows/release.yml).
+Versions follow [Conventional Commits](https://www.conventionalcommits.org) (`feat` → minor, `fix` → patch, `!` → major; enforced by `.githooks/commit-msg`, enable with `./scripts/install-hooks.sh`). On each push to `main`, [release-please](.github/workflows/release-please.yml) keeps a release PR open with the next version, the `CHANGELOG.md` entry and the bump in `android/app/build.gradle.kts` (`versionCode` is derived from the version). Merging that PR tags `vX.Y.Z`, publishes the Release with the changelog as notes, and triggers [release.yml](.github/workflows/release.yml), which builds and signs the standalone APK and attaches it. A tag pushed by hand still builds, without notes.
 
 The `lethe` flavor is built locally as part of LETHE OS integration — not part of public releases.
 
