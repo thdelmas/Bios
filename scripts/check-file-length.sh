@@ -32,6 +32,7 @@ while IFS= read -r file; do
         */build/*|*/node_modules/*|*.lock|*.min.*|*.generated.*|*/vendor/*) continue ;;
         */detekt-baseline.xml|detekt-baseline.xml) continue ;;  # generated; records existing findings, not source
         docs/*.md|docs/*/*.md|*.md) continue ;;
+        LICENSE|COPYING) continue ;;  # verbatim licence text (AGPL-3.0 is 661 lines)
     esac
 
     LINE_COUNT=$(wc -l < "$file")

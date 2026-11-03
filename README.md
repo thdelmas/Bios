@@ -51,3 +51,7 @@ The `lethe` flavor is built locally as part of LETHE OS integration — not part
 - [docs/PRIVACY_ARCHITECTURE.md](docs/PRIVACY_ARCHITECTURE.md) — on-device processing, encryption, threat model
 - [docs/ROADMAP.md](docs/ROADMAP.md) — owner-protection roadmap
 - Full index: [docs/README.md](docs/README.md)
+
+## License
+
+Bios is free software under the [GNU Affero General Public License v3.0](LICENSE) (SPDX: `AGPL-3.0-only`). You can read, run, change and redistribute it; anyone who distributes a modified version, or runs one as a service for others, must publish their changes under the same terms. Copyright holder: Théophile Delmas Leguery. Commercial licensing for use inside closed products is available from the copyright holder.
