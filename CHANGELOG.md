@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/thdelmas/Bios/compare/v0.3.0...v0.3.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **sources:** name the phone's HC writer, one-line status chip ([93cb284](https://github.com/thdelmas/Bios/commit/93cb2843784af95a3c5d7633b2ebec4d696e227c))
+
 ## [0.3.0](https://github.com/thdelmas/Bios/compare/v0.2.0...v0.3.0) (2026-11-03)
 
 
