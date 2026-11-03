@@ -82,6 +82,8 @@ fun TrendsScreen(
     if (cumulative && chartWindow !in dayTotalWindows) chartWindow = MetricChartTimeWindow.DEFAULT
     var dayTotals by remember { mutableStateOf<List<DayTotal>>(emptyList()) }
     var selectedBucket by remember(selectedMetric, chartWindow) { mutableIntStateOf(-1) }
+    // Baseline over whole days for cumulative metrics (spec criterion 11); null = none yet.
+    var dailyBaseline by remember(selectedMetric) { mutableStateOf<DailyBaseline?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(selectedMetric, entriesRefreshKey) {
@@ -91,6 +93,14 @@ fun TrendsScreen(
         // Pre-baked coverage map only covers TRACKED_METRICS (HR/HRV/etc.).
         // For everything else (Weight, BMI, biomarkers, ...) compute on demand.
         liveCoverage = viewModel.coverageFor(selectedMetric)
+        if (cumulative) {
+            val now = System.currentTimeMillis()
+            val zone = java.time.ZoneId.systemDefault()
+            val month = com.bios.app.data.CountTotals(viewModel.db, viewModel.getApplication<android.app.Application>())
+                .buckets(selectedMetric, MetricChartTimeWindow.MONTH, now, zone)
+            val todayKey = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate().toString()
+            dailyBaseline = dailyBaseline(fillResolved(bucketKeys(MetricChartTimeWindow.MONTH, now, zone), month), todayKey)
+        }
     }
 
     LaunchedEffect(selectedMetric, chartWindow, entriesRefreshKey) {
@@ -169,7 +179,9 @@ fun TrendsScreen(
 
         item(key = "metric-baseline") {
             val selectedBaseline = baselines.find { it.metricType == selectedMetric.key }
-            if (selectedBaseline != null) {
+            if (cumulative) {
+                DayTotalsBaselineCard(dailyBaseline, selectedMetric)
+            } else if (selectedBaseline != null) {
                 BaselineSummaryCard(selectedBaseline, selectedMetric.unit)
             } else {
                 NoBaselineCard(

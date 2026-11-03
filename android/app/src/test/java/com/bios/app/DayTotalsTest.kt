@@ -12,6 +12,8 @@ import com.bios.app.ui.trends.dayTotalWindows
 import com.bios.app.ui.trends.fillBuckets
 import com.bios.app.ui.trends.fillResolved
 import com.bios.app.ui.trends.winnerMark
+import com.bios.app.ui.trends.dailyBaseline
+import org.junit.Assert.assertNull
 import com.bios.app.data.ResolvedBucket
 import com.bios.app.ui.trends.formatTotal
 import com.bios.contracts.MetricType
@@ -157,5 +159,28 @@ class DayTotalsTest {
         assertEquals(" · self-reported", winnerMark("self_reported"))
         assertEquals("", winnerMark("health_connect:com.coros.coros"))
         assertEquals("", winnerMark(null))
+    }
+
+    @Test
+    fun dailyBaseline_skips_today_and_empty_days_and_keeps_the_newest_window() {
+        val totals = (0 until 20).map { i ->
+            val key = LocalDate.of(2026, 11, 3).minusDays((19 - i).toLong()).toString()
+            DayTotal(key = key, total = 1000.0 * i, hasReadings = i != 5)
+        }
+        val b = dailyBaseline(totals, todayKey = "2026-11-03", windowDays = 14)!!
+        // i=19 is today (excluded), i=5 is empty: the newest 14 complete days are i=4 and i=6..18.
+        assertEquals(14, b.days)
+        assertEquals(4000.0, b.min, 0.0)
+        assertEquals(18000.0, b.max, 0.0)
+        assertEquals((4 + (6..18).sum()) * 1000.0 / 14, b.mean, 1e-6)
+    }
+
+    @Test
+    fun dailyBaseline_is_null_when_only_today_has_readings() {
+        val totals = listOf(
+            DayTotal(key = "2026-11-02", total = 0.0, hasReadings = false),
+            DayTotal(key = "2026-11-03", total = 159.0, hasReadings = true),
+        )
+        assertNull(dailyBaseline(totals, todayKey = "2026-11-03"))
     }
 }

@@ -112,6 +112,23 @@ fun fillResolved(keys: List<String>, buckets: Map<String, com.bios.app.data.Reso
         DayTotal(key = key, total = b?.total ?: 0.0, hasReadings = b != null, winnerKey = b?.winnerKey)
     }
 
+/** Mean and spread of complete days' totals (spec criterion 11). */
+data class DailyBaseline(val days: Int, val mean: Double, val min: Double, val max: Double)
+
+/**
+ * Baseline over day totals, not raw readings: the newest [windowDays]
+ * complete days with readings before [todayKey]. Today is partial and
+ * never counts. Null when no complete day has readings.
+ */
+fun dailyBaseline(totals: List<DayTotal>, todayKey: String, windowDays: Int = DAILY_BASELINE_DAYS): DailyBaseline? {
+    val days = totals.filter { it.hasReadings && it.key < todayKey }.takeLast(windowDays)
+    if (days.isEmpty()) return null
+    val values = days.map { it.total }
+    return DailyBaseline(days = days.size, mean = values.average(), min = values.min(), max = values.max())
+}
+
+const val DAILY_BASELINE_DAYS = 14
+
 /** " · self-reported" when the owner's own entry counted the day (spec criterion 9), else "". */
 fun winnerMark(winnerKey: String?): String =
     if (winnerKey == com.bios.app.model.SourceType.SELF_REPORTED.key) " · self-reported" else ""

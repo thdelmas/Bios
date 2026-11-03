@@ -44,7 +44,7 @@ class HealthConnectAdapter(private val context: Context) {
             return pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
         }
         KNOWN_WRITERS.entries.firstOrNull { packageName.startsWith(it.key) }?.let { return it.value }
-        if (!packageName.contains('.')) {
+        if (!packageName.contains('.') || packageName.startsWith(PLATFORM_WRITER_PREFIX)) {
             return android.provider.Settings.Global.getString(context.contentResolver, "device_name")
                 ?.takeIf { it.isNotBlank() } ?: "This phone"
         }
@@ -227,6 +227,14 @@ class HealthConnectAdapter(private val context: Context) {
 
     companion object {
         /** Health apps whose label the package manager will not give us (package visibility). */
+        /**
+         * Origin of records the platform itself writes (the handset pedometer):
+         * `com.android.healthconnect.phone.<hash>`. The hash is not an app the
+         * owner can name; the phone's own name is (seen 2026-11-03 as
+         * "Jdf07d54…" on the Known Sources screen).
+         */
+        private const val PLATFORM_WRITER_PREFIX = "com.android.healthconnect.phone"
+
         private val KNOWN_WRITERS = mapOf(
             "com.yf.smart.coros" to "COROS",
             "com.fitbit" to "Fitbit",

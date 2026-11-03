@@ -110,7 +110,10 @@ class KnownSourcesViewModel(
         type: SourceType?,
         id: String,
     ): String = when {
-        !deviceName.isNullOrBlank() && !deviceModel.isNullOrBlank() && deviceModel != deviceName ->
+        // A model that is a package name (Health Connect writers keep the
+        // package there as the stable key) is not for the owner's eyes.
+        !deviceName.isNullOrBlank() && !deviceModel.isNullOrBlank() &&
+            deviceModel != deviceName && !deviceModel.contains('.') ->
             "$deviceName ($deviceModel)"
         !deviceName.isNullOrBlank() -> deviceName
         type != null -> typeLabel(type)

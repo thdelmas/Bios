@@ -60,6 +60,19 @@ Criteria:
 | The registry has one row per source type, so two devices of the same type (two phones, two watches of one brand) could collapse into one name. | owner | empty | Not hit today: one of each type on his phone. The per-writer Health Connect split already separates COROS from Fitbit. | A second device of an existing type delivers and the row name does not distinguish it → split the registry key by device, later spec. |
 | Screen cost: another settings screen to maintain. | owner | filled | Reuses existing DAO queries and stores; no new query, no new table. | The screen needs a new schema or a migration → reconsider, it was meant to be a read over what exists. |
 
+## Defects fixed 2026-11-03 (seen while taking the v0.3.0 screenshots)
+
+- The handset's own Health Connect writer (origin
+  `com.android.healthconnect.phone.<hash>`) was named by its hash: the
+  label fell through to the package's last segment. `appLabel` now treats
+  that prefix as the platform writer and uses the phone's device name; the
+  registry row refreshes on the writer's next write (`HealthConnectOrigins`).
+- The display name appended `deviceModel` in parentheses even when it is a
+  package name (the stable key for Health Connect writers). A model with a
+  dot in it is no longer shown; criterion 2 reads accordingly.
+- The freshness chip wrapped letter by letter ("Cu/rre/nt") beside a long
+  title. The title now yields width and the chip is one line.
+
 ## Open
 
 - Friendly metric names: a prettified metric key for now (underscores to

@@ -74,7 +74,19 @@ Criteria:
 - A day pager with the entries list under the total (Health Connect's shape)
   would make "show my mother Saturday" one tap fewer. Not built until the
   bar tap proves insufficient.
-- A daily-sum baseline for cumulative metrics (deviation against "usual
-  steps per day") stays a future enhancement, as the Home tile comment says.
+- A daily-sum baseline for cumulative metrics: BUILT 2026-11-03 as
+  criterion 11 below (the Trends card). Deviation alerts against "usual
+  steps per day" remain future work.
+
+## Criterion 11 (added 2026-11-03)
+
+Under a day-totals chart the baseline card speaks in days, not readings.
+The raw-reading card ("mean 87.2, std dev 210, range 1 to 218") sat under
+bars in the thousands on the release screenshots and read as nonsense.
+For cumulative metrics the card is "Usual day": mean, lowest and highest
+whole-day total over the newest 14 complete days with readings, today
+excluded because it is partial (`dailyBaseline` in `DayTotals.kt`, pure,
+tested). No complete day yet → the card says so. The raw-reading card is
+unchanged for every other metric.
 - Sleep duration is one reading per night, not cumulative; it is not in
   scope even though people also ask "how did I sleep Saturday".

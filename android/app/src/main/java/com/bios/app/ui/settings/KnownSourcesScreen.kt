@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -89,7 +90,9 @@ private fun KnownSourceCard(source: KnownSource) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(source.displayName, style = MaterialTheme.typography.titleSmall)
+                // The title yields width; the chip never wraps ("Cu/rre/nt", 2026-11-03).
+                Text(source.displayName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
                 FreshnessLabel(source)
             }
             Text(
@@ -120,7 +123,7 @@ private fun FreshnessLabel(source: KnownSource) {
         KnownSource.Freshness.ATTENTION -> "Needs attention" to MaterialTheme.colorScheme.error
         KnownSource.Freshness.UNKNOWN -> "—" to MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Text(text, style = MaterialTheme.typography.labelMedium, color = color, textAlign = TextAlign.End)
+    Text(text, style = MaterialTheme.typography.labelMedium, color = color, textAlign = TextAlign.End, maxLines = 1)
 }
 
 /** First few metrics, then "+N more", to keep a row scannable (criterion 3). */
