@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/thdelmas/Bios/compare/v0.3.1...v0.3.2) (2026-11-03)
+
+
+### Documentation
+
+* **license:** Bios is free software under AGPL-3.0 ([7a01308](https://github.com/thdelmas/Bios/commit/7a013081122725aa11d1d1b465749a19662a9be6))
+
 ## [0.3.1](https://github.com/thdelmas/Bios/compare/v0.3.0...v0.3.1) (2026-11-03)
 
 
