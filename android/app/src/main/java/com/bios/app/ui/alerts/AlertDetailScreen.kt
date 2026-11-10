@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,14 +17,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,7 +47,6 @@ import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.FeedbackForm
 import com.bios.app.ui.components.FeedbackInput
 import com.bios.app.ui.components.FeedbackSummary
-import com.bios.app.ui.components.SeverityBadge
 import com.bios.app.ui.theme.BiosTokens
 import java.text.DateFormat
 import java.util.Date
@@ -60,7 +57,6 @@ import java.util.Date
  * possibilities, what to watch, when to seek care now, and the journal entry.
  * Pull-side: the owner opened it.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertDetailScreen(
     anomalyId: String,
@@ -77,14 +73,11 @@ fun AlertDetailScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Alert") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-            }
-        )
+        // No app bar: the Scaffold already pads the status bar, and the tier
+        // meter below is the screen's heading (criterion 7).
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
         val d = detail
         when {
             d != null -> AlertDetailBody(
@@ -134,16 +127,23 @@ private fun AlertDetailBody(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         AlertHeader(anomaly)
-        MeasuredSection(anomaly, deviating)
+        MeasuredSection(anomaly, deviating, detail.now)
         pattern?.takeIf { it.risks.isNotBlank() }?.let { p ->
             Section("Why this matters") { Body(p.risks) }
             TextButton(onClick = { onOpenPattern(p.id) }) { Text("Read full context") }
         }
-        if (others.isNotEmpty()) OtherSignalsSection(others)
+        if (others.isNotEmpty()) OtherSignalsSection(others, detail.now)
+        if (detail.signals.isNotEmpty()) {
+            Text(
+                AlertDetailContent.STRIP_LEGEND,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         CausesSection(deviating)
         anomaly.suggestedAction?.let { Section("Suggested next step") { Body(it) } }
         Section("Worth watching") { Bullets(AlertDetailContent.WORTH_WATCHING) }
@@ -171,11 +171,9 @@ private fun AlertDetailBody(
 private fun AlertHeader(anomaly: Anomaly) {
     val tier = AlertTier.fromLevel(anomaly.severity)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SeverityBadge(tier, BiosTokens.tierColor(tier))
-            Spacer(Modifier.width(8.dp))
-            Text(anomaly.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        }
+        TierMeter(tier)
+        Spacer(Modifier.height(4.dp))
+        Text(anomaly.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
             DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(anomaly.detectedAt)),
             style = MaterialTheme.typography.bodySmall,
@@ -185,43 +183,29 @@ private fun AlertHeader(anomaly: Anomaly) {
 }
 
 @Composable
-private fun MeasuredSection(anomaly: Anomaly, deviating: List<MeasuredSignal>) {
-    Section("What Bios measured") {
+private fun MeasuredSection(anomaly: Anomaly, deviating: List<MeasuredSignal>, now: Map<String, MeasuredSignal>) {
+    Section("What Bios measured, last 24 hours") {
         if (deviating.isEmpty()) {
             Body(anomaly.explanation)
         } else {
-            deviating.forEach { s ->
-                SignalRow(s, if (s.above) "above your usual range" else "below your usual range")
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                deviating.forEach { s ->
+                    val status = if (s.above) "above your usual range" else "below your usual range"
+                    SignalStripRow(s, status, AlertDetailContent.nowLine(s, now[s.metricKey]))
+                }
             }
-            Text(
-                "Average of the 24 hours before the alert, next to the range your own " +
-                    "previous weeks fall in.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
 
 @Composable
-private fun OtherSignalsSection(others: List<MeasuredSignal>) {
+private fun OtherSignalsSection(others: List<MeasuredSignal>, now: Map<String, MeasuredSignal>) {
     Section("Other signals, same 24 hours") {
-        others.forEach { SignalRow(it, "within your usual range") }
-    }
-}
-
-@Composable
-private fun SignalRow(s: MeasuredSignal, status: String) {
-    Column {
-        Text(
-            AlertDetailContent.label(s.metricKey).replaceFirstChar { it.uppercase() },
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            "${AlertDetailContent.valueVersusUsual(s)} · $status",
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            others.forEach {
+                SignalStripRow(it, "within your usual range", AlertDetailContent.nowLine(it, now[it.metricKey]))
+            }
+        }
     }
 }
 
@@ -237,21 +221,22 @@ private fun CausesSection(deviating: List<MeasuredSignal>) {
 
 @Composable
 private fun SeekCareCard() {
-    val emergencyNumber = remember { RegionConfigProvider.forCurrentLocale().emergencyNumber }
+    val context = LocalContext.current
+    val region = remember { RegionConfigProvider.forDevice(context) }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                "Seek care now if",
+                AlertDetailContent.SEEK_CARE_HEADING,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Bullets(AlertDetailContent.SEEK_CARE_NOW, MaterialTheme.colorScheme.onErrorContainer)
             Text(
-                AlertDetailContent.emergencyLine(emergencyNumber),
+                AlertDetailContent.emergencyLine(region.emergencyNumber, region.displayName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )

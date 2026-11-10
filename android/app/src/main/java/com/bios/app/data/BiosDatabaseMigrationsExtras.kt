@@ -168,4 +168,26 @@ internal object BiosDatabaseMigrationsExtras {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_follow_up_referrals_urgency ON follow_up_referrals(urgency)")
         }
     }
+
+    /** Alert detail criterion 6: the signals an alert was raised on, kept with the alert. */
+    val MIGRATION_36_37 = object : Migration(36, 37) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE anomalies ADD COLUMN signalSnapshot TEXT")
+        }
+    }
+
+    /**
+     * Alert detail criteria 8 and 9 (2026-11-07): reading revision tracking
+     * for re-delivered day-values, and the fifth tier (WARNING = 3) which
+     * moves stored URGENT codes from 3 to 4.
+     */
+    val MIGRATION_37_38 = object : Migration(37, 38) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE metric_readings ADD COLUMN seenCount INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE metric_readings ADD COLUMN firstSeenAt INTEGER")
+            db.execSQL("ALTER TABLE metric_readings ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("UPDATE anomalies SET severity = 4 WHERE severity = 3")
+            db.execSQL("UPDATE emergency_contacts SET minTierLevel = 4 WHERE minTierLevel = 3")
+        }
+    }
 }

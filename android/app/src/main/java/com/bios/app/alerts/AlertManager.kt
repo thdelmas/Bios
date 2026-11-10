@@ -38,6 +38,7 @@ class AlertManager(
     companion object {
         const val CHANNEL_NOTICE = "bios_notice"
         const val CHANNEL_ADVISORY = "bios_advisory"
+        const val CHANNEL_WARNING = "bios_warning"
         const val CHANNEL_URGENT = "bios_urgent"
         const val CHANNEL_FOLLOWUP = "bios_followup"
         const val CHANNEL_DIGEST = "bios_digest"
@@ -103,6 +104,7 @@ class AlertManager(
         ): Pair<String, Int> = when {
             urgentEscalationSuppressed -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
             tier == AlertTier.URGENT -> CHANNEL_URGENT to NotificationCompat.PRIORITY_HIGH
+            tier == AlertTier.WARNING -> CHANNEL_WARNING to NotificationCompat.PRIORITY_HIGH
             tier == AlertTier.ADVISORY -> CHANNEL_ADVISORY to NotificationCompat.PRIORITY_DEFAULT
             else -> CHANNEL_NOTICE to NotificationCompat.PRIORITY_LOW
         }
@@ -229,6 +231,12 @@ class AlertManager(
             NotificationChannel(
                 CHANNEL_ADVISORY, "Health Advisories", NotificationManager.IMPORTANCE_DEFAULT
             ).apply { description = "Multi-signal patterns matching known conditions" }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_WARNING, "Health Warnings", NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Several signals, at least one far outside the usual range" }
         )
 
         manager.createNotificationChannel(

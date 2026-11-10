@@ -27,7 +27,9 @@ internal object HolisticSignals {
             if (baseline == null || readings.isEmpty()) {
                 null
             } else {
-                val signal = AlertDetailContent.signal(metric, readings.map { it.value }.average(), baseline)
+                val signal = AlertDetailContent.signal(
+                    metric, readings.map { it.value }.average(), baseline, readingCount = readings.size,
+                )
                 metric to (signal to readings.maxOf { it.timestamp })
             }
         }.toMap()

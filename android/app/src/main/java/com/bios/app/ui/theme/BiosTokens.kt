@@ -25,11 +25,14 @@ object BiosTokens {
     private val Success = Color(0xFF00E5A0)
     private val Warning = Color(0xFFFFB830)
     // Bios-specific extension of the canonical role set: a deep amber for the
-    // tier between warning and error. Lets the 4-tier AlertTier and 4-band
+    // tier between warning and error. Lets the 5-tier AlertTier and 4-band
     // probability gradients stay legible without collapsing two tiers onto
     // one color. The design system permits app-level role additions
     // (docs/DESIGN_SYSTEM.md §2).
     private val Attention = Color(0xFFFF8A00)
+    // Fifth alert tier (WARNING, between advisory and urgent): a deep red
+    // that still reads apart from the theme's error role.
+    private val Severe = Color(0xFFE5484D)
     private val Pending = Color(0xFFFFF4DA)
 
     val success: Color
@@ -46,6 +49,11 @@ object BiosTokens {
         @Composable
         @ReadOnlyComposable
         get() = Attention
+
+    val severe: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = Severe
 
     val error: Color
         @Composable
@@ -86,6 +94,7 @@ object BiosTokens {
         AlertTier.OBSERVATION -> muted
         AlertTier.NOTICE -> warning
         AlertTier.ADVISORY -> attention
+        AlertTier.WARNING -> severe
         AlertTier.URGENT -> error
     }
 

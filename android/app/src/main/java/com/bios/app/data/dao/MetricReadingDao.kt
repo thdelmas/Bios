@@ -27,7 +27,9 @@ interface MetricReadingDao {
 
     // `readingKind = null` returns all sources; pass "SENSOR" from engine code
     // to exclude self-reports / derived values from baselines and aggregates
-    // (docs/SELF_REPORTED_DATA_HOME.md decision 3).
+    // (docs/SELF_REPORTED_DATA_HOME.md decision 3). Provisional rows (a
+    // re-delivered day-value not yet seen unchanged across two syncs) are
+    // excluded from every engine query here (alert-detail criterion 8).
     @Query("""
         SELECT mr.value FROM metric_readings mr
         INNER JOIN data_sources ds ON mr.sourceId = ds.id
@@ -35,6 +37,7 @@ interface MetricReadingDao {
           AND mr.timestamp >= :startMillis
           AND mr.timestamp <= :endMillis
           AND mr.isPrimary = 1
+          AND mr.provisional = 0
           AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
         ORDER BY mr.timestamp ASC
     """)
@@ -55,6 +58,7 @@ interface MetricReadingDao {
           AND mr.timestamp >= :startMillis
           AND mr.timestamp <= :endMillis
           AND mr.isPrimary = 1
+          AND mr.provisional = 0
           AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
         ORDER BY mr.timestamp ASC
     """)
@@ -148,6 +152,7 @@ interface MetricReadingDao {
           AND mr.timestamp >= :startMillis
           AND mr.timestamp <= :endMillis
           AND mr.isPrimary = 1
+          AND mr.provisional = 0
           AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
     """)
     suspend fun countInRange(
@@ -167,6 +172,7 @@ interface MetricReadingDao {
           AND mr.timestamp >= :startMillis
           AND mr.timestamp <= :endMillis
           AND mr.isPrimary = 1
+          AND mr.provisional = 0
           AND (:readingKind IS NULL OR ds.readingKind = :readingKind)
         GROUP BY (mr.timestamp / :bucketMillis)
         ORDER BY (mr.timestamp / :bucketMillis) ASC

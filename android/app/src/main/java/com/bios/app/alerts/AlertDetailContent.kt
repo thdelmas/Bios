@@ -1,5 +1,6 @@
 package com.bios.app.alerts
 
+import com.bios.app.model.AlertTier
 import com.bios.app.model.PersonalBaseline
 import com.bios.contracts.MetricType
 import java.util.Locale
@@ -15,6 +16,10 @@ data class MeasuredSignal(
     val usualLow: Double,
     val usualHigh: Double,
     val zScore: Double,
+    /** Sensor readings averaged into [value]; 0 when unknown. */
+    val readingCount: Int = 0,
+    /** Owner-facing names of the sources those readings came from. */
+    val sources: List<String> = emptyList(),
 ) {
     val deviating: Boolean get() = abs(zScore) > AlertDetailContent.DEVIATION_Z
     val above: Boolean get() = zScore > 0
@@ -38,16 +43,62 @@ object AlertDetailContent {
     /** Same cut the detector uses to list a metric as deviating. */
     const val DEVIATION_Z = 1.5
 
+    /** Where a value sits against the owner's range, for the strip's dot color. */
+    enum class DeviationBand { INSIDE, EDGE, OUTSIDE, FAR }
+
+    private const val EDGE_Z = 1.0
+    private const val FAR_Z = 3.0
+
+    fun deviationBand(zScore: Double): DeviationBand = when {
+        abs(zScore) >= FAR_Z -> DeviationBand.FAR
+        abs(zScore) > DEVIATION_Z -> DeviationBand.OUTSIDE
+        abs(zScore) >= EDGE_Z -> DeviationBand.EDGE
+        else -> DeviationBand.INSIDE
+    }
+
+    /**
+     * What each tier means in Bios's own behaviour (criterion 7). States what
+     * the app did and how large the shift is; no instruction to the owner.
+     */
+    fun tierMeaning(tier: AlertTier): String = when (tier) {
+        AlertTier.OBSERVATION -> "Logged quietly, no notification. A small shift kept for the record."
+        AlertTier.NOTICE -> "A silent notification. One signal outside your usual range."
+        AlertTier.ADVISORY -> "A notification with sound. Several signals, or a larger shift, over one day."
+        AlertTier.WARNING -> "A loud notification. Several signals, at least one far outside your usual range."
+        AlertTier.URGENT -> "The highest tier. The seek-care list below is the part that matters now."
+    }
+
     /** Detection window: the detector averages the 24 h before it runs. */
     const val WINDOW_MILLIS = 24L * 3600 * 1000
 
-    fun signal(metricKey: String, value: Double, baseline: PersonalBaseline) = MeasuredSignal(
+    fun signal(
+        metricKey: String,
+        value: Double,
+        baseline: PersonalBaseline,
+        readingCount: Int = 0,
+        sources: List<String> = emptyList(),
+    ) = MeasuredSignal(
         metricKey = metricKey,
         value = value,
         usualLow = baseline.p5,
         usualHigh = baseline.p95,
         zScore = baseline.zScore(value),
+        readingCount = readingCount,
+        sources = sources,
     )
+
+    /** "3 readings · COROS, Bios (inferred)"; empty when the count is unknown. */
+    fun evidenceLine(s: MeasuredSignal): String {
+        if (s.readingCount <= 0) return ""
+        val n = if (s.readingCount == 1) "1 reading" else "${s.readingCount} readings"
+        return if (s.sources.isEmpty()) n else "$n · ${s.sources.joinToString(", ")}"
+    }
+
+    /** One line under the strips; the band and dot are defined once, not per row. */
+    const val STRIP_LEGEND =
+        "Band: your usual range (5th–95th percentile of the previous two weeks). " +
+            "Dot: the 24 h average the alert was raised on. Each row has its own scale. " +
+            "\"Now\" is the same 24 hours re-read today, when later syncs changed it."
 
     fun label(metricKey: String): String = when (metricKey) {
         "heart_rate_variability" -> "heart rate variability (HRV)"
@@ -59,6 +110,7 @@ object AlertDetailContent {
     fun unit(metricKey: String): String = MetricType.fromKey(metricKey)?.unit?.symbol.orEmpty()
 
     fun formatValue(metricKey: String, value: Double): String {
+        if (metricKey == "sleep_duration") return formatDuration(value)
         val decimals = when (metricKey) {
             "skin_temperature_deviation" -> 2
             "respiratory_rate" -> 1
@@ -67,6 +119,30 @@ object AlertDetailContent {
         val number = String.format(Locale.getDefault(), "%.${decimals}f", value)
         val unit = unit(metricKey)
         return if (unit.isEmpty()) number else "$number $unit"
+    }
+
+    /** Seconds as "8h24": hours and zero-padded minutes, no unit word. */
+    fun formatDuration(seconds: Double): String {
+        val minutes = (seconds / SECONDS_PER_MINUTE).toLong()
+        return "${minutes / MINUTES_PER_HOUR}h${String.format(Locale.ROOT, "%02d", minutes % MINUTES_PER_HOUR)}"
+    }
+
+    private const val SECONDS_PER_MINUTE = 60.0
+    private const val MINUTES_PER_HOUR = 60L
+
+    /**
+     * "now 63 bpm from 1 reading · COROS" when the same window re-read today
+     * differs from what the alert was raised on; empty when it reads the same
+     * or when there is nothing to compare.
+     */
+    fun nowLine(atDetection: MeasuredSignal, now: MeasuredSignal?): String {
+        if (now == null) return ""
+        val same = formatValue(now.metricKey, now.value) == formatValue(atDetection.metricKey, atDetection.value) &&
+            now.readingCount == atDetection.readingCount
+        if (same) return ""
+        val evidence = evidenceLine(now)
+        val from = if (evidence.isEmpty()) "" else " from $evidence"
+        return "now ${formatValue(now.metricKey, now.value)}$from"
     }
 
     /** "66 bpm, usually 53–60" */
@@ -122,11 +198,15 @@ object AlertDetailContent {
         "Sudden confusion, weakness on one side, or trouble speaking",
     )
 
-    fun emergencyLine(emergencyNumber: String?): String =
+    /** Heading of the seek-care card: one item is enough, not all of them. */
+    const val SEEK_CARE_HEADING = "Seek care now if any one of these applies"
+
+    fun emergencyLine(emergencyNumber: String?, regionName: String? = null): String =
         if (emergencyNumber != null) {
-            "With any of these, call $emergencyNumber or get urgent care. Do not wait for the data."
+            val where = if (regionName.isNullOrBlank()) "" else " ($regionName)"
+            "Any one of them is enough: call $emergencyNumber$where or get urgent care. Do not wait for the data."
         } else {
-            "With any of these, contact your local emergency services or get urgent care. " +
+            "Any one of them is enough: contact your local emergency services or get urgent care. " +
                 "Do not wait for the data."
         }
 

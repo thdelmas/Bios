@@ -10,9 +10,10 @@ import java.io.File
 import java.io.IOException
 
 /**
- * [LabOcrEngine] backed by Tesseract via tess-two (`com.rmtheis:tess-two`,
- * Apache-2.0). Fully FOSS and free of Google Play Services — the degoogled-
- * purist choice for Phase 10 (docs LAB_OCR_INGESTION.md §2).
+ * [LabOcrEngine] backed by Tesseract 5 via Tesseract4Android
+ * (`cz.adaptech.tesseract4android`, Apache-2.0; same `TessBaseAPI` surface
+ * as the retired tess-two). Fully FOSS and free of Google Play Services — the
+ * degoogled-purist choice for Phase 10 (docs LAB_OCR_INGESTION.md §2).
  *
  * **Trained data is operator-provisioned, never committed.** Tesseract needs a
  * `<lang>.traineddata` model per language. Those are multi-MB binaries that do
@@ -59,7 +60,7 @@ class TesseractLabOcrEngine private constructor(
                 // init wants the directory that *contains* the `tessdata/` folder.
                 if (!it.init(dataParentDir.absolutePath, language)) {
                     Log.w(TAG, "TessBaseAPI.init failed for '$language'")
-                    it.end()
+                    it.recycle()
                     return null
                 }
                 api = it
@@ -72,7 +73,7 @@ class TesseractLabOcrEngine private constructor(
 
     override fun close() {
         try {
-            api?.end()
+            api?.recycle()
         } catch (_: Exception) {
             // already ended / never inited
         }
@@ -94,7 +95,7 @@ class TesseractLabOcrEngine private constructor(
         fun create(context: Context): TesseractLabOcrEngine {
             val parent = File(context.filesDir, OCR_DIR)
             val installed = provisionFromAssets(context, File(parent, "tessdata"))
-            // tess-two language string, e.g. "cat+spa+eng".
+            // Tesseract language string, e.g. "cat+spa+eng".
             val language = SUPPORTED.filter { it in installed }.joinToString("+")
             return TesseractLabOcrEngine(parent, language)
         }

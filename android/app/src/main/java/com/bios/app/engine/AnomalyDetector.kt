@@ -3,6 +3,7 @@ package com.bios.app.engine
 import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.ConditionPattern
 import com.bios.app.alerts.DeviationDirection
+import com.bios.app.alerts.SignalSnapshot
 import com.bios.app.config.RegionConfig
 import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
@@ -140,11 +141,7 @@ class AnomalyDetector(
         val deviating = zScores.filter { (_, z) -> abs(z) > 1.5 }
         val newest = deviating.keys.mapNotNull { timed[it]?.second }.maxOrNull()
         if (newest != null && WindowCoverage.evidenceAlreadyAlerted(deviating.keys, newest, recentAnomalies)) return null
-        val severity = when {
-            score > 0.85 -> AlertTier.ADVISORY
-            score > 0.7 -> AlertTier.NOTICE
-            else -> AlertTier.OBSERVATION
-        }
+        val severity = classifyHolistic(score, deviating.values.maxOfOrNull { abs(it) } ?: 0.0)
 
         val metricTypesJson = "[${deviating.keys.joinToString(",") { "\"$it\"" }}]"
         val scoresJson = "{${deviating.entries.joinToString(",") { "\"${it.key}\":${it.value}" }}}"
@@ -158,7 +155,8 @@ class AnomalyDetector(
             severity = severity.level,
             title = "Unusual health pattern detected",
             explanation = HolisticSignals.explanation(deviating.keys.mapNotNull { signals[it] }),
-            suggestedAction = "Review your recent health trends and note any symptoms."
+            suggestedAction = "Review your recent health trends and note any symptoms.",
+            signalSnapshot = SignalSnapshot.encode(signals.values),
         )
     }
 

@@ -16,7 +16,7 @@
 - 13 condition patterns: infection onset, sleep disruption, cardiovascular stress, overtraining, metabolic drift, cardiorespiratory deconditioning, chronic inflammation, recovery deficit, respiratory infection, AFib screening, mental health correlate, menstrual cycle anomaly, circadian disruption
 - 33 signal rules (24 literature-backed with citations)
 - LiteRT anomaly model wrapper (heuristic fallback active — model asset not shipped)
-- 4-tier alert system with push notifications (Observation / Notice / Advisory / Urgent)
+- 5-tier alert system with push notifications (Observation / Notice / Advisory / Warning / Urgent)
 - Alert content policy enforcing "never evaluate the person" principle
 - Biomarker reference knowledge base linking wearable metrics to clinical research
 
@@ -172,7 +172,7 @@ Contract test (`MetricTypeTest`) guards every key against accidental renames.
 ### 7.5 SoulRadio inbound suggest API (manifesto-bounded)
 
 Wire the two intent actions reserved in
-[SoulRadio/docs/ECOSYSTEM.md](../../SoulRadio/docs/ECOSYSTEM.md):
+[SoulRadio/docs/ECOSYSTEM.md](https://github.com/thdelmas/SoulRadio/blob/main/docs/ECOSYSTEM.md):
 `ACTION_SUGGEST_BAND` (non-modal hint, 5-min hysteresis) and
 `ACTION_REQUEST_STOP` (used by Virgil during alert, by W2F during SOS).
 On the Bios side, opt-in emission from HRV/arousal classifications.
@@ -252,7 +252,7 @@ session. Bios surfaces them in diagnostics the same way it surfaces other
 event streams. Cross-correlation pattern runs alongside the existing
 patterns.
 
-See also: [Smokeless/docs/ECOSYSTEM.md](../../Smokeless/docs/ECOSYSTEM.md).
+See also: [Smokeless/docs/ECOSYSTEM.md](https://github.com/thdelmas/Smokeless/blob/master/docs/ECOSYSTEM.md).
 
 ---
 

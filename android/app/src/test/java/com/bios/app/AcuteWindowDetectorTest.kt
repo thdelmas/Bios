@@ -1,5 +1,6 @@
 package com.bios.app
 
+import com.bios.app.model.AlertTier
 import com.bios.app.alerts.AcuteWindowPatterns
 import com.bios.app.engine.AcuteWindowDetector
 import com.bios.app.engine.AcuteWindowDetector.Reading
@@ -43,7 +44,7 @@ class AcuteWindowDetectorTest {
         assertNotNull("Anaphylaxis should fire on Δ30 HR + sustained SpO2 ≤92", anomaly)
         assertEquals("anaphylaxis_screen", anomaly!!.patternId)
         // URGENT tier from severityFloor.
-        assertEquals(3, anomaly.severity)
+        assertEquals(AlertTier.URGENT.level, anomaly.severity)
     }
 
     // -- anaphylaxis: negative cases (noise, single reading, exercise-only) --
@@ -228,7 +229,7 @@ class AcuteWindowDetectorTest {
         )
         assertNotNull("Shock should fire on SBP ≤90 + HR >100", anomaly)
         assertEquals("hypotensive_shock_screen", anomaly!!.patternId)
-        assertEquals(3, anomaly.severity)
+        assertEquals(AlertTier.URGENT.level, anomaly.severity)
     }
 
     @Test

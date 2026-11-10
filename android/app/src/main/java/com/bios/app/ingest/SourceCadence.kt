@@ -27,6 +27,18 @@ object SourceCadence {
     private val DAY = TimeUnit.DAYS.toMillis(1)
     private val HOUR = TimeUnit.HOURS.toMillis(1)
 
+    /**
+     * Sources that send the same day-value on every sync and may revise it
+     * (vendor cloud summaries). Their readings start provisional and settle
+     * once seen unchanged across two syncs (alert-detail criterion 8).
+     */
+    fun redeliversDailyValues(sourceType: SourceType): Boolean = when (sourceType) {
+        SourceType.COROS_API, SourceType.OURA_API, SourceType.WHOOP_API,
+        SourceType.GARMIN_API, SourceType.WITHINGS_API, SourceType.POLAR_API,
+        SourceType.DEXCOM_API -> true
+        else -> false
+    }
+
     fun intervalMillis(sourceType: SourceType): Long? = when (sourceType) {
         // Nightly summaries: one wake-day per delivery.
         SourceType.COROS_API, SourceType.OURA_API, SourceType.WHOOP_API,

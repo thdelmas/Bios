@@ -26,7 +26,7 @@ import java.time.temporal.ChronoUnit
  * to surface health cards in the Void launcher.
  *
  * Endpoints:
- *   GET /health/status    — overall state (normal/observation/notice/advisory/urgent) + alert count
+ *   GET /health/status    — overall state (normal/observation/notice/advisory/warning/urgent) + alert count
  *   GET /health/summary   — today's key metrics vs baseline
  *   GET /health/alerts    — active unacknowledged alerts (metadata only, no raw readings)
  *   GET /health/baseline/{type} — personal baseline for a specific metric type
@@ -138,6 +138,7 @@ class HealthApiServer(
 
         val state = when {
             highestSeverity >= AlertTier.URGENT.level -> HealthState.URGENT
+            highestSeverity >= AlertTier.WARNING.level -> HealthState.WARNING
             highestSeverity >= AlertTier.ADVISORY.level -> HealthState.ADVISORY
             highestSeverity >= AlertTier.NOTICE.level -> HealthState.NOTICE
             unacked.isNotEmpty() -> HealthState.OBSERVATION

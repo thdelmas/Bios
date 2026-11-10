@@ -59,7 +59,7 @@ data class EmergencyContact(
     val phoneNumber: String,
     /**
      * Minimum alert-tier level (matching [AlertTier.level]) at which this
-     * contact may surface. Default = [AlertTier.URGENT].level (3) so the
+     * contact may surface. Default = [AlertTier.URGENT].level (4) so the
      * common case is URGENT-only. An owner can opt this contact in at
      * ADVISORY (2) for higher-touch scenarios — never at NOTICE/OBSERVATION
      * (the audit explicitly scopes escalation to alerts that matter).
@@ -82,8 +82,8 @@ data class EmergencyContact(
     val note: String? = null,
 ) {
     companion object {
-        /** Default tier floor: URGENT only. Matches [AlertTier.URGENT.level]. */
-        const val MIN_TIER_URGENT = 3
+        /** Default tier floor: URGENT only. Matches [AlertTier.URGENT.level] (4 since v38). */
+        const val MIN_TIER_URGENT = 4
 
         /** Owner-overridable lower bound: ADVISORY-and-above. */
         const val MIN_TIER_ADVISORY = 2

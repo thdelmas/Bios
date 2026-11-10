@@ -1,5 +1,6 @@
 package com.bios.app.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -40,6 +41,13 @@ data class MetricReading(
     val confidence: Int,        // ConfidenceTier.level
     val isPrimary: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
+    // Revision tracking for sources that re-deliver the same day-value on
+    // every sync and may revise it (vendor cloud summaries). Maintained by
+    // ReadingRevisions at ingest; engines read only settled rows
+    // (docs/specs/alert-detail.md, criterion 8).
+    @ColumnInfo(defaultValue = "1") val seenCount: Int = 1,
+    val firstSeenAt: Long? = null,
+    @ColumnInfo(defaultValue = "0") val provisional: Boolean = false,
     // Owner-recall free text, never read by any engine. Reserved for surfaces
     // where the owner annotates their own reading (biomarker entry, manual
     // sleep duration). Engines must not query this column; the manifesto's

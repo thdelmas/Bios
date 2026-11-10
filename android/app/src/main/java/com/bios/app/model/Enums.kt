@@ -96,11 +96,18 @@ enum class TrendDirection { RISING, STABLE, FALLING }
 
 // MARK: - Alerts
 
+/**
+ * Five tiers; `level` is the stored code (anomalies.severity,
+ * emergency_contacts.minTierLevel) and rises with the ordinal. WARNING was
+ * inserted between ADVISORY and URGENT on 2026-11-07 (schema v38 remapped
+ * stored URGENT 3 → 4).
+ */
 enum class AlertTier(val level: Int, val label: String) {
     OBSERVATION(0, "Observation"),
     NOTICE(1, "Notice"),
     ADVISORY(2, "Advisory"),
-    URGENT(3, "Urgent");
+    WARNING(3, "Warning"),
+    URGENT(4, "Urgent");
 
     companion object {
         fun fromLevel(level: Int): AlertTier =

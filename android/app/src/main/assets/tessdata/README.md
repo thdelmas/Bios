@@ -1,6 +1,6 @@
 # Tesseract trained data (operator-provisioned)
 
-Lab-report OCR (Phase 10, `com.bios.app.labocr`) uses Tesseract via tess-two.
+Lab-report OCR (Phase 10, `com.bios.app.labocr`) uses Tesseract 5 via Tesseract4Android.
 Tesseract needs one `<lang>.traineddata` model per language. These are
 multi-megabyte binaries and are **deliberately not committed** to this public
 repository — they bloat the repo and the APK and are redistributed under their
@@ -22,7 +22,8 @@ app/src/main/assets/tessdata/spa.traineddata
 app/src/main/assets/tessdata/eng.traineddata
 ```
 
-Use the `tessdata_fast` models (smaller, plenty accurate for printed reports):
+Use the `tessdata_fast` models (smaller, plenty accurate for printed reports;
+Tesseract 5 reads these LSTM models directly):
 https://github.com/tesseract-ocr/tessdata_fast
 
 The `*.traineddata` files are git-ignored (see this folder's `.gitignore`), so

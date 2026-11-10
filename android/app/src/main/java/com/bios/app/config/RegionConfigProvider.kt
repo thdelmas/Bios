@@ -1,5 +1,7 @@
 package com.bios.app.config
 
+import android.content.Context
+import android.telephony.TelephonyManager
 import java.util.Locale
 
 /**
@@ -94,6 +96,23 @@ object RegionConfigProvider {
      * fallback chain (see class docs).
      */
     fun forCurrentLocale(): RegionConfig = forLocale(Locale.getDefault())
+
+    /**
+     * Config for where the phone is, not how it is set: the current mobile
+     * network's country first, then the SIM's, then the locale. A phone set
+     * to en-US in Spain gets 112, not 911 (alert-detail criterion 10).
+     */
+    fun forDevice(context: Context): RegionConfig {
+        val telephony = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        return forLocale(deviceLocale(telephony?.networkCountryIso, telephony?.simCountryIso, Locale.getDefault()))
+    }
+
+    /** Pure resolution order behind [forDevice]: network country, SIM country, locale. */
+    internal fun deviceLocale(networkCountry: String?, simCountry: String?, fallback: Locale): Locale {
+        val country = listOf(networkCountry, simCountry).firstOrNull { !it.isNullOrBlank() }
+            ?: return fallback
+        return Locale(fallback.language, country.uppercase(Locale.ROOT))
+    }
 
     /**
      * Returns config for a specific country code (ISO 3166-1 alpha-2).

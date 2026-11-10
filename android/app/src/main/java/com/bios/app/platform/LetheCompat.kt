@@ -55,5 +55,6 @@ enum class HealthState {
     OBSERVATION,
     NOTICE,
     ADVISORY,
+    WARNING,
     URGENT
 }

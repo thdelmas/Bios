@@ -258,7 +258,8 @@ class IngestManager @Suppress("LongParameterList") constructor(
                 val deduped = Deduplicator.deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                val toWrite = SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao)
+                val toWrite = ReadingRevisions(readingDao, sourceDao)
+                    .reconcile(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
                 readingDao.insertAll(toWrite)
                 updateLastReadings(quality)
                 IngestTelemetry.syncSummary(
@@ -333,7 +334,8 @@ class IngestManager @Suppress("LongParameterList") constructor(
                 val deduped = Deduplicator.deduplicate(allReadings)
                 val quality = SignalQualityFilter.filter(deduped, lastReadingPerMetric)
                 val derived = deriveAll(quality)
-                val toWrite = SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao)
+                val toWrite = ReadingRevisions(readingDao, sourceDao)
+                    .reconcile(SourceMetricToggleFilter.apply(quality + derived, toggleDao, sourceDao))
                 readingDao.insertAll(toWrite)
                 updateLastReadings(quality)
                 IngestTelemetry.syncSummary(

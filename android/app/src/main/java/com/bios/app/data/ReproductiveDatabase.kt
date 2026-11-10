@@ -43,7 +43,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         MenopauseStageEntry::class,
         GenderAffirmingCareEntry::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class ReproductiveDatabase : RoomDatabase() {
@@ -164,7 +164,7 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                 DB_NAME
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         }
 
@@ -225,6 +225,17 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                     ON metric_readings (sourceId, metricType, timestamp)
                     """.trimIndent()
                 )
+            }
+        }
+
+        // Mirrors BiosDatabase MIGRATION_37_38: the shared MetricReading
+        // entity gained revision tracking (seenCount, firstSeenAt,
+        // provisional) for re-delivered day-values (alert-detail criterion 8).
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE metric_readings ADD COLUMN seenCount INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE metric_readings ADD COLUMN firstSeenAt INTEGER")
+                db.execSQL("ALTER TABLE metric_readings ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0")
             }
         }
 

@@ -33,5 +33,7 @@ data class Anomaly(
     val diagnosis: String? = null,
     val symptoms: String? = null,       // free-text symptom self-report
     val notes: String? = null,          // general journal notes
-    val outcomeAccurate: Boolean? = null // was the alert correct?
+    val outcomeAccurate: Boolean? = null, // was the alert correct?
+    /** Watched signals as they stood at detection (JSON, see SignalSnapshot); null before v37. */
+    val signalSnapshot: String? = null
 )
