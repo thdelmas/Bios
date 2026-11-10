@@ -147,8 +147,7 @@ Honest paid apps — pocket money individually, but real, and they validate + bu
 
 ## Per-app monetization map
 
-Archetypes (col. 2) follow the portfolio-wide taxonomy in
-[KB monetization-doctrine.md](../../Miam/miam-knowledge-base/docs/monetization-doctrine.md): **1**=instrument/B2B,
+Archetypes (col. 2) follow the portfolio-wide monetization taxonomy: **1**=instrument/B2B,
 **2**=consumer, **3**=free commons. The values are universal; the mechanism follows each app's nature.
 
 | App | Archetype | Role | Model | Notes |

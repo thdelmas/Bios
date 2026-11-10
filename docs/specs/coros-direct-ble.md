@@ -28,7 +28,7 @@ header with seconds since the same epoch. 3,382 heart-rate minutes from
 Sleep, nightly HRV, resting heart rate, steps and stress are in the same
 file, tags not yet mapped. The COROS app's Java is packed, but its native
 data library embeds 54 protobuf schemas (dumped to
-`/home/mia/apk-untrusted/coros-4.10.8-protos.txt`, daily record schema =
+`coros-4.10.8-protos.txt` in the local APK-analysis scratch directory, daily record schema =
 `DailyHappenDayInfo`) and its raw-file parser keeps readable symbol names
 (`create_sleep_info_from_buffer`, `add_device_fitness_hrv`), so the
 remaining tags can be read off the owner's own copy of the app.

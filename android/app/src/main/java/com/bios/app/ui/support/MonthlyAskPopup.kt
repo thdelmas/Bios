@@ -20,7 +20,8 @@ import com.bios.app.R
  * and does not communicate with the donation platform. Donation is a pure
  * browser hand-off.
  *
- * See /home/mia/autonomo/android-apps-contribution-popup-guide.md.
+ * Implements the portfolio-wide contribution-popup policy: one ask per month,
+ * no tracking of the chosen path, no donor state.
  */
 private const val DONATION_URL = "https://theophile.world/sponsor"
 private const val FEEDBACK_EMAIL = "contact@theophile.world"

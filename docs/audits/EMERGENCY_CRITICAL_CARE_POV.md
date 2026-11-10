@@ -68,7 +68,7 @@ These are the strengths an EM physician should not take for granted. The URGENT-
 
 [RegionConfigProvider.kt](../../android/app/src/main/java/com/bios/app/config/RegionConfigProvider.kt) carries `regulatoryBody`, `alertDisclaimer`, `fhirProfileUrl`, and the unit/clinical-threshold tables — but no `emergencyNumber` field. The regional emergency numbers are public (911 US, 112 EU-wide, 999 GB, 119 JP, 000 AU, 911 CA, 113 several Latin American countries, 110/119 KR, etc.) and adding a single `String?` field per region with a `tel:` deep-link `PendingIntent` on the notification would be a one-day change.
 
-The deeper architectural change is the **emergency-contact surface**. There is no entity in [/home/mia/Bios/android/app/src/main/java/com/bios/app/model/](../../android/app/src/main/java/com/bios/app/model/) that holds a designated contact, a relationship label, or an opt-in escalation policy. From an EM standpoint, this is the missing piece that converts URGENT from "the owner sees an alert" to "*someone* knows." For the population most likely to benefit — elderly, living alone, diabetic, post-discharge, on opioids, on insulin — the owner being the only escalation target is structurally the wrong answer.
+The deeper architectural change is the **emergency-contact surface**. There is no entity in [`android/app/src/main/java/com/bios/app/model/`](../../android/app/src/main/java/com/bios/app/model/) that holds a designated contact, a relationship label, or an opt-in escalation policy. From an EM standpoint, this is the missing piece that converts URGENT from "the owner sees an alert" to "*someone* knows." For the population most likely to benefit — elderly, living alone, diabetic, post-discharge, on opioids, on insulin — the owner being the only escalation target is structurally the wrong answer.
 
 The manifesto's "owner is final" principle is *not* violated by this. The owner sets the contact, the owner sets the policy (notify after N minutes of non-acknowledgement, never notify, notify only for specific tiers), the owner can erase it in the same wipe that destroys everything else. The principle is *autonomy*, not *isolation*. Most owners, asked, would name a person.
 
@@ -179,7 +179,7 @@ For CGM-equipped Type-1 owners — particularly the paediatric subset — DKA is
 
 ### 2.11 Emergency contact / next-of-kin
 
-Already discussed as Gap #1. The structural form: there is no entity, no DAO, no UI screen anywhere in [/home/mia/Bios/android/app/src/main/java/com/bios/app/model/](../../android/app/src/main/java/com/bios/app/model/) for a designated emergency contact. This is the precondition for several other URGENT-tier patterns to be clinically actionable.
+Already discussed as Gap #1. The structural form: there is no entity, no DAO, no UI screen anywhere in [`android/app/src/main/java/com/bios/app/model/`](../../android/app/src/main/java/com/bios/app/model/) for a designated emergency contact. This is the precondition for several other URGENT-tier patterns to be clinically actionable.
 
 ### 2.12 Trauma kinematics
 

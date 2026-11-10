@@ -8,8 +8,8 @@ import android.content.Context
  * supporter status, no per-branch tracking. The popup re-appears on cadence
  * regardless of which action the user picked last time.
  *
- * See /home/mia/autonomo/android-apps-contribution-popup-guide.md for the
- * portfolio-wide policy this implements.
+ * This implements the portfolio-wide contribution-popup policy (monthly
+ * cadence, no donor state).
  */
 class MonthlyAskScheduler(private val context: Context) {
 

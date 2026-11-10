@@ -127,8 +127,8 @@ apps:
       Smokeless trends pure orange — separation preserved.
       Identity-locked divergences from spec: card corner radius 4-8dp (not
       12/14dp) and card elevation 0dp + sun-colored stroke (not 1dp elevation).
-      See /home/mia/Rooster/docs/DESIGN.md "Compliance with the Bios ecosystem
-      spec" for rationale.
+      See https://github.com/thdelmas/Rooster/blob/main/docs/DESIGN.md
+      "Compliance with the Bios ecosystem spec" for rationale.
 
   carnet:
     mode: dark  # locked

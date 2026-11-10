@@ -1,7 +1,7 @@
 # Triage Inventory — Audit-Derived Issues
 
 Original date: 2026-05-22 · **Last refreshed: 2026-05-23**
-Source: 22 lens audits in /home/mia/Bios/docs/audits/
+Source: 22 lens audits in `docs/audits/`
 
 This inventory consolidates the actionable gaps surfaced across the 22 medical-perspective audits. Each entry represents a coherent body of work, not a single audit's flag — convergence count is the triage signal.
 

@@ -132,7 +132,7 @@ and check-in events. Recurrent falls are a clinically significant signal
 for gait instability, syncope, orthostatic hypotension, neuropathy,
 hypoglycemia, MS relapse, and medication side effects — exactly the
 cross-system patterns Bios's condition engine exists to detect. Virgil's own
-[`docs/ECOSYSTEM.md`](../../Virgil/docs/ECOSYSTEM.md) reserves three
+[`docs/ECOSYSTEM.md`](https://github.com/thdelmas/Virgil/blob/main/docs/ECOSYSTEM.md) reserves three
 metric keys (`FALL_EVENT`, `NEAR_MISS_FALL`, `CHECK_IN_MISS`), all opt-in
 and timestamp-only — no GPS, no SMS contents, no contact identity. None
 of these keys yet exist in `MetricType`; adding them is a Bios-side
@@ -156,7 +156,7 @@ SpO2, sleep latency, and skin temperature trajectories. Tobacco affects
 all five; cravings cluster around sleep debt and autonomic stress —
 exactly the cross-system patterns Bios is built to surface.
 
-Smokeless's [`docs/ECOSYSTEM.md`](../../Smokeless/docs/ECOSYSTEM.md)
+Smokeless's [`docs/ECOSYSTEM.md`](https://github.com/thdelmas/Smokeless/blob/master/docs/ECOSYSTEM.md)
 defines four metric keys: `TOBACCO_USE`, `TOBACCO_CRAVING`,
 `CANNABIS_USE`, `CANNABIS_CRAVING`. All four are timestamp + opaque
 event-id only — no dose, no brand, no location, no method. All four are
@@ -187,7 +187,7 @@ ecosystem is the room's air: a 24-hour frequency-band loop that recedes
 into the background. The manifesto rule "wallpaper, not wallpaper-paste"
 makes auto-switching by biometric a violation by construction.
 
-SoulRadio's own [`docs/ECOSYSTEM.md`](../../SoulRadio/docs/ECOSYSTEM.md)
+SoulRadio's own [`docs/ECOSYSTEM.md`](https://github.com/thdelmas/SoulRadio/blob/main/docs/ECOSYSTEM.md)
 defines the narrow inbound surface it would accept: `ACTION_SUGGEST_BAND`
 (non-modal hint, 5-minute hysteresis) and `ACTION_REQUEST_STOP` (used by
 Virgil during an emergency, by W2F during SOS state). No `PLAY_BAND`, no
@@ -257,7 +257,7 @@ Three things, under one "nutrition" umbrella:
 | Piece | Verdict | Reasoning |
 |---|---|---|
 | FuelLog (caffeine, meal, fuel gap) | ✅ Correct in W2F | Intake logging *because it's a mood signal* — same pattern as typing cadence. Not general nutrition tracking. |
-| Static nutrition reference page | ✅ Correct in W2F | Content is framed for mood stability. No capture, no data bus involvement — just in-app education. W2F's own [SCOPE.md](../../W2F/docs/SCOPE.md) explicitly chose this compromise. |
+| Static nutrition reference page | ✅ Correct in W2F | Content is framed for mood stability. No capture, no data bus involvement — just in-app education. W2F's own SCOPE.md (private repository) explicitly chose this compromise. |
 | Supplement adherence (Mg, B2) | ⚠️ Scope-adjacent | Migraine prevention, not mood detection. Tolerable today because it reuses `FuelLog`; should move to a migraine companion if one ever ships. |
 
 ### What would make this *wrong*
