@@ -14,7 +14,7 @@ android {
         minSdk = 28
         targetSdk = 35
         // Bumped by release-please from conventional commits; do not edit by hand.
-        val semver = "0.3.2" // x-release-please-version
+        val semver = "0.4.0" // x-release-please-version
         versionName = semver
         // Monotonic code derived from the version: 0.2.0 -> 200, 1.0.0 -> 10000.
         versionCode = semver.substringBefore("-").split(".").map { it.toInt() }
