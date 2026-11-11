@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/thdelmas/Bios/compare/v0.3.2...v0.4.0) (2026-11-11)
+
+
+### Features
+
+* **alerts:** alert detail screen, WARNING tier, DB v38 ([5541fb6](https://github.com/thdelmas/Bios/commit/5541fb6a5106bb334ab3c6598b974f3b1151406e))
+
 ## [0.3.2](https://github.com/thdelmas/Bios/compare/v0.3.1...v0.3.2) (2026-11-03)
 
 
