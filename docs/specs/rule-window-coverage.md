@@ -2,8 +2,8 @@
 
 cost_class: reversible
 
-Origin: 2026-10-04. The owner drank on Friday night (RHR 66 vs usual 53–60,
-HRV 33 vs 37–49) and Bios alerted on Saturday. On Saturday night the watch
+Origin: 2026-10-04. One night showed a raised resting heart rate and a
+lowered HRV, and Bios alerted the next day. The following night the watch
 was not worn. At 06:14 on Sunday "Elevated cardiovascular strain" fired:
 its 48 h window no longer held Thursday's normal night and nothing replaced
 it, so the average of the window was Friday's night alone. The rule cites
