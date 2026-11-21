@@ -1,6 +1,10 @@
 # Bios
 
-Health guardian that detects early signs of illness using wearable sensor data. All processing on-device — the owner decides what leaves it, and nothing does by default. Instrument, not coach. Evaluation belongs to the owner.
+Your body's measurements, on your device. Bios collects readings from wearables and phone sensors, keeps them encrypted on the phone, and shows them next to your own usual range. It measures and shows; it does not interpret. All processing on-device — the owner decides what leaves it, and nothing does by default. Evaluation belongs to the owner.
+
+Bios is not a medical device. It does not diagnose, screen for, or predict any condition.
+
+> **Builds are paused (21 November 2026).** Bios is being reduced to a measuring instrument. Earlier versions carried condition patterns, possible causes and care advice; those are removed in the next version, and the APKs of v0.1.0 to v0.3.2 have been withdrawn. The source tree still contains that code until the removal lands.
 
 Hub of the Bios ecosystem (Bios, W2F, Smokeless, Virgil, SoulRadio) — exposes `BiosHealthProvider` for companion apps to write events and read metrics.
 
@@ -13,6 +17,8 @@ Please keep personal health data (values, screenshots, symptoms) out of public c
 Bugs with a clear reproduction can also go straight to [GitHub Issues](https://github.com/thdelmas/Bios/issues/new).
 
 ## Install
+
+No build is published at the moment (see the notice above). The steps below apply again from the next release.
 
 ### Option 1: Direct download
 
