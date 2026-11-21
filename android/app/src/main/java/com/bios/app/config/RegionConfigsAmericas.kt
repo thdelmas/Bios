@@ -68,9 +68,6 @@ internal object RegionConfigsAmericas {
             fhirProfileUrl = "http://hl7.org/fhir/us/core",
             regulatoryBody = "FDA",
         ),
-        climateZone = ClimateZone.TEMPERATE,
-        defaultLatitudeDeg = 39.5,
-        defaultElevationM = 250.0,
     )
 
     private fun ca() = RegionConfig(
@@ -85,9 +82,6 @@ internal object RegionConfigsAmericas {
             fhirProfileUrl = "https://www.infoway-inforoute.ca/fhir",
             regulatoryBody = "Health Canada",
         ),
-        climateZone = ClimateZone.COLD,
-        defaultLatitudeDeg = 56.0,
-        defaultElevationM = 200.0,
     )
 
     /**

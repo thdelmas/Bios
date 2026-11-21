@@ -273,8 +273,7 @@ class HealthConnectAdapter(private val context: Context) {
         /**
          * Maps a Health Connect `ExerciseSessionRecord.exerciseType` int to
          * Bios's coarse modality bucket. Unknown / unmapped types fall to
-         * OTHER — that's the right default for the pattern engine, which
-         * cares about aerobic-vs-anaerobic-vs-mixed load buckets rather
+         * OTHER: Bios keeps aerobic / anaerobic / mixed load buckets rather
          * than HC's full sport taxonomy.
          */
         internal fun mapExerciseTypeToModality(exerciseType: Int): String =

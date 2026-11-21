@@ -172,10 +172,7 @@ private class WipeFakeAnomalyDao : AnomalyDao {
     override suspend fun fetchRecent(limit: Int): List<Anomaly> = notUsed()
     override suspend fun fetchUnacknowledged(): List<Anomaly> = notUsed()
     override suspend fun acknowledge(id: String, now: Long): Unit = notUsed()
-    override suspend fun saveFeedback(
-        id: String, feedbackAt: Long, feltSick: Boolean?, visitedDoctor: Boolean?,
-        diagnosis: String?, symptoms: String?, notes: String?, outcomeAccurate: Boolean?
-    ): Unit = notUsed()
+    override suspend fun saveNote(id: String, notes: String, feedbackAt: Long): Unit = notUsed()
     override suspend fun fetchWithFeedback(limit: Int): List<Anomaly> = notUsed()
     override suspend fun fetchCreatedAfter(sinceMillis: Long): List<Anomaly> = notUsed()
     override suspend fun fetchAll(): List<Anomaly> = notUsed()

@@ -6,21 +6,11 @@ import androidx.navigation.compose.composable
 import com.bios.app.ui.reproductive.reproductiveCompletenessRoutes
 
 /**
- * Navigation routes for the "Self" surfaces wired through [SettingsScreen]'s
- * Identity card. Extracted from [MainActivity] to give new identity screens
- * a single, low-conflict landing zone — adding a new self-surface means:
- *   1. add a screen in `ui/<domain>/`,
- *   2. add a `composable("route_id")` here,
- *   3. add the nav callback + Identity-card row in the existing places.
- *
- * All routes here are simple back-only screens; no shared state with
- * MainActivity. Routes that need shared event-sheet state, deep-link
- * arguments, or other coupling stay in [MainActivity] for now.
+ * Navigation routes for the owner's records reached from the Self tab's
+ * records card. Kept out of [MainActivity] so that file stays within the
+ * 500-line bound. All routes here are simple back-only screens.
  */
 internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
-    composable("environmental_context") {
-        com.bios.app.ui.environmental.EnvironmentalContextScreen(onBack = { navController.popBackStack() })
-    }
     composable("headache_diary") {
         com.bios.app.ui.headache.HeadacheDiaryScreen(onBack = { navController.popBackStack() })
     }

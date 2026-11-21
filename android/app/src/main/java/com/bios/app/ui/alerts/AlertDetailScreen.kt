@@ -38,7 +38,6 @@ import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.FeedbackForm
-import com.bios.app.ui.components.FeedbackInput
 import com.bios.app.ui.components.FeedbackSummary
 import com.bios.app.ui.theme.BiosTokens
 import java.text.DateFormat
@@ -78,9 +77,11 @@ fun AlertDetailScreen(
                     viewModel.acknowledgeAlert(anomalyId)
                     detail = d.copy(anomaly = d.anomaly.copy(acknowledged = true))
                 },
-                onSaveFeedback = { input ->
-                    viewModel.saveAlertFeedback(anomalyId, input)
-                    detail = d.copy(anomaly = d.anomaly.withFeedback(input))
+                onSaveFeedback = { note ->
+                    viewModel.saveAlertFeedback(anomalyId, note)
+                    detail = d.copy(
+                        anomaly = d.anomaly.copy(feedbackAt = System.currentTimeMillis(), notes = note),
+                    )
                 },
             )
             loaded -> CenteredText("This alert is no longer stored on this device.")
@@ -96,7 +97,7 @@ private fun AlertDetailBody(
     detail: AlertDetail,
     onOpenTrend: (String) -> Unit,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit,
+    onSaveFeedback: (String) -> Unit,
 ) {
     val anomaly = detail.anomaly
     val deviating = detail.signals.filter { it.deviating }
@@ -183,7 +184,7 @@ private fun OtherSignalsSection(others: List<MeasuredSignal>, now: Map<String, M
 private fun ActionsSection(
     anomaly: Anomaly,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit,
+    onSaveFeedback: (String) -> Unit,
 ) {
     if (!anomaly.acknowledged) {
         Button(onClick = onAcknowledge, modifier = Modifier.fillMaxWidth()) { Text("Acknowledge") }
@@ -217,11 +218,3 @@ private fun CenteredText(text: String) {
         Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-private fun Anomaly.withFeedback(input: FeedbackInput) = copy(
-    feedbackAt = System.currentTimeMillis(),
-    feltSick = input.feltSick,
-    symptoms = input.symptoms,
-    notes = input.notes,
-    outcomeAccurate = input.outcomeAccurate,
-)

@@ -22,18 +22,14 @@ import java.util.concurrent.TimeUnit
  *
  * Before this worker, `derive()` was only called inline from
  * [com.bios.app.ui.sleep.SleepDashboardScreen] as an on-demand
- * preview — the result was never persisted, so no downstream
- * consumer (trending, alerts, future condition patterns crossing
- * sleep ↔ HRV / glucose / mood) could read SLEEP_REGULARITY from
- * `metric_readings`. The worker closes that loop.
+ * preview — the result was never persisted, so Trends could not read
+ * SLEEP_REGULARITY from `metric_readings`. The worker closes that loop.
  *
  * ## Cadence
  *
- * Daily. Sleep regularity is a chronic-pattern metric — a single
- * extra night doesn't move the rolling 7-day window in any
- * clinically interesting way, and a more frequent cadence would
- * burn battery without earning information. Mirrors
- * [com.bios.app.alerts.MohScreeningWorker] scheduling shape.
+ * Daily. A single extra night barely moves the rolling 7-day window,
+ * and a more frequent cadence would burn battery without earning
+ * information.
  *
  * ## No alert surface
  *

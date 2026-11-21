@@ -55,11 +55,8 @@ object AlertContentPolicy {
         "badge",
         "leaderboard",
         "ranking",
-        // Geriatric trajectory manifesto-critical phrases (#208,
-        // GERIATRICS_PALLIATIVE_POV §2.3 + §2.4 + §2.5). Bios never
-        // auto-classifies fall risk, delirium, MCI, dementia, or
-        // capacity loss. Trajectory advisories carry strictly data-
-        // statement framing — these phrases would break that.
+        // Prognostic statements about the person. Bios never classifies
+        // the owner; these phrases would.
         "your memory is declining",
         "cognition declining",
         "your cognition is declining",

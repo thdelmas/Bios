@@ -6,7 +6,7 @@ import com.bios.app.model.MigraineTrigger
 
 /**
  * Thin repository wrapper over [com.bios.app.data.dao.MigraineAttackDao]
- * for the migraine-diary screen and the MOH evaluator (issue #207).
+ * for the headache diary screen (issue #207).
  *
  * Validates intensity at the insert boundary; the UI slider also pins
  * 0-10. The split-validation is intentional — a direct DAO call from a
@@ -59,8 +59,7 @@ class MigraineAttackRepo(private val db: BiosDatabase) {
         val updated = existing.copy(endTimestamp = endTimestamp)
         dao.update(updated)
         // Refresh the metric_readings mirror so the parent row's
-        // durationSec is up to date for the chronic-migraine evaluator
-        // (Cut 3). Cheapest path: delete-then-rewrite.
+        // durationSec is up to date. Cheapest path: delete-then-rewrite.
         clearMetricReadingMirror(existing)
         writeMetricReadingMirror(updated)
     }

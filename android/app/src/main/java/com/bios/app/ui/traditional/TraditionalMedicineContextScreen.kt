@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,7 +36,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -50,20 +48,9 @@ import com.bios.app.model.TraditionalMedicineContext
 import kotlinx.coroutines.launch
 
 /**
- * Settings → Identity → Traditional-medicine context (#193). Multi-row
- * editor where the owner records the traditions they practice within.
- *
- * Eleven audits converge on this surface (TCM, Ayurveda, Siddha, Sowa
- * Rigpa, Unani, Korean, Kampo, African Traditional, Indigenous
- * Americas, Oceanic/Arctic, Modern Non-Allopathic). The shape is the
- * same across all of them: owner-declared rows, no in-tradition
- * classification by Bios.
- *
- * Manifesto guard: pull-side only. Nothing on this screen pushes a
- * notification or modifies which patterns Bios detects. Only the
- * (deferred) alert-detail footnote — gated row-by-row by
- * [TraditionalMedicineContext.vocabularyOverlayConsent] — reads from
- * what is saved here. Default consent is **false**.
+ * Traditional practices (#193). Multi-row editor where the owner records
+ * the traditions they practice within. Owner-declared rows, shown as
+ * written; Bios never classifies within a tradition.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -235,14 +222,6 @@ private fun ContextRow(
                 Spacer(Modifier.height(2.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
-            if (entry.vocabularyOverlayConsent) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "Vocabulary overlay: on",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onEdit) { Text("Edit") }
@@ -263,7 +242,6 @@ private fun AddOrEditDialog(
     var frequency by remember { mutableStateOf(initial?.practitionerConsultedFrequency) }
     var notes by remember { mutableStateOf(initial?.notes.orEmpty()) }
     var region by remember { mutableStateOf(initial?.regionOfPractice.orEmpty()) }
-    var overlay by remember { mutableStateOf(initial?.vocabularyOverlayConsent ?: false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -303,24 +281,6 @@ private fun AddOrEditDialog(
                     label = { Text("Notes (optional)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Vocabulary overlay",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Text(
-                            "When on, alert details may show one extra line using this tradition's vocabulary. Default off.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(checked = overlay, onCheckedChange = { overlay = it })
-                }
             }
         },
         confirmButton = {
@@ -337,7 +297,7 @@ private fun AddOrEditDialog(
                             practitionerConsultedFrequency = frequency,
                             notes = notes.trim().takeIf { it.isNotBlank() },
                             regionOfPractice = region.trim().takeIf { it.isNotBlank() },
-                            vocabularyOverlayConsent = overlay,
+                            vocabularyOverlayConsent = initial?.vocabularyOverlayConsent ?: false,
                         )
                     )
                 },

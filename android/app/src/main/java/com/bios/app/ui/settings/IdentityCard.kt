@@ -28,44 +28,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Identity card — owner-annotated medical and physiological context;
- * not configuration. Extracted from [SettingsScreen] to give "Self"
- * surfaces a dedicated landing zone. Adding a new identity entry means
- * adding a `label to "route"` row in the matching group below, in one
- * place — every entry navigates by route through [onNavigate].
+ * The owner's records, by route. Adding an entry means adding a
+ * `label to "route"` row in the matching group below; every entry
+ * navigates through [onNavigate].
  *
- * Entries are organised into collapsible groups so the card reads as a
- * handful of scannable headers rather than a wall of buttons. All groups
- * are collapsed by default; the owner expands the area they're looking for.
+ * Entries are organised into collapsible groups, all collapsed by
+ * default; the owner expands the area they're looking for.
  */
 @Composable
 internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
     val sections = listOf(
-        "Body & baseline" to listOf(
-            "Anthropometry" to "anthropometry",
-            "Environmental context" to "environmental_context",
+        "Body measurements" to listOf(
+            "Height, weight & composition" to "anthropometry",
+            "ECG strips" to "ecg_strips",
         ),
-        "Medical record" to listOf(
-            "Current medications" to "medications",
+        "Records" to listOf(
+            "Medications" to "medications",
             "Immunisation record" to "immunisations",
             "Treatment courses" to "treatment_courses",
             "Intervention events" to "intervention_events",
-            "ECG strips" to "ecg_strips",
+            "Traditional practices" to "traditional_medicine_context",
         ),
         "Diaries" to listOf(
             "Headache diary" to "headache_diary",
         ),
-        "Reproductive" to listOf(
+        "Cycle" to listOf(
+            "Cycle dashboard" to "cycle_dashboard",
             "Contraception" to "contraception",
-        ),
-        "Practices" to listOf(
-            "Traditional medicine" to "traditional_medicine_context",
         ),
     )
 
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Identity", style = MaterialTheme.typography.titleSmall)
+            Text("Your records", style = MaterialTheme.typography.titleSmall)
             sections.forEach { (title, entries) ->
                 Spacer(Modifier.height(8.dp))
                 IdentitySection(title = title, entries = entries, onNavigate = onNavigate)
@@ -75,7 +70,7 @@ internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
 }
 
 /**
- * A collapsible group of identity entries. Collapsed by default; the
+ * A collapsible group of record entries. Collapsed by default; the
  * header toggles visibility of the contained rows.
  */
 @Composable

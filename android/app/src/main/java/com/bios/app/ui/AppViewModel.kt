@@ -17,7 +17,6 @@ import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
-import com.bios.app.ui.components.FeedbackInput
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -226,18 +225,10 @@ class AppViewModel(
         }
     }
 
-    /** Saves the owner's journal entry for an alert. The two retired columns are written as null. */
-    fun saveAlertFeedback(anomalyId: String, input: FeedbackInput) {
+    /** Saves the owner's journal note for an alert. Columns of earlier versions are left as stored. */
+    fun saveAlertFeedback(anomalyId: String, note: String) {
         viewModelScope.launch {
-            db.anomalyDao().saveFeedback(
-                id = anomalyId,
-                feltSick = input.feltSick,
-                visitedDoctor = null,
-                diagnosis = null,
-                symptoms = input.symptoms,
-                notes = input.notes,
-                outcomeAccurate = input.outcomeAccurate
-            )
+            db.anomalyDao().saveNote(id = anomalyId, notes = note)
             refreshAlerts()
         }
     }

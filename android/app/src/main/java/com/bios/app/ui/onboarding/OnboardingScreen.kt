@@ -41,7 +41,7 @@ fun OnboardingScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Early illness detection from your wearable data",
+            "Your body's measurements, on your device",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -52,7 +52,7 @@ fun OnboardingScreen(
         FeatureRow(
             icon = Icons.Default.Sensors,
             title = "Learns your baseline",
-            description = "Bios builds a personal model of your normal vitals over 14 days, then watches for deviations that may signal illness."
+            description = "Bios compares each metric with your own usual range and tells you when one is outside it."
         )
 
         Spacer(Modifier.height(24.dp))

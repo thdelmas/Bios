@@ -235,9 +235,7 @@ object SleepDerivations {
      *
      * The score is descriptive, not evaluative — it aggregates published
      * clinical norms into one number for trending. Bios does not push
-     * judgments on top of this value (AlertContentPolicy unchanged); the
-     * Sleep Disruption ConditionPattern consumes the underlying components
-     * directly, not the score.
+     * judgments on top of this value.
      *
      * Returns null when any of the four components can't be derived from
      * the input — partial scores would mis-rank nights with missing

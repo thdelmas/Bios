@@ -19,19 +19,11 @@ import com.bios.app.ui.theme.BiosTokens
 import org.json.JSONObject
 import kotlin.math.abs
 
-/** What the owner writes about an alert. Earlier versions also asked two more questions; stored answers are still shown. */
-data class FeedbackInput(
-    val feltSick: Boolean? = null,
-    val symptoms: String? = null,
-    val notes: String? = null,
-    val outcomeAccurate: Boolean? = null
-)
-
 @Composable
 fun AlertCard(
     anomaly: Anomaly,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit = {},
+    onSaveFeedback: (String) -> Unit = {},
     onOpenDetail: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -82,7 +74,7 @@ private fun AlertCardBody(
     anomaly: Anomaly,
     tierColor: Color,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit,
+    onSaveFeedback: (String) -> Unit,
     onOpenDetail: (() -> Unit)?,
 ) {
     var showFeedback by remember { mutableStateOf(false) }
@@ -121,8 +113,8 @@ private fun AlertCardBody(
                 }
             }
             AnimatedVisibility(visible = showFeedback) {
-                FeedbackForm(onSubmit = { input ->
-                    onSaveFeedback(input)
+                FeedbackForm(onSubmit = { note ->
+                    onSaveFeedback(note)
                     showFeedback = false
                 })
             }
@@ -160,12 +152,10 @@ private fun ParagraphText(text: String) {
     }
 }
 
+/** The owner's journal for an alert: one free-text note. */
 @Composable
-internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
-    var feltSick by remember { mutableStateOf<Boolean?>(null) }
-    var symptoms by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var outcomeAccurate by remember { mutableStateOf<Boolean?>(null) }
+internal fun FeedbackForm(onSubmit: (String) -> Unit) {
+    var note by remember { mutableStateOf("") }
 
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -176,50 +166,21 @@ internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                "Health Journal",
+                "Journal",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
-
-            // Did you feel sick?
-            YesNoQuestion("Did you feel sick?", feltSick) { feltSick = it }
-
-            // Was the alert accurate?
-            YesNoQuestion("Was this alert accurate?", outcomeAccurate) {
-                outcomeAccurate = it
-            }
-
-            // Symptoms
             OutlinedTextField(
-                value = symptoms,
-                onValueChange = { symptoms = it },
-                label = { Text("Symptoms you noticed") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                maxLines = 3
-            )
-
-            // Notes
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = { Text("Notes") },
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("What happened?") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
             )
-
             Button(
-                onClick = {
-                    onSubmit(
-                        FeedbackInput(
-                            feltSick = feltSick,
-                            symptoms = symptoms.ifBlank { null },
-                            notes = notes.ifBlank { null },
-                            outcomeAccurate = outcomeAccurate
-                        )
-                    )
-                },
+                onClick = { onSubmit(note.trim()) },
+                enabled = note.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save")
@@ -228,36 +189,11 @@ internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
     }
 }
 
-@Composable
-private fun YesNoQuestion(
-    label: String,
-    value: Boolean?,
-    onChanged: (Boolean) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f)
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            FilterChip(
-                selected = value == true,
-                onClick = { onChanged(true) },
-                label = { Text("Yes") }
-            )
-            FilterChip(
-                selected = value == false,
-                onClick = { onChanged(false) },
-                label = { Text("No") }
-            )
-        }
-    }
-}
-
+/**
+ * The owner's saved journal entry. Entries written by earlier versions can
+ * carry a second free-text field; both texts are shown as written. Answers
+ * to questions that are no longer asked stay stored and are not shown.
+ */
 @Composable
 internal fun FeedbackSummary(anomaly: Anomaly) {
     val tint = BiosTokens.success
@@ -275,33 +211,8 @@ internal fun FeedbackSummary(anomaly: Anomaly) {
                 fontWeight = FontWeight.SemiBold,
                 color = tint
             )
-
-            anomaly.feltSick?.let {
-                Text(
-                    if (it) "Felt sick: Yes" else "Felt sick: No",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            anomaly.outcomeAccurate?.let {
-                Text(
-                    if (it) "Alert was accurate" else "Alert was not accurate",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            anomaly.visitedDoctor?.let {
-                Text(
-                    if (it) "Visited doctor" else "Did not visit doctor",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            anomaly.diagnosis?.let {
-                Text("Diagnosis: $it", style = MaterialTheme.typography.bodySmall)
-            }
-            anomaly.symptoms?.let {
-                Text("Symptoms: $it", style = MaterialTheme.typography.bodySmall)
-            }
-            anomaly.notes?.let {
-                Text("Notes: $it", style = MaterialTheme.typography.bodySmall)
+            listOfNotNull(anomaly.symptoms, anomaly.notes).filter { it.isNotBlank() }.forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

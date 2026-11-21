@@ -24,9 +24,7 @@ data class VesselDial(
 
 /**
  * Why a dial may have no value yet — drives the explicit-gap copy. The watch
- * never hides or fakes a missing dial; it names what would fill it. Acute
- * out-of-range signals are not modelled here at all: they live in the
- * Section-0 boundary, which routes to a clinician rather than to a dial.
+ * never hides or fakes a missing dial; it names what would fill it.
  */
 enum class DialAvailability {
     /** A sensor or sync produces this; empty means waiting for a first reading. */
@@ -92,7 +90,7 @@ val vesselWatchGroups: List<VesselGroup> = listOf(
             VesselDial(
                 label = "Arterial stiffness",
                 availability = DialAvailability.DERIVED_ON_DEMAND,
-                note = "Run a camera PPG — vascular-aging readout, tobacco-sensitive.",
+                note = "Run a camera capture from Log.",
                 primaryKey = MetricType.AUGMENTATION_INDEX_PPG,
             ),
             VesselDial(
@@ -181,7 +179,7 @@ val vesselWatchGroups: List<VesselGroup> = listOf(
             VesselDial(
                 label = "VO₂max",
                 availability = DialAvailability.INSTRUMENTED,
-                note = "Strongest functional-capacity / longevity correlate.",
+                note = "Wearable estimate → Health Connect.",
                 primaryKey = MetricType.VO2_MAX,
             ),
         ),

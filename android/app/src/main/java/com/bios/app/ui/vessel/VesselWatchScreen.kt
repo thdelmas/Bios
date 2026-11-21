@@ -9,9 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,9 +33,6 @@ import com.bios.app.ui.AppViewModel
  *    [vesselWatchGroups]; nothing sums them. See [VesselDial].
  *  - **Pull, not push.** It reads on open and stays silent — no alerts, no
  *    nudges, no notifications.
- *  - **Boundary first.** [BoundaryCard] (Section 0) renders above every dial:
- *    acute vision / headache / cognition are out of instrument range and route
- *    to a clinician, and a wall of green dials does not clear them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,63 +69,9 @@ fun VesselWatchScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            BoundaryCard()
-
             for (group in vesselWatchGroups) {
                 GroupSection(group = group, viewModel = viewModel, refreshKey = lastSync)
             }
-        }
-    }
-}
-
-/**
- * Section 0 — the boundary. Rendered prominently above every dial and never
- * collapsible: the most important thing this surface says is what it can't
- * see. Copy is the general principle (acute vision / headache / cognition are
- * out of range → clinician), not any owner's specific symptoms.
- */
-@Composable
-private fun BoundaryCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                Icons.Outlined.WarningAmber,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                "What this watch can't see",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                "Sudden vision changes, new or worsening headaches, and acute changes " +
-                    "in thinking are out of instrument range — Bios has no dial for them. " +
-                    "They route to a clinician: an eye exam and a blood-pressure check " +
-                    "first; red flags go to urgent care.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                "A wall of green dials does not clear those symptoms. It's a different " +
-                    "instrument. The benign cause and the dangerous one feel identical " +
-                    "from the inside — that's the whole reason to get an outside reading. " +
-                    "Don't read \"my Bios looks fine\" as \"I'm fine.\"",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
         }
     }
 }

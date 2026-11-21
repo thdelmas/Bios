@@ -15,7 +15,7 @@ data class ExerciseSession(
 )
 
 // Modality enum carried in event_payloads.field_key="modality".string_value.
-// Stable string constants — adapters and the pattern engine compile against
+// Stable string constants — adapters compile against
 // these; renames break field-key contracts (docs/DATA_MODEL.md).
 //
 // Coarse on purpose. A single CARDIO bucket lumps running, biking, swimming

@@ -47,19 +47,14 @@ enum class MetricType(
     BLOOD_PRESSURE_SYSTOLIC("blood_pressure_systolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_PRESSURE_DIASTOLIC("blood_pressure_diastolic", MetricUnit.MMHG, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
     BLOOD_OXYGEN("blood_oxygen", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR, allowsManualEntry = true),
-    // PPG AFib screening burden (#180, audit §2.1). Rolling 7-day median of
-    // per-PPG-session irregularly-irregular verdicts (Poincaré SD1/SD2 +
-    // sample entropy + turning-point ratio). Mirrors Apple Heart Study
-    // (Perez 2019), mAFA-II (Guo 2019), Fitbit Heart Study (Lubitz 2022)
-    // classifier shape. See engine/RhythmClassifier.kt.
+    // Percentage of camera-capture sessions scored as irregular (#180).
+    // The app no longer produces this key; it stays in the contract.
     IRREGULAR_RHYTHM_BURDEN("irregular_rhythm_burden", MetricUnit.PERCENT, MetricDomain.CARDIOVASCULAR),
 
     // Single-lead ECG strip presence (#188, audit gap §2.8). The actual
     // waveform is a binary blob in the `ecg_strips` table, not a scalar
-    // metric — this key is the presence indicator the pattern engine
-    // joins against ("is there an owner-captured ECG for this window?")
-    // so the AFib-screen confirmation surface can wire up without
-    // re-discovering strips via cross-table joins on every pull.
+    // metric — this key is the presence indicator ("is there an
+    // owner-captured ECG for this window?").
     // value = 1.0 (boolean true), durationSec = strip length. The
     // companion ContentProvider exposes this key but never the raw
     // waveform — that stays inside the encrypted DB until the owner
@@ -73,8 +68,7 @@ enum class MetricType(
     // smoothed luminance waveform and accepted peak indices; surfaced for
     // arterial-stiffness reference views (Vlachopoulos 2010; Townsend 2015
     // AHA stiffness statement; ESC 2018) and traditional-medicine pulse-
-    // quality readers. No new condition pattern fires off these today —
-    // the data is held so pull-side views can read it.
+    // quality readers. The data is held so pull-side views can read it.
     PPG_PEAK_AMPLITUDE_MEAN("ppg_peak_amplitude_mean", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     PPG_PEAK_AMPLITUDE_COV("ppg_peak_amplitude_cov", MetricUnit.SCORE, MetricDomain.CARDIOVASCULAR),
     PPG_RISE_TIME_MEAN("ppg_rise_time_mean", MetricUnit.SECONDS, MetricDomain.CARDIOVASCULAR),
@@ -262,18 +256,15 @@ enum class MetricType(
     // sensors (if available) or owner annotation. AMBIENT_HUMIDITY_PCT is
     // also slated by issue #200 — if that PR lands first, this declaration
     // will be a no-op duplicate the `fromKey()` resolver still handles.
-    // DAYLIGHT_HOURS is computed from owner latitude (RegionConfig) + date
-    // by EnvironmentalContextProvider; carries photoperiod for the SAAD
-    // (seasonal affective adjustment-disorder) screening pattern.
+    // DAYLIGHT_HOURS is the photoperiod for a latitude and date; the app
+    // no longer produces it.
     ELEVATION_M("elevation_m", MetricUnit.METERS, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
     AMBIENT_TEMPERATURE_C("ambient_temperature_c", MetricUnit.CELSIUS, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
     AMBIENT_HUMIDITY_PCT("ambient_humidity_pct", MetricUnit.PERCENT, MetricDomain.ENVIRONMENT, allowsManualEntry = true),
     DAYLIGHT_HOURS("daylight_hours", MetricUnit.HOURS, MetricDomain.ENVIRONMENT),
 
     // Biomarkers (lab-drawn or imported via FHIR; slow-moving, no streaming).
-    // First wave matches the clinical concepts already described in
-    // alerts/BiomarkerReference.kt — direct readings displace the wearable
-    // proxies when an owner imports labs.
+    // First wave of lab keys.
     HBA1C("hba1c", MetricUnit.PERCENT, MetricDomain.BIOMARKER, allowsManualEntry = true),
     HSCRP("hscrp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true), CRP("crp", MetricUnit.MG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true), // #354: standard-sensitivity CRP (acute inflammation / infection) distinct from HSCRP (cardiovascular risk); different LOINCs, same canonical UCUM
     TOTAL_CHOLESTEROL("total_cholesterol", MetricUnit.MG_PER_DL, MetricDomain.BIOMARKER, allowsManualEntry = true),
@@ -331,12 +322,8 @@ enum class MetricType(
     GGT("ggt", MetricUnit.U_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
     // Cardio-oncology biomarker panel (#201, audit gap from ONCOLOGY_POV
-    // §2.3-2.5 + CARDIOLOGY_POV §2.3). Anchors the cardiotoxicity /
-    // neutropenic-fever surveillance patterns in
-    // alerts/CardioOncologyPatterns.kt. NT-proBNP and high-sensitivity
-    // troponin are the AHA 2018 / ASCO 2017 cardio-oncology cardiac
-    // biomarkers; absolute neutrophil count anchors the IDSA 2010
-    // febrile-neutropenia screen.
+    // §2.3-2.5 + CARDIOLOGY_POV §2.3): NT-proBNP, high-sensitivity
+    // troponin and absolute neutrophil count.
     TROPONIN_NG_PER_L("troponin_ng_per_l", MetricUnit.NG_PER_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
     NT_PRO_BNP_PG_PER_ML("nt_pro_bnp_pg_per_ml", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
     ABSOLUTE_NEUTROPHIL_COUNT("absolute_neutrophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true),

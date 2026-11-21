@@ -27,7 +27,6 @@
     <ID>FunctionOnlyReturningConstant:HealthConnectEcgAdapter.kt$HealthConnectEcgAdapter$@Suppress("UNUSED_PARAMETER", "RedundantSuspendModifier") suspend fun fetchStrips(start: Instant, end: Instant, sourceVendor: String): Int</ID>
     <ID>ImplicitDefaultLocale:AlertCard.kt$String.format("%+.1fσ", zScore)</ID>
     <ID>ImplicitDefaultLocale:BleAirQualityAdapter.kt$BleAirQualityAdapter.Companion$String.format("0000%04x-0000-1000-8000-00805f9b34fb", short)</ID>
-    <ID>ImplicitDefaultLocale:EnvironmentalContextScreen.kt$String.format("%.1f", it)</ID>
     <ID>ImplicitDefaultLocale:MetricCard.kt$String.format("%.1f", value)</ID>
     <ID>ImplicitDefaultLocale:MetricCard.kt$String.format("%.1fσ", z)</ID>
     <ID>ImplicitDefaultLocale:MetricFormatter.kt$MetricFormatter$String.format("%.${decimals}f", converted)</ID>
@@ -57,7 +56,6 @@
     <ID>LongMethod:ContraceptionScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ContraceptionScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:ContraceptionScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddContraceptionDialog( onDismiss: () -&gt; Unit, onSave: (method: ContraceptionMethod, startDate: Long, endDate: Long?, notes: String?) -&gt; Unit, )</ID>
     <ID>LongMethod:EcgStripsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EcgStripsScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:EnvironmentalContextScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EnvironmentalContextScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:FeedbackPrompt.kt$@Composable fun FeedbackPrompt( surface: String, itemId: String? = null, question: String = "Was this useful?", onSubmit: (UserFeedback) -&gt; Unit )</ID>
     <ID>LongMethod:FhirMetricCodings.kt$internal fun loincCode(metricType: MetricType): Pair&lt;String, String&gt;?</ID>
     <ID>LongMethod:HeadacheDiaryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HeadacheDiaryScreen(onBack: () -&gt; Unit)</ID>
@@ -108,7 +106,6 @@
     <ID>LoopWithTooManyJumpStatements:SyncManager.kt$SyncManager$for</ID>
     <ID>LoopWithTooManyJumpStatements:WhoopApiAdapter.kt$WhoopApiAdapter$for</ID>
     <ID>MatchingDeclarationName:AddMeasurementDialog.kt$GrowthMeasurementInput</ID>
-    <ID>MatchingDeclarationName:AlertCard.kt$FeedbackInput</ID>
     <ID>MatchingDeclarationName:AppViewModelEntries.kt$RecentEntry</ID>
     <ID>MatchingDeclarationName:BiosPushReceiver.kt$BiosPushService : PushService</ID>
     <ID>MatchingDeclarationName:HealthEventSheet.kt$HealthEventInput</ID>
@@ -120,12 +117,7 @@
     <ID>MaxLineLength:CameraPpgAdapter.kt$CameraPpgAdapter$"capture done device=${Build.MODEL} samples=${snapshot.size} fps=%.2f dur=%.2fs meanR=%.2f var=%.2f sat=%.3f reason=${ppg.rejectionReason} sqi=${ppg.sqiScore} peaks=${ppg.peakCount} peakAmpCov=%.3f hrv=$hrvOutcome cleanIbi=$hrvCleanIbis artifacts=$hrvArtifacts"</ID>
     <ID>MaxLineLength:CircadianEngineTest.kt$FakeMetricReadingDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:ClinicalEncounterTest.kt$ClinicalEncounterTest$dischargeSummaryText = "Dada ausencia de signos de alarma se da alta a domicilio aconsejando seguimiento por médico de AP y Neurología de zona."</ID>
-    <ID>MaxLineLength:EnvironmentalContextScreen.kt$"Degrees north (negative = southern hemisphere). Used to compute daylight hours for the photoperiod-related patterns. Country centroid is fine; precision below 1° doesn't matter for daylength math."</ID>
-    <ID>MaxLineLength:EnvironmentalContextScreen.kt$"Metres above sea level. La Paz ≈ 3640. Lhasa ≈ 3650. Denver ≈ 1610. Most coastal cities ≈ 0. Leave blank to use the regional default."</ID>
-    <ID>MaxLineLength:EnvironmentalContextScreen.kt$"Temporary override for trips. Clears when you set it back to blank. The altitude-sickness screen reads this value."</ID>
     <ID>MaxLineLength:FastStrokeFhirFlag.kt$return "Owner-recorded FAST stroke screen — positive items: $itemsText. Recorded via the Bios FAST screen; owner-input only, not an automated detection."</ID>
-    <ID>MaxLineLength:HeadacheDiaryScreen.kt$"The neurology and headache-medicine literature converges on the same conclusion: a dated record of headaches, intensity, and acute treatment is the substrate a clinician needs to identify the underlying primary-headache disorder, recognise medication-overuse-headache risk (IHS ICHD-3 §8.2), and discuss preventive options. Bios records what is logged — never inferred from biomarkers, never shared without explicit action."</ID>
-    <ID>MaxLineLength:HomeScreen.kt$"Bios needs $remaining more day${if (remaining == 1) "" else "s"} of data to establish your personal baseline and start detecting patterns."</ID>
     <ID>MaxLineLength:HrRecoveryPersisterTest.kt$FakeReadingDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:HrbsEngineTest.kt$FakeHrbsDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchGadgetbridgeReadings(s: Instant, e: Instant)</ID>
@@ -134,24 +126,6 @@
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchPolarReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchWhoopReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchWithingsReadings(s: Instant, e: Instant)</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "A multi-day elevation against your baseline can precede respiratory illness by 24–48 hours in some studies — Bios surfaces the trend, you interpret it."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Bios learns your personal nightly range. The number is most informative read alongside the modifiers above — the reading is the instrument, the interpretation is yours."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Bios learns your personal range from your own data. A reading is interesting when it deviates from that range — not when it crosses a textbook threshold."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Bios reports what you slept — not what you should sleep. The Sleep dashboard (tap the card) shows regularity, latency, and efficiency separately."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Persistent positive deviation can be an early signal of infection or hormonal shift; persistent negative can reflect cooler environments or recovery."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Wrist optical sensors are noisy by design — Bios pays attention to sustained dips and patterns, not single low samples."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whatItMeasures = "Departure in degrees Celsius from your personal skin-temperature baseline, usually measured at the wrist during sleep."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whatItMeasures = "Median beats per minute in the quarter-hour you spent lying quietly before sleep onset. Bios computes it from your continuous heart-rate stream; you can also enter it manually by counting your pulse for 15 seconds and multiplying by four."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whatItMeasures = "The millisecond-level variation between consecutive heartbeats — a window onto how your autonomic nervous system is balancing stress and recovery."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whatItMeasures = "Total time asleep, computed from your wearable's sleep stages or phone-based inference when no wearable reported."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Activity, stress, hydration, illness, temperature, hormones, breathing depth, and even moving from sitting to standing all shift it minute to minute."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Alcohol pushes it +5–10 bpm; nicotine +10; a large meal close to bed +10; late caffeine +2–5; stress, anxiety, or rumination +5–25 — the largest single modifier. Fitness, evening room temperature, and how long ago you exercised also shift it."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Altitude, illness, sleep-disordered breathing, and rarely cardiopulmonary conditions lower it. Most readings cluster between 95–100% at sea level."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Hormonal cycles (notably the luteal phase), ambient room temperature, infection, and circadian phase all shift it. Bios reports the deviation, not the absolute temperature."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Lower HRV typically follows physical or emotional stress, illness, alcohol, or poor sleep. Higher HRV tends to follow rest. Night-to-night swings are normal even in healthy people."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Rises with fever, infection, exercise, and emotional state; falls with sleep depth. Healthy adult rest range is roughly 12–20 breaths/min."</ID>
-    <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Schedule, stress, caffeine, alcohol, light exposure, and screen use shift it. Adult guidance is 7–9 hours but personal need varies."</ID>
-    <ID>MaxLineLength:OnboardingScreen.kt$description = "Bios builds a personal model of your normal vitals over 14 days, then watches for deviations that may signal illness."</ID>
     <ID>MaxLineLength:PpgCaptureScreen.kt$"Bios uses your rear camera and flash to measure heart-rate variability from your fingertip. Frames never leave the device — only the extracted HR and HRV numbers are kept."</ID>
     <ID>MaxLineLength:PrivacyDashboardScreen.kt$text = { Text("This will permanently destroy all cycle tracking data. The encryption key will be destroyed — data is irrecoverable.") }</ID>
     <ID>MaxLineLength:PrivacyDashboardScreen.kt$text = { Text("This will permanently destroy all health data, baselines, alerts, journal entries, and settings. Encryption keys will be destroyed — nothing is recoverable.") }</ID>
@@ -290,7 +264,6 @@
     <ID>WildcardImport:OnboardingScreen.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:OnboardingScreen.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:OnboardingScreen.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:OnboardingScreenTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:OuraApiAdapterTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:P2PSyncWorker.kt$import androidx.work.*</ID>
     <ID>WildcardImport:PhoneSensorAdapterTest.kt$import org.junit.Assert.*</ID>

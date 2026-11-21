@@ -24,9 +24,7 @@ import org.junit.Test
  *
  * The fake-DAO pattern mirrors [EsasReportTest] / [CompanionGateTest] —
  * the Robolectric-free unit-test source set can't exercise Room SQLite
- * directly. MOH evaluator math lives in
- * [MedicationOveruseHeadacheEvaluatorTest] so each file stays under
- * the 500-line cap.
+ * directly.
  */
 class NeurologySymptomLoggingTest {
 

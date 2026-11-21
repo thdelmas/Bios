@@ -21,8 +21,7 @@ import com.bios.contracts.MetricType
 
 /**
  * Pull-shaped explanation surface. Opens when the owner taps the info
- * affordance on a metric card. Pure pedagogy — what the metric is, what
- * shifts it, how Bios uses it. No prescription.
+ * affordance on a metric card: what the metric is and how it is measured.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,9 +53,8 @@ fun MetricInfoSheet(
                 fontWeight = FontWeight.SemiBold,
             )
 
-            ExplanationSection("What it measures", explanation.whatItMeasures)
-            ExplanationSection("Why it varies", explanation.whyItVaries)
-            ExplanationSection("How Bios reads it", explanation.howBiosUsesIt)
+            ExplanationSection("What it is", explanation.whatItIs)
+            ExplanationSection("How it is measured", explanation.howItIsMeasured)
 
             Spacer(Modifier.height(8.dp))
         }

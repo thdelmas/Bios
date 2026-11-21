@@ -28,9 +28,6 @@ internal object RegionConfigsEurope {
             fhirProfileUrl = "https://fhir.hl7.org.uk",
             regulatoryBody = "MHRA",
         ),
-        climateZone = ClimateZone.TEMPERATE,
-        defaultLatitudeDeg = 54.0,
-        defaultElevationM = 80.0,
     )
 
     private fun eu() = RegionConfig(
@@ -45,8 +42,5 @@ internal object RegionConfigsEurope {
             fhirProfileUrl = null,
             regulatoryBody = "EMA",
         ),
-        climateZone = ClimateZone.TEMPERATE,
-        defaultLatitudeDeg = 50.5,
-        defaultElevationM = 150.0,
     )
 }
