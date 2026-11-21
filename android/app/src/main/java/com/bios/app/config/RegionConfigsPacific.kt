@@ -50,7 +50,6 @@ internal object RegionConfigsPacific {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
-            explicitCommunityConsent = true,
             fhirProfileUrl = "http://hl7.org.au/fhir",
             regulatoryBody = "TGA",
         ),
@@ -65,7 +64,6 @@ internal object RegionConfigsPacific {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
-            explicitCommunityConsent = true,
             fhirProfileUrl = "https://fhir.org.nz",
             regulatoryBody = "Medsafe",
         ),

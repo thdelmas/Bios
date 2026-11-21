@@ -23,7 +23,6 @@ internal fun standardRegion(
     regulatory = RegulatoryConfig(
         reproductiveDataIsolation = false,
         defaultRetentionDays = 90,
-        explicitCommunityConsent = true,
         fhirProfileUrl = null,
         regulatoryBody = regulatoryBody,
     ),

@@ -115,13 +115,6 @@ enum class AlertTier(val level: Int, val label: String) {
     }
 }
 
-// MARK: - Privacy
-
-enum class PrivacyTier {
-    PRIVATE,
-    COMMUNITY
-}
-
 // MARK: - Health Events
 
 enum class HealthEventType(val label: String) {

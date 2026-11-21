@@ -65,6 +65,28 @@ internal object InstrumentOnlyMigrations {
      */
     val REPRODUCTIVE_MIGRATION_5_6 = schemaOnlyStep(5, 6)
 
+    /** Identifier every stored alert of a removed pattern carries from schema 41 on. */
+    const val EARLIER_ALERT_ID = "earlier_alert"
+
+    /** Unmapped at schema 41: the "was this useful?" answers, which nothing writes or reads any more. */
+    const val KEPT_FEEDBACK_TABLE = "user_feedback"
+
+    /**
+     * 40 to 41. Stored alerts stop carrying the name of the removed pattern
+     * that raised them: every identifier other than the deviation alert's
+     * becomes [EARLIER_ALERT_ID]. No other column is touched; the journal
+     * columns keep what the owner answered. The feedback entity leaves the
+     * schema; its table stays in the file with its rows.
+     */
+    val MIGRATION_40_41 = object : Migration(40, 41) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "UPDATE anomalies SET patternId = ? WHERE patternId IS NULL OR patternId != ?",
+                arrayOf<Any>(EARLIER_ALERT_ID, DEVIATION_ALERT_ID),
+            )
+        }
+    }
+
     /** A version step that only changes which tables Room maps. */
     private fun schemaOnlyStep(from: Int, to: Int) = object : Migration(from, to) {
         override fun migrate(db: SupportSQLiteDatabase) = Unit

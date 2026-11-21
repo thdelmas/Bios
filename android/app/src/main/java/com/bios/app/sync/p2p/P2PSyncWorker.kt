@@ -25,11 +25,7 @@ class P2PSyncWorker(
     override suspend fun doWork(): Result {
         val context = applicationContext
 
-        // Check if P2P sync is enabled
-        val p2pPrefs = context.getSharedPreferences("bios_p2p_settings", Context.MODE_PRIVATE)
-        if (!p2pPrefs.getBoolean("enabled", false)) {
-            return Result.success()
-        }
+        if (!isEnabled(context)) return Result.success()
 
         // Check if sync key is available
         val syncPrefs = context.getSharedPreferences("bios_sync", Context.MODE_PRIVATE)
@@ -82,6 +78,10 @@ class P2PSyncWorker(
         private const val TAG = "P2PSyncWorker"
         private const val WORK_NAME = "bios_p2p_sync"
         private const val MAX_RETRIES = 3
+
+        /** Device-to-device sync is off until the owner turns it on. */
+        fun isEnabled(context: Context): Boolean =
+            context.getSharedPreferences("bios_p2p_settings", Context.MODE_PRIVATE).getBoolean("enabled", false)
 
         fun enqueuePeriodicSync(context: Context) {
             val constraints = Constraints.Builder()

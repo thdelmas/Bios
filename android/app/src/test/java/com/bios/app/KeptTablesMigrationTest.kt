@@ -36,7 +36,7 @@ class KeptTablesMigrationTest {
 
     private fun openMain(): BiosDatabase =
         Room.databaseBuilder(context, BiosDatabase::class.java, mainName)
-            .addMigrations(InstrumentOnlyMigrations.MIGRATION_39_40)
+            .addMigrations(InstrumentOnlyMigrations.MIGRATION_39_40, InstrumentOnlyMigrations.MIGRATION_40_41)
             .allowMainThreadQueries()
             .build()
             .also { opened += it }
@@ -106,11 +106,11 @@ class KeptTablesMigrationTest {
     }
 
     @Test
-    fun `Room opens the main file at 40 and the mapped tables work`(): Unit = runBlocking {
+    fun `Room opens the main file at the current version and the mapped tables work`(): Unit = runBlocking {
         val db = openMain()
         assertTrue(db.anomalyDao().fetchAll().isEmpty())
         assertTrue(db.headacheLogDao().fetchAll().isEmpty())
-        assertEquals(40, db.openHelper.readableDatabase.version)
+        assertEquals(41, db.openHelper.readableDatabase.version)
     }
 
     @Test

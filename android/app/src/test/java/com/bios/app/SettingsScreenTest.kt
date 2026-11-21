@@ -1,42 +1,13 @@
 package com.bios.app
 
 import com.bios.app.engine.BaselineEngine
-import com.bios.app.model.PrivacyTier
 import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Tests for logic used by SettingsScreen: privacy tier, baseline status, and data age display.
+ * Tests for logic used by SettingsScreen: baseline status, and data age display.
  */
 class SettingsScreenTest {
-
-    // -- Privacy tier logic --
-
-    @Test
-    fun `PrivacyTier valueOf round-trips correctly`() {
-        for (tier in PrivacyTier.entries) {
-            assertEquals(tier, PrivacyTier.valueOf(tier.name))
-        }
-    }
-
-    @Test
-    fun `default privacy tier is PRIVATE`() {
-        val defaultTier = PrivacyTier.PRIVATE
-        assertEquals(PrivacyTier.PRIVATE, defaultTier)
-    }
-
-    @Test
-    fun `privacy description changes per tier`() {
-        val descriptions = PrivacyTier.entries.map { tier ->
-            when (tier) {
-                PrivacyTier.PRIVATE -> "Your data never leaves this device."
-                PrivacyTier.COMMUNITY -> "Anonymous statistical patterns help improve detection."
-            }
-        }
-        assertEquals(2, descriptions.size)
-        assertTrue(descriptions[0].contains("never leaves"))
-        assertTrue(descriptions[1].contains("Anonymous"))
-    }
 
     // -- Baseline status display --
 

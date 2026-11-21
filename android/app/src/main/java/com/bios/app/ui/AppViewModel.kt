@@ -351,14 +351,6 @@ class AppViewModel(
         _pipelineSummary.value = latencyTracker.summary()
     }
 
-    // MARK: - Feedback
-
-    fun submitFeedback(feedback: com.bios.app.model.UserFeedback) {
-        viewModelScope.launch {
-            db.userFeedbackDao().insert(feedback)
-        }
-    }
-
     // MARK: - Manual biomarker entry
 
     val biomarkers = AppViewModelBiomarkers(BiomarkerEntryRepo(db), viewModelScope, _error)

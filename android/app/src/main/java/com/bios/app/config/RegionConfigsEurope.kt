@@ -24,7 +24,6 @@ internal object RegionConfigsEurope {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
-            explicitCommunityConsent = true,  // UK GDPR
             fhirProfileUrl = "https://fhir.hl7.org.uk",
             regulatoryBody = "MHRA",
         ),
@@ -38,7 +37,6 @@ internal object RegionConfigsEurope {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
-            explicitCommunityConsent = true,  // GDPR
             fhirProfileUrl = null,
             regulatoryBody = "EMA",
         ),

@@ -36,13 +36,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.bios.app.alerts.DailyDigestWorker
-import com.bios.app.push.PushRegistrationManager
 
 /**
- * Settings → Notifications card. Three toggles: daily digest, disconnect
- * alerts, and UnifiedPush registration. Extracted from [SettingsScreen]
- * so the host file stays under the 500-line cap as more data-source rows
- * (WHOOP, future Garmin) land in the data-sources block above.
+ * Settings → Notifications card. Two toggles: daily digest and disconnect
+ * alerts.
  */
 @Composable
 internal fun SettingsNotificationsCard() {
@@ -78,39 +75,6 @@ internal fun SettingsNotificationsCard() {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             DisconnectAlertToggle()
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            var pushEnabled by remember { mutableStateOf(PushRegistrationManager.isEnabled(context)) }
-            var pushDistributor by remember { mutableStateOf(PushRegistrationManager.getDistributorName(context)) }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Push Notifications", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        if (pushEnabled && pushDistributor != null)
-                            "Via $pushDistributor — no Google required"
-                        else
-                            "Receive population health signals without polling. Requires a UnifiedPush distributor (e.g. ntfy).",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = pushEnabled,
-                    onCheckedChange = { enabled ->
-                        pushEnabled = enabled
-                        if (enabled) {
-                            PushRegistrationManager.setEnabled(context, true)
-                            PushRegistrationManager.register(context)
-                        } else {
-                            PushRegistrationManager.unregister(context)
-                        }
-                        pushDistributor = PushRegistrationManager.getDistributorName(context)
-                    }
-                )
-            }
         }
     }
 }

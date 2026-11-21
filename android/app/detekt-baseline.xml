@@ -56,7 +56,6 @@
     <ID>LongMethod:ContraceptionScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ContraceptionScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:ContraceptionScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddContraceptionDialog( onDismiss: () -&gt; Unit, onSave: (method: ContraceptionMethod, startDate: Long, endDate: Long?, notes: String?) -&gt; Unit, )</ID>
     <ID>LongMethod:EcgStripsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EcgStripsScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:FeedbackPrompt.kt$@Composable fun FeedbackPrompt( surface: String, itemId: String? = null, question: String = "Was this useful?", onSubmit: (UserFeedback) -&gt; Unit )</ID>
     <ID>LongMethod:FhirMetricCodings.kt$internal fun loincCode(metricType: MetricType): Pair&lt;String, String&gt;?</ID>
     <ID>LongMethod:HeadacheDiaryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HeadacheDiaryScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:HealthEventCard.kt$@Composable fun HealthEventCard( event: HealthEvent, actionItems: List&lt;ActionItem&gt;, childEvents: List&lt;HealthEvent&gt;, onStatusChange: (HealthEventStatus) -&gt; Unit, onAddFollowUp: () -&gt; Unit, onToggleAction: (String, Boolean) -&gt; Unit, onDeleteAction: (String) -&gt; Unit, onAddAction: (String) -&gt; Unit )</ID>
@@ -107,7 +106,6 @@
     <ID>LoopWithTooManyJumpStatements:WhoopApiAdapter.kt$WhoopApiAdapter$for</ID>
     <ID>MatchingDeclarationName:AddMeasurementDialog.kt$GrowthMeasurementInput</ID>
     <ID>MatchingDeclarationName:AppViewModelEntries.kt$RecentEntry</ID>
-    <ID>MatchingDeclarationName:BiosPushReceiver.kt$BiosPushService : PushService</ID>
     <ID>MatchingDeclarationName:HealthEventSheet.kt$HealthEventInput</ID>
     <ID>MatchingDeclarationName:LabUnitConversion.kt$CanonicalUnit</ID>
     <ID>MatchingDeclarationName:Statistics.kt$Stats</ID>
@@ -142,16 +140,12 @@
     <ID>ReturnCount:PpgSignalProcessor.kt$PpgSignalProcessor$fun extract( luminanceSamples: List&lt;Double&gt;, samplingRateHz: Double, profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT, ): PpgResult</ID>
     <ID>SpreadOperator:CameraPpgAdapter.kt$CameraPpgAdapter$(lifecycleOwner, selector, *useCases)</ID>
     <ID>SwallowedException:CameraPpgAdapter.kt$CameraPpgAdapter$e: Exception</ID>
-    <ID>SwallowedException:ContributionWorker.kt$ContributionWorker$e: Exception</ID>
     <ID>SwallowedException:LocalNetworkTransport.kt$LocalNetworkTransport$e: Exception</ID>
-    <ID>SwallowedException:ModelUpdateManagerTest.kt$ModelUpdateManagerTest$e: Exception</ID>
     <ID>ThrowsCount:SyncProtocol.kt$SyncProtocol$fun decryptBlob(blob: ByteArray, syncKey: ByteArray): DecryptedBlob</ID>
     <ID>TooGenericExceptionCaught:AppViewModel.kt$AppViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AppViewModel.kt$AppViewModel$e: Throwable</ID>
     <ID>TooGenericExceptionCaught:AppViewModelLabScan.kt$AppViewModelLabScan$e: Exception</ID>
     <ID>TooGenericExceptionCaught:CameraPpgAdapter.kt$CameraPpgAdapter$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:CommunityApiClient.kt$CommunityApiClient$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:ContributionWorker.kt$ContributionWorker$e: Exception</ID>
     <ID>TooGenericExceptionCaught:DataDestroyer.kt$DataDestroyer$e: Exception</ID>
     <ID>TooGenericExceptionCaught:GadgetbridgeReceiver.kt$GadgetbridgeReceiver$e: Exception</ID>
     <ID>TooGenericExceptionCaught:HealthApiServer.kt$HealthApiServer$e: Exception</ID>
@@ -160,15 +154,12 @@
     <ID>TooGenericExceptionCaught:LabScanner.kt$LabScanner$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LetheCompatImpl.kt$LetheCompatImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LocalNetworkTransport.kt$LocalNetworkTransport$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:ModelUpdateManager.kt$ModelUpdateManager$e: Exception</ID>
     <ID>TooGenericExceptionCaught:OtaCoordinator.kt$OtaCoordinator$e: Exception</ID>
     <ID>TooGenericExceptionCaught:P2PDiscovery.kt$P2PDiscovery$e: Exception</ID>
     <ID>TooGenericExceptionCaught:P2PSyncWorker.kt$P2PSyncWorker$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PhoneSleepAlarmReceiver.kt$PhoneSleepAlarmReceiver$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PhoneSleepCollectionService.kt$PhoneSleepCollectionService$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:PhoneSleepWorker.kt$PhoneSleepWorker$t: Throwable</ID>
-    <ID>TooGenericExceptionCaught:PopulationHealthSignals.kt$PopulationHealthSignals$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:PushMessageHandler.kt$PushMessageHandler$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ReproductiveDatabase.kt$ReproductiveDatabase.Companion$e: Exception</ID>
     <ID>TooGenericExceptionCaught:SleepRegularityWorker.kt$SleepRegularityWorker$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:SleepTileService.kt$SleepTileService$t: Throwable</ID>
@@ -192,9 +183,6 @@
     <ID>UnusedPrivateMember:DailyDigestWorkerTest.kt$DailyDigestWorkerTest$private fun createWorkerForFormat(): DailyDigestWorker</ID>
     <ID>UnusedPrivateProperty:BiosApplication.kt$BiosApplication$val platform = PlatformDetector.detect(this)</ID>
     <ID>UnusedPrivateProperty:CameraPpgAdapter.kt$CameraPpgAdapter.Companion$/** Minimum fraction of raw IBIs the Malik artifact filter must keep * before HR is sourced from its cleaned mean rather than the raw * peak rate. Empirically: ≥ 0.5 → Malik mean tracks a wrist wearable * within 1–2 bpm; below that the sequential filter's anchoring bias * pulls the mean IBI long and we get cleaner numbers from peak rate. * See toResult() for the full rationale. */ private const val MALIK_RELIABLE_FRACTION = 0.5</ID>
-    <ID>UnusedPrivateProperty:FederatedTrainer.kt$FederatedTrainer$private val baselineDao = db.personalBaselineDao()</ID>
-    <ID>UnusedPrivateProperty:FederatedTrainer.kt$FederatedTrainer$private val context: Context</ID>
-    <ID>UnusedPrivateProperty:FederatedTrainer.kt$FederatedTrainer$private val readingDao = db.metricReadingDao()</ID>
     <ID>UnusedPrivateProperty:GadgetbridgeReceiver.kt$GadgetbridgeReceiver.Companion$// RecordedDataTypes bitmask values private const val TYPE_ACTIVITY = "0x00000001"</ID>
     <ID>UnusedPrivateProperty:GadgetbridgeReceiver.kt$GadgetbridgeReceiver.Companion$private const val TYPE_HEART_RATE = "0x00000080"</ID>
     <ID>UnusedPrivateProperty:GadgetbridgeReceiver.kt$GadgetbridgeReceiver.Companion$private const val TYPE_SPO2 = "0x00000020"</ID>
@@ -211,7 +199,6 @@
     <ID>VariableNaming:MetricCoverageEngineTest.kt$MetricCoverageEngineTest$private val D = 24L * H</ID>
     <ID>VariableNaming:MetricCoverageEngineTest.kt$MetricCoverageEngineTest$private val H = 60L * 60_000L</ID>
     <ID>VariableNaming:PhoneSleepValidationTest.kt$PhoneSleepValidationTest$/** * RMSE target in minutes. Initial bar from #244's acceptance: * 45 min. Lower is better; this test currently asserts the * upper bound to detect regressions, not to claim a specific * accuracy number. The actual number prints to stdout via the * test runner. */ private val RMSE_TARGET_MINUTES: Double = 45.0</ID>
-    <ID>VariableNaming:PushMessageHandlerTest.kt$PushMessageHandlerTest$// Mirror PushMessageHandler constants private val MAX_MESSAGE_BYTES = 4096</ID>
     <ID>WildcardImport:ActionItemList.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:ActionItemList.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:ActionItemList.kt$import androidx.compose.runtime.*</ID>
@@ -223,20 +210,14 @@
     <ID>WildcardImport:BiosDatabase.kt$import com.bios.app.data.dao.*</ID>
     <ID>WildcardImport:BiosDatabase.kt$import com.bios.app.model.*</ID>
     <ID>WildcardImport:CameraPpgAdapterTest.kt$import org.junit.Assert.*</ID>
-    <ID>WildcardImport:CommunityAggregatorTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:CompanionAppsRow.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:CompanionsScreen.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:CompanionsScreen.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:CompanionsScreen.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:ContributionWorker.kt$import androidx.work.*</ID>
-    <ID>WildcardImport:ContributionWorkerTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:CycleInferenceTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:DailyDigestWorker.kt$import androidx.work.*</ID>
     <ID>WildcardImport:DataExporterTest.kt$import com.bios.app.model.*</ID>
     <ID>WildcardImport:DataExporterTest.kt$import org.junit.Assert.*</ID>
-    <ID>WildcardImport:FeedbackPrompt.kt$import androidx.compose.foundation.layout.*</ID>
-    <ID>WildcardImport:FeedbackPrompt.kt$import androidx.compose.material3.*</ID>
-    <ID>WildcardImport:FeedbackPrompt.kt$import androidx.compose.runtime.*</ID>
     <ID>WildcardImport:FhirExporterTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:GadgetbridgeReceiverTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:HealthConnectAdapter.kt$import androidx.health.connect.client.records.*</ID>
@@ -276,7 +257,6 @@
     <ID>WildcardImport:PrivacyDashboardScreen.kt$import androidx.compose.material.icons.filled.*</ID>
     <ID>WildcardImport:PrivacyDashboardScreen.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:PrivacyDashboardScreen.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:PushMessageHandlerTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:SettingsScreen.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:SettingsScreen.kt$import androidx.compose.material.icons.filled.*</ID>
     <ID>WildcardImport:SettingsScreen.kt$import androidx.compose.material3.*</ID>

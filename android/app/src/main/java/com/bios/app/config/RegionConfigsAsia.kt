@@ -53,7 +53,6 @@ internal object RegionConfigsAsia {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 60,
-            explicitCommunityConsent = true,  // APPI
             fhirProfileUrl = "http://jpfhir.jp",
             regulatoryBody = "PMDA",
         ),

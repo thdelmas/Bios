@@ -7,7 +7,6 @@ import androidx.work.WorkManager
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.ingest.OuraTokenStore
-import com.bios.app.push.PushRegistrationManager
 import com.bios.app.sync.p2p.P2PDiscovery
 import java.io.File
 
@@ -55,9 +54,6 @@ object DataDestroyer {
 
         // 0.5. Destroy P2P sync identity, documents, and pairing data
         destroyP2PData(context)
-
-        // 0.6. Unregister push and destroy push state
-        PushRegistrationManager.destroyAll(context)
 
         // 0.7. Release every persistable URI permission we hold (lab-report
         // PDFs / photos attached to biomarker entries — see BiomarkerContext
@@ -250,6 +246,9 @@ object DataDestroyer {
             }
             // Clear encrypted SharedPreferences (Keystore-backed)
             BiosDatabase.getEncryptedPrefs(context).edit().clear().commit()
+            // Preference files written by removed features on earlier versions.
+            listOf("bios_push_secure", "bios_population", "bios_research")
+                .forEach { context.deleteSharedPreferences(it) }
             Log.d(TAG, "Preferences cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear preferences", e)

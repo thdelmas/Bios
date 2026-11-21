@@ -135,11 +135,6 @@ dependencies {
     // pyzipper), so a clinician/agent can read it. See EncryptedZipExporter.
     implementation("net.lingala.zip4j:zip4j:2.11.5")
 
-    // UnifiedPush (Google-free push notifications)
-    implementation("org.unifiedpush.android:connector:3.0.10") {
-        exclude(group = "com.google.crypto.tink", module = "tink")
-    }
-
     // CameraX (fingertip-PPG HRV snapshots — user-initiated, no streaming)
     val cameraxVersion = "1.4.1"
     implementation("androidx.camera:camera-core:$cameraxVersion")

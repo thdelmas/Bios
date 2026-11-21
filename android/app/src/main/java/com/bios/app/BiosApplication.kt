@@ -9,8 +9,6 @@ import com.bios.app.ingest.SyncWorker
 import com.bios.app.platform.HealthApiServer
 import com.bios.app.platform.LetheCompat
 import com.bios.app.platform.PlatformDetector
-import com.bios.app.privacy.ContributionWorker
-import com.bios.app.push.PushRegistrationManager
 import com.bios.app.sync.p2p.IrohNode
 import com.bios.app.sync.p2p.LocalNetworkTransport
 import com.bios.app.sync.p2p.P2PTransport
@@ -48,11 +46,15 @@ class BiosApplication : Application() {
             healthApiServer?.start()
         }
 
-        // Initialize P2P transport (Iroh if available, else local network)
+        // P2P transport (Iroh if available, else local network). It opens a
+        // listener and announces itself on the local network, so it starts
+        // only when the owner has turned device-to-device sync on.
         val irohNode = IrohNode(this)
         p2pTransport = if (irohNode.isAvailable) irohNode else LocalNetworkTransport(this)
-        applicationScope.launch(Dispatchers.IO) {
-            p2pTransport.start()
+        if (P2PSyncWorker.isEnabled(this)) {
+            applicationScope.launch(Dispatchers.IO) {
+                p2pTransport.start()
+            }
         }
         // Schedule periodic P2P sync
         P2PSyncWorker.enqueuePeriodicSync(this)
@@ -63,7 +65,7 @@ class BiosApplication : Application() {
         registerReceiver(gadgetbridgeReceiver, GadgetbridgeReceiver.intentFilter(),
             RECEIVER_EXPORTED)
 
-        // Schedule periodic health data sync (HTTP/IPFS)
+        // Schedule periodic ingestion from the connected sources
         SyncWorker.enqueuePeriodicSync(this)
 
         // Schedule periodic phone-sleep sampling + morning inference.
@@ -113,16 +115,6 @@ class BiosApplication : Application() {
         // Periodic work of removed features is cancelled on existing installs.
         val workManager = androidx.work.WorkManager.getInstance(this)
         REMOVED_PERIODIC_WORK.forEach { workManager.cancelUniqueWork(it) }
-
-        // Re-register UnifiedPush if previously enabled (idempotent — just
-        // confirms the registration with the distributor). Does NOT auto-enable;
-        // only fires if the owner previously opted in via Settings.
-        if (PushRegistrationManager.isEnabled(this)) {
-            PushRegistrationManager.register(this)
-        }
-
-        // Schedule community contributions (will no-op if Private tier)
-        ContributionWorker.enqueueNextContribution(this)
     }
 
     override fun onTerminate() {
@@ -140,6 +132,7 @@ class BiosApplication : Application() {
             "bios_perioperative_state_transition",
             "bios_chronic_migraine_screening",
             "bios_moh_screening",
+            "bios_community_contribution",
         )
     }
 }

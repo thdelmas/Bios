@@ -41,8 +41,6 @@ data class RegulatoryConfig(
     val reproductiveDataIsolation: Boolean,
     /** Maximum default data retention days before prompting review. */
     val defaultRetentionDays: Int,
-    /** Whether the region requires explicit consent for any community data sharing. */
-    val explicitCommunityConsent: Boolean,
     /** Whether FHIR export should default to the region's national FHIR profile. */
     val fhirProfileUrl: String?,
     /** Regulatory body of the region (e.g., "FDA", "EMA", "TGA"). */

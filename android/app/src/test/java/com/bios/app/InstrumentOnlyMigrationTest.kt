@@ -25,7 +25,7 @@ import org.robolectric.annotation.Config
  * also runs the later steps) so the migrated schema is validated against
  * the entities. The limit under test
  * (docs/specs/instrument-only.md): a stored alert loses its interpretation
- * text and nothing else.
+ * text and the name of the pattern that raised it, and nothing else.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
@@ -37,7 +37,11 @@ class InstrumentOnlyMigrationTest {
 
     private fun open(): BiosDatabase =
         Room.databaseBuilder(context, BiosDatabase::class.java, name)
-            .addMigrations(InstrumentOnlyMigrations.MIGRATION_38_39, InstrumentOnlyMigrations.MIGRATION_39_40)
+            .addMigrations(
+                InstrumentOnlyMigrations.MIGRATION_38_39,
+                InstrumentOnlyMigrations.MIGRATION_39_40,
+                InstrumentOnlyMigrations.MIGRATION_40_41,
+            )
             .allowMainThreadQueries()
             .build()
             .also { db = it }
@@ -99,7 +103,7 @@ class InstrumentOnlyMigrationTest {
     }
 
     @Test
-    fun `a pattern alert loses its interpretation text and nothing else`() {
+    fun `a pattern alert loses its interpretation text and pattern name and nothing else`() {
         val after = migrated().getValue("pattern")
         assertEquals(
             pattern.copy(
@@ -107,10 +111,10 @@ class InstrumentOnlyMigrationTest {
                 explanation = "Recorded by an earlier version. Its interpretation text was removed; " +
                     "the measured values are kept.",
                 suggestedAction = null,
+                patternId = "earlier_alert",
             ),
             after,
         )
-        assertEquals("infection_onset", after.patternId)
         assertEquals("Cold", after.diagnosis)
     }
 
@@ -145,7 +149,7 @@ class InstrumentOnlyMigrationTest {
         migrated()
         db?.close()
         SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READONLY).use { raw ->
-            assertEquals(40, raw.version)
+            assertEquals(41, raw.version)
             raw.rawQuery("SELECT name FROM sqlite_master WHERE name = 'professional_reviews'", null).use { c ->
                 assertEquals(0, c.count)
             }

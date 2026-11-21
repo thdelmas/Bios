@@ -64,7 +64,6 @@ internal object RegionConfigsAmericas {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = true,
             defaultRetentionDays = 90,
-            explicitCommunityConsent = true,
             fhirProfileUrl = "http://hl7.org/fhir/us/core",
             regulatoryBody = "FDA",
         ),
@@ -78,7 +77,6 @@ internal object RegionConfigsAmericas {
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
-            explicitCommunityConsent = true,
             fhirProfileUrl = "https://www.infoway-inforoute.ca/fhir",
             regulatoryBody = "Health Canada",
         ),
