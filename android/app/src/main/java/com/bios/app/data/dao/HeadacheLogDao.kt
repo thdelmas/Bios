@@ -13,9 +13,7 @@ import com.bios.app.model.HeadacheLog
  * [com.bios.app.data.dao.MigraineAttackDao] because the entities have
  * different shapes — see [HeadacheLog] vs. [com.bios.app.model.MigraineAttack].
  *
- * The diary screen consumes [fetchAll] / [fetchInRange]; the MOH evaluator
- * consumes [fetchInRange] over a 90-day window to count acute-treatment
- * days alongside the migraine-attack record.
+ * The diary screen consumes [fetchAll].
  */
 @Dao
 interface HeadacheLogDao {

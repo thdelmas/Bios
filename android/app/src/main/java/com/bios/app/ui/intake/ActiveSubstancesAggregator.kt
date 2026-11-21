@@ -13,8 +13,8 @@ import com.bios.contracts.MetricType
  * Produces one [SubstanceCard] per known substance. Two modes:
  *
  *  - [DisplayMode.DOSED] — the intake key carries a dose (caffeine,
- *    alcohol). The card renders concentration math: current amount in
- *    body, threshold crossing, 24 h decay curve.
+ *    alcohol). The card renders concentration math: estimated amount in
+ *    body and the 24 h decay curve.
  *  - [DisplayMode.EVENT_ONLY] — the intake key is timestamp-only
  *    (`tobacco_use`, `cannabis_use` from Smokeless). The card renders
  *    the event log: how many in the window, when the last one was,
@@ -23,7 +23,7 @@ import com.bios.contracts.MetricType
  *    interim shape until a dose-bearing companion key ships.
  *
  * Pure so the screen layer is a thin renderer — every empty-state /
- * threshold / window edge runs under JUnit without Compose or Room.
+ * window edge runs under JUnit without Compose or Room.
  *
  * **Window semantics.** Intakes older than `historicalWindowMs` are
  * dropped before the curve sample and the recent-doses list; the
@@ -43,10 +43,10 @@ object ActiveSubstancesAggregator {
     /**
      * Per-substance dashboard tile.
      *
-     *  - In [DisplayMode.DOSED]: [pk], [currentAmountMg], [curve], and
-     *    optionally [thresholdMg]/[timeUntilBelowThresholdMs] populate.
+     *  - In [DisplayMode.DOSED]: [pk], [currentAmountMg] and [curve]
+     *    populate.
      *  - In [DisplayMode.EVENT_ONLY]: [pk] is null, [currentAmountMg]
-     *    is null, [curve] is empty, [thresholdMg] is null. The card
+     *    is null, [curve] is empty. The card
      *    surfaces `recentDoses` (one entry per logged event) plus the
      *    last-event metadata.
      *
@@ -61,8 +61,6 @@ object ActiveSubstancesAggregator {
         val currentAmountMg: Double?,
         val lastDoseTimestampMs: Long?,
         val lastDoseLabel: String?,
-        val thresholdMg: Double?,
-        val timeUntilBelowThresholdMs: Long?,
         val curve: List<Pair<Long, Double>>,
         val recentDoses: List<DoseDisplay>,
     ) {
@@ -89,8 +87,6 @@ object ActiveSubstancesAggregator {
      *   ship target.
      * @param curveStepMinutes sparkline resolution. 5 min × 288 samples =
      *   one 24 h curve.
-     * @param thresholdOverridesMg owner-picked per-metric-key threshold
-     *   overrides; falls back to [Pharmacokinetics.defaultThresholdMg].
      */
     fun compute(
         intakes: List<MetricReading>,
@@ -98,7 +94,6 @@ object ActiveSubstancesAggregator {
         nowMs: Long = System.currentTimeMillis(),
         historicalWindowMs: Long = DEFAULT_WINDOW_MS,
         curveStepMinutes: Int = DEFAULT_CURVE_STEP_MIN,
-        thresholdOverridesMg: Map<String, Double> = emptyMap(),
     ): List<SubstanceCard> {
         val windowStart = nowMs - historicalWindowMs
         val dosedCards = PharmacokineticsReference.all.values.mapNotNull { pk ->
@@ -111,7 +106,6 @@ object ActiveSubstancesAggregator {
                 nowMs = nowMs,
                 windowStart = windowStart,
                 curveStepMinutes = curveStepMinutes,
-                thresholdMg = thresholdOverridesMg[metricKey] ?: pk.defaultThresholdMg,
             )
         }
         val eventCards = EVENT_ONLY_METRIC_KEYS.map { metricKey ->
@@ -134,7 +128,6 @@ object ActiveSubstancesAggregator {
         nowMs: Long,
         windowStart: Long,
         curveStepMinutes: Int,
-        thresholdMg: Double?,
     ): SubstanceCard {
         // Engine math reads the full prior history (a dose from 8 h ago
         // still contributes to current concentration); the window only
@@ -151,10 +144,6 @@ object ActiveSubstancesAggregator {
             pk, doseEvents, fromMillis = windowStart, toMillis = nowMs,
             stepMinutes = curveStepMinutes,
         )
-
-        val timeUntilBelow = thresholdMg?.let { thr ->
-            ConcentrationMath.timeUntilBelow(pk, doseEvents, thr, fromMillis = nowMs)
-        }
 
         val last = priorIntakes.lastOrNull()
         val recent = priorIntakes
@@ -174,8 +163,6 @@ object ActiveSubstancesAggregator {
             currentAmountMg = currentAmount,
             lastDoseTimestampMs = last?.timestamp,
             lastDoseLabel = last?.sourceId?.let { sourceLabels[it] ?: UNKNOWN_SOURCE_LABEL },
-            thresholdMg = thresholdMg,
-            timeUntilBelowThresholdMs = timeUntilBelow,
             curve = curve,
             recentDoses = recent,
         )
@@ -211,8 +198,6 @@ object ActiveSubstancesAggregator {
             currentAmountMg = null,
             lastDoseTimestampMs = last?.timestamp,
             lastDoseLabel = last?.sourceId?.let { sourceLabels[it] ?: UNKNOWN_SOURCE_LABEL },
-            thresholdMg = null,
-            timeUntilBelowThresholdMs = null,
             curve = emptyList(),
             recentDoses = recent,
         )

@@ -271,7 +271,7 @@ private fun SubSurfaceCards(
     HomeEntryCard(
         icon = Icons.Default.MonitorHeart,
         title = "Vessel Watch",
-        subtitle = "The long dials — vascular, metabolic, recovery, aging, reserve",
+        subtitle = "Blood pressure, heart, lab values, sleep: the latest value of each",
         onClick = onNavigateToVesselWatch,
     )
 }
@@ -327,7 +327,7 @@ fun BaselineCountdown(currentDays: Int, requiredDays: Int) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Bios needs $remaining more day${if (remaining == 1) "" else "s"} of data to establish your personal baseline and start detecting patterns.",
+                "Bios needs $remaining more day${if (remaining == 1) "" else "s"} of data to build your usual range.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

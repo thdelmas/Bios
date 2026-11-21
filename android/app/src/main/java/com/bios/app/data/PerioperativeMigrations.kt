@@ -4,11 +4,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Schema migration that creates the `perioperative_baselines` table (#205,
- * SURGICAL_POV §2.1). Stores the frozen pre-op baseline (RHR/HRV/SkinTemp/
- * RR/SpO2/sleep/steps/body-mass means + SDs) so post-op-windowed patterns
- * can detect re-elevation after normalisation. Wiped alongside everything
- * else by [DataDestroyer].
+ * Schema migration that created the `perioperative_baselines` table. No
+ * entity maps the table any more; it stays in the file with its rows.
  */
 internal object PerioperativeMigrations {
     private const val CREATE_PERIOPERATIVE_BASELINES =

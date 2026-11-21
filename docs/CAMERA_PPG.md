@@ -9,31 +9,24 @@ HRV, or when you want a point-in-time snapshot after a specific event.
 - **Your wearable doesn't stream HRV.** Some devices (e.g. Kiprun GPS 500)
   record HR but never expose HRV to Health Connect. Camera-PPG fills the
   gap.
-- **Post-stressor snapshots.** After a nightmare, a confrontation, a bad
-  night of travel — capture a 60-second reading to see whether your
-  autonomic nervous system is still elevated.
-- **Baseline building in the first 14 days.** Bios needs rolling data
-  before it can detect drift. Manual snapshots seed the baseline faster.
-- **Cross-checking a suspect wearable reading.** If your watch shows an
-  unusually high or low HRV number, a camera snapshot is a second opinion
-  from an independent sensor.
+- **A reading at a moment you choose.** A 60-second capture gives heart
+  rate and HRV for that moment.
+- **Cross-checking a wearable reading.** A camera capture is a second
+  measurement from an independent sensor.
 
 ## When NOT to use it
 
 - **As a replacement for continuous monitoring.** Camera-PPG only captures
   what you actively measure; trends require many readings. Keep your
   wearable as the primary source.
-- **In any medical or emergency context.** This is not a medical device.
-  It will not detect arrhythmia, cardiac events, or any specific
-  condition. If something feels wrong, call a doctor — do not open this
-  screen.
-- **To diagnose yourself.** Bios reports numbers, not verdicts. A
-  single-snapshot RMSSD outside your personal range means *one data
-  point* worth discussing with a clinician — not a diagnosis.
+- **For anything other than a measurement.** Bios is not a medical
+  device. The capture screen says so: "Bios shows this reading and does
+  not interpret it." A capture saves heart rate, HRV measures and
+  pulse-wave measures. It produces no rhythm verdict.
 
 ## How to take a reading
 
-1. Open Bios. On the **Home** tab, tap **Take HRV Snapshot**.
+1. Open Bios. On the **Log** screen, tap **HRV Snapshot**.
 2. Grant camera access on first use. Frames never leave your device; only
    the extracted HR and HRV numbers are kept.
 3. Place your **fingertip fully over the rear camera and flash**. Most
@@ -52,9 +45,8 @@ HRV, or when you want a point-in-time snapshot after a specific event.
 ## Reading the result
 
 - **Heart rate (bpm).** Average over the capture window.
-- **HRV (RMSSD, ms).** Root-mean-square of successive differences — the
-  standard short-recording HRV metric, driven by parasympathetic
-  (vagal) tone.
+- **HRV (RMSSD, ms).** Root-mean-square of successive differences
+  between beats, the usual HRV measure for a short recording.
 - **Quality (0–100).** Composite signal quality: luminance stability,
   saturation, peak-amplitude variability, and RR regularity. Above ~70
   is a clean reading; below ~40 you should retry.
@@ -70,7 +62,7 @@ HRV, or when you want a point-in-time snapshot after a specific event.
 | Saturation | The image is too bright (usually overexposure from direct sunlight) | Move to a shadier spot or lighten pressure |
 | Motion artifact | Peak amplitudes swung too much between beats | Rest your hand on a surface, take a breath, retry |
 | Too few beats | Fewer than ~20 clean peaks extracted | Check finger placement and retry |
-| Irregular rhythm | RR intervals passed peak detection but the HRV analyser rejected too many as artifacts | Retry in a calmer state; if this persists, consider a clinician visit — genuine ectopic beats look like this |
+| Signal too irregular | Beat intervals passed peak detection but the HRV analyser rejected too many as artifacts | Retry with a steadier hand |
 | Hardware unavailable | No rear camera or no flash on this device | This feature requires both — use your wearable |
 
 ## Limitations
@@ -94,8 +86,9 @@ HRV, or when you want a point-in-time snapshot after a specific event.
 
 - Camera frames live in a rolling in-memory buffer during capture and are
   **discarded** as soon as the 60-second window ends.
-- Only the extracted numbers (HR, RMSSD, timestamp, source, confidence,
-  quality, peak count, duration) are written to the local Room database.
+- Only the extracted numbers (heart rate, HRV measures, pulse-wave
+  measures, timestamp, source, confidence, duration) are written to the
+  local database.
 - Nothing is uploaded. Nothing leaves the device unless you explicitly
   export your data from **Settings → Export**.
 - Erasure via **Delete all data** destroys camera-PPG readings alongside
@@ -125,9 +118,7 @@ for the shape of input it expects.
 ## Deep link
 
 Companions can open the PPG capture screen directly with the URI
-`bios://capture/ppg` — no Home detour. This is the right shape for CTAs
-fired in degraded-executive-function moments (post-stressor, post-bad-
-sleep prompts) where the cost of an extra tap is high.
+`bios://capture/ppg`, without going through Home.
 
 Behavior:
 

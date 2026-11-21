@@ -32,14 +32,14 @@ class OtaCoordinator(
      * Called by LETHE via the local health API (/health/reboot-safe).
      */
     suspend fun queryRebootSafety(): RebootDecision {
-        // Check 1: Active urgent alerts — don't reboot during a health crisis
+        // Check 1: an unacknowledged alert of the advisory tier or above
         val unacked = db.anomalyDao().fetchUnacknowledged()
         val hasUrgent = unacked.any { it.severity >= AlertTier.ADVISORY.level }
         if (hasUrgent) {
             return RebootDecision(
                 safe = false,
                 reason = RebootDelay.ELEVATED_MONITORING,
-                message = "Active health advisory — monitoring elevated vitals",
+                message = "An alert is waiting to be acknowledged",
                 estimatedDelayMinutes = 60
             )
         }

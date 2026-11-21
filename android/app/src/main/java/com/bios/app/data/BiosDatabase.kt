@@ -21,26 +21,16 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         Anomaly::class,
         HealthEvent::class,
         ActionItem::class,
-        UserFeedback::class,
-        ProfessionalReview::class,
         CompanionGrant::class,
         LoggedEvent::class,
         EventPayloadField::class,
         PhoneSleepSample::class,
         MedicationAnnotation::class,
         ImmunizationRecord::class,
-        ScreeningEntry::class,
-        RiskProfile::class,
-        GoalsOfCare::class,
-        ClinicalDirective::class,
         MigraineAttack::class,
         HeadacheLog::class,
-        FastStrokeEvent::class,
-        EsasReport::class,
         TraditionalMedicineContext::class,
-        EmergencyContact::class,
         EcgStrip::class,
-        com.bios.app.physiology.PerioperativeBaseline::class,
         InterventionEvent::class,
         TreatmentCourse::class,
         GrowthMeasurement::class,
@@ -50,7 +40,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ClinicalEncounter::class,
         FollowUpReferral::class,
     ],
-    version = 38,
+    version = 41,
     exportSchema = false
 )
 @androidx.room.TypeConverters(MigraineTriggerConverter::class)
@@ -63,26 +53,16 @@ abstract class BiosDatabase : RoomDatabase() {
     abstract fun anomalyDao(): AnomalyDao
     abstract fun healthEventDao(): HealthEventDao
     abstract fun actionItemDao(): ActionItemDao
-    abstract fun userFeedbackDao(): UserFeedbackDao
-    abstract fun professionalReviewDao(): ProfessionalReviewDao
     abstract fun companionGrantDao(): CompanionGrantDao
     abstract fun loggedEventDao(): LoggedEventDao
     abstract fun eventPayloadFieldDao(): EventPayloadFieldDao
     abstract fun phoneSleepSampleDao(): PhoneSleepSampleDao
     abstract fun medicationAnnotationDao(): MedicationAnnotationDao
     abstract fun immunizationRecordDao(): ImmunizationRecordDao
-    abstract fun screeningEntryDao(): ScreeningEntryDao
-    abstract fun riskProfileDao(): RiskProfileDao
-    abstract fun goalsOfCareDao(): GoalsOfCareDao
-    abstract fun clinicalDirectiveDao(): ClinicalDirectiveDao
     abstract fun migraineAttackDao(): MigraineAttackDao
     abstract fun headacheLogDao(): HeadacheLogDao
-    abstract fun fastStrokeEventDao(): FastStrokeEventDao
-    abstract fun esasReportDao(): EsasReportDao
     abstract fun traditionalMedicineContextDao(): TraditionalMedicineContextDao
-    abstract fun emergencyContactDao(): EmergencyContactDao
     abstract fun ecgStripDao(): EcgStripDao
-    abstract fun perioperativeBaselineDao(): PerioperativeBaselineDao
     abstract fun interventionEventDao(): InterventionEventDao
     abstract fun treatmentCourseDao(): TreatmentCourseDao
     abstract fun growthMeasurementDao(): GrowthMeasurementDao
@@ -112,7 +92,7 @@ abstract class BiosDatabase : RoomDatabase() {
                 "bios.db"
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, BiosDatabaseMigrationsExtras.MIGRATION_23_24, BiosDatabaseMigrations.MIGRATION_24_25, MigrationsAnthropometry.MIGRATION_25_26, EcgStripMigrations.MIGRATION_26_27, PerioperativeMigrations.MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MetricReadingMigrations.MIGRATION_30_31, SourceMetricToggleMigrations.MIGRATION_31_32, BiosDatabaseMigrationsExtras.MIGRATION_32_33, BiosDatabaseMigrationsExtras.MIGRATION_33_34, BiosDatabaseMigrationsExtras.MIGRATION_34_35, BiosDatabaseMigrationsExtras.MIGRATION_35_36, BiosDatabaseMigrationsExtras.MIGRATION_36_37, BiosDatabaseMigrationsExtras.MIGRATION_37_38)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MedicationVocabularyMigration.MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, BiosDatabaseMigrationsExtras.MIGRATION_23_24, BiosDatabaseMigrations.MIGRATION_24_25, MigrationsAnthropometry.MIGRATION_25_26, EcgStripMigrations.MIGRATION_26_27, PerioperativeMigrations.MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MetricReadingMigrations.MIGRATION_30_31, SourceMetricToggleMigrations.MIGRATION_31_32, BiosDatabaseMigrationsExtras.MIGRATION_32_33, BiosDatabaseMigrationsExtras.MIGRATION_33_34, BiosDatabaseMigrationsExtras.MIGRATION_34_35, BiosDatabaseMigrationsExtras.MIGRATION_35_36, BiosDatabaseMigrationsExtras.MIGRATION_36_37, BiosDatabaseMigrationsExtras.MIGRATION_37_38, InstrumentOnlyMigrations.MIGRATION_38_39, InstrumentOnlyMigrations.MIGRATION_39_40, InstrumentOnlyMigrations.MIGRATION_40_41)
                 // Downgrades happen when the owner installs a build whose
                 // DB schema is older than the one already on disk —
                 // typical when bouncing between a dev build and a tagged

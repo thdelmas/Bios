@@ -23,16 +23,6 @@ import java.util.UUID
  * no dosha typing, no TCM pulse classifier, no Sasang typing, no
  * Mizaj inference, no fukushin palpation interpreter, no Hahnemannian
  * repertorisation. This repo holds owner-declared context only.
- *
- * **Vocabulary overlay (deferred catalogue).** When a row has
- * [TraditionalMedicineContext.vocabularyOverlayConsent] set to `true`,
- * downstream alert-detail surfaces *may* render one extra footnote
- * line using that tradition's vocabulary. The vocabulary catalogues
- * themselves live in `docs/audits/` and are not present on this
- * branch (PR #223 lands them); the consent flag is persisted today,
- * the renderer is wired up in a follow-up PR. See
- * [overlayCandidatesFor] for the read path that catalogue-lookup
- * code will plug into.
  */
 class TraditionalMedicineContextRepo(private val db: BiosDatabase) {
 
@@ -46,9 +36,6 @@ class TraditionalMedicineContextRepo(private val db: BiosDatabase) {
      * @param tradition the tradition this row records context for.
      * @param traditionFreeText required when [tradition] is
      *   [MedicalTradition.OTHER]; ignored otherwise. Stored verbatim.
-     * @param vocabularyOverlayConsent opt-in per row. Defaults to
-     *   `false` — the manifesto-aligned default is silence in the
-     *   tradition's vocabulary until the owner explicitly enables it.
      */
     suspend fun add(
         tradition: MedicalTradition,
@@ -56,7 +43,6 @@ class TraditionalMedicineContextRepo(private val db: BiosDatabase) {
         practitionerConsultedFrequency: PractitionerFrequency? = null,
         notes: String? = null,
         regionOfPractice: String? = null,
-        vocabularyOverlayConsent: Boolean = false,
         id: String = UUID.randomUUID().toString(),
         now: Long = System.currentTimeMillis(),
     ): TraditionalMedicineContext {
@@ -75,7 +61,6 @@ class TraditionalMedicineContextRepo(private val db: BiosDatabase) {
             practitionerConsultedFrequency = practitionerConsultedFrequency,
             notes = notes?.takeIf { it.isNotBlank() }?.trim(),
             regionOfPractice = regionOfPractice?.takeIf { it.isNotBlank() }?.trim(),
-            vocabularyOverlayConsent = vocabularyOverlayConsent,
             createdAt = now,
             updatedAt = now,
         )
@@ -105,18 +90,4 @@ class TraditionalMedicineContextRepo(private val db: BiosDatabase) {
         dao.fetchByTradition(tradition)
 
     suspend fun count(): Int = dao.count()
-
-    /**
-     * Rows for which the owner has opted into vocabulary overlay. The
-     * alert-detail renderer in a future PR walks this list and asks a
-     * (still-deferred) vocabulary catalogue for an equivalent line per
-     * tradition. When the catalogue is empty for a given tradition, the
-     * renderer simply omits the footnote — silence is the safe default.
-     *
-     * TODO(#193 follow-up): wire this to the per-tradition vocabulary
-     * catalogue in `docs/audits/` once those land (PR #223). For now the
-     * consent flag is persisted; the renderer is a no-op.
-     */
-    suspend fun overlayCandidatesFor(): List<TraditionalMedicineContext> =
-        dao.fetchOverlayOptedIn()
 }

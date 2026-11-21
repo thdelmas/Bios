@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -19,7 +17,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,78 +28,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Identity card — owner-annotated medical and physiological context;
- * not configuration. Extracted from [SettingsScreen] to give "Self"
- * surfaces a dedicated landing zone. Adding a new identity entry means
- * adding a `label to "route"` row in the matching group below, in one
- * place — every entry navigates by route through [onNavigate].
+ * The owner's records, by route. Adding an entry means adding a
+ * `label to "route"` row in the matching group below; every entry
+ * navigates through [onNavigate].
  *
- * Entries are organised into collapsible groups so the card reads as a
- * handful of scannable headers rather than a wall of buttons. All groups
- * are collapsed by default; the owner expands the area they're looking for.
+ * Entries are organised into collapsible groups, all collapsed by
+ * default; the owner expands the area they're looking for.
  */
 @Composable
-internal fun IdentityCard(
-    onNavigate: (route: String) -> Unit = {},
-    dueByRoute: Map<String, Int> = emptyMap(),
-) {
+internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
     val sections = listOf(
-        "Body & baseline" to listOf(
-            "Anthropometry" to "anthropometry",
-            "Physiology state" to "physiology_state",
-            "Environmental context" to "environmental_context",
+        "Body measurements" to listOf(
+            "Height, weight & composition" to "anthropometry",
+            "ECG strips" to "ecg_strips",
         ),
-        "Medical record" to listOf(
-            "Current medications" to "medications",
+        "Records" to listOf(
+            "Medications" to "medications",
             "Immunisation record" to "immunisations",
             "Treatment courses" to "treatment_courses",
             "Intervention events" to "intervention_events",
-            "Surgical recovery" to "surgical_recovery",
-            "ECG strips" to "ecg_strips",
+            "Traditional practices" to "traditional_medicine_context",
         ),
-        "Prevention & risk" to listOf(
-            "Preventive care" to "preventive_care",
-            "Risk profile" to "risk_profile",
-            "FRAIL assessment" to "frail_assessment",
-            "Geriatric trajectory" to "geriatric_trajectory",
+        "Diaries" to listOf(
+            "Headache diary" to "headache_diary",
         ),
-        "Symptoms & assessments" to listOf(
-            "Headache & migraine diary" to "headache_diary",
-            "Tremor / movement trends" to "tremor_trend",
-            "FAST stroke check" to "fast_stroke",
-            "Symptom report (ESAS-r)" to "esas_capture",
-        ),
-        "Reproductive" to listOf(
+        "Cycle" to listOf(
+            "Cycle dashboard" to "cycle_dashboard",
             "Contraception" to "contraception",
-            "Menopause / perimenopause" to "menopause_stage",
-            "Gender-affirming care" to "gender_affirming_care",
-            "PCOS / Endometriosis context" to "pcos_endometriosis",
-        ),
-        "Care & contacts" to listOf(
-            "Goals of care" to "goals_of_care",
-            "Emergency contacts" to "emergency_contacts",
-            "Traditional medicine" to "traditional_medicine_context",
         ),
     )
 
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Identity", style = MaterialTheme.typography.titleSmall)
+            Text("Your records", style = MaterialTheme.typography.titleSmall)
             sections.forEach { (title, entries) ->
                 Spacer(Modifier.height(8.dp))
-                IdentitySection(
-                    title = title,
-                    entries = entries,
-                    onNavigate = onNavigate,
-                    dueByRoute = dueByRoute,
-                )
+                IdentitySection(title = title, entries = entries, onNavigate = onNavigate)
             }
         }
     }
 }
 
 /**
- * A collapsible group of identity entries. Collapsed by default; the
+ * A collapsible group of record entries. Collapsed by default; the
  * header toggles visibility of the contained rows.
  */
 @Composable
@@ -110,12 +78,8 @@ private fun IdentitySection(
     title: String,
     entries: List<Pair<String, String>>,
     onNavigate: (route: String) -> Unit,
-    dueByRoute: Map<String, Int> = emptyMap(),
 ) {
     var expanded by remember { mutableStateOf(false) }
-    // Sum the section's row counts so the collapsed header still signals
-    // that something inside is due — the owner sees it without expanding.
-    val sectionDue = entries.sumOf { dueByRoute[it.second] ?: 0 }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -125,16 +89,10 @@ private fun IdentitySection(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (!expanded && sectionDue > 0) {
-                DueBadge(sectionDue)
-                Spacer(Modifier.width(8.dp))
-            }
-            Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (expanded) "Collapse $title" else "Expand $title",
-            )
-        }
+        Icon(
+            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+        )
     }
     AnimatedVisibility(visible = expanded) {
         Column {
@@ -142,33 +100,8 @@ private fun IdentitySection(
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = { onNavigate(route) }, modifier = Modifier.fillMaxWidth()) {
                     Text(label)
-                    val due = dueByRoute[route] ?: 0
-                    if (due > 0) {
-                        Spacer(Modifier.weight(1f))
-                        DueBadge(due)
-                    }
                 }
             }
         }
-    }
-}
-
-/**
- * Neutral status pill — a passive count, never an alarm. Uses the
- * secondary container colour (not error); a checkup being due is
- * information, not a failure. Manifesto: instrument, not coach.
- */
-@Composable
-private fun DueBadge(count: Int) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = RoundedCornerShape(percent = 50),
-    ) {
-        Text(
-            text = "$count due",
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-        )
     }
 }

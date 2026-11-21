@@ -1,9 +1,5 @@
 package com.bios.app
 
-import com.bios.app.config.BiomarkerBand
-import com.bios.app.export.bandFillColor
-import com.bios.app.export.bandLabel
-import com.bios.app.export.bandTextColor
 import com.bios.app.export.chartValueRange
 import com.bios.app.export.fmtValue
 import com.bios.app.export.formatDateRange
@@ -14,14 +10,13 @@ import com.bios.app.model.MetricReading
 import com.bios.app.model.PersonalBaseline
 import com.bios.contracts.MetricType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.TimeZone
 
 /**
  * Pure-logic tests for [com.bios.app.export.PdfReportExporter]'s
- * deterministic helpers — formatting, band colouring, chart-coordinate
+ * deterministic helpers — formatting, chart-coordinate
  * math. Canvas rendering itself requires android.graphics.Paint at
  * runtime, so it's covered by build-and-eyeball, not unit tests.
  */
@@ -106,39 +101,6 @@ class PdfReportExporterTest {
         assertEquals("8523", fmtValue(8523.4))
         // Negatives use absolute-value cutoff (e.g., glucose delta).
         assertEquals("-150", fmtValue(-150.3))
-    }
-
-    // --- band colour / label ---
-
-    @Test
-    fun `every band has a distinct fill and text colour`() {
-        val fills = setOf(
-            bandFillColor(BiomarkerBand.NORMAL),
-            bandFillColor(BiomarkerBand.BORDERLINE),
-            bandFillColor(BiomarkerBand.CONCERNING),
-            bandFillColor(null),
-        )
-        assertEquals("Each band (incl. null) must paint a different cell colour", 4, fills.size)
-
-        val texts = setOf(
-            bandTextColor(BiomarkerBand.NORMAL),
-            bandTextColor(BiomarkerBand.BORDERLINE),
-            bandTextColor(BiomarkerBand.CONCERNING),
-            bandTextColor(null),
-        )
-        assertEquals("Each band must use a distinct text colour", 4, texts.size)
-        // Text colour must contrast with fill — at minimum, not equal.
-        for (band in listOf(BiomarkerBand.NORMAL, BiomarkerBand.BORDERLINE, BiomarkerBand.CONCERNING, null)) {
-            assertNotEquals("Text on a $band fill must differ from the fill", bandFillColor(band), bandTextColor(band))
-        }
-    }
-
-    @Test
-    fun `band label uses an em-dash for null so the column never reads as a band`() {
-        assertEquals("normal", bandLabel(BiomarkerBand.NORMAL))
-        assertEquals("borderline", bandLabel(BiomarkerBand.BORDERLINE))
-        assertEquals("concerning", bandLabel(BiomarkerBand.CONCERNING))
-        assertEquals("—", bandLabel(null))
     }
 
     // --- mapY ---

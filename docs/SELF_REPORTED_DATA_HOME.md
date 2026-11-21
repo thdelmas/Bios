@@ -1,8 +1,7 @@
 # Self-Reported Data — Architectural Decisions
 
 Bios was built around sensor data: continuous, probabilistic, dedup-by-timestamp.
-A 2026-05 audit of the ecosystem (Bios, W2F, Smokeless, Virgil, SoulRadio,
-and Fil, a neurology companion dropped 2026-10-03 before it was built) surfaced ~80 distinct data points sitting in companion apps that never
+A 2026-05 audit of the ecosystem (Bios, W2F, Smokeless, Virgil, SoulRadio) surfaced ~80 distinct data points sitting in companion apps that never
 reach Bios's metric bus — much of it self-reported by the owner (mood
 ratings, symptom severity, intake events, active-test outcomes).
 
@@ -16,14 +15,13 @@ about themselves*.
 
 > Bios consumes self-reported data; Bios is never the entry point.
 
-Logging surfaces belong in specialty apps (W2F for mood, Smokeless for
-substances, …). Bios reads what flowed in via the companion-write
-ContentProvider, baselines and correlates the parts that make sense, and
-displays the rest with provenance. Adding "log X directly in Bios" UI
-collapses Bios into a generic journal and is rejected by construction.
+This was the starting principle; decision 6 below narrows it. Logging
+surfaces for data a companion owns belong in that companion. Bios stores
+what flows in through the companion-write ContentProvider and displays it
+with its source. It does not baseline, correlate or comment on it.
 
-The existing `QuickSymptomCard` on Home is owner-protection scaffolding
-(quick-jot when no companion is installed), not a primary entry surface.
+The quick entry card on the Log screen (`QuickSymptomCard`) stores a
+free-text note as written.
 
 ## Decisions
 
@@ -76,54 +74,36 @@ meaningful.
 - `BaselineEngine`: skip `kind != SENSOR`.
 - `SignalQualityFilter`: skip `kind != SENSOR` (rate-of-change checks are
   nonsense for journal entries).
-- Pattern detection on self-reports and events lives in a **separate,
-  gentler engine** — never the same anomaly-detection machinery as sensor
-  data.
+- The deviation alert reads sensor readings only.
 
 **Why:** A baseline of self-reported sleep is a baseline of *perception*,
-not physiology — statistically meaningless to mix. Beyond statistics,
-running anomaly detection on self-reports and pushing the result —
-"your reported mood is 1.5σ below baseline" — is **unsolicited
-push-side evaluation of the person**, which `AlertContentPolicy`
-explicitly bans (see [MANIFESTO.md](../MANIFESTO.md) Principle 7 and
-the push/pull distinction in
-[PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md) "Alert Content
-Policy"). The mechanical guarantees here (`BaselineEngine` skips
-`kind != SENSOR`; `SignalQualityFilter` same) implement that prohibition
-at the code level.
+not of a measurement. Mixing the two is statistically meaningless. And a
+computed statement about what the owner typed ("your reported mood is
+1.5σ below baseline") is an evaluation of the person, which Bios does not
+make. The guarantees here (`BaselineEngine` and `SignalQualityFilter`
+skip `kind != SENSOR`) hold that line in code.
 
-Self-reports and events are: **displayable** (transparency),
-**correlatable** as context for sensor-derived alerts (HRV down + user
-reports poor sleep = stronger signal than HRV alone), and
-**pattern-detectable** with descriptive language only ("you've logged poor
-sleep 4 nights in a row" — never "your sleep is degrading"). Owner-pulled
-comparison surfaces — where the owner navigates in and asks "did I sleep
-better after starting magnesium?" — are not constrained by this rule;
-the firewall is push-side only.
+Self-reports and events are **displayed** and **exported** as written,
+with their source. Nothing in Bios correlates them with sensor data or
+describes a pattern in them.
+
+> Superseded by `specs/instrument-only.md`: an earlier version of this
+> decision planned a separate engine for patterns in self-reports and the
+> use of self-reports as context for alerts. Neither exists.
 
 ### 4. Structured symptom taxonomy as Bios canon
 
-Adopt W2F's severity scheme as the ecosystem-wide vocabulary: `SymptomKind`
-enum (FOG, DIZZINESS, PHOTOPHOBIA, MIGRAINE, NAUSEA, …, plus OTHER for
-free-text fallback) with 0–3 severity. Lives in `bios-contracts` so any
-companion can produce conforming entries.
-
-**Why:** Cross-app correlation requires a shared vocabulary. W2F's
-photophobia + a neurology companion's gait drift could be a migraine prodrome — but only if
-both apps speak the same word. Today Bios's `QuickSymptomCard` is
-free-text; nothing can correlate against it.
-
-**Alt rejected:** Per-app taxonomies (chaos, no correlation) or free-text
-only (Bios stays silent on symptom signals forever).
-
-**Open:** Final enum membership and 0–3 vs 0–10 scale. Default to W2F's
-existing scheme to avoid breaking already-shipped W2F UX.
+> Superseded by `specs/instrument-only.md`. This decision proposed a shared
+> `SymptomKind` enum with a severity scale in `bios-contracts`, so that
+> entries from different apps could be correlated. It was not implemented,
+> and Bios does not correlate entries. The quick entry card stores free
+> text.
 
 ### 5. Pre-reserve `reaction_time_ms` (and active-test keys generally)
 
 Add `reaction_time_ms` to `MetricType` now, without whitelisting any
 companion to write it yet. W2F has PVT data today (`cognitive_probes`
-table); a neurology companion would add SDMT. The second-consumer trigger is implicit but already
+table); The second-consumer trigger is implicit but already
 firing.
 
 **Why:** Reserving an enum key is essentially free. Coordinating a
@@ -143,7 +123,7 @@ Originally framed as *"Bios is a consumer, never the entry point —
 period."* That absolute is now wrong-as-written: since then, BBT manual
 entry (`BbtEntryRepo`), biomarker entry (`BiomarkerEntryRepo`), manual
 sleep duration, lab-report attachment (PR #106), and the general
-clinical-reading bundle surface (`ManualReadingRepo`, issue #131) have
+entry surface for readings taken elsewhere (`ManualReadingRepo`, issue #131) have
 all shipped as legitimate Bios-hosted entry surfaces.
 
 The corrected rule — which all five shipped surfaces already satisfy —
@@ -154,17 +134,17 @@ data being entered is a canonical Bios-owned key with no other producer
 available.** Biomarkers are typed because no sensor draws blood; BBT is
 typed because no wearable on the owner's wrist measures basal body
 temperature; manual sleep is typed when Health Connect / Oura / Gadgetbridge
-are all silent; clinical vitals (BP cuff, pulse-ox, thermometer, triage
-chart) are typed because the LETHE-correct case is a degoogled phone
+are all silent; readings from a BP cuff, pulse oximeter or thermometer
+are typed because the LETHE-correct case is a degoogled phone
 with no Health Connect at all — the owner *is* the producer, not just
 the reader. Bios is *not* the entry point for data a companion uniquely
-owns — typing cadence belongs in W2F, SDMT in a neurology companion, fall-event in
+owns — typing cadence belongs in W2F, fall-event in
 Virgil.
 
 The gate is now per-metric: [MetricType.allowsManualEntry] declares
 which keys accept owner-as-source entry. Engine isolation still holds —
-manual entries flow through SELF_REPORTED and skip the baseline /
-anomaly engines per decision 3 above.
+manual entries flow through SELF_REPORTED and skip the baseline and
+the deviation alert per decision 3 above.
 
 The "future asks of 'let me log sleep directly in Bios'" line from the
 old wording was directionally right but the verdict's been wrong: the
@@ -181,9 +161,6 @@ what we apply going forward.
 - **Migration of existing Smokeless writes.** Smokeless's tobacco/cannabis
   events live in `MetricReading.value=1.0` today. Migrate them to
   `LoggedEvent` (cleaner) or leave them on the legacy shape (less churn)?
-- **Who owns the canonical `SymptomKind` enum.** `bios-contracts` is the
-  natural home, but the enum needs real clinical input on membership.
-  Defer until a clinician collaborator is in the loop?
 
 ## What this doc is NOT
 

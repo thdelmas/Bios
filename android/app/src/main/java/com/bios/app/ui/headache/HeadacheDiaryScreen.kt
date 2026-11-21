@@ -44,27 +44,21 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Settings → Identity → "Headache & migraine diary" entry surface
- * (issue #207, neurology audit §2.5 + §2.6). Owners record headaches and
- * migraine attacks here so the diary surface, the MOH evaluator, and the
- * FHIR exporter all have the same structured record to read.
+ * Headache diary (issue #207). The owner records headaches and migraine
+ * attacks here and reads them back as a dated list.
  *
  * Two entry shapes live on the same screen:
- *  - **Migraine attack** ([MigraineAttack]) — richer shape: aura,
- *    triggers, peak intensity, acute treatment.
- *  - **Headache log** ([HeadacheLog]) — generic shape for tension /
- *    cluster / unclassified headaches: intensity, type, duration.
+ *  - **Migraine attack** ([MigraineAttack]): aura, triggers, peak
+ *    intensity, acute treatment.
+ *  - **Headache log** ([HeadacheLog]): intensity, the type the owner
+ *    picks, duration.
  *
- * Pull-side only — no notification, no reminder, no streak. The owner
- * records on their own terms; the trend / list view is visible only when
- * the owner navigates to it.
+ * Pull-side only — no notification, no reminder, no streak. Entries are
+ * shown as written; nothing here classifies or counts them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HeadacheDiaryScreen(
-    onBack: () -> Unit,
-    onNavigateToClusterPeriodicity: () -> Unit = {},
-) {
+fun HeadacheDiaryScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val db = remember(context) { BiosDatabase.getInstance(context) }
     val migraineRepo = remember(db) { MigraineAttackRepo(db) }
@@ -86,7 +80,7 @@ fun HeadacheDiaryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Headache & migraine diary") },
+                title = { Text("Headache diary") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -105,16 +99,6 @@ fun HeadacheDiaryScreen(
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "Why a structured diary?",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            "The neurology and headache-medicine literature converges on the same conclusion: a dated record of headaches, intensity, and acute treatment is the substrate a clinician needs to identify the underlying primary-headache disorder, recognise medication-overuse-headache risk (IHS ICHD-3 §8.2), and discuss preventive options. Bios records what is logged — never inferred from biomarkers, never shared without explicit action.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
                                 onClick = { showAddMigraine = true },
@@ -125,10 +109,6 @@ fun HeadacheDiaryScreen(
                                 modifier = Modifier.weight(1f),
                             ) { Text("Log headache") }
                         }
-                        OutlinedButton(
-                            onClick = onNavigateToClusterPeriodicity,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text("View cluster periodicity") }
                     }
                 }
             }

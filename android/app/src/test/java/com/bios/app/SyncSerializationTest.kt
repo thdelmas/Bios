@@ -1,6 +1,5 @@
 package com.bios.app
 
-import com.bios.app.model.Anomaly
 import com.bios.app.model.HealthEvent
 import com.bios.app.model.MetricReading
 import com.bios.app.model.PersonalBaseline
@@ -79,65 +78,6 @@ class SyncSerializationTest {
         }
 
         assertEquals(baseline, restored)
-    }
-
-    @Test
-    fun `Anomaly with nullable fields round-trips through JSON`() {
-        val anomaly = Anomaly(
-            id = "a-1", detectedAt = 3000L, metricTypes = "[\"heart_rate\"]",
-            deviationScores = "{\"heart_rate\":2.1}", combinedScore = 2.1,
-            patternId = null, severity = 2, title = "HR elevated",
-            explanation = "Resting HR +2σ for 48h", suggestedAction = null,
-            acknowledged = false, acknowledgedAt = null,
-            feltSick = true, visitedDoctor = null, diagnosis = null,
-            symptoms = "fatigue", notes = null, outcomeAccurate = null
-        )
-
-        val json = JSONObject().apply {
-            put("id", anomaly.id); put("detectedAt", anomaly.detectedAt)
-            put("metricTypes", anomaly.metricTypes)
-            put("deviationScores", anomaly.deviationScores)
-            put("combinedScore", anomaly.combinedScore)
-            put("patternId", anomaly.patternId ?: JSONObject.NULL)
-            put("severity", anomaly.severity); put("title", anomaly.title)
-            put("explanation", anomaly.explanation)
-            put("suggestedAction", anomaly.suggestedAction ?: JSONObject.NULL)
-            put("acknowledged", anomaly.acknowledged)
-            put("acknowledgedAt", anomaly.acknowledgedAt ?: JSONObject.NULL)
-            put("feedbackAt", anomaly.feedbackAt ?: JSONObject.NULL)
-            put("feltSick", anomaly.feltSick ?: JSONObject.NULL)
-            put("visitedDoctor", anomaly.visitedDoctor ?: JSONObject.NULL)
-            put("diagnosis", anomaly.diagnosis ?: JSONObject.NULL)
-            put("symptoms", anomaly.symptoms ?: JSONObject.NULL)
-            put("notes", anomaly.notes ?: JSONObject.NULL)
-            put("outcomeAccurate", anomaly.outcomeAccurate ?: JSONObject.NULL)
-        }
-
-        val o = json
-        val restored = Anomaly(
-            id = o.getString("id"), detectedAt = o.getLong("detectedAt"),
-            metricTypes = o.getString("metricTypes"),
-            deviationScores = o.getString("deviationScores"),
-            combinedScore = o.getDouble("combinedScore"),
-            patternId = if (o.isNull("patternId")) null else o.getString("patternId"),
-            severity = o.getInt("severity"), title = o.getString("title"),
-            explanation = o.getString("explanation"),
-            suggestedAction = if (o.isNull("suggestedAction")) null else o.getString("suggestedAction"),
-            acknowledged = o.getBoolean("acknowledged"),
-            acknowledgedAt = if (o.isNull("acknowledgedAt")) null else o.getLong("acknowledgedAt"),
-            feedbackAt = if (o.isNull("feedbackAt")) null else o.getLong("feedbackAt"),
-            feltSick = if (o.isNull("feltSick")) null else o.getBoolean("feltSick"),
-            visitedDoctor = if (o.isNull("visitedDoctor")) null else o.getBoolean("visitedDoctor"),
-            diagnosis = if (o.isNull("diagnosis")) null else o.getString("diagnosis"),
-            symptoms = if (o.isNull("symptoms")) null else o.getString("symptoms"),
-            notes = if (o.isNull("notes")) null else o.getString("notes"),
-            outcomeAccurate = if (o.isNull("outcomeAccurate")) null else o.getBoolean("outcomeAccurate")
-        )
-
-        assertEquals(anomaly, restored)
-        assertNull(restored.patternId)
-        assertEquals(true, restored.feltSick)
-        assertEquals("fatigue", restored.symptoms)
     }
 
     @Test

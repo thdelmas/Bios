@@ -25,7 +25,6 @@ import org.junit.Test
  *  - DAO insert / list / delete round-trip.
  *  - Multi-tradition entries are supported (TCM + Ayurveda + Curandera
  *    coexist as independent rows).
- *  - `vocabularyOverlayConsent` defaults to `false`.
  *  - `MedicalTradition.OTHER` + free-text path works; blank free-text
  *    on the OTHER path is rejected at the repo boundary.
  */
@@ -50,25 +49,10 @@ class TraditionalMedicineContextRepoTest {
         override suspend fun fetchById(id: String): TraditionalMedicineContext? = rows[id]
         override suspend fun fetchAll(): List<TraditionalMedicineContext> =
             rows.values.sortedByDescending { it.createdAt }
-        override suspend fun fetchOverlayOptedIn(): List<TraditionalMedicineContext> =
-            rows.values.filter { it.vocabularyOverlayConsent }.sortedByDescending { it.createdAt }
         override suspend fun fetchByTradition(tradition: MedicalTradition): List<TraditionalMedicineContext> =
             rows.values.filter { it.tradition == tradition }.sortedByDescending { it.createdAt }
         override suspend fun count(): Int = rows.size
         override suspend fun deleteById(id: String) { rows.remove(id) }
-    }
-
-    @Test
-    fun default_vocabulary_overlay_consent_is_false() {
-        val row = TraditionalMedicineContext(
-            id = "1",
-            tradition = MedicalTradition.TCM,
-        )
-        assertFalse(
-            "vocabularyOverlayConsent must default to false — no tradition " +
-                "vocabulary appears anywhere unless the owner opts in.",
-            row.vocabularyOverlayConsent
-        )
     }
 
     @Test
@@ -172,31 +156,6 @@ class TraditionalMedicineContextRepoTest {
         val fetched = dao.fetchById("other-1")
         assertEquals(MedicalTradition.OTHER, fetched?.tradition)
         assertEquals("Hoʻoponopono practice", fetched?.traditionFreeText)
-    }
-
-    @Test
-    fun overlay_opted_in_query_filters_to_consenting_rows_only() = runBlocking {
-        // Per the manifesto guard: vocabulary footnotes appear only for
-        // rows where the owner explicitly opted in. This query is what
-        // the (deferred) alert-detail renderer reads.
-        val dao = FakeDao()
-        dao.insert(
-            TraditionalMedicineContext(
-                id = "opted-in",
-                tradition = MedicalTradition.TCM,
-                vocabularyOverlayConsent = true,
-            )
-        )
-        dao.insert(
-            TraditionalMedicineContext(
-                id = "default-off",
-                tradition = MedicalTradition.AYURVEDA,
-                // Defaults to false — should not appear in overlay list.
-            )
-        )
-        val opted = dao.fetchOverlayOptedIn()
-        assertEquals(1, opted.size)
-        assertEquals("opted-in", opted.first().id)
     }
 
     @Test

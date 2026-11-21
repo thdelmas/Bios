@@ -161,8 +161,7 @@ private fun HeaderCard() {
             Spacer(Modifier.height(4.dp))
             Text(
                 "Bios looks for peripherals exposing the Bluetooth-SIG Environmental Sensing Service (0x181A). " +
-                    "Air-quality readings (PM2.5, CO2, VOC) feed the same patterns your wearables do — " +
-                    "they're a confounder for sleep, HRV, and respiratory anomalies.",
+                    "Air-quality readings (PM2.5, CO2, VOC) are stored next to the readings of your wearables.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

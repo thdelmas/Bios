@@ -114,11 +114,8 @@ enum class PipelineStage(val label: String, val sloTargetMs: Long?) {
     /** Time to recompute personal baselines from recent readings. */
     BASELINE_COMPUTATION("Baseline Computation", 30_000),
 
-    /** Time to run all condition pattern evaluations. */
-    PATTERN_DETECTION("Pattern Detection", 10_000),
-
-    /** Time to run ML model inference. */
-    ML_INFERENCE("ML Inference", 5_000),
+    /** Time to compare the watched metrics with their baselines and score the result. */
+    DEVIATION_SCORING("Deviation Scoring", 10_000),
 
     /** Time from anomaly creation to OS notification delivery. */
     NOTIFICATION_DELIVERY("Notification Delivery", 10_000),

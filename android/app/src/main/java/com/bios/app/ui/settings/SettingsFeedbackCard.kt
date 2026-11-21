@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
- * Settings → Feedback & Community card. Two outlinks: the Bios Discord
+ * Settings → Feedback card. Two outlinks: the Bios Discord
  * (community, questions, feedback; GitHub Discussions is disabled on the
  * repo) and a fresh GitHub issue. Extracted from [SettingsScreen] to keep
  * the host file under the 500-line cap.
@@ -32,7 +32,7 @@ internal fun SettingsFeedbackCard() {
             Text("Feedback", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Help improve Bios by reporting detection accuracy, requesting features, or flagging issues. " +
+                "Help improve Bios by requesting features or flagging issues. " +
                     "Please keep personal health data out of public posts.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

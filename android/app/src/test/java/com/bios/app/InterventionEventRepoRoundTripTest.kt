@@ -15,8 +15,7 @@ import org.junit.Test
 
 /**
  * Round-trip tests for the InterventionEvent + TreatmentCourse DAO
- * contracts (#192). Mirrors the fake-DAO pattern used by
- * [GoalsOfCareRepoRoundTripTest] — the project's JVM-only unit-test
+ * contracts (#192). Uses the fake-DAO pattern — the project's JVM-only unit-test
  * setup precludes hitting Room directly, so this test exercises
  * faithful in-memory fakes that mirror the Room DAO semantics
  * (`@Insert(onConflict = REPLACE)`, ordering by `timestamp DESC`,

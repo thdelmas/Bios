@@ -42,7 +42,6 @@ class GlucoseVariabilityTest {
         // Fewer than 96 samples — every derivation should refuse to emit.
         val sparse = glucoseSeries(flat(110.0, n = 60))
         assertNull(GlucoseVariability.deriveCv(sparse, sourceId))
-        assertNull(GlucoseVariability.deriveTimeInRange(sparse, sourceId))
         assertNull(GlucoseVariability.derivePeak(sparse, sourceId))
         assertNull(GlucoseVariability.deriveMage(sparse, sourceId))
     }
@@ -81,36 +80,6 @@ class GlucoseVariabilityTest {
         val osc = glucoseSeries(List(96) { if (it % 2 == 0) 80.0 else 120.0 })
         val cv = GlucoseVariability.deriveCv(osc, sourceId)!!
         assertEquals(20.0, cv.value, 1e-9)
-    }
-
-    @Test
-    fun `TIR is 100 percent when every reading is in the 70 to 140 window`() {
-        val inRange = glucoseSeries(flat(100.0))
-        val tir = GlucoseVariability.deriveTimeInRange(inRange, sourceId)!!
-        assertEquals(MetricType.GLUCOSE_TIME_IN_RANGE.key, tir.metricType)
-        assertEquals(100.0, tir.value, 1e-9)
-    }
-
-    @Test
-    fun `TIR is zero when every reading is out of range`() {
-        val highSpike = glucoseSeries(flat(200.0))
-        val tir = GlucoseVariability.deriveTimeInRange(highSpike, sourceId)!!
-        assertEquals(0.0, tir.value, 1e-9)
-    }
-
-    @Test
-    fun `TIR window endpoints 70 and 140 are inclusive`() {
-        val onEdges = glucoseSeries(List(96) { if (it % 2 == 0) 70.0 else 140.0 })
-        val tir = GlucoseVariability.deriveTimeInRange(onEdges, sourceId)!!
-        assertEquals(100.0, tir.value, 1e-9)
-    }
-
-    @Test
-    fun `TIR is approximately the fraction in 70 to 140`() {
-        // 72 readings at 100 mg/dL, 24 readings at 200 mg/dL → 75% in range.
-        val mixed = glucoseSeries(List(72) { 100.0 } + List(24) { 200.0 })
-        val tir = GlucoseVariability.deriveTimeInRange(mixed, sourceId)!!
-        assertEquals(75.0, tir.value, 1e-9)
     }
 
     @Test

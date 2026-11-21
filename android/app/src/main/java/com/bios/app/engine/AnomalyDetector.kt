@@ -1,48 +1,22 @@
 package com.bios.app.engine
 
-import com.bios.app.alerts.ConditionPatterns
-import com.bios.app.alerts.ConditionPattern
-import com.bios.app.alerts.DeviationDirection
+import com.bios.app.alerts.AlertDetailContent
 import com.bios.app.alerts.SignalSnapshot
-import com.bios.app.config.RegionConfig
-import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
-import com.bios.app.data.MedicationAnnotationRepo
-import com.bios.app.data.dao.MetricReadingDao
-import com.bios.app.model.*
-import com.bios.app.physiology.OwnerCondition
-import com.bios.app.physiology.PhysiologyState
-import com.bios.contracts.MetricType
-import com.bios.app.ui.diagnostics.DiagnosticResult
-import com.bios.app.ui.diagnostics.SignalStatus
+import com.bios.app.model.Anomaly
 import kotlin.math.abs
-import kotlin.math.min
 
 /**
- * Detects anomalies by scoring deviations from personal baselines and
- * cross-correlating multiple signals. `reproductiveReadingDao` (#142) routes
- * WOMENS_HEALTH metrics to the isolated [com.bios.app.data.ReproductiveDatabase].
- * `medicationRepo` (#154) freezes annotated medications on alert creation.
- * `physiologyState` (#159, CARDIOLOGY_POV §2.4) filters patterns via [appliesIn].
+ * Raises one kind of alert: watched metrics outside the owner's usual range.
+ * Each watched metric's last 24 h of sensor readings is compared with the
+ * owner's own baseline; [DeviationScore] turns the count and size of the
+ * deviations into a score, and the alert states the measured values. Nothing
+ * here names a cause or reads a meaning into the numbers.
  */
-@Suppress("LongParameterList") // each param is an owner-state gate; the clock is the validation hook
 class AnomalyDetector(
-    private val db: BiosDatabase,
-    private val mlModel: TFLiteAnomalyModel? = null,
+    db: BiosDatabase,
     private val latencyTracker: DetectionLatencyTracker? = null,
-    private val reproductiveReadingDao: MetricReadingDao? = null,
-    private val medicationRepo: MedicationAnnotationRepo? = MedicationAnnotationRepo(db),
-    private val physiologyState: PhysiologyState = PhysiologyState.STANDARD,
-    /** #196: region gates `requiresTropicalRegion`; ownerConditions gates `requiredOwnerConditions`. */
-    private val regionConfig: RegionConfig = RegionConfigProvider.forCurrentLocale(),
-    private val ownerConditions: Set<OwnerCondition> = emptySet(),
-    /** Cancer-therapy drug class (#201); gates `requiredDrugClasses`. */
-    private val drugClass: com.bios.app.physiology.CancerTherapyDrugClass = com.bios.app.physiology.CancerTherapyDrugClass.NONE,
-    /** #197: modulates `elevationAdjustedBelow` thresholds when set. */
-    private val environmentalContext: com.bios.app.model.EnvironmentalContext? = null,
-    /** #190: sub-window acute-event detector. Null disables the acute path. */
-    private val acuteWindowDetector: AcuteWindowDetector? = AcuteWindowDetector(db, physiologyState),
-    /** Engine clock; injectable so validation replays can step through historical days. */
+    /** Engine clock; injectable so replays can step through historical days. */
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
@@ -50,434 +24,57 @@ class AnomalyDetector(
     private val baselineDao = db.personalBaselineDao()
     private val anomalyDao = db.anomalyDao()
 
-    // Acute-window patterns (#190) and signalRules-less patterns (e.g. MOH #207,
-    // scored by a dedicated diary evaluator) bypass this pipeline; surfacing
-    // them here would render a misleading "Current Match Score: 0%" in the
-    // detail screen. appliesIn honors excludedStates + requiredStates (#200) +
-    // region (#196) + owner-conditions (#196).
-    private fun applicablePatterns(): List<ConditionPattern> {
-        val acuteIds = com.bios.app.alerts.AcuteWindowPatterns.all.map { it.id }.toSet()
-        return ConditionPatterns.all.filter {
-            it.appliesIn(physiologyState, regionConfig, ownerConditions, drugClass) &&
-                it.id !in acuteIds && it.signalRules.isNotEmpty()
-        }
-    }
-
     suspend fun runDetection(): List<Anomaly> {
-        val endToEndStart = System.currentTimeMillis()
-        val newAnomalies = mutableListOf<Anomaly>()
-        val patterns = applicablePatterns()
-
-        // Acute-window detection (#190) — parallel path for sub-window
-        // events (anaphylaxis, OUD respiratory depression, DKA, shock).
-        val acuteAnomalies = acuteWindowDetector?.runAcuteDetection() ?: emptyList()
-        newAnomalies.addAll(acuteAnomalies)
-
-        // Pattern-based detection (existing statistical approach)
-        suspend fun evalAll(): List<Anomaly> {
-            val results = mutableListOf<Anomaly>()
-            for (pattern in patterns) {
-                evaluatePattern(pattern)?.let {
-                    anomalyDao.insert(it)
-                    results.add(it)
-                }
-            }
-            return results
-        }
-        val patternAnomalies = latencyTracker?.track(PipelineStage.PATTERN_DETECTION) { evalAll() } ?: evalAll()
-        newAnomalies.addAll(patternAnomalies)
-
-        // ML-based holistic anomaly detection
-        val mlAnomaly = latencyTracker?.track(PipelineStage.ML_INFERENCE) {
-            runMlDetection()
-        } ?: runMlDetection()
-        if (mlAnomaly != null) {
-            anomalyDao.insert(mlAnomaly)
-            newAnomalies.add(mlAnomaly)
-        }
-
-        // Track end-to-end detection latency (notification delivery tracked separately)
-        if (newAnomalies.isNotEmpty()) {
-            latencyTracker?.record(
-                PipelineStage.END_TO_END,
-                System.currentTimeMillis() - endToEndStart,
-                mapOf("anomaly_count" to newAnomalies.size.toString())
-            )
-        }
-
-        return newAnomalies
+        val start = System.currentTimeMillis()
+        val anomaly = if (latencyTracker != null) {
+            latencyTracker.track(PipelineStage.DEVIATION_SCORING) { detectDeviation() }
+        } else {
+            detectDeviation()
+        } ?: return emptyList()
+        anomalyDao.insert(anomaly)
+        // Notification delivery is tracked separately.
+        latencyTracker?.record(PipelineStage.END_TO_END, System.currentTimeMillis() - start)
+        return listOf(anomaly)
     }
 
-    private suspend fun runMlDetection(): Anomaly? {
-        val timed = HolisticSignals.current(readingDao, baselineDao, clock())
+    private suspend fun detectDeviation(): Anomaly? {
+        val now = clock()
+        val timed = HolisticSignals.current(readingDao, baselineDao, now)
         val signals = timed.mapValues { it.value.first }
         val zScores = signals.mapValues { it.value.zScore }
         if (zScores.isEmpty()) return null
 
-        val features = TFLiteAnomalyModel.buildFeatureVector(zScores)
-        val heuristicScore = TFLiteAnomalyModel.heuristicScore(features)
-        val mlScore = mlModel?.score(features)
-        // A/B comparison signal (issue #1): when the trained model is
-        // loaded, record both scores so the pipeline-health surface can
-        // report agreement vs disagreement over time. The detection
-        // decision still uses the ML score; the heuristic is the safety
-        // net + comparison reference.
-        if (mlScore != null) {
-            AnomalyModelComparison.record(mlScore, heuristicScore)
-        }
-        val score = mlScore ?: heuristicScore
+        val score = DeviationScore.of(zScores)
+        if (score < DeviationScore.THRESHOLD) return null
 
-        if (score < TFLiteAnomalyModel.ANOMALY_THRESHOLD) return null
-
-        // Cool-down: don't re-alert for ML pattern within 24 hours
-        val recentAnomalies = anomalyDao.fetchRecent(10)
-        val cooldownMillis = 24 * 3600 * 1000L
-        val hasCooldown = recentAnomalies.any { anomaly ->
-            anomaly.patternId == ML_PATTERN_ID &&
-            (clock() - anomaly.detectedAt) < cooldownMillis
-        }
-        if (hasCooldown) return null
-
-        val deviating = zScores.filter { (_, z) -> abs(z) > 1.5 }
+        // Cool-down: one alert per 24 hours, and never on evidence an earlier alert already used.
+        val recent = anomalyDao.fetchRecent(RECENT_LOOKBACK)
+        if (recent.any { it.patternId == ML_PATTERN_ID && now - it.detectedAt < COOLDOWN_MILLIS }) return null
+        val deviating = zScores.filter { (_, z) -> abs(z) > AlertDetailContent.DEVIATION_Z }
         val newest = deviating.keys.mapNotNull { timed[it]?.second }.maxOrNull()
-        if (newest != null && WindowCoverage.evidenceAlreadyAlerted(deviating.keys, newest, recentAnomalies)) return null
-        val severity = classifyHolistic(score, deviating.values.maxOfOrNull { abs(it) } ?: 0.0)
-
-        val metricTypesJson = "[${deviating.keys.joinToString(",") { "\"$it\"" }}]"
-        val scoresJson = "{${deviating.entries.joinToString(",") { "\"${it.key}\":${it.value}" }}}"
+        if (newest != null && WindowCoverage.evidenceAlreadyAlerted(deviating.keys, newest, recent)) return null
 
         return Anomaly(
-            detectedAt = clock(),
-            metricTypes = metricTypesJson,
-            deviationScores = scoresJson,
+            detectedAt = now,
+            metricTypes = "[${deviating.keys.joinToString(",") { "\"$it\"" }}]",
+            deviationScores = "{${deviating.entries.joinToString(",") { "\"${it.key}\":${it.value}" }}}",
             combinedScore = score.toDouble(),
             patternId = ML_PATTERN_ID,
-            severity = severity.level,
-            title = "Unusual health pattern detected",
+            severity = classifyHolistic(score, deviating.values.maxOfOrNull { abs(it) } ?: 0.0).level,
+            title = TITLE,
             explanation = HolisticSignals.explanation(deviating.keys.mapNotNull { signals[it] }),
-            suggestedAction = "Review your recent health trends and note any symptoms.",
+            suggestedAction = null,
             signalSnapshot = SignalSnapshot.encode(signals.values),
         )
     }
 
-    suspend fun scoreAllPatterns(): List<DiagnosticResult> {
-        return applicablePatterns().map { pattern -> scorePattern(pattern) }
-            .sortedByDescending { it.probability }
-    }
-
-    private suspend fun scorePattern(pattern: ConditionPattern): DiagnosticResult {
-        val signals = mutableListOf<SignalStatus>()
-        var totalWeightedScore = 0.0
-        var totalWeight = 0.0
-        var activeCount = 0
-        var baselinesFound = 0
-
-        var requiredMissing = false
-
-        for (rule in pattern.signalRules) {
-            var zScore: Double? = null
-            var isActive = false
-            var hasBaseline = false
-            var insufficient = false
-
-            if (rule.isAbsolute) {
-                // Absolute clinical threshold — no baseline, no time window.
-                // Treat "we have a reading" as having enough data, since labs
-                // are dated and a six-month-old hsCRP is still meaningful.
-                val (value, active) = evaluateAbsoluteRule(rule)
-                hasBaseline = value != null
-                if (hasBaseline) baselinesFound++
-                isActive = active
-                if (isActive) {
-                    activeCount++
-                    totalWeightedScore += rule.weight
-                }
-            } else if (rule.direction == DeviationDirection.ABSENT) {
-                // No baseline needed — "no events in window" is the signal.
-                hasBaseline = true
-                baselinesFound++
-                val values = fetchRecentValues(rule.metricType, rule.minDurationHours)
-                isActive = values.isEmpty()
-                if (isActive) {
-                    activeCount++
-                    totalWeightedScore += rule.weight  // binary signal, full weight
-                }
-            } else {
-                val baseline = baselineDao.fetch(rule.metricType.key)
-                hasBaseline = baseline != null
-                if (hasBaseline) baselinesFound++
-
-                if (baseline != null) {
-                    val sample = windowSample(rule)
-                    insufficient = !sample.sufficient
-                    if (sample.sufficient) {
-                        zScore = baseline.zScore(sample.values.average())
-                        isActive = when (rule.direction) {
-                            DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
-                            DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
-                            DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
-                            DeviationDirection.ABSENT -> false  // unreachable, see above
-                        }
-                        if (isActive) {
-                            activeCount++
-                            totalWeightedScore += abs(zScore) * rule.weight
-                        }
-                    }
-                }
-            }
-
-            if (rule.required && !isActive) requiredMissing = true
-
-            totalWeight += rule.weight
-            signals.add(SignalStatus(
-                metricType = rule.metricType,
-                direction = rule.direction,
-                thresholdSigma = rule.thresholdSigma,
-                weight = rule.weight,
-                currentZScore = zScore,
-                isActive = isActive,
-                hasBaseline = hasBaseline,
-                insufficientData = insufficient,
-            ))
-        }
-
-        val hasEnoughData = baselinesFound >= pattern.minActiveSignals
-        val rawScore = if (totalWeight > 0) totalWeightedScore / totalWeight else 0.0
-        val activationRatio = activeCount.toDouble() / pattern.minActiveSignals.toDouble()
-        val probability = if (!hasEnoughData || activeCount == 0 || requiredMissing) 0.0
-            else min(1.0, activationRatio * rawScore / (rawScore + 2.0))
-
-        return DiagnosticResult(
-            pattern = pattern,
-            probability = probability,
-            signals = signals,
-            activeSignalCount = activeCount,
-            hasEnoughData = hasEnoughData
-        )
-    }
-
     companion object {
-        /** Prior-presence lookback for ABSENT rules: 90 days, the upper bound of the
-         *  cessation-recovery literature window (Mahmud & Feely 2003: 2–12 weeks). */
-        const val ABSENT_PRIOR_LOOKBACK_HOURS = 90L * 24
-
+        /** Stored on every alert row; the identifier predates the removal of the trained model. */
         const val ML_PATTERN_ID = "ml_holistic_anomaly"
-    }
 
-    private suspend fun evaluatePattern(pattern: ConditionPattern): Anomaly? {
-        val activeDeviations = mutableMapOf<MetricType, Double>()
-        var newestEvidence: Long? = null
-        var totalWeightedScore = 0.0
-        var totalWeight = 0.0
+        const val TITLE = "Outside your usual range"
 
-        for (rule in pattern.signalRules) {
-            if (rule.isAbsolute) {
-                val (value, active) = evaluateAbsoluteRule(rule)
-                if (rule.required && !active) return null
-                totalWeight += rule.weight
-                if (active && value != null) {
-                    activeDeviations[rule.metricType] = value
-                    totalWeightedScore += rule.weight
-                }
-                continue
-            }
-
-            val absent = rule.direction == DeviationDirection.ABSENT
-            val recentValues = if (absent) fetchRecentValues(rule.metricType, rule.minDurationHours) else emptyList()
-            val sample = if (absent) null else windowSample(rule)
-            val (isActive, contributedScore) = when (rule.direction) {
-                DeviationDirection.ABSENT -> {
-                    // Absence is a signal only when the metric was present before
-                    // the window. An owner who never had a tobacco companion must
-                    // not read as "72 h without tobacco" (Mishra replay 2026-09-27:
-                    // cessation_recovery fired on every wearable-only participant).
-                    val active = recentValues.isEmpty() && hadReadingsBeforeWindow(rule)
-                    Pair(active, if (active) rule.weight else 0.0)
-                }
-                else -> {
-                    val baseline = baselineDao.fetch(rule.metricType.key)
-                    if (baseline == null || sample == null || !sample.sufficient) {
-                        Pair(false, 0.0)
-                    } else {
-                        val zScore = baseline.zScore(sample.values.average())
-                        val deviating = when (rule.direction) {
-                            DeviationDirection.ABOVE -> zScore > rule.thresholdSigma
-                            DeviationDirection.BELOW -> zScore < -rule.thresholdSigma
-                            DeviationDirection.IRREGULAR -> abs(zScore) > rule.thresholdSigma
-                            DeviationDirection.ABSENT -> false  // unreachable, see above
-                        }
-                        if (deviating) {
-                            activeDeviations[rule.metricType] = zScore
-                            newestEvidence = maxOf(newestEvidence ?: 0L, sample.newestTimestamp ?: 0L)
-                            Pair(true, abs(zScore) * rule.weight)
-                        } else {
-                            Pair(false, 0.0)
-                        }
-                    }
-                }
-            }
-
-            if (rule.required && !isActive) return null
-            totalWeightedScore += contributedScore
-            totalWeight += rule.weight
-            if (isActive && rule.direction == DeviationDirection.ABSENT) {
-                // Carry ABSENT rules in the active map so they appear in the
-                // anomaly's signals JSON (z=0 sentinel for "no readings").
-                activeDeviations[rule.metricType] = 0.0
-            }
-        }
-
-        if (activeDeviations.size < pattern.minActiveSignals) return null
-
-        val combinedScore = if (totalWeight > 0) totalWeightedScore / totalWeight else 0.0
-
-        // Cool-down: don't re-alert for the same pattern within 24 hours, and
-        // never re-count evidence another alert already used (rule-window-coverage).
-        val recentAnomalies = anomalyDao.fetchRecent(10)
-        val metricKeys = activeDeviations.keys.map { it.key }.toSet()
-        if (newestEvidence != null && WindowCoverage.evidenceAlreadyAlerted(metricKeys, newestEvidence!!, recentAnomalies)) return null
-        val cooldownMillis = 24 * 3600 * 1000L
-        val hasCooldown = recentAnomalies.any { anomaly ->
-            anomaly.patternId == pattern.id &&
-            (clock() - anomaly.detectedAt) < cooldownMillis
-        }
-        if (hasCooldown) return null
-
-        val classifiedSeverity = classifySeverity(
-            activeSignals = activeDeviations.size,
-            combinedScore = combinedScore,
-            totalRules = pattern.signalRules.size
-        )
-        // Emergency vital-sign patterns declare a severityFloor (URGENT) so a
-        // single hard-cutoff crossing (SpO2 ≤85, glucose ≤54, RHR extreme)
-        // isn't presented at the same tier as a 7-day RHR drift. Trend
-        // patterns leave severityFloor null and fall through to the
-        // classifier output.
-        val severity = applySeverityFloor(classifiedSeverity, pattern.severityFloor)
-
-        val deviationScoresJson = buildString {
-            append("{")
-            append(activeDeviations.entries.joinToString(",") { (k, v) ->
-                "\"${k.key}\":$v"
-            })
-            append("}")
-        }
-
-        val metricTypesJson = buildString {
-            append("[")
-            append(activeDeviations.keys.joinToString(",") { "\"${it.key}\"" })
-            append("]")
-        }
-
-        val baseExplanation = buildAnomalyExplanation(pattern.explanation, activeDeviations)
-        // Medication context — read at anomaly-creation time so the stored
-        // text reflects what was on record when the pattern fired (§2.5).
-        // Null when the owner has no active medications recorded.
-        val medsContext = medicationRepo?.formatActiveContext()
-        val explanation = if (medsContext != null) "$baseExplanation $medsContext" else baseExplanation
-
-        return Anomaly(
-            detectedAt = clock(),
-            metricTypes = metricTypesJson,
-            deviationScores = deviationScoresJson,
-            combinedScore = combinedScore,
-            patternId = pattern.id,
-            severity = severity.level,
-            title = pattern.title,
-            explanation = explanation,
-            suggestedAction = pattern.suggestedAction
-        )
-    }
-
-    /**
-     * ABSENT gate: true when the metric has at least one primary reading in the
-     * [ABSENT_PRIOR_LOOKBACK_HOURS] before the rule window starts. Empty
-     * needs a control — "never present" is not "now absent".
-     */
-    private suspend fun hadReadingsBeforeWindow(rule: com.bios.app.alerts.SignalRule): Boolean {
-        val windowStart = clock() - rule.minDurationHours.toLong() * 3600 * 1000
-        val lookbackStart = windowStart - ABSENT_PRIOR_LOOKBACK_HOURS * 3600 * 1000
-        return daoFor(rule.metricType).countInRange(
-            rule.metricType.key, lookbackStart, windowStart, readingKindFilterFor(rule.metricType)
-        ) > 0
-    }
-
-    /** Deviation-rule window with coverage + freshness verdict (docs/specs/rule-window-coverage.md). */
-    private suspend fun windowSample(rule: com.bios.app.alerts.SignalRule): WindowSample {
-        val end = clock()
-        val start = end - rule.minDurationHours.toLong() * 3600 * 1000
-        val readings = daoFor(rule.metricType)
-            .fetchTimedValues(rule.metricType.key, start, end, readingKindFilterFor(rule.metricType))
-        return WindowCoverage.sample(readings, rule.minDurationHours, end)
-    }
-
-    private suspend fun fetchRecentValues(metricType: MetricType, hours: Int): List<Double> {
-        val endMillis = clock()
-        val startMillis = endMillis - hours.toLong() * 3600 * 1000
-        val dao = daoFor(metricType)
-        return dao.fetchValues(
-            metricType.key, startMillis, endMillis, readingKindFilterFor(metricType)
-        )
-    }
-
-    // Absolute-rule window values. Fast value-only path unless the
-    // rule needs row-level columns: durationAtLeastSec (#268) requires
-    // durationSec; excludePayloadFieldValue (#269 Cut 2 safety gate)
-    // requires a payload lookup to drop wearable_inferred SEIZURE_EVENT
-    // rows from the URGENT path.
-    private suspend fun fetchAbsoluteWindowValues(rule: com.bios.app.alerts.SignalRule): List<Double> {
-        val minDuration = rule.durationAtLeastSec
-        val excludePayload = rule.excludePayloadFieldValue
-        if (minDuration == null && excludePayload == null) {
-            return fetchRecentValues(rule.metricType, rule.absoluteWindowHours)
-        }
-        val endMillis = clock()
-        val startMillis = endMillis - rule.absoluteWindowHours.toLong() * 3600 * 1000
-        var rows = daoFor(rule.metricType).fetch(rule.metricType.key, startMillis, endMillis)
-        if (minDuration != null) rows = filterDurationAtLeast(rows, minDuration)
-        if (excludePayload != null) {
-            val payloads = db.eventPayloadFieldDao()
-                .fetchForReadings(rows.map { it.id })
-                .groupBy { it.readingId }
-            rows = applyPayloadExclusion(rows, payloads, excludePayload)
-        }
-        return rows.map { it.value }
-    }
-
-    private fun daoFor(metricType: MetricType): MetricReadingDao =
-        if (isReproductiveMetric(metricType) && reproductiveReadingDao != null) {
-            reproductiveReadingDao
-        } else {
-            readingDao
-        }
-
-    /**
-     * Evaluates an absolute-threshold rule. Default (`absoluteWindowHours = 0`)
-     * uses the latest reading — appropriate for sparse, dated labs. Multi-
-     * reading mode (`absoluteWindowHours > 0`) fetches all readings in the
-     * window, requires `absoluteMinReadings`, then compares the **median**
-     * against the cutoff — the home-BP convention (ESH 2023), robust to a
-     * single white-coat outlier. Returns `(null, false)` when there isn't
-     * enough data to evaluate.
-     */
-    private suspend fun evaluateAbsoluteRule(
-        rule: com.bios.app.alerts.SignalRule
-    ): Pair<Double?, Boolean> {
-        val representative: Double = if (rule.absoluteWindowHours > 0) {
-            val values = fetchAbsoluteWindowValues(rule)
-            if (values.size < rule.absoluteMinReadings) return null to false
-            median(values)
-        } else {
-            readingDao.fetchLatest(rule.metricType.key, 1).firstOrNull()?.value
-                ?: return null to false
-        }
-        val above = rule.absoluteAbove?.let { representative >= it } == true
-        // Elevation-adjusted "at or below" cutoff (#197). When the rule
-        // ships an `elevationAdjustedBelow` map and the owner has declared
-        // an environmental context, the band-specific value displaces the
-        // base cutoff. Sea-level / null contexts fall through unchanged.
-        val resolvedBelow = rule.resolvedAbsoluteBelow(environmentalContext?.elevationBand)
-        val below = resolvedBelow?.let { representative <= it } == true
-        return representative to (above || below)
+        private const val COOLDOWN_MILLIS = 24 * 3600 * 1000L
+        private const val RECENT_LOOKBACK = 10
     }
 }

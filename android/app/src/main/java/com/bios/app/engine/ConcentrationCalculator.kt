@@ -64,22 +64,6 @@ class ConcentrationCalculator(
         return ConcentrationMath.curve(pk, doses, fromMillis, toMillis, stepMinutes)
     }
 
-    /**
-     * Milliseconds from [fromMillis] until projected concentration drops
-     * below [thresholdMg]. Returns 0 when already below, and null when the
-     * substance has no PK profile or the projection never crosses the
-     * threshold within [MAX_FORWARD_LOOKAHEAD_MS].
-     */
-    suspend fun timeUntilBelow(
-        metricKey: String,
-        thresholdMg: Double,
-        fromMillis: Long = System.currentTimeMillis(),
-    ): Long? {
-        val pk = pharmacokineticsFor(metricKey) ?: return null
-        val doses = loadDoses(metricKey, fromMillis)
-        return ConcentrationMath.timeUntilBelow(pk, doses, thresholdMg, fromMillis)
-    }
-
     private fun pharmacokineticsFor(metricKey: String): Pharmacokinetics? {
         val substanceKey = PharmacokineticsReference.substanceKeyForMetric(metricKey) ?: return null
         return pharmacokinetics[substanceKey]
@@ -185,59 +169,6 @@ object ConcentrationMath {
         return out
     }
 
-    /**
-     * Milliseconds from [fromMillis] until the projected amount drops below
-     * [thresholdMg]. Returns 0 when already below. Returns null when the
-     * search horizon expires without crossing the threshold — useful for
-     * cases like "caffeine never quite reaches zero on a 10-doses-a-day
-     * pattern" without forcing the engine into an infinite loop.
-     *
-     * Implementation: exponentially expanding probes until we find a
-     * sub-threshold point, then bisection to refine. Pure, deterministic,
-     * no future-dose assumptions (timeline is what the owner has logged so
-     * far).
-     */
-    fun timeUntilBelow(
-        pk: Pharmacokinetics,
-        doses: List<DoseEvent>,
-        thresholdMg: Double,
-        fromMillis: Long,
-        maxLookaheadMs: Long = MAX_FORWARD_LOOKAHEAD_MS,
-    ): Long? {
-        val current = amountInBodyAt(pk, doses, fromMillis)
-        if (current <= thresholdMg) return 0L
-        var probe = PROBE_INITIAL_MS
-        var lastAbove = 0L
-        while (probe <= maxLookaheadMs) {
-            val amount = amountInBodyAt(pk, doses, fromMillis + probe)
-            if (amount <= thresholdMg) {
-                return bisectThresholdCrossing(pk, doses, thresholdMg, fromMillis, lastAbove, probe)
-            }
-            lastAbove = probe
-            probe = (probe * 2L).coerceAtMost(maxLookaheadMs + 1L)
-            if (lastAbove == maxLookaheadMs) break
-        }
-        return null
-    }
-
-    private fun bisectThresholdCrossing(
-        pk: Pharmacokinetics,
-        doses: List<DoseEvent>,
-        thresholdMg: Double,
-        fromMillis: Long,
-        lowerMs: Long,
-        upperMs: Long,
-    ): Long {
-        var lo = lowerMs
-        var hi = upperMs
-        repeat(BISECT_STEPS) {
-            val mid = lo + (hi - lo) / 2L
-            val amount = amountInBodyAt(pk, doses, fromMillis + mid)
-            if (amount > thresholdMg) lo = mid else hi = mid
-        }
-        return hi
-    }
-
     private fun firstOrderAmount(
         pk: Pharmacokinetics,
         doses: List<DoseEvent>,
@@ -308,7 +239,4 @@ object ConcentrationMath {
 
     private val LN2 = kotlin.math.ln(2.0)
     private const val FLIP_FLOP_TOLERANCE = 1e-6
-    internal const val MAX_FORWARD_LOOKAHEAD_MS = 10L * 24L * 60L * 60L * 1000L
-    private const val PROBE_INITIAL_MS = 5L * 60L * 1000L
-    private const val BISECT_STEPS = 32
 }

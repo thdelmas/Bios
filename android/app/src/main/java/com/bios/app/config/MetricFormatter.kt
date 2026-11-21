@@ -41,16 +41,11 @@ class MetricFormatter(private val config: RegionConfig) {
      * Formats a glucose value using the region's preferred unit (mg/dL or mmol/L).
      */
     fun formatGlucose(mgPerDl: Double, decimals: Int = 1): String {
-        return if (config.clinicalThresholds.glucoseInMmol) {
+        return if (config.glucoseInMmol) {
             val mmol = mgPerDl / 18.0
             "${String.format("%.${decimals}f", mmol)} mmol/L"
         } else {
             "${String.format("%.${decimals}f", mgPerDl)} mg/dL"
         }
     }
-
-    /**
-     * Returns the regulatory disclaimer for health alerts.
-     */
-    fun alertDisclaimer(): String = config.regulatory.alertDisclaimer
 }

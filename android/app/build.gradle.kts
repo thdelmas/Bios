@@ -82,12 +82,8 @@ android {
         }
     }
 
-    androidResources {
-        noCompress += "tflite"
-    }
-
     testOptions {
-        // Robolectric: validation replays (tools/validation) run the real Room DAOs in-memory.
+        // Robolectric: tests run the real Room DAOs in-memory.
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
             // FHIR R4 JSON Schema validation (FhirSchemaValidationTest) loads
@@ -139,11 +135,6 @@ dependencies {
     // pyzipper), so a clinician/agent can read it. See EncryptedZipExporter.
     implementation("net.lingala.zip4j:zip4j:2.11.5")
 
-    // UnifiedPush (Google-free push notifications)
-    implementation("org.unifiedpush.android:connector:3.0.10") {
-        exclude(group = "com.google.crypto.tink", module = "tink")
-    }
-
     // CameraX (fingertip-PPG HRV snapshots — user-initiated, no streaming)
     val cameraxVersion = "1.4.1"
     implementation("androidx.camera:camera-core:$cameraxVersion")
@@ -156,10 +147,6 @@ dependencies {
     implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
     implementation("com.google.guava:guava:33.3.1-android")
 
-    // LiteRT (on-device ML) – rebranded TF Lite with 16KB page alignment
-    implementation("com.google.ai.edge.litert:litert:1.4.2")
-    implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
-
     // Tesseract OCR (lab-report ingestion, Phase 10) — Tesseract4Android is
     // Apache-2.0, Google-Play-Services-free, and built with NDK r27c so its
     // native libraries pass the 16 KB page-size checks (LOAD and RELRO) that
@@ -168,9 +155,6 @@ dependencies {
     // models are operator-provisioned, never vendored — see
     // app/src/main/assets/tessdata/README.md.
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
-
-    // Ed25519 signature verification (model updates) — needed for API < 33
-    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 
     // Iroh P2P sync (Willow protocol for delta sync between devices)
     // TODO: Add iroh-ffi-android when published to Maven Central

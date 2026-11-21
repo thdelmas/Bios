@@ -48,7 +48,7 @@ fun ExportPassphraseDialog(
             Column {
                 Text(
                     "The export becomes an AES-256 encrypted zip. Anyone you share " +
-                        "it with — a doctor, another app — can open it with this " +
+                        "it with can open it with this " +
                         "password using standard tools. Keep it safe: a lost password " +
                         "cannot be recovered and the file cannot be opened without it.",
                 )

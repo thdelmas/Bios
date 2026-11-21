@@ -1,6 +1,5 @@
 package com.bios.app.ui.settings
 
-import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,8 +12,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.model.CompanionGrant
-import com.bios.app.model.PrivacyTier
-import com.bios.app.privacy.ContributionWorker
 import com.bios.app.ui.AppViewModel
 
 @Composable
@@ -29,21 +26,6 @@ fun SettingsScreen(
         .collectAsState(initial = emptyList())
     val pendingCompanionCount = companionGrants.count { it.state == CompanionGrant.STATE_PENDING }
     val approvedCompanionCount = companionGrants.count { it.state == CompanionGrant.STATE_GRANTED }
-    var privacyTier by remember {
-        val prefs = context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
-        val tier = prefs.getString("privacy_tier", PrivacyTier.PRIVATE.name)
-        mutableStateOf(PrivacyTier.valueOf(tier ?: PrivacyTier.PRIVATE.name))
-    }
-    // Passive, owner-pulled preventive-care due count for the Identity card
-    // badge (#401). Computed only because the owner opened this screen — no
-    // notification, no background work. Recomputed each time the screen is
-    // entered, so recording a checkup elsewhere clears the badge on return.
-    var dueByRoute by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    LaunchedEffect(Unit) {
-        val due = com.bios.app.ui.screening.PreventiveCareData.dueCount(context)
-        dueByRoute = if (due > 0) mapOf("preventive_care" to due) else emptyMap()
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -53,9 +35,9 @@ fun SettingsScreen(
     ) {
         Text("Self", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
-        IdentityCard(onNavigate = onNavigate, dueByRoute = dueByRoute)
+        IdentityCard(onNavigate = onNavigate)
 
-        // Privacy — what can leave, and who can access. Highest-stakes surface.
+        // Privacy — what can leave, and who can access.
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Privacy", style = MaterialTheme.typography.titleSmall)
@@ -68,39 +50,8 @@ fun SettingsScreen(
                 )
 
                 Spacer(Modifier.height(12.dp))
-                Text("Tier", style = MaterialTheme.typography.labelMedium)
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = privacyTier == PrivacyTier.PRIVATE,
-                        onClick = {
-                            privacyTier = PrivacyTier.PRIVATE
-                            saveTier(context, PrivacyTier.PRIVATE)
-                            ContributionWorker.cancel(context)
-                        },
-                        label = { Text("Private") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = privacyTier == PrivacyTier.COMMUNITY,
-                        onClick = {
-                            privacyTier = PrivacyTier.COMMUNITY
-                            saveTier(context, PrivacyTier.COMMUNITY)
-                            ContributionWorker.enqueueNextContribution(context)
-                        },
-                        label = { Text("Community") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = when (privacyTier) {
-                        PrivacyTier.PRIVATE -> "Your data never leaves this device. Zero-knowledge architecture."
-                        PrivacyTier.COMMUNITY -> "Send anonymous aggregates. Off by default. Aggregation happens on-device before transmission — raw data never leaves."
-                    },
+                    text = "Nothing is sent anywhere unless you export it or sync it between your own devices.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -183,8 +134,4 @@ fun SettingsScreen(
 @Composable
 private fun SettingsActionButton(label: String, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(label) }
-}
-
-private fun saveTier(context: Context, tier: PrivacyTier) {
-    context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE).edit().putString("privacy_tier", tier.name).apply()
 }

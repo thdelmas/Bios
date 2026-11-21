@@ -4,10 +4,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Schema migration that creates the `emergency_contacts` table (#179, EM/CC
- * audit gap §2.1). Stored in the main DB so the table is wiped alongside
- * everything else by [DataDestroyer]. Off by default: an empty table means
- * no escalation path; the URGENT-ack-timeout worker no-ops on empty.
+ * Schema migration that created the `emergency_contacts` table. No entity
+ * maps the table any more; it stays in the file with its rows.
  */
 internal object EmergencyContactMigrations {
     val MIGRATION_20_21 = object : Migration(20, 21) {

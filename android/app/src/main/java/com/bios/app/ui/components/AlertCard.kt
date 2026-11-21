@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,41 +13,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 import com.bios.app.ui.theme.BiosTokens
 import org.json.JSONObject
 import kotlin.math.abs
 
-data class FeedbackInput(
-    val feltSick: Boolean? = null,
-    val visitedDoctor: Boolean? = null,
-    val diagnosis: String? = null,
-    val symptoms: String? = null,
-    val notes: String? = null,
-    val outcomeAccurate: Boolean? = null
-)
-
 @Composable
 fun AlertCard(
     anomaly: Anomaly,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit = {},
-    onRequestReview: (() -> Unit)? = null,
-    onOpenPattern: ((String) -> Unit)? = null,
+    onSaveFeedback: (String) -> Unit = {},
     onOpenDetail: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var showFeedback by remember { mutableStateOf(false) }
     val tier = AlertTier.fromLevel(anomaly.severity)
     val tierColor = BiosTokens.tierColor(tier)
-    val hasFeedback = anomaly.feedbackAt != null
-    val pattern = remember(anomaly.patternId) {
-        anomaly.patternId?.let { id ->
-            ConditionPatterns.all.firstOrNull { it.id == id }
-        }
-    }
 
     Card(
         modifier = Modifier
@@ -62,7 +42,6 @@ fun AlertCard(
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SeverityBadge(tier, tierColor)
                 Spacer(Modifier.width(8.dp))
@@ -72,10 +51,10 @@ fun AlertCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                if (hasFeedback) {
+                if (anomaly.feedbackAt != null) {
                     Icon(
                         Icons.Default.CheckCircle,
-                        contentDescription = "Feedback given",
+                        contentDescription = "Journal entry saved",
                         tint = BiosTokens.success,
                         modifier = Modifier.size(16.dp)
                     )
@@ -83,104 +62,61 @@ fun AlertCard(
             }
 
             AnimatedVisibility(visible = expanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Spacer(Modifier.height(8.dp))
+                AlertCardBody(anomaly, tierColor, onAcknowledge, onSaveFeedback, onOpenDetail)
+            }
+        }
+    }
+}
 
-                    // What Bios noticed — the data statement that triggered the alert.
-                    // Rendered as paragraphs so longer explanations stay scannable.
-                    AlertSection(label = "What Bios noticed") {
-                        ParagraphText(anomaly.explanation)
-                    }
+/** Expanded card: the measured lines, the deviations, then acknowledge and the owner's journal. */
+@Composable
+private fun AlertCardBody(
+    anomaly: Anomaly,
+    tierColor: Color,
+    onAcknowledge: () -> Unit,
+    onSaveFeedback: (String) -> Unit,
+    onOpenDetail: (() -> Unit)?,
+) {
+    var showFeedback by remember { mutableStateOf(false) }
+    val hasFeedback = anomaly.feedbackAt != null
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Spacer(Modifier.height(8.dp))
 
-                    // Why this matters — pulled from the underlying ConditionPattern's
-                    // `risks` field when available. Surfacing the mechanism here is what
-                    // turns the data statement into something an owner can act on.
-                    pattern?.takeIf { it.risks.isNotBlank() }?.let { p ->
-                        AlertSection(label = "Why this matters") {
-                            ParagraphText(p.risks)
-                        }
-                    }
+        AlertSection(label = "What Bios measured") {
+            ParagraphText(anomaly.explanation)
+        }
 
-                    // Deviation scores (signal-rule alerts only)
-                    DeviationScoresList(anomaly.deviationScores)
+        DeviationScoresList(anomaly.deviationScores)
 
-                    // Suggested next step
-                    anomaly.suggestedAction?.let { action ->
-                        AlertSection(label = "Suggested next step") {
-                            ParagraphText(action)
-                        }
-                    }
+        onOpenDetail?.let { open ->
+            TextButton(onClick = open, modifier = Modifier.fillMaxWidth()) {
+                Text("See the measurements")
+            }
+        }
 
-                    // Full context — navigates to ConditionDetailScreen which renders
-                    // earlyDetection / prevention / healing / risks / clinical context.
-                    if (pattern != null && onOpenPattern != null) {
-                        TextButton(
-                            onClick = { onOpenPattern(pattern.id) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Read full context")
-                            Spacer(Modifier.width(4.dp))
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+        if (hasFeedback) {
+            FeedbackSummary(anomaly)
+        }
 
-                    onOpenDetail?.let { open ->
-                        TextButton(onClick = open, modifier = Modifier.fillMaxWidth()) {
-                            Text("What this means and what to watch")
-                        }
-                    }
-
-                    // Existing feedback summary
-                    if (hasFeedback) {
-                        FeedbackSummary(anomaly)
-                    }
-
-                    // Acknowledge button
-                    if (!anomaly.acknowledged) {
-                        Button(
-                            onClick = onAcknowledge,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = tierColor
-                            )
-                        ) {
-                            Text("Acknowledge")
-                        }
-                    }
-
-                    // Professional review (Advisory and Urgent only)
-                    if (onRequestReview != null && tier >= AlertTier.ADVISORY) {
-                        OutlinedButton(
-                            onClick = onRequestReview,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Get professional eyes on this")
-                        }
-                    }
-
-                    // Feedback section
-                    if (anomaly.acknowledged) {
-                        if (!showFeedback && !hasFeedback) {
-                            OutlinedButton(
-                                onClick = { showFeedback = true },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("How did this turn out?")
-                            }
-                        }
-
-                        AnimatedVisibility(visible = showFeedback && !hasFeedback) {
-                            FeedbackForm(onSubmit = { input ->
-                                onSaveFeedback(input)
-                                showFeedback = false
-                            })
-                        }
-                    }
+        if (!anomaly.acknowledged) {
+            Button(
+                onClick = onAcknowledge,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = tierColor)
+            ) {
+                Text("Acknowledge")
+            }
+        } else if (!hasFeedback) {
+            if (!showFeedback) {
+                OutlinedButton(onClick = { showFeedback = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Add a journal entry")
                 }
+            }
+            AnimatedVisibility(visible = showFeedback) {
+                FeedbackForm(onSubmit = { note ->
+                    onSaveFeedback(note)
+                    showFeedback = false
+                })
             }
         }
     }
@@ -216,14 +152,10 @@ private fun ParagraphText(text: String) {
     }
 }
 
+/** The owner's journal for an alert: one free-text note. */
 @Composable
-internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
-    var feltSick by remember { mutableStateOf<Boolean?>(null) }
-    var visitedDoctor by remember { mutableStateOf<Boolean?>(null) }
-    var diagnosis by remember { mutableStateOf("") }
-    var symptoms by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var outcomeAccurate by remember { mutableStateOf<Boolean?>(null) }
+internal fun FeedbackForm(onSubmit: (String) -> Unit) {
+    var note by remember { mutableStateOf("") }
 
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -234,68 +166,21 @@ internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                "Health Journal",
+                "Journal",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
-
-            // Did you feel sick?
-            YesNoQuestion("Did you feel sick?", feltSick) { feltSick = it }
-
-            // Was the alert accurate?
-            YesNoQuestion("Was this alert accurate?", outcomeAccurate) {
-                outcomeAccurate = it
-            }
-
-            // Did you visit a doctor?
-            YesNoQuestion("Did you visit a doctor?", visitedDoctor) {
-                visitedDoctor = it
-            }
-
-            // Diagnosis (shown if visited doctor)
-            if (visitedDoctor == true) {
-                OutlinedTextField(
-                    value = diagnosis,
-                    onValueChange = { diagnosis = it },
-                    label = { Text("Diagnosis (if any)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
-            // Symptoms
             OutlinedTextField(
-                value = symptoms,
-                onValueChange = { symptoms = it },
-                label = { Text("Symptoms you noticed") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                maxLines = 3
-            )
-
-            // Notes
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = { Text("Notes") },
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("What happened?") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
             )
-
             Button(
-                onClick = {
-                    onSubmit(
-                        FeedbackInput(
-                            feltSick = feltSick,
-                            visitedDoctor = visitedDoctor,
-                            diagnosis = diagnosis.ifBlank { null },
-                            symptoms = symptoms.ifBlank { null },
-                            notes = notes.ifBlank { null },
-                            outcomeAccurate = outcomeAccurate
-                        )
-                    )
-                },
+                onClick = { onSubmit(note.trim()) },
+                enabled = note.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save")
@@ -304,36 +189,11 @@ internal fun FeedbackForm(onSubmit: (FeedbackInput) -> Unit) {
     }
 }
 
-@Composable
-private fun YesNoQuestion(
-    label: String,
-    value: Boolean?,
-    onChanged: (Boolean) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f)
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            FilterChip(
-                selected = value == true,
-                onClick = { onChanged(true) },
-                label = { Text("Yes") }
-            )
-            FilterChip(
-                selected = value == false,
-                onClick = { onChanged(false) },
-                label = { Text("No") }
-            )
-        }
-    }
-}
-
+/**
+ * The owner's saved journal entry. Entries written by earlier versions can
+ * carry a second free-text field; both texts are shown as written. Answers
+ * to questions that are no longer asked stay stored and are not shown.
+ */
 @Composable
 internal fun FeedbackSummary(anomaly: Anomaly) {
     val tint = BiosTokens.success
@@ -351,33 +211,8 @@ internal fun FeedbackSummary(anomaly: Anomaly) {
                 fontWeight = FontWeight.SemiBold,
                 color = tint
             )
-
-            anomaly.feltSick?.let {
-                Text(
-                    if (it) "Felt sick: Yes" else "Felt sick: No",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            anomaly.outcomeAccurate?.let {
-                Text(
-                    if (it) "Alert was accurate" else "Alert was not accurate",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            anomaly.visitedDoctor?.let {
-                Text(
-                    if (it) "Visited doctor" else "Did not visit doctor",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            anomaly.diagnosis?.let {
-                Text("Diagnosis: $it", style = MaterialTheme.typography.bodySmall)
-            }
-            anomaly.symptoms?.let {
-                Text("Symptoms: $it", style = MaterialTheme.typography.bodySmall)
-            }
-            anomaly.notes?.let {
-                Text("Notes: $it", style = MaterialTheme.typography.bodySmall)
+            listOfNotNull(anomaly.symptoms, anomaly.notes).filter { it.isNotBlank() }.forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

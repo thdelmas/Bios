@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Portuguese (pt-BR) — base UI strings (permissions + monthly ask).
-    Register mirrors the pattern_strings.xml overlays: neutral,
+    Register: neutral,
     descriptive, no judgmental second-person phrasing.
 -->
 <resources>

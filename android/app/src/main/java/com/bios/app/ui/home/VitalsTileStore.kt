@@ -6,8 +6,7 @@ import com.bios.contracts.MetricType
 /**
  * Owner-chosen "Today's Vitals" tile set, persisted in shared-prefs.
  *
- * Mirrors the lightweight `*Store` prefs idiom (OwnerConditionStore,
- * PhysiologyStateStore) — no Room migration. Order is display order, so
+ * A lightweight shared-prefs store, no Room migration. Order is display order, so
  * the selection is stored as one comma-joined string of stable
  * [MetricType.key]s rather than an unordered StringSet.
  *

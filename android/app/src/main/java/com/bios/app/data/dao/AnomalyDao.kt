@@ -21,36 +21,18 @@ interface AnomalyDao {
     @Query("UPDATE anomalies SET acknowledged = 1, acknowledgedAt = :now WHERE id = :id")
     suspend fun acknowledge(id: String, now: Long = System.currentTimeMillis())
 
-    @Query("""
-        UPDATE anomalies SET
-            feedbackAt = :feedbackAt,
-            feltSick = :feltSick,
-            visitedDoctor = :visitedDoctor,
-            diagnosis = :diagnosis,
-            symptoms = :symptoms,
-            notes = :notes,
-            outcomeAccurate = :outcomeAccurate
-        WHERE id = :id
-    """)
-    suspend fun saveFeedback(
-        id: String,
-        feedbackAt: Long = System.currentTimeMillis(),
-        feltSick: Boolean?,
-        visitedDoctor: Boolean?,
-        diagnosis: String?,
-        symptoms: String?,
-        notes: String?,
-        outcomeAccurate: Boolean?
-    )
-
-    @Query("SELECT * FROM anomalies WHERE feedbackAt IS NOT NULL ORDER BY feedbackAt DESC LIMIT :limit")
-    suspend fun fetchWithFeedback(limit: Int = 50): List<Anomaly>
+    /** Writes the journal note only; journal columns of earlier versions keep their stored values. */
+    @Query("UPDATE anomalies SET feedbackAt = :feedbackAt, notes = :notes WHERE id = :id")
+    suspend fun saveNote(id: String, notes: String, feedbackAt: Long = System.currentTimeMillis())
 
     @Query("SELECT * FROM anomalies WHERE detectedAt > :sinceMillis ORDER BY detectedAt ASC")
     suspend fun fetchCreatedAfter(sinceMillis: Long): List<Anomaly>
 
     @Query("SELECT * FROM anomalies ORDER BY detectedAt DESC")
     suspend fun fetchAll(): List<Anomaly>
+
+    @Query("SELECT * FROM anomalies WHERE id = :id")
+    suspend fun fetchById(id: String): Anomaly?
 
     @Query("DELETE FROM anomalies")
     suspend fun deleteAll()

@@ -33,12 +33,9 @@ import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
 import com.bios.app.ui.clinical.AddReadingScreen
 import com.bios.app.ui.journal.HealthEventSheet
-import com.bios.app.ui.diagnostics.ConditionDetailScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.bios.app.ui.ppg.PpgCaptureScreen
-import com.bios.app.alerts.BiomarkerReferences
-import com.bios.app.ui.reference.LongevityReferenceScreen
 import com.bios.contracts.MetricType
 import com.bios.app.ui.support.MonthlyAskPopup
 import com.bios.app.ui.support.MonthlyAskScheduler
@@ -53,10 +50,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Retry the seizure foreground service from a foreground context;
-        // Application.onCreate's call no-ops on background process spawns.
-        com.bios.app.ingest.SeizureDetectionService.startIfOptedIn(this)
 
         setContent { BiosTheme { BiosRoot() } }
     }
@@ -250,16 +243,6 @@ fun BiosApp(viewModel: AppViewModel) {
                 })
             }
             composable(
-                route = "condition/{patternId}",
-                arguments = listOf(navArgument("patternId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                ConditionDetailScreen(
-                    patternId = backStackEntry.arguments?.getString("patternId") ?: "",
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable(
                 route = "trends?metric={metric}",
                 arguments = listOf(
                     navArgument("metric") {
@@ -278,11 +261,7 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("notice") {
                 NoticeScreen(
                     viewModel = viewModel,
-                    onNavigateToCondition = { patternId ->
-                        navController.navigate("condition/$patternId")
-                    },
                     onNavigateToCompanions = { navController.navigate("companions") },
-                    onNavigateToReference = { navController.navigate("longevity_reference") },
                     onNavigateToAlert = { navController.navigate(alertDetailRoute(it)) },
                 )
             }
@@ -305,7 +284,6 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("app_settings") {
                 com.bios.app.ui.settings.AppSettingsScreen(
                     onBack = { navController.popBackStack() },
-                    onViewSeizureDetections = { navController.navigate("seizure_timeline") },
                     onLongPressVersion = { navController.navigate("metric_readings_debug") },
                 )
             }
@@ -331,11 +309,6 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("metric_readings_debug") {
                 com.bios.app.ui.diagnostics.MetricReadingsDebugScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
-                )
-            }
-            composable("seizure_timeline") {
-                com.bios.app.ui.seizure.SeizureTimelineScreen(
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -412,16 +385,10 @@ fun BiosApp(viewModel: AppViewModel) {
                     onSeeWearableRecommendations = {
                         navController.navigate("wearable_recommendations")
                     },
-                    onOpenSleepGuide = { navController.navigate("guide_sleep") },
                 )
             }
             composable("wearable_recommendations") {
                 com.bios.app.ui.sleep.WearableRecommendationScreen(
-                    onBack = { navController.popBackStack() },
-                )
-            }
-            composable("guide_sleep") {
-                com.bios.app.ui.sleep.GuideSleepScreen(
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -450,22 +417,6 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("companions") {
                 com.bios.app.ui.companions.CompanionsScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable("longevity_reference") {
-                val trackedMetrics by viewModel.trackedMetricTypes.collectAsState()
-                var latestDirectValues by remember { mutableStateOf<Map<MetricType, Double>>(emptyMap()) }
-                LaunchedEffect(Unit) {
-                    val dao = viewModel.db.metricReadingDao()
-                    val directKeys = BiomarkerReferences.all.mapNotNull { it.directMetric }
-                    latestDirectValues = directKeys.mapNotNull { mt ->
-                        dao.fetchLatest(mt.key, 1).firstOrNull()?.let { mt to it.value }
-                    }.toMap()
-                }
-                LongevityReferenceScreen(
-                    trackedMetrics = trackedMetrics,
-                    latestDirectBiomarkerValues = latestDirectValues,
                     onBack = { navController.popBackStack() }
                 )
             }

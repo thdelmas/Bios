@@ -5,7 +5,6 @@ import android.util.Log
 import com.bios.app.data.BiomarkerContext
 import com.bios.app.data.BiomarkerEntryRepo
 import com.bios.app.data.BiosDatabase
-import com.bios.app.model.Anomaly
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
 import com.bios.app.model.Specimen
@@ -29,10 +28,12 @@ import java.util.UUID
  * Mapping:
  *   MetricReading → Observation resource
  *   DataSource    → Device resource
- *   Anomaly       → DetectedIssue resource
- *   PersonalBaseline → Observation (with interpretation = "baseline")
+ *   PersonalBaseline → Observation (mean, with the p5–p95 range)
  *
- * The bundle is produced as plaintext so a clinician can read it directly. The
+ * Alerts are not exported here: the bundle carries observations and the
+ * owner's records only.
+ *
+ * The bundle is produced as plaintext so any FHIR reader can open it. The
  * owner can opt into password protection at export time, which wraps the file
  * in a standard AES-256 zip ([EncryptedZipExporter]) any tool can open with the
  * passphrase — no cloud intermediary either way.
@@ -49,17 +50,15 @@ class FhirExporter(
 ) {
     private val readingDao = db.metricReadingDao()
     private val sourceDao = db.dataSourceDao()
-    private val anomalyDao = db.anomalyDao()
     private val baselineDao = db.personalBaselineDao()
     private val payloadDao = db.eventPayloadFieldDao()
-    private val fastStrokeDao = db.fastStrokeEventDao()
 
     companion object {
         private const val TAG = "FhirExporter"
 
         /**
          * Per-metric ceiling on observations emitted into a single bundle, to
-         * keep the file a manageable size for clinician tooling. When a metric
+         * keep the file a manageable size for FHIR tooling. When a metric
          * exceeds this, the export keeps the MOST RECENT rows (not the oldest)
          * and records the drop in Bundle.meta.tag — the cap is never silent.
          * See [buildBundle].
@@ -117,7 +116,7 @@ class FhirExporter(
             val isBiomarker = metricType.domain == MetricDomain.BIOMARKER
             val readings = readingDao.fetch(metricType.key, thirtyDaysAgo, Long.MAX_VALUE)
             // fetch() returns rows ORDER BY timestamp ASC; capMostRecent keeps the
-            // newest rows (what a clinician most wants), not the oldest. Any drop
+            // newest rows, not the oldest. Any drop
             // is recorded (never silent) below.
             val (capped, total) = capMostRecent(readings, MAX_READINGS_PER_METRIC)
             if (total > capped.size) truncated[metricType.key] = intArrayOf(capped.size, total)
@@ -137,19 +136,6 @@ class FhirExporter(
 
         for (baseline in baselineDao.fetchAll()) {
             entries.put(bundleEntry(buildBaselineObservation(baseline)))
-        }
-
-        for (anomaly in anomalyDao.fetchAll()) {
-            entries.put(bundleEntry(buildDetectedIssueResource(anomaly)))
-        }
-
-        // Owner-recorded FAST stroke-recognition events (#207). Only positive
-        // screens are emitted as flag observations — the negative checks stay
-        // in the local diary but don't add noise to the clinician bundle.
-        for (event in fastStrokeDao.fetchAll()) {
-            if (event.isPositive) {
-                entries.put(bundleEntry(buildFastStrokeFlagResource(event)))
-            }
         }
 
         val bundle = buildBundleResource(entries)
@@ -175,7 +161,7 @@ class FhirExporter(
 
 /**
  * Caps a per-metric, timestamp-ASC reading list to [cap] rows, keeping the
- * MOST RECENT (so a clinician sees the latest data, not the oldest). Returns the
+ * MOST RECENT (the latest data, not the oldest). Returns the
  * kept slice paired with the original count, so the caller can record any drop in
  * Bundle.meta.tag. Pure (no Context/DB) so the unit test can exercise it directly.
  */
@@ -359,35 +345,6 @@ internal fun buildBaselineObservation(baseline: PersonalBaseline): JSONObject = 
         put("high", JSONObject().apply { put("value", baseline.p95) })
         put("text", "Personal baseline p5-p95 (${baseline.windowDays}-day window)")
     }))
-    put("interpretation", JSONArray().put(JSONObject().apply {
-        put("coding", JSONArray().put(JSONObject().apply {
-            put("system", "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation")
-            put("code", "N")
-            put("display", "Normal (personal baseline)")
-        }))
-    }))
-}
-
-internal fun buildDetectedIssueResource(anomaly: Anomaly): JSONObject = JSONObject().apply {
-    put("resourceType", "DetectedIssue")
-    put("id", anomaly.id)
-    put("status", if (anomaly.acknowledged) "final" else "preliminary")
-    put("severity", when (anomaly.severity) {
-        3 -> "high"
-        2 -> "moderate"
-        else -> "low"
-    })
-    put("code", JSONObject().apply {
-        put("text", anomaly.title)
-    })
-    put("detail", anomaly.explanation)
-    put("identifiedDateTime", formatEpochMillis(anomaly.detectedAt))
-    if (anomaly.patternId != null) {
-        put("extension", JSONArray().put(JSONObject().apply {
-            put("url", "https://bios.health/fhir/pattern-id")
-            put("valueString", anomaly.patternId)
-        }))
-    }
 }
 
 internal fun formatInstant(instant: Instant): String = instant.atZone(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)

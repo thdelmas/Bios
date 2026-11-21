@@ -1,52 +1,23 @@
 package com.bios.app.alerts
 
-import android.content.Context
+import com.bios.app.engine.AnomalyDetector
+import com.bios.app.engine.HolisticSignals
+import com.bios.app.model.AlertTier
 
 /**
- * Enforces the **push-side unsolicited-judgment ban** on alert text.
+ * What the text Bios writes may not say (docs/specs/instrument-only.md).
  *
- * This is the code-level enforcement point for Manifesto Principle 7
- * ("instrument, not coach"). Per the framing in [MANIFESTO.md] and
- * docs/PRIVACY_ARCHITECTURE.md "Alert Content Policy," Bios distinguishes:
+ * Two lists:
+ * - [PROHIBITED_PHRASES]: judgment of the owner. Second-person lifestyle
+ *   advice, grades, guilt, gamification, prognosis.
+ * - [MEDICAL_VOCABULARY]: names of conditions and words of medical
+ *   purpose. Bios measures and shows; it names no condition as something
+ *   it detects, and attaches no meaning, advice or urgency to a number.
  *
- *  - **Push side** — alerts and notifications Bios raises on its own,
- *    unsolicited. The push side splits into three sub-categories:
- *      1. **Person-evaluative push** — "your sleep is degrading,"
- *         "you're unhealthy." This is what the policy here constrains.
- *         Unsolicited judgment of the person is what the manifesto
- *         prohibits, and `ConditionPattern` text is exactly that surface.
- *      2. **Person-factual push** — "RHR +2σ for 48h," daily digest.
- *         Admissible — what the existing banlist explicitly allows.
- *      3. **Bios-state push** — "Oura hasn't synced in 5 days. Reconnect?"
- *         Admissible. Not about the owner at all; Bios reporting on its
- *         own plumbing. "Silence is a feature" was always about the
- *         owner — silent system failure isn't silence, it's failure.
- *         Bios-state pushes follow the same factual-only content rules
- *         as category 2, but the banlist below targets person-judgment
- *         patterns specifically and doesn't apply by construction.
- *         Shipped surface: [DisconnectDetector] / [DisconnectNotifier].
- *  - **Pull side** — screens the owner navigates into, biomarker context
- *    they annotate themselves, comparisons they explicitly ask for. The
- *    owner is doing the evaluation; Bios is the instrument they read.
- *    These surfaces are **not** constrained by this policy and may use
- *    language this policy bans.
- *
- * All condition pattern text (title, explanation, suggestedAction,
- * earlyDetection, prevention, healing, risks) must pass this policy.
- * Violations fail in CI tests. New push-side surfaces should pass
- * through `validate()` or its sibling check in tests.
- *
- * Prohibited on the push side:
- * - Second-person lifestyle judgments ("you should exercise", "you need to sleep more")
- * - Wellness scores or grade language ("your health score is", "grade: B")
- * - Guilt mechanics ("you haven't", "you missed", "you failed")
- * - Gamification ("streak", "achievement", "level up", "points")
- *
- * Allowed on the push side:
- * - Data statements ("resting HR +2σ", "sleep duration 5.2h")
- * - Questions ("have you felt unwell?")
- * - Professional referrals ("discuss with your healthcare provider")
- * - Factual risk information ("research shows elevated HR correlates with...")
+ * Both are enforced in unit tests over every string resource and every
+ * string literal of the user-facing packages. The legitimate uses of a
+ * listed word (an owner naming their own record, a source quoted with
+ * attribution, the disclaimer) are an explicit allowlist next to the test.
  */
 object AlertContentPolicy {
 
@@ -82,11 +53,8 @@ object AlertContentPolicy {
         "badge",
         "leaderboard",
         "ranking",
-        // Geriatric trajectory manifesto-critical phrases (#208,
-        // GERIATRICS_PALLIATIVE_POV §2.3 + §2.4 + §2.5). Bios never
-        // auto-classifies fall risk, delirium, MCI, dementia, or
-        // capacity loss. Trajectory advisories carry strictly data-
-        // statement framing — these phrases would break that.
+        // Prognostic statements about the person. Bios never classifies
+        // the owner; these phrases would.
         "your memory is declining",
         "cognition declining",
         "your cognition is declining",
@@ -102,15 +70,6 @@ object AlertContentPolicy {
         "capacity loss",
         "losing capacity",
         "cognitive decline detected",
-        // Prognostic push-side language (#206, NEUROLOGY_POV §3.3). RBD has
-        // a strong long-horizon conversion rate to synucleinopathies but
-        // push-side communication of that horizon is explicitly forbidden.
-        // The screen pattern is pull-side only; this banlist keeps any
-        // future pattern from drifting into push-side prognostic framing.
-        // "prodromal" and "neurodegenerative" intentionally NOT banned:
-        // both are neutral clinical descriptors that legitimate existing
-        // patterns use in earlyDetection / risks framing (e.g. NAFLD,
-        // COPD, mania-prodrome citations).
         "parkinson's risk",
         "parkinsons risk",
         "synucleinopathy",
@@ -118,6 +77,61 @@ object AlertContentPolicy {
         "you may develop",
         "you're at risk of",
     )
+
+    /**
+     * Condition names and words of medical purpose, lowercase. Matched at
+     * the start of a word, so "stroke" does not match "keystroke" and
+     * "diagnos" matches "diagnosis" and "diagnostic".
+     */
+    val MEDICAL_VOCABULARY: List<String> = listOf(
+        // Conditions the removed patterns and screens named.
+        "sepsis", "septic", "infection", "dengue", "malaria", "typhoid", "ketoacidosis", "apnea", "apnoea",
+        "fibrillation", "afib", "arrhythmia", "seizure", "convulsion", "epilep", "stroke", "hypertension",
+        "hypotension", "hypoglyc", "hyperglyc", "anaphyla", "heart failure", "heart attack", "bipolar", "mania",
+        "manic", "depression", "pre-eclampsia", "preeclampsia", "frailty", "tremor", "parkinson", "dementia",
+        "diabet", "cancer", "pneumonia", "asthma", "copd", "anemia", "anaemia", "migraine", "overtraining",
+        "exacerbation", "decompensation", "tachycard", "bradycard", "hypoxi", "fever", "palpitation",
+        "inflammation",
+        // Medical purpose: detecting, judging, advising.
+        "diagnos", "screening", "screen for", "early detection", "early warning", "early sign", "illness",
+        "disease", "disorder", "syndrome", "seek care", "seek medical", "medical advice", "emergency", "symptom",
+        "clinical", "clinician", "physician", "at risk", "risk of", "risk factor", "consult", "your doctor",
+        "a doctor", "the doctor", "healthcare provider", "health care provider", "treatment", "prognos",
+        "abnormal",
+        // Meaning attached to a number.
+        "may indicate", "can indicate", "could indicate", "associated with", "linked to", "why this matters",
+        "what this means", "anomal",
+    )
+
+    /** The same register in the languages of the shipped overlays that have reviewed lists. */
+    private val LOCALIZED_MEDICAL_VOCABULARY: Map<String, List<String>> = mapOf(
+        "es" to listOf(
+            "diagnóst", "enfermedad", "síntoma", "emergencia", "urgencias", "consulte", "su médico",
+            "tratamiento", "riesgo de", "infección", "trastorno",
+        ),
+        "pt" to listOf(
+            "diagnóst", "doença", "sintoma", "emergência", "consulte", "seu médico", "tratamento",
+            "risco de", "infecção", "transtorno",
+        ),
+    )
+
+    private fun wordStart(term: String) =
+        Regex("(?<![\\p{L}\\p{N}_])" + Regex.escape(term).replace(" ", "\\E\\s+\\Q"), RegexOption.IGNORE_CASE)
+
+    private val medicalPatterns: Map<String, List<Pair<String, Regex>>> by lazy {
+        val english = MEDICAL_VOCABULARY.map { it to wordStart(it) }
+        LOCALIZED_MEDICAL_VOCABULARY.mapValues { (_, terms) -> english + terms.map { it to wordStart(it) } } +
+            ("en" to english)
+    }
+
+    /**
+     * Listed medical words found in [text], for [languageCode] (ISO 639-1).
+     * The English list always applies; empty when the text is clean.
+     */
+    fun medicalVocabularyIn(text: String, languageCode: String = "en"): List<String> {
+        val patterns = medicalPatterns[languageCode.lowercase()] ?: medicalPatterns.getValue("en")
+        return patterns.filter { (_, pattern) -> pattern.containsMatchIn(text) }.map { it.first }
+    }
 
     /**
      * Per-locale prohibited phrases. The English banlist above is always
@@ -169,64 +183,41 @@ object AlertContentPolicy {
 
     data class Violation(
         val field: String,
-        val pattern: ConditionPattern,
         val prohibitedPhrase: String,
-        val context: String
+        val context: String,
     )
 
-    /**
-     * Validate a single condition pattern. Returns empty list if compliant.
-     */
-    fun validate(pattern: ConditionPattern): List<Violation> {
-        val violations = mutableListOf<Violation>()
+    /** Every English text of an alert, keyed by where it appears. */
+    fun pushTexts(): Map<String, String> = buildMap {
+        put("alert.title", AnomalyDetector.TITLE)
+        put("alert.fallback", HolisticSignals.FALLBACK)
+        put("alert.legend", AlertDetailContent.STRIP_LEGEND)
+        AlertTier.entries.forEach { put("tier.${it.name}", AlertDetailContent.tierMeaning(it)) }
+    }
 
-        val fieldsToCheck = mapOf(
-            "title" to pattern.title,
-            "explanation" to pattern.explanation,
-            "suggestedAction" to (pattern.suggestedAction ?: ""),
-            "earlyDetection" to pattern.earlyDetection,
-            "prevention" to pattern.prevention,
-            "healing" to pattern.healing,
-            "risks" to pattern.risks
-        )
-
-        for ((fieldName, text) in fieldsToCheck) {
-            val lower = text.lowercase()
-            for (phrase in PROHIBITED_PHRASES) {
-                if (lower.contains(phrase)) {
-                    // Extract context around the violation
-                    val idx = lower.indexOf(phrase)
-                    val start = maxOf(0, idx - 20)
-                    val end = minOf(text.length, idx + phrase.length + 20)
-                    val context = "...${text.substring(start, end)}..."
-
-                    violations += Violation(
-                        field = fieldName,
-                        pattern = pattern,
-                        prohibitedPhrase = phrase,
-                        context = context
-                    )
-                }
-            }
+    /** Prohibited phrases found in [text]; empty when compliant. */
+    fun validate(field: String, text: String): List<Violation> {
+        val lower = text.lowercase()
+        return PROHIBITED_PHRASES.filter { lower.contains(it) }.map { phrase ->
+            val idx = lower.indexOf(phrase)
+            val start = maxOf(0, idx - CONTEXT_CHARS)
+            val end = minOf(text.length, idx + phrase.length + CONTEXT_CHARS)
+            Violation(field, phrase, "...${text.substring(start, end)}...")
         }
-
-        return violations
     }
 
-    /**
-     * Validate all registered condition patterns. Returns empty list if all compliant.
-     */
-    fun validateAll(): List<Violation> {
-        return ConditionPatterns.all.flatMap { validate(it) }
-    }
+    /** Validates [pushTexts]. Empty when every text is compliant. */
+    fun validateAll(): List<Violation> = pushTexts().flatMap { (field, text) -> validate(field, text) }
+
+    private const val CONTEXT_CHARS = 20
 
     /**
      * Validate localized [text] against the English banlist plus the
      * locale-specific banlist for [languageCode] (ISO 639-1, lowercase).
      * Returns the prohibited phrase that matched, or null when compliant.
      *
-     * Used by [validateLocaleOverlays] to enforce the policy across every
-     * shipped locale overlay (issue #210, requirement 6 — CI gate).
+     * Used by [validateLocaleOverlay] to enforce the policy across every
+     * shipped locale overlay.
      */
     fun phraseViolatingLocale(text: String, languageCode: String): String? {
         val lower = text.lowercase()
@@ -242,59 +233,20 @@ object AlertContentPolicy {
     }
 
     /**
-     * Validate every locale overlay's pattern strings against the banlist.
-     * Walks [ConditionPatterns.all], resolves both explanation and
-     * suggestedAction through [AlertTextResolver] using a [Context] whose
-     * locale has been swapped to each [languageCodes] entry, and reports
-     * any localized strings containing a prohibited phrase. Empty list ⇒
-     * all overlays compliant.
-     *
-     * Drives the CI gate test [AlertContentPolicyTest] guards: a
-     * translator who inadvertently introduces "tú debes" or "you should"
-     * into an overlay fails the build at unit-test time.
+     * Validates one locale's strings ([texts]: resource name to text) against
+     * the English banlist plus the banlist for [languageTag]'s language.
+     * Empty when the overlay is compliant.
      */
-    fun validateLocaleOverlays(
-        baseContext: Context,
-        languageCodes: List<String>,
-    ): List<LocaleViolation> {
-        val violations = mutableListOf<LocaleViolation>()
-        for (language in languageCodes) {
-            val locale = java.util.Locale.forLanguageTag(language)
-            val config = android.content.res.Configuration(
-                baseContext.resources.configuration
-            )
-            config.setLocale(locale)
-            val ctx = baseContext.createConfigurationContext(config)
-            for (pattern in ConditionPatterns.all) {
-                val explanation = AlertTextResolver.explanationFor(ctx, pattern)
-                val suggested = AlertTextResolver.suggestedActionFor(ctx, pattern)
-                phraseViolatingLocale(explanation, locale.language)?.let { phrase ->
-                    violations += LocaleViolation(
-                        languageTag = language,
-                        patternId = pattern.id,
-                        field = "explanation",
-                        prohibitedPhrase = phrase,
-                    )
-                }
-                if (suggested != null) {
-                    phraseViolatingLocale(suggested, locale.language)?.let { phrase ->
-                        violations += LocaleViolation(
-                            languageTag = language,
-                            patternId = pattern.id,
-                            field = "suggestedAction",
-                            prohibitedPhrase = phrase,
-                        )
-                    }
-                }
-            }
+    fun validateLocaleOverlay(languageTag: String, texts: Map<String, String>): List<LocaleViolation> {
+        val language = java.util.Locale.forLanguageTag(languageTag).language
+        return texts.mapNotNull { (name, text) ->
+            phraseViolatingLocale(text, language)?.let { LocaleViolation(languageTag, name, it) }
         }
-        return violations
     }
 
     data class LocaleViolation(
         val languageTag: String,
-        val patternId: String,
-        val field: String,
+        val resourceName: String,
         val prohibitedPhrase: String,
     )
 }

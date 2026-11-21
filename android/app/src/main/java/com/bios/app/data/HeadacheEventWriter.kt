@@ -13,14 +13,13 @@ import java.util.UUID
 /**
  * Pure helper that turns a [MigraineAttack] or [HeadacheLog] entity
  * into the cross-cutting `metric_readings` + `event_payloads` writeset
- * the chronic-migraine and MOH evaluators read (#283 Cut 2).
+ * (#283 Cut 2), so the diary entry is also a row on the metric bus.
  *
  * The entity tables stay the primary store — the diary screen reads
  * them, and they carry richer structured fields than fit in a generic
  * payload sidecar. This helper produces a denormalised view of the
- * same event so engines can scan a single `metric_readings` window
- * for headache-days / migraine-days / treatment-days, without
- * cross-table joins.
+ * same event so a reader can scan a single `metric_readings` window
+ * without cross-table joins.
  *
  * The parent reading uses the entity's own UUID as its `id` so an
  * entity-table delete can clear the matching `MetricReading` by id
@@ -139,11 +138,9 @@ internal object HeadacheEventWriter {
         return wrapWithAbortiveIntake(parent, payload, log.medicationTaken, sourceId, now)
     }
 
-    /** [HeadacheType.MIGRAINE] gets routed to [MetricType.MIGRAINE_ATTACK_EVENT]
-     *  so the chronic-migraine evaluator's migraine-day count picks it up
-     *  alongside [MigraineAttack] rows. CLUSTER routes to the dedicated
-     *  cluster event so #284's periodicity histogram has a clean stream.
-     *  Everything else (TENSION / OTHER) is generic HEADACHE_ATTACK_EVENT. */
+    /** The owner's chosen type picks the event key: MIGRAINE and CLUSTER
+     *  have their own keys, everything else (TENSION / OTHER) is the
+     *  generic HEADACHE_ATTACK_EVENT. */
     private fun metricTypeForHeadache(type: HeadacheType): MetricType = when (type) {
         HeadacheType.MIGRAINE -> MetricType.MIGRAINE_ATTACK_EVENT
         HeadacheType.CLUSTER -> MetricType.CLUSTER_HEADACHE_ATTACK_EVENT

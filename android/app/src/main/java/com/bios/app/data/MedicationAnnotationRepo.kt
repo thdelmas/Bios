@@ -8,11 +8,6 @@ import com.bios.app.model.MedicationAnnotation
  * already exposes the queries; this layer adds two ergonomic helpers
  * ([add] and [markDiscontinued]) that other surfaces use without thinking
  * about timestamps.
- *
- * Audit gap §2.5 — owner records current medications so the alert surface
- * can contextualise patterns that depend on the medication backdrop
- * (beta-blockers + bradycardia patterns, levothyroxine + tachycardia
- * patterns, steroid course + glucose variability, etc.).
  */
 class MedicationAnnotationRepo(private val db: BiosDatabase) {
 
@@ -75,37 +70,4 @@ class MedicationAnnotationRepo(private val db: BiosDatabase) {
 
     suspend fun update(annotation: MedicationAnnotation) = dao.update(annotation)
     suspend fun fetchAll(): List<MedicationAnnotation> = dao.fetchAll()
-    suspend fun fetchActive(): List<MedicationAnnotation> = dao.fetchActive()
-    suspend fun fetchActiveOn(at: Long): List<MedicationAnnotation> = dao.fetchActiveOn(at)
-
-    /**
-     * Formats the list of active medications for inclusion in an alert
-     * explanation. Returns `null` when no active meds are recorded so
-     * callers can skip the line cleanly. Otherwise returns a single
-     * sentence: "Annotated current medications: metoprolol, atorvastatin."
-     * Names are joined with commas in DAO order (newest startDate first).
-     */
-    suspend fun formatActiveContext(): String? = formatMedicationContext(fetchActive())
-
-    /**
-     * Same as [formatActiveContext] but scoped to a specific point in time —
-     * useful when surfacing context next to a historical anomaly. Returns
-     * `null` when nothing was on record at that timestamp.
-     */
-    suspend fun formatActiveContextOn(at: Long): String? = formatMedicationContext(fetchActiveOn(at))
-
-    companion object {
-        /**
-         * Pure formatter for the alert-context line. Extracted from the
-         * suspend wrappers so the formatting can be unit-tested without
-         * a DB. The phrasing is deliberately neutral ("annotated", not
-         * "your medications") so the line stays a data statement, not a
-         * judgment — compliant with [com.bios.app.alerts.AlertContentPolicy].
-         */
-        fun formatMedicationContext(meds: List<MedicationAnnotation>): String? {
-            if (meds.isEmpty()) return null
-            val names = meds.joinToString(", ") { it.name }
-            return "Annotated current medications: $names."
-        }
-    }
 }

@@ -10,10 +10,7 @@ import com.bios.app.model.MigraineAttack
 
 /**
  * Persistence layer for owner-logged migraine-attack diary entries
- * (issue #207, audit gap §2.6). The diary screen consumes [fetchAll] /
- * [fetchInRange]; the [com.bios.app.alerts.MedicationOveruseHeadacheEvaluator]
- * consumes [fetchInRange] over a 90-day window to count acute-treatment
- * days for the IHS ICHD-3 §8.2 MOH screen.
+ * (issue #207). The diary screen consumes [fetchAll].
  */
 @Dao
 interface MigraineAttackDao {

@@ -13,13 +13,9 @@ import kotlin.math.sqrt
  * Computes [MetricType.SLEEP_REGULARITY] from a window of recent
  * `SLEEP_DURATION` readings.
  *
- * Sleep researchers (Roenneberg, Walker, Phyllis Zee group) consistently
- * rank regularity above absolute duration for long-term outcomes. Bios
- * already tracks duration / latency / score; regularity is the gap this
- * calculator fills. Implementation note: variability in *midpoint* is the
- * strongest single regularity signal in the literature (Phillips et al.
- * 2017), so the composite score keys off midpoint variance while bedtime
- * and wake variance ride as sidecar fields.
+ * The reading's value is a 0–100 rescale of the spread of the sleep
+ * midpoint; the spreads of bedtime, midpoint and wake time, in minutes,
+ * ride as sidecar fields and are what the sleep dashboard shows.
  *
  * Time-of-day comparison has a wrap-around problem — 23:30 one night and
  * 00:30 the next are 1h apart, not 23h. Standard fix is **circular
@@ -161,11 +157,8 @@ object SleepRegularityCalculator {
     }
 
     /**
-     * Map midpoint variance (clock-minutes) to a 0–100 score. 100 at ≤ 15
-     * min spread (very-regular cluster), drops linearly to 0 at ≥ 90 min.
-     * Anchored to literature ranges: ≤ 15 min midpoint variability is the
-     * "very regular" band; > 90 min is the highly-irregular band associated
-     * with elevated cardiometabolic risk (Phillips 2017, Lunsford-Avery 2018).
+     * Map midpoint spread (clock-minutes) to 0–100: 100 at ≤ 15 min,
+     * dropping linearly to 0 at ≥ 90 min.
      */
     private fun scoreFromMidpointVariance(varianceMin: Long): Double {
         val v = varianceMin.toDouble()

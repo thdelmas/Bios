@@ -118,17 +118,7 @@ fun TimelineScreen(
                         anomaly = item.anomaly,
                         timeFormat = timeFormat,
                         onAcknowledge = { viewModel.acknowledgeAlert(item.anomaly.id) },
-                        onSaveFeedback = { input ->
-                            viewModel.saveAlertFeedback(
-                                anomalyId = item.anomaly.id,
-                                feltSick = input.feltSick,
-                                visitedDoctor = input.visitedDoctor,
-                                diagnosis = input.diagnosis,
-                                symptoms = input.symptoms,
-                                notes = input.notes,
-                                outcomeAccurate = input.outcomeAccurate
-                            )
-                        }
+                        onSaveFeedback = { viewModel.saveAlertFeedback(item.anomaly.id, it) }
                     )
                     is TimelineItem.EventItem -> TimelineEventEntry(
                         event = item.event,
@@ -147,7 +137,7 @@ private fun TimelineAlertEntry(
     anomaly: Anomaly,
     timeFormat: SimpleDateFormat,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (com.bios.app.ui.components.FeedbackInput) -> Unit
+    onSaveFeedback: (String) -> Unit
 ) {
     val tier = AlertTier.fromLevel(anomaly.severity)
 
@@ -243,10 +233,7 @@ private fun TimelineEventEntry(
 @Composable
 private fun StatsSummary(anomalies: List<Anomaly>, healthEvents: List<HealthEvent>) {
     val withFeedback = anomalies.count { it.feedbackAt != null }
-    val accurate = anomalies.count { it.outcomeAccurate == true }
-    val inaccurate = anomalies.count { it.outcomeAccurate == false }
-    val doctorVisits = anomalies.count { it.visitedDoctor == true } +
-        healthEvents.count { it.type == HealthEventType.DOCTOR_VISIT.name }
+    val doctorVisits = healthEvents.count { it.type == HealthEventType.DOCTOR_VISIT.name }
     val openSymptoms = healthEvents.count {
         it.status == HealthEventStatus.OPEN.name &&
             it.type == HealthEventType.SYMPTOM.name
@@ -266,10 +253,6 @@ private fun StatsSummary(anomalies: List<Anomaly>, healthEvents: List<HealthEven
             StatItem("Alerts", anomalies.size.toString())
             if (anomalies.isNotEmpty()) {
                 StatItem("Journaled", "$withFeedback/${anomalies.size}")
-            }
-            if (accurate + inaccurate > 0) {
-                val pct = (accurate * 100) / (accurate + inaccurate)
-                StatItem("Accuracy", "$pct%")
             }
             if (doctorVisits > 0) {
                 StatItem("Dr. Visits", doctorVisits.toString())
@@ -319,14 +302,14 @@ private fun EmptyTimeline(onLogSymptom: () -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "When Bios detects something unusual, it will appear here. " +
-                    "You can also log symptoms, doctor visits, and treatments yourself.",
+                "An alert appears here when a metric is outside your usual range. " +
+                    "You can also write your own entries.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
             OutlinedButton(onClick = onLogSymptom) {
-                Text("Log a symptom")
+                Text("Add an entry")
             }
         }
     }

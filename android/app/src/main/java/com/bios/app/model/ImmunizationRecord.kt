@@ -5,12 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Owner-recorded immunisation history (#156, audit gap §2.3). Vaccination
- * status is a permanent, co-equal axis with biomarkers — the Dutch
- * integrated preventive network and Japanese Tokutei Kenshin both assume
- * a clinician can see both. This entity is what the screening-cadence
- * engine (#155) reads to surface "due for shingles" / "due for flu this
- * season" prompts.
+ * Owner-recorded immunisation history (#156): a dated list of doses.
  *
  * Distinct from [MetricReading] — vaccines are events with a date and a
  * coded identifier, not quantitative measurements. They have no value
@@ -38,8 +33,7 @@ data class ImmunizationRecord(
      * Tdap = 115, COVID-19 = 213, shingles = 187, etc.). Populated by FHIR
      * import; null when the owner free-texts an entry. SNOMED CT codes
      * from non-US systems would land here too — the field is just a
-     * coded identifier, agnostic to system. The screening-cadence engine
-     * matches on CVX when present.
+     * coded identifier, agnostic to system.
      */
     val cvxCode: String? = null,
     /** Epoch millis when the vaccine was administered. */

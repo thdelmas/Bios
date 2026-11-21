@@ -1,7 +1,6 @@
 package com.bios.app
 
 import com.bios.app.ingest.AppleHealthEcgImporter
-import com.bios.app.model.EcgClassification
 import com.bios.app.model.LeadPlacement
 import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
@@ -13,9 +12,7 @@ import org.junit.Test
 /**
  * Tests for the Apple Health export XML → [com.bios.app.model.EcgStrip]
  * importer. Covers:
- *  - classification mapping across Apple's iOS-version sprawl (the
- *    HealthKit `HKElectrocardiogramClassification` enum gained
- *    variants across iOS 14 / 16 / 17)
+ *  - the source's classification text kept as written
  *  - sampling-rate parsing for the "512.07 Hz" / "300" formats
  *  - timestamp parsing of Apple's "yyyy-MM-dd HH:mm:ss ±HHMM" shape
  *  - voltage encoding to int16 little-endian bytes
@@ -23,52 +20,21 @@ import org.junit.Test
  */
 class AppleHealthEcgImporterTest {
 
-    // -- classification mapping --
+    // -- classification text --
 
     @Test
-    fun maps_sinus_rhythm() {
-        assertEquals(EcgClassification.SINUS_RHYTHM,
-            AppleHealthEcgImporter.mapClassification("SinusRhythm"))
-        assertEquals(EcgClassification.SINUS_RHYTHM,
-            AppleHealthEcgImporter.mapClassification("sinus rhythm"))
+    fun keeps_the_source_classification_as_written() {
+        for (raw in listOf("SinusRhythm", "AtrialFibrillationHighHeartRate", "InconclusivePoorReading", "SomethingUnexpected")) {
+            assertEquals(raw, AppleHealthEcgImporter.verbatimClassification(raw))
+        }
+        assertEquals("Possible AFib", AppleHealthEcgImporter.verbatimClassification("  Possible AFib "))
     }
 
     @Test
-    fun maps_atrial_fibrillation_across_apple_variants() {
-        // Apple expanded the AFib classification in iOS 16+ to include
-        // high-HR and low-HR sub-types. Bios collapses to one bucket.
-        assertEquals(EcgClassification.ATRIAL_FIBRILLATION,
-            AppleHealthEcgImporter.mapClassification("AtrialFibrillation"))
-        assertEquals(EcgClassification.ATRIAL_FIBRILLATION,
-            AppleHealthEcgImporter.mapClassification("AtrialFibrillationHighHeartRate"))
-        assertEquals(EcgClassification.ATRIAL_FIBRILLATION,
-            AppleHealthEcgImporter.mapClassification("Possible AFib"))
-    }
-
-    @Test
-    fun maps_inconclusive_variants() {
-        assertEquals(EcgClassification.INCONCLUSIVE,
-            AppleHealthEcgImporter.mapClassification("InconclusiveLowHeartRate"))
-        assertEquals(EcgClassification.INCONCLUSIVE,
-            AppleHealthEcgImporter.mapClassification("InconclusivePoorReading"))
-        assertEquals(EcgClassification.INCONCLUSIVE,
-            AppleHealthEcgImporter.mapClassification("Unclassified"))
-    }
-
-    @Test
-    fun maps_unknown_label_to_other_not_null() {
-        // We never silently drop the classification — unknown maps to
-        // OTHER so the strip still surfaces with a label, which the
-        // owner can flag for a clinician.
-        assertEquals(EcgClassification.OTHER,
-            AppleHealthEcgImporter.mapClassification("SomethingUnexpected"))
-    }
-
-    @Test
-    fun maps_null_or_blank_classification_to_null() {
-        assertNull(AppleHealthEcgImporter.mapClassification(null))
-        assertNull(AppleHealthEcgImporter.mapClassification(""))
-        assertNull(AppleHealthEcgImporter.mapClassification("   "))
+    fun null_or_blank_classification_is_null() {
+        assertNull(AppleHealthEcgImporter.verbatimClassification(null))
+        assertNull(AppleHealthEcgImporter.verbatimClassification(""))
+        assertNull(AppleHealthEcgImporter.verbatimClassification("   "))
     }
 
     // -- sampling-rate parsing --
@@ -187,7 +153,7 @@ class AppleHealthEcgImporterTest {
         )
         assertEquals(1, strips.size)
         val strip = strips.first()
-        assertEquals(EcgClassification.SINUS_RHYTHM, strip.classification)
+        assertEquals("SinusRhythm", strip.classification)
         assertEquals(512, strip.samplingRateHz)
         assertEquals(30, strip.durationSeconds)
         assertEquals(LeadPlacement.LEAD_I, strip.leadPlacement)

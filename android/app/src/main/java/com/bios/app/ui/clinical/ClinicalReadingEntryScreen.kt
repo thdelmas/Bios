@@ -112,7 +112,7 @@ fun ClinicalReadingEntryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add clinical reading") },
+                title = { Text("Add a reading taken elsewhere") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -141,10 +141,9 @@ fun ClinicalReadingEntryScreen(
                     )
                     Text(
                         "Readings you enter — from a cuff, pulse-ox, thermometer, scale, " +
-                            "body-composition station, or a triage chart a clinician handed you — " +
-                            "stay on your device. They show up in trends and FHIR export, but " +
-                            "the baseline engine and anomaly detector ignore them. Single-point " +
-                            "manual readings would otherwise poison sensor baselines.",
+                            "body-composition station, or a chart you were handed — " +
+                            "stay on your device. They show up in trends and FHIR export. " +
+                            "Your usual ranges and alerts do not use them.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

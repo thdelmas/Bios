@@ -13,7 +13,7 @@ PIXEL9A_ID := 59101JEBF02652
 # Where pre-install DB snapshots live. Each install pulls the encrypted
 # bios.db + WAL + SHM from the device and stores them here, named with
 # a UTC timestamp and the device model+serial. Restore is just a copy
-# back via `adb push` + `run-as cp`; see scripts/restore-db.md.
+# back via `adb push` + `run-as cp`.
 DB_BACKUP_DIR := db-backups
 
 BUILD ?= debug

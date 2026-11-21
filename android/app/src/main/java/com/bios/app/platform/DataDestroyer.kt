@@ -7,7 +7,6 @@ import androidx.work.WorkManager
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.ingest.OuraTokenStore
-import com.bios.app.push.PushRegistrationManager
 import com.bios.app.sync.p2p.P2PDiscovery
 import java.io.File
 
@@ -55,9 +54,6 @@ object DataDestroyer {
 
         // 0.5. Destroy P2P sync identity, documents, and pairing data
         destroyP2PData(context)
-
-        // 0.6. Unregister push and destroy push state
-        PushRegistrationManager.destroyAll(context)
 
         // 0.7. Release every persistable URI permission we hold (lab-report
         // PDFs / photos attached to biomarker entries — see BiomarkerContext
@@ -151,12 +147,13 @@ object DataDestroyer {
             cacheDir.listFiles()?.filter { file ->
                 val n = file.name
                 // Every export artifact left in cache: the data dumps
-                // (bios_export_*), FHIR bundles (bios_fhir_*), doctor PDFs
-                // (bios_doctor_summary_*), and their encrypted ".zip" wrappers.
+                // (bios_export_*), FHIR bundles (bios_fhir_*), PDF summaries
+                // (bios_summary_*, bios_doctor_summary_* on earlier versions), and
+                // their encrypted ".zip" wrappers.
                 // ".bios" is legacy (retired EncryptedExporter) — still purged if
                 // a stray file from an older build lingers.
                 (n.startsWith("bios_export_") || n.startsWith("bios_fhir_") ||
-                    n.startsWith("bios_doctor_summary_")) &&
+                    n.startsWith("bios_summary_") || n.startsWith("bios_doctor_summary_")) &&
                     (n.endsWith(".json") || n.endsWith(".zip") ||
                         n.endsWith(".pdf") || n.endsWith(".bios"))
             }?.forEach { file ->
@@ -250,6 +247,9 @@ object DataDestroyer {
             }
             // Clear encrypted SharedPreferences (Keystore-backed)
             BiosDatabase.getEncryptedPrefs(context).edit().clear().commit()
+            // Preference files written by removed features on earlier versions.
+            listOf("bios_push_secure", "bios_population", "bios_research")
+                .forEach { context.deleteSharedPreferences(it) }
             Log.d(TAG, "Preferences cleared")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear preferences", e)

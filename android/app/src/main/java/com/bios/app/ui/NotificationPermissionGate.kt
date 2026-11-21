@@ -24,8 +24,7 @@ import androidx.core.content.ContextCompat
  * clears Health Connect onboarding.
  *
  * Without this permission every alert path on API 33+ silently no-ops
- * (`AlertManager`, `FollowUpWorker`, `DailyDigestWorker`,
- * `UrgentAckTimeoutWorker`, `PushMessageHandler`, `DisconnectNotifier`
+ * (`AlertManager`, `DailyDigestWorker`, `DisconnectNotifier`
  * all check the permission and `return` if it is missing). The previous
  * code path let Android's first-post auto-prompt show with no context, and
  * an owner who declined had no way back — alerts would simply never

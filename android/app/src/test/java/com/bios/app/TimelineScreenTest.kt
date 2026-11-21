@@ -64,31 +64,6 @@ class TimelineScreenTest {
     }
 
     @Test
-    fun `stats summary computes accuracy percentage`() {
-        val entries = listOf(
-            anomaly(outcomeAccurate = true),
-            anomaly(outcomeAccurate = true),
-            anomaly(outcomeAccurate = false),
-            anomaly(outcomeAccurate = null)
-        )
-        val accurate = entries.count { it.outcomeAccurate == true }
-        val inaccurate = entries.count { it.outcomeAccurate == false }
-        val pct = (accurate * 100) / (accurate + inaccurate)
-        assertEquals(66, pct)
-    }
-
-    @Test
-    fun `stats summary counts doctor visits`() {
-        val entries = listOf(
-            anomaly(visitedDoctor = true),
-            anomaly(visitedDoctor = false),
-            anomaly(visitedDoctor = null)
-        )
-        val doctorVisits = entries.count { it.visitedDoctor == true }
-        assertEquals(1, doctorVisits)
-    }
-
-    @Test
     fun `empty entries list produces no groups`() {
         val entries = emptyList<Anomaly>()
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

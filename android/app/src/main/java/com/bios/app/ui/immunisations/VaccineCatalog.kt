@@ -4,8 +4,7 @@ package com.bios.app.ui.immunisations
  * Catalog of common adult vaccines surfaced in the manual-entry picker.
  * Each entry pairs the display name shown to the owner with the CDC CVX
  * code (the canonical vaccine identifier — flu = 88, Tdap = 115, etc.)
- * so the screening-cadence engine (#155) can match against it without
- * relying on free-text equality.
+ * so the record and its export carry a code, not only free text.
  *
  * Owners can also choose **Other (free-text)**, which omits the CVX code
  * and stores only the typed name — useful for vaccines outside this short
@@ -15,9 +14,7 @@ package com.bios.app.ui.immunisations
  *  - CDC CVX code set (canonical vaccine identifiers, public domain)
  *  - ACIP adult immunization schedule (display-name conventions)
  *
- * The list is intentionally short — it covers the common screening-engine
- * targets. Paediatric vaccines and the long tail (anthrax, rabies booster,
- * etc.) are out of scope until ACIP-specific paediatric work lands.
+ * The list is intentionally short; anything else is entered as free text.
  */
 data class VaccineCatalogEntry(
     val displayName: String,

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: language override card. -->
+<resources>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_subtitle">Override the system language for Bios text. Affects alert wording and UI labels. Restart Bios after changing.</string>
+    <string name="settings_language_system_default">System default</string>
+    <string name="settings_language_apply">Apply</string>
+</resources>

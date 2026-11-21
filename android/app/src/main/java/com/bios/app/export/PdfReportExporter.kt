@@ -6,9 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.pdf.PdfDocument
-import com.bios.app.config.BiomarkerBand
-import com.bios.app.config.BiomarkerBands
-import com.bios.app.config.RegionConfigProvider
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.MetricReading
 import com.bios.app.model.PersonalBaseline
@@ -20,15 +17,13 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Renders a single-page A4 PDF the owner can share with a doctor before or
- * after a consult. Designed to be readable in ~30 seconds. Generated on the
+ * Renders a single-page A4 PDF summary the owner can keep or hand to anyone.
+ * Designed to be readable in ~30 seconds. Generated on the
  * device, written to `context.cacheDir`, shared via the standard share sheet
  * (`FileProvider` + `ACTION_SEND`) — same pattern as the other exporters.
  *
- * Manifesto context (PR #103). Bios renders structured data the owner
- * already has access to. Cells are coloured against published clinical
- * reference ranges from [RegionConfigProvider] (ADA/NCEP/AHA/etc.), not
- * Bios's evaluation — the bands are the ones a doctor would apply. The
+ * Bios renders structured data the owner already has access to. Lab
+ * values are listed as recorded, without colour or classification. The
  * owner picks the focal metric and may attach a free-text note; the system
  * never picks for them. This surface is pull-side: invoked by the owner,
  * shown to a person of the owner's choosing.
@@ -65,8 +60,6 @@ class PdfReportExporter(
             }
             .sortedBy { it.first.readableName }
 
-        val bands = RegionConfigProvider.forCurrentLocale().clinicalThresholds.biomarkerBands
-
         val document = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH_PX, PAGE_HEIGHT_PX, 1).create()
         val page = document.startPage(pageInfo)
@@ -76,7 +69,6 @@ class PdfReportExporter(
             focalReadings = focalReadings,
             focalBaseline = focalBaseline,
             biomarkerLatest = biomarkerLatest,
-            bands = bands,
             startMillis = startMillis,
             endMillis = endMillis,
             ownerNote = ownerNote,
@@ -85,7 +77,7 @@ class PdfReportExporter(
         )
         document.finishPage(page)
 
-        val filename = "bios_doctor_summary_${timestampForFile()}.pdf"
+        val filename = "bios_summary_${timestampForFile()}.pdf"
         val file = File(context.cacheDir, filename)
         file.outputStream().use { document.writeTo(it) }
         document.close()
@@ -148,27 +140,6 @@ internal fun fmtValue(v: Double): String = when {
     else -> String.format(Locale.US, "%.1f", v)
 }
 
-internal fun bandFillColor(band: BiomarkerBand?): Int = when (band) {
-    BiomarkerBand.NORMAL -> 0xFFE6F4EA.toInt()
-    BiomarkerBand.BORDERLINE -> 0xFFFFF4CE.toInt()
-    BiomarkerBand.CONCERNING -> 0xFFFADBD8.toInt()
-    null -> 0xFFF5F5F5.toInt()
-}
-
-internal fun bandTextColor(band: BiomarkerBand?): Int = when (band) {
-    BiomarkerBand.NORMAL -> 0xFF1E4620.toInt()
-    BiomarkerBand.BORDERLINE -> 0xFF6F4F00.toInt()
-    BiomarkerBand.CONCERNING -> 0xFF7A1C1C.toInt()
-    null -> 0xFF333333.toInt()
-}
-
-internal fun bandLabel(band: BiomarkerBand?): String = when (band) {
-    BiomarkerBand.NORMAL -> "normal"
-    BiomarkerBand.BORDERLINE -> "borderline"
-    BiomarkerBand.CONCERNING -> "concerning"
-    null -> "—"
-}
-
 /**
  * Maps a value into a chart's pixel-Y coordinate (top-left origin). Returns
  * the y for [value] inside [chartTop, chartBottom] when [value] lies within
@@ -209,6 +180,10 @@ internal fun chartValueRange(
     return min - pad to max + pad
 }
 
+/** One neutral fill and text colour for every lab row: values are listed, not classified. */
+private const val ROW_FILL_COLOR = 0xFFF5F5F5.toInt()
+private const val ROW_TEXT_COLOR = 0xFF333333.toInt()
+
 // --- Page rendering (file-private, big block — kept off the class) -----------
 
 private fun renderPage(
@@ -217,7 +192,6 @@ private fun renderPage(
     focalReadings: List<MetricReading>,
     focalBaseline: PersonalBaseline?,
     biomarkerLatest: List<Pair<MetricType, MetricReading>>,
-    bands: Map<MetricType, BiomarkerBands>,
     startMillis: Long,
     endMillis: Long,
     ownerNote: String?,
@@ -337,24 +311,18 @@ private fun renderPage(
         canvas.drawText("Recent lab biomarkers", left, y, bodyPaint.also { it.isFakeBoldText = true })
         bodyPaint.isFakeBoldText = false
         y += 12f
-        canvas.drawText(
-            "Cells coloured against published clinical reference ranges " +
-                "(ADA / NCEP / AHA, etc.) from the in-app reference. Bios does not interpret values.",
-            left, y, captionPaint
-        )
+        canvas.drawText("Most recent value per lab, as recorded.", left, y, captionPaint)
         y += 12f
 
         val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val colMetricRight = left + 240f
         val colValueRight = left + 320f
-        val colDateRight = left + 410f
         val rowHeight = 16f
 
         // Header row
         canvas.drawText("Biomarker", left + 4f, y + 10f, labelPaint)
         canvas.drawText("Value", colMetricRight + 4f, y + 10f, labelPaint)
         canvas.drawText("Date", colValueRight + 4f, y + 10f, labelPaint)
-        canvas.drawText("Band", colDateRight + 4f, y + 10f, labelPaint)
         y += rowHeight
 
         // Body rows — clipped if they'd overrun the footer.
@@ -365,15 +333,13 @@ private fun renderPage(
         for ((i, pair) in biomarkerLatest.withIndex()) {
             if (i >= rowsThatFit) break
             val (metric, reading) = pair
-            val band = bands[metric]?.classify(reading.value)
-            bandPaint.color = bandFillColor(band)
+            bandPaint.color = ROW_FILL_COLOR
             canvas.drawRect(left, y, right, y + rowHeight - 2f, bandPaint)
-            rowPaint.color = bandTextColor(band)
+            rowPaint.color = ROW_TEXT_COLOR
             canvas.drawText(metric.readableName, left + 4f, y + 11f, rowPaint)
             val valueText = "${fmtValue(reading.value)} ${metric.unit.symbol}".trim()
             canvas.drawText(valueText, colMetricRight + 4f, y + 11f, rowPaint)
             canvas.drawText(dateFmt.format(Date(reading.timestamp)), colValueRight + 4f, y + 11f, rowPaint)
-            canvas.drawText(bandLabel(band), colDateRight + 4f, y + 11f, rowPaint)
             y += rowHeight
         }
         if (overflow > 0) {

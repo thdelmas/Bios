@@ -2,13 +2,11 @@ package com.bios.app.ui
 
 import android.app.Application
 import com.bios.app.alerts.AlertManager
-import com.bios.app.config.EnvironmentalContextProvider
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
 import com.bios.app.engine.AnomalyDetector
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.engine.DetectionLatencyTracker
-import com.bios.app.engine.TFLiteAnomalyModel
 import com.bios.app.ingest.ApiTokenStore
 import com.bios.app.ingest.BleAirQualityAdapter
 import com.bios.app.ingest.BlePairedDeviceStore
@@ -25,8 +23,6 @@ import com.bios.app.ingest.PhoneSensorAdapter
 import com.bios.app.ingest.PolarApiAdapter
 import com.bios.app.ingest.WhoopApiAdapter
 import com.bios.app.ingest.WithingsApiAdapter
-import com.bios.app.physiology.OwnerConditionStore
-import com.bios.app.physiology.PhysiologyStateStore
 
 /**
  * The production [AppDependencies] graph, built once from the [application].
@@ -64,15 +60,6 @@ class ProductionAppDependencies(application: Application) : AppDependencies {
 
     private val reproductiveReadingDao = ReproductiveDatabase.readingDaoOrNull(application)
     override val baselineEngine = BaselineEngine(db, latencyTracker, reproductiveReadingDao)
-    override val mlModel = TFLiteAnomalyModel.load(application)
-
-    private val physiologyStateStore = PhysiologyStateStore(application)
-    override val anomalyDetector = AnomalyDetector(
-        db, mlModel, latencyTracker, reproductiveReadingDao,
-        physiologyState = physiologyStateStore.current(),
-        ownerConditions = OwnerConditionStore(application).current(),
-        drugClass = physiologyStateStore.drugClass(),
-        environmentalContext = EnvironmentalContextProvider(application).current(),
-    )
+    override val anomalyDetector = AnomalyDetector(db, latencyTracker)
     override val alertManager = AlertManager(application, db, latencyTracker)
 }

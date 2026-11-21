@@ -7,8 +7,7 @@ import java.time.Instant
 
 /**
  * Pulls owner-captured single-lead ECG strips from upstream sources into
- * Bios's [com.bios.app.data.dao.EcgStripDao] (#188, audit gap §2.8 in
- * docs/audits/CARDIOLOGY_POV.md).
+ * Bios's [com.bios.app.data.dao.EcgStripDao] (#188).
  *
  * **Current state — platform gap, intentionally stubbed.** Health
  * Connect's `ElectrocardiogramRecord` is *not* part of the Bios-pinned
@@ -83,7 +82,7 @@ class HealthConnectEcgAdapter(
                 voltageScale = 0.001,
                 voltageOffset = 0.0,
                 sampleEncoding = "int16_le",
-                classification = AppleHealthEcgImporter.mapClassification(classificationRaw),
+                classification = AppleHealthEcgImporter.verbatimClassification(classificationRaw),
                 sourceVendor = sourceVendor,
             )
         }

@@ -18,11 +18,6 @@ import androidx.room.PrimaryKey
  * discontinuation preserves history, an allergy entered by mistake should
  * not haunt the record. The owner can delete a row outright.
  *
- * **Anaphylaxis pattern context (#355 follow-up).** Once this entity ships,
- * `AcuteWindowPatterns.anaphylaxisScreen` may consult the active allergens
- * list to weight its HR + SpO2 signature — but only if the owner has
- * manually logged an exposure event in the lookback window. No inference
- * from medication-intake logs. That integration is **not** part of this
  * PR.
  */
 @Entity(

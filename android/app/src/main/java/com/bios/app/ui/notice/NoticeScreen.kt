@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.HourglassBottom
@@ -35,29 +34,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.engine.BaselineEngine
+import com.bios.app.model.Anomaly
 import com.bios.app.model.CompanionGrant
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.AlertCard
-import com.bios.app.ui.diagnostics.DiagnosticCard
-import androidx.compose.runtime.LaunchedEffect
 
 /**
- * What Bios noticed. Merges the previous Alerts and Diagnostics tabs and
- * surfaces pending companion-grant approvals — the three things the
- * owner needs to *hear* from the instrument. Empty by design when there's
+ * What Bios noticed: alerts and pending companion-grant approvals. Empty by design when there's
  * nothing to say.
  */
 @Composable
 fun NoticeScreen(
     viewModel: AppViewModel,
-    onNavigateToCondition: (String) -> Unit,
     onNavigateToCompanions: () -> Unit,
-    onNavigateToReference: () -> Unit,
     onNavigateToAlert: (String) -> Unit = {},
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
     val recent by viewModel.recentAlerts.collectAsState()
-    val results by viewModel.diagnosticResults.collectAsState()
     val coverage by viewModel.metricCoverage.collectAsState()
     val dataAge by viewModel.ingestManager.dataAgeDays.collectAsState()
     val companionGrants by viewModel.db.companionGrantDao()
@@ -66,13 +59,10 @@ fun NoticeScreen(
     val pendingCompanions = companionGrants.count { it.state == CompanionGrant.STATE_PENDING }
     val acknowledged = recent.filter { it.acknowledged }
 
-    LaunchedEffect(Unit) { viewModel.refreshDiagnostics() }
-
     val baselineReady = dataAge >= BaselineEngine.MINIMUM_DATA_DAYS
     val anyDataReceived = coverage.values.any { it.hasAnyData }
     val nothingToSay = unacknowledged.isEmpty() &&
         acknowledged.isEmpty() &&
-        results.isEmpty() &&
         pendingCompanions == 0
 
     Column(
@@ -82,23 +72,7 @@ fun NoticeScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Notice",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onNavigateToReference) {
-                Icon(
-                    Icons.AutoMirrored.Filled.LibraryBooks,
-                    contentDescription = "Longevity reference",
-                )
-            }
-        }
+        Text("Notice", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
         if (pendingCompanions > 0) {
             PendingCompanionCard(
@@ -108,63 +82,34 @@ fun NoticeScreen(
         }
 
         if (unacknowledged.isNotEmpty()) {
-            SectionHeader("Needs attention", badge = unacknowledged.size)
-            unacknowledged.forEach { anomaly ->
-                AlertCard(
-                    anomaly = anomaly,
-                    onAcknowledge = { viewModel.acknowledgeAlert(anomaly.id) },
-                    onSaveFeedback = { input ->
-                        viewModel.saveAlertFeedback(
-                            anomalyId = anomaly.id,
-                            feltSick = input.feltSick,
-                            visitedDoctor = input.visitedDoctor,
-                            diagnosis = input.diagnosis,
-                            symptoms = input.symptoms,
-                            notes = input.notes,
-                            outcomeAccurate = input.outcomeAccurate,
-                        )
-                    },
-                    onOpenPattern = onNavigateToCondition,
-                    onOpenDetail = { onNavigateToAlert(anomaly.id) },
-                )
-            }
+            SectionHeader("Not yet acknowledged", badge = unacknowledged.size)
+            AlertCards(unacknowledged, viewModel, onNavigateToAlert)
         }
 
-        if (baselineReady && anyDataReceived && results.isNotEmpty()) {
-            SectionHeader("Patterns Bios is watching")
-            results.forEach { result ->
-                DiagnosticCard(result, onNavigateToDetail = onNavigateToCondition)
-            }
-        } else if (!baselineReady || !anyDataReceived) {
+        if (!baselineReady || !anyDataReceived) {
             BaselineBuildingCard(dataAge = dataAge, anyDataReceived = anyDataReceived)
         }
 
         if (acknowledged.isNotEmpty()) {
             SectionHeader("Recent")
-            acknowledged.forEach { anomaly ->
-                AlertCard(
-                    anomaly = anomaly,
-                    onAcknowledge = {},
-                    onSaveFeedback = { input ->
-                        viewModel.saveAlertFeedback(
-                            anomalyId = anomaly.id,
-                            feltSick = input.feltSick,
-                            visitedDoctor = input.visitedDoctor,
-                            diagnosis = input.diagnosis,
-                            symptoms = input.symptoms,
-                            notes = input.notes,
-                            outcomeAccurate = input.outcomeAccurate,
-                        )
-                    },
-                    onOpenPattern = onNavigateToCondition,
-                    onOpenDetail = { onNavigateToAlert(anomaly.id) },
-                )
-            }
+            AlertCards(acknowledged, viewModel, onNavigateToAlert)
         }
 
         if (nothingToSay && baselineReady && anyDataReceived) {
             QuietState()
         }
+    }
+}
+
+@Composable
+private fun AlertCards(alerts: List<Anomaly>, viewModel: AppViewModel, onOpen: (String) -> Unit) {
+    alerts.forEach { anomaly ->
+        AlertCard(
+            anomaly = anomaly,
+            onAcknowledge = { viewModel.acknowledgeAlert(anomaly.id) },
+            onSaveFeedback = { viewModel.saveAlertFeedback(anomaly.id, it) },
+            onOpenDetail = { onOpen(anomaly.id) },
+        )
     }
 }
 
@@ -255,7 +200,7 @@ private fun BaselineBuildingCard(dataAge: Int, anyDataReceived: Boolean) {
                 } else {
                     val remaining = BaselineEngine.MINIMUM_DATA_DAYS - dataAge
                     "Bios needs $remaining more day${if (remaining == 1) "" else "s"} of data " +
-                        "to establish your personal baseline and start surfacing patterns."
+                        "to establish your usual range."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -290,7 +235,7 @@ private fun QuietState() {
             Text("Quiet", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Bios will speak when something matters.",
+                "No alerts to show.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

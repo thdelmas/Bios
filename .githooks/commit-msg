@@ -31,7 +31,7 @@ VALID_PREFIXES="feat|fix|refactor|docs|test|ci|build|chore|perf|style"
 if ! echo "$FIRST_LINE" | grep -qE "^($VALID_PREFIXES)(\(.+\))?!?: .+"; then
     echo "FAIL: Commit message must start with a conventional prefix."
     echo "Valid prefixes: feat, fix, refactor, docs, test, ci, build, chore, perf, style"
-    echo "Example: feat: Add heart rate anomaly detection"
+    echo "Example: feat: Add day totals to trends"
     echo "Example: fix(sync): Resolve duplicate readings on reconnect"
     echo "Example: feat(api)!: drop the v1 provider path (breaking -> major bump)"
     exit 1

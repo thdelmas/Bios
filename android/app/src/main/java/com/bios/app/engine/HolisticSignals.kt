@@ -8,10 +8,12 @@ import com.bios.app.model.ReadingKind
 import kotlin.math.abs
 
 /**
- * Inputs and wording for the holistic (ML / heuristic) detector, kept out of
- * [AnomalyDetector] for the 500-line ceiling.
+ * Inputs and wording for [AnomalyDetector]: the watched metrics' current
+ * windows and the measured lines an alert carries.
  */
 internal object HolisticSignals {
+
+    const val FALLBACK = "Several metrics are outside your usual range."
 
     /** Each watched metric's 24 h signal plus its newest reading time (evidence reuse check). */
     suspend fun current(
@@ -37,7 +39,7 @@ internal object HolisticSignals {
 
     /** Data statements in real units ("Resting heart rate 66 bpm … usual 53–60 bpm."). */
     fun explanation(deviations: List<MeasuredSignal>): String {
-        if (deviations.isEmpty()) return "Multiple health metrics deviate from your baselines."
+        if (deviations.isEmpty()) return FALLBACK
         return deviations
             .sortedByDescending { abs(it.zScore) }
             .take(3)

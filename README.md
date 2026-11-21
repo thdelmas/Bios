@@ -4,11 +4,11 @@ Your body's measurements, on your device. Bios collects readings from wearables 
 
 Bios is not a medical device. It does not diagnose, screen for, or predict any condition.
 
-> **Builds are paused (21 November 2026).** Bios is being reduced to a measuring instrument. Earlier versions carried condition patterns, possible causes and care advice; those are removed in the next version, and the APKs of v0.1.0 to v0.3.2 have been withdrawn. The source tree still contains that code until the removal lands.
+> **Builds are paused (21 November 2026).** Bios is being reduced to a measuring instrument. Earlier versions carried condition patterns, possible causes and care advice; those are removed in the next version, and the APKs of v0.1.0 to v0.3.2 have been withdrawn. That code is no longer in the source tree; the removal lands with the next version.
 
 Hub of the Bios ecosystem (Bios, W2F, Smokeless, Virgil, SoulRadio) — exposes `BiosHealthProvider` for companion apps to write events and read metrics.
 
-For full context: [CLAUDE.md](CLAUDE.md), [MANIFESTO.md](MANIFESTO.md), [docs/](docs/README.md).
+For full context: [CLAUDE.md](CLAUDE.md), [docs/](docs/README.md).
 
 ## Community
 
@@ -52,10 +52,11 @@ The `lethe` flavor is built locally as part of LETHE OS integration — not part
 
 ## Documentation
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system design, platform abstraction, build flavors
-- [docs/CONSUMER_API.md](docs/CONSUMER_API.md) — `BiosHealthProvider` contract for companions
-- [docs/PRIVACY_ARCHITECTURE.md](docs/PRIVACY_ARCHITECTURE.md) — on-device processing, encryption, threat model
-- [docs/ROADMAP.md](docs/ROADMAP.md) — owner-protection roadmap
+- [docs/specs/instrument-only.md](docs/specs/instrument-only.md): what Bios does and does not do
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, build flavors, data flow
+- [docs/CONSUMER_API.md](docs/CONSUMER_API.md): `BiosHealthProvider` contract for companions
+- [docs/PRIVACY_ARCHITECTURE.md](docs/PRIVACY_ARCHITECTURE.md): where data lives and every way it can leave the phone
+- [docs/ROADMAP.md](docs/ROADMAP.md): current state and open product questions
 - Full index: [docs/README.md](docs/README.md)
 
 ## License

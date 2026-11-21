@@ -6,8 +6,7 @@ import com.bios.app.model.HeadacheType
 
 /**
  * Thin repository wrapper over [com.bios.app.data.dao.HeadacheLogDao]
- * for the generic headache-diary screen and the MOH evaluator
- * (issue #207).
+ * for the headache diary screen (issue #207).
  *
  * Validates intensity at the insert boundary; the UI slider also pins
  * 0-10. Stored in the main encrypted DB ([BiosDatabase]).

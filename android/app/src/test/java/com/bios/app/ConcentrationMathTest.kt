@@ -17,7 +17,7 @@ import kotlin.math.abs
  *
  * Exercises every limb of the engine: first-order with and without
  * absorption, first-order at the flip-flop limit, zero-order alcohol,
- * the curve sampler, and the threshold-crossing search. Numerical
+ * and the curve sampler. Numerical
  * checks use tolerances calibrated to the underlying half-life so the
  * tests don't flake on rounding inside `exp`.
  */
@@ -185,47 +185,6 @@ class ConcentrationMathTest {
                 curve[i].second <= curve[i - 1].second
             )
         }
-    }
-
-    // ---- timeUntilBelow ----
-
-    @Test
-    fun `timeUntilBelow returns zero when already under the threshold`() {
-        val pk = pkInstant(halfLifeMinutes = 60.0)
-        val doses = listOf(DoseEvent(midnight, 50.0))
-        val ms = ConcentrationMath.timeUntilBelow(pk, doses, thresholdMg = 100.0, fromMillis = midnight)
-        assertEquals(0L, ms)
-    }
-
-    @Test
-    fun `timeUntilBelow finds the half-life crossing`() {
-        // 100mg dose, t½ = 60 min. Threshold 50mg ≡ one half-life from now.
-        // The bisection should land within ~5 min of the analytic answer.
-        val pk = pkInstant(halfLifeMinutes = 60.0)
-        val doses = listOf(DoseEvent(midnight, 100.0))
-        val ms = ConcentrationMath.timeUntilBelow(pk, doses, thresholdMg = 50.0, fromMillis = midnight)
-        assertNotNull("expected a crossing time", ms)
-        val crossingMin = ms!!.toDouble() / 60_000.0
-        // Bisection refines down to a few minutes; tolerate 5 min absolute.
-        assertTrue("crossing $crossingMin min should be near 60 min", abs(crossingMin - 60.0) < 5.0)
-    }
-
-    @Test
-    fun `timeUntilBelow returns null when threshold never crossed in horizon`() {
-        // Frequent dosing keeps the steady-state level above threshold for
-        // the search horizon. Engine must return null instead of either
-        // looping forever or claiming a false crossing past the dose tail.
-        val pk = pkInstant(halfLifeMinutes = 60.0)
-        // 100 mg every 30 min, t½ 60 min ⇒ steady-state ~241..341 mg. The
-        // search window stays inside the dosing schedule so the threshold
-        // never crosses.
-        val doses = (0..200).map { DoseEvent(midnight + it * 30L * minute, 100.0) }
-        val ms = ConcentrationMath.timeUntilBelow(
-            pk, doses, thresholdMg = 200.0,
-            fromMillis = midnight + 4L * hour,
-            maxLookaheadMs = 2L * hour,
-        )
-        assertNull(ms)
     }
 
     // ---- helpers ----

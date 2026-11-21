@@ -48,7 +48,6 @@ class ActiveSubstancesAggregatorTest {
                     assertNull("event-only cards carry no current-amount", c.currentAmountMg)
                     assertNull("event-only cards carry no PK profile", c.pk)
                     assertTrue("event-only cards carry no curve", c.curve.isEmpty())
-                    assertNull(c.thresholdMg)
                 }
             }
         }
@@ -148,30 +147,6 @@ class ActiveSubstancesAggregatorTest {
     }
 
     @Test
-    fun `threshold override beats the substance default`() {
-        val intakes = listOf(caffeineIntake(timestampMs = now - hour, doseMg = 200.0, sourceId = "src"))
-        val withDefault = ActiveSubstancesAggregator.compute(
-            intakes = intakes, sourceLabels = emptyMap(), nowMs = now,
-        ).first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
-        assertEquals(50.0, withDefault.thresholdMg!!, 1e-9)
-
-        val withOverride = ActiveSubstancesAggregator.compute(
-            intakes = intakes,
-            sourceLabels = emptyMap(),
-            nowMs = now,
-            thresholdOverridesMg = mapOf(MetricType.CAFFEINE_INTAKE.key to 25.0),
-        ).first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
-        assertEquals(25.0, withOverride.thresholdMg!!, 1e-9)
-        assertTrue(
-            "tighter threshold should push the crossing later " +
-                "(default=${withDefault.timeUntilBelowThresholdMs}, " +
-                "override=${withOverride.timeUntilBelowThresholdMs})",
-            (withOverride.timeUntilBelowThresholdMs ?: 0L) >
-                (withDefault.timeUntilBelowThresholdMs ?: 0L)
-        )
-    }
-
-    @Test
     fun `curve points span the configured window for dosed substances`() {
         val intakes = listOf(caffeineIntake(timestampMs = now - hour, doseMg = 100.0, sourceId = "src"))
         val cards = ActiveSubstancesAggregator.compute(
@@ -233,20 +208,6 @@ class ActiveSubstancesAggregatorTest {
         )
     }
 
-    @Test
-    fun `time until below returns zero when dosed card has no intake`() {
-        // Zero amount is below any positive threshold → the card renders
-        // "already below" instead of "no crossing".
-        val cards = ActiveSubstancesAggregator.compute(
-            intakes = emptyList(),
-            sourceLabels = emptyMap(),
-            nowMs = now,
-        )
-        val caffeine = cards.first { it.metricKey == MetricType.CAFFEINE_INTAKE.key }
-        assertNotNull(caffeine.thresholdMg)
-        assertEquals(0L, caffeine.timeUntilBelowThresholdMs)
-    }
-
     // ---- event-only tiles (tobacco / cannabis) ----
 
     @Test
@@ -276,7 +237,6 @@ class ActiveSubstancesAggregatorTest {
         // No concentration math because there's nothing to integrate.
         assertNull(cannabis.currentAmountMg)
         assertNull(cannabis.pk)
-        assertNull(cannabis.thresholdMg)
         assertTrue(cannabis.curve.isEmpty())
     }
 

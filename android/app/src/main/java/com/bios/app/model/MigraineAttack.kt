@@ -8,34 +8,20 @@ import androidx.room.TypeConverters
 import java.util.UUID
 
 /**
- * Owner-logged structured migraine attack record. Closes
- * [docs/audits/NEUROLOGY_POV.md] §2.6 (issue #207). The neurology, primary-
- * care, and headache-medicine audits all converge on the migraine-diary
- * shape — a dated record carrying onset / end / peak intensity / aura /
- * triggers / acute medication so the owner can read their own pattern over
- * time and the FHIR exporter can ship a structured record to a neurologist.
+ * Owner-logged migraine attack record (issue #207): onset, end, peak
+ * intensity, aura, triggers and acute treatment, as the owner entered
+ * them.
  *
- * Distinct from the more generic [HeadacheLog]: a [MigraineAttack] carries
- * migraine-specific structure (aura phase, the migraine trigger taxonomy,
- * the acute-treatment slot for triptan / NSAID). Owners who don't classify
- * their headaches as migraine use [HeadacheLog] instead — both surfaces are
- * available on the same Identity → "Headache & migraine diary" screen.
+ * Distinct from the more generic [HeadacheLog]: owners who don't call
+ * their headaches migraine use [HeadacheLog] instead. Both are available
+ * on the same headache diary screen.
  *
- * Manifesto guards:
- *  - **Owner-administered, never inferred.** Bios never derives a migraine
- *    attack from biomarker data. The owner reports; Bios stores.
+ *  - **Owner-entered, never inferred.** Bios never derives an attack from
+ *    measured data. The owner reports; Bios stores.
  *  - **Pull-side only.** No notification fires on a recorded attack; no
- *    reminder fires to fill one in. The owner records on their own terms.
+ *    reminder fires to fill one in.
  *  - **Stays on-device.** Lives in the main encrypted DB; leaves only when
- *    the owner explicitly invokes the FHIR exporter.
- *
- * IHS ICHD-3 (International Classification of Headache Disorders, 3rd ed.)
- * defines migraine without aura (§1.1) and migraine with aura (§1.2) by
- * duration (4–72h untreated), unilateral pulsating quality, moderate-to-
- * severe intensity, and aggravation by physical activity. The diary shape
- * carries the fields that map to those clinical criteria so an owner who
- * shares this record with a neurologist has the substrate the diagnostic
- * conversation needs.
+ *    the owner explicitly invokes an export.
  */
 @Entity(
     tableName = "migraine_attacks",
@@ -58,9 +44,7 @@ data class MigraineAttack(
      */
     val peakIntensity: Int,
     /**
-     * True when the owner experienced aura (visual disturbance, sensory
-     * symptoms, speech changes) before or during the attack — IHS ICHD-3
-     * §1.2 distinguishes migraine with vs. without aura.
+     * True when the owner recorded aura before or during the attack.
      */
     val aura: Boolean = false,
     /**
@@ -73,10 +57,8 @@ data class MigraineAttack(
     val triggers: Set<MigraineTrigger> = emptySet(),
     /**
      * Free-text name of the acute treatment the owner took (e.g.
-     * "sumatriptan 50mg", "ibuprofen 600mg", "rizatriptan"). Used by the
-     * [com.bios.app.alerts.MedicationOveruseHeadacheEvaluator] to count
-     * acute-headache-treatment days for the IHS ICHD-3 §8.2 MOH screen.
-     * `null` means no acute treatment was taken.
+     * "sumatriptan 50mg", "ibuprofen 600mg", "rizatriptan"). Shown as
+     * written. `null` means no acute treatment was taken.
      */
     val medicationTaken: String? = null,
     /** Optional owner free-text note. */

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: language override card. -->
+<resources>
+    <string name="settings_language_system_default">Predeterminado del sistema</string>
+</resources>

@@ -9,9 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,17 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.ui.AppViewModel
 
 /**
- * The Vessel Watch — a read-only, owner-subject surface over the dials that
- * read the body/agency substrate. Spec: docs/subjects/owner/VESSEL_WATCH.md.
- *
- * Manifesto guarantees enforced structurally here:
- *  - **No composite score.** The screen only ever lays out per-dial cards from
- *    [vesselWatchGroups]; nothing sums them. See [VesselDial].
- *  - **Pull, not push.** It reads on open and stays silent — no alerts, no
- *    nudges, no notifications.
- *  - **Boundary first.** [BoundaryCard] (Section 0) renders above every dial:
- *    acute vision / headache / cognition are out of instrument range and route
- *    to a clinician, and a wall of green dials does not clear them.
+ * The Vessel Watch: a read-only page of dials, one measurement each, laid
+ * out from [vesselWatchGroups]. Nothing sums them. It reads on open and
+ * raises no alert or notification.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,13 +58,11 @@ fun VesselWatchScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "The long dial — the body as the one carrier of agency that can't be " +
-                    "backed up. Each reading stands alone; you do the reading.",
+                "The latest value of each measurement, with its own trend. " +
+                    "Each reading stands alone; you do the reading.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            BoundaryCard()
 
             for (group in vesselWatchGroups) {
                 GroupSection(group = group, viewModel = viewModel, refreshKey = lastSync)
@@ -84,59 +71,7 @@ fun VesselWatchScreen(
     }
 }
 
-/**
- * Section 0 — the boundary. Rendered prominently above every dial and never
- * collapsible: the most important thing this surface says is what it can't
- * see. Copy is the general principle (acute vision / headache / cognition are
- * out of range → clinician), not any owner's specific symptoms.
- */
-@Composable
-private fun BoundaryCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                Icons.Outlined.WarningAmber,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                "What this watch can't see",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                "Sudden vision changes, new or worsening headaches, and acute changes " +
-                    "in thinking are out of instrument range — Bios has no dial for them. " +
-                    "They route to a clinician: an eye exam and a blood-pressure check " +
-                    "first; red flags go to urgent care.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                "A wall of green dials does not clear those symptoms. It's a different " +
-                    "instrument. The benign cause and the dangerous one feel identical " +
-                    "from the inside — that's the whole reason to get an outside reading. " +
-                    "Don't read \"my Bios looks fine\" as \"I'm fine.\"",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-        }
-    }
-}
-
-/** One spec group (A–F): heading + honest blurb + its dials. */
+/** One group: heading and its dials. */
 @Composable
 private fun GroupSection(
     group: VesselGroup,
@@ -148,11 +83,6 @@ private fun GroupSection(
             group.title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-        )
-        Text(
-            group.blurb,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         for (dial in group.dials) {
             VesselWatchDialCard(dial = dial, viewModel = viewModel, refreshKey = refreshKey)

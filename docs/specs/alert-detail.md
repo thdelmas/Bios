@@ -10,11 +10,20 @@ neither "what is happening" nor "what do I do", and spoke in σ, not bpm.
 
 ## Intent
 
+> Superseded by `instrument-only.md`: the screen answers the first question
+> only (what was measured). "What it might mean" and "what to do now" are
+> removed.
+
 An alert the owner cannot act on is noise. Tapping an alert lands on an
 answer to three questions: what was measured, what it might mean, what to do
 now.
 
 ## Goal
+
+> Superseded by `instrument-only.md`: items 3 (causes) and 4 (what to watch,
+> when to seek care, the emergency number) are removed, and so is the
+> follow-up reminder. Items 1, 2 and 5 stand; the journal is one free-text
+> note.
 
 One tap on an alert notification (or the follow-up reminder) opens a screen
 for that alert showing, in this order:
@@ -34,6 +43,10 @@ states values in units; `AlertDetailContentTest` passes.
 
 ## Limits
 
+> Superseded by `instrument-only.md`: the first three rows price causes,
+> a claimed diagnosis and the seek-care wording. None of the three exists
+> any more. The fourth row stands.
+
 | Cost | Bearer (seat) | Seat | Balance as the bearer sees it | Fires when |
 | --- | --- | --- | --- | --- |
 | Causes read as a verdict on the owner ("you drank") | owner | filled by draft, not asked | Causes are a generic list per metric and direction, never inferred from the owner's other data. | Any cause line names an owner-specific event or a companion-app datum. |
@@ -42,6 +55,9 @@ states values in units; `AlertDetailContentTest` passes.
 | Values recomputed at read time differ from detection time | owner | filled by draft | Same window, same SENSOR filter; baseline may have moved, so the range says "usually", not "at the time". | Owner reports a value on the screen that differs from the notification. |
 
 ## Open
+
+> Superseded by `instrument-only.md`: the causes list is removed, so its
+> sourcing is no longer open.
 
 - Daily digest notifications still have no tap target.
 - The causes list is unsourced common knowledge; no `Citation` per line yet.
@@ -89,6 +105,10 @@ Limits added:
 
 ## Criterion 7 (added 2026-11-07): the tier is the heading
 
+> Superseded in part by `instrument-only.md`: the line under the meter now
+> states the size of the deviation, not what the app did. The meter, the
+> missing app bar and the dot colors stand.
+
 Origin: his read of the first strips build on the Pixel: "a lot of unused
 space on top", "the title Alert is unnecessary", "different levels of warning
 so the user knows how critical it is"; and on the strips, "miss indicative
@@ -111,6 +131,10 @@ Limits: the meaning lines describe what the app did, never what the owner
 should do (the content-policy test holds them to that).
 
 ## Criterion 8 (added 2026-11-07): a re-delivered day-value settles before it is scored
+
+> Superseded in part by `instrument-only.md`: there are no rules any more.
+> The engine queries that skip provisional rows now serve baselines and the
+> one deviation alert.
 
 Origin: the 06-11 alert fired on a watch day-value (69 bpm) the vendor cloud
 later revised (63). His pick among three shapes: "score a daily reading only
@@ -138,6 +162,13 @@ the Pixel shows `provisional` flipping after the gap.
 
 ## Criterion 9 (added 2026-11-07): five tiers
 
+> Superseded in part by `instrument-only.md`: nothing emits URGENT. The value
+> stays in `AlertTier` and `HealthState` for stored rows and for the
+> companion contract; a stored URGENT row is drawn as a retired step on
+> the meter and uses the WARNING notification channel. Condition patterns, their classifier and floors are removed, and
+> the `emergency_contacts` table is no longer mapped. WARNING stands as
+> described.
+
 His ask: "a fifth level between advisory and urgent: warning". `AlertTier`
 is OBSERVATION 0 · NOTICE 1 · ADVISORY 2 · WARNING 3 · URGENT 4; stored codes
 rise with the order, so v38 remaps stored URGENT 3 → 4 in `anomalies` and
@@ -151,6 +182,10 @@ signal three or more standard deviations out (`classifyHolistic`). Condition
 patterns keep their classifier and floors; none declares a WARNING floor yet.
 
 ## Criterion 10 (added 2026-11-07): seek-care card reads for where the phone is
+
+> Superseded by `instrument-only.md`: the seek-care card and the emergency
+> number are removed. The region resolution
+> (`RegionConfigProvider.forDevice`) and the tinted strip track stand.
 
 His two reads: the card said 911 in Europe, and the list read as if all
 items had to hold. The region now resolves from the phone's mobile network

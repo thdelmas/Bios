@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.EcgStripRepo
 import com.bios.app.ingest.AppleHealthEcgImporter
-import com.bios.app.model.EcgClassification
 import com.bios.app.model.EcgStrip
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,16 +49,14 @@ import kotlinx.coroutines.withContext
  * Settings → Identity → ECG strips. Closes audit gap §2.8.
  *
  * Lists every owner-imported single-lead ECG strip by date with the
- * vendor classification, and renders the waveform as a Compose
+ * classification its source reported, and renders the waveform as a Compose
  * Canvas plot when the owner taps a row.
  *
  * Import surface: SAF picker → Apple Health export XML parser
  * ([AppleHealthEcgImporter]). PDF is intentionally out-of-scope —
  * see the importer's class comment.
  *
- * Pull-side surface — no notifications, no scoring, no nudges. The
- * AlertContentPolicy ban list doesn't constrain this screen (it
- * targets push) but the framing is intentionally neutral anyway.
+ * Opened by the owner: no notifications, no scoring.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,8 +126,8 @@ fun EcgStripsScreen(onBack: () -> Unit) {
                     Text(
                         "Single-lead ECG strips from Apple Watch, KardiaMobile, Withings " +
                             "ScanWatch, Samsung Galaxy Watch and others. Bios stores the " +
-                            "waveform and the vendor's rhythm classification — it does not " +
-                            "interpret the trace. The artefact travels with the FHIR export.",
+                            "waveform and shows the classification the source reported, in the " +
+                            "source's own words. It does not read the trace.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -203,11 +200,9 @@ private fun EcgStripRow(strip: EcgStrip, onTap: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                "Classification: ${classificationLabel(strip.classification)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            reportedClassification(strip)?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             OutlinedButton(onClick = onTap) { Text("View waveform") }
         }
     }
@@ -231,21 +226,15 @@ private fun EcgStripDetail(strip: EcgStrip, onDelete: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                "Vendor classification: ${classificationLabel(strip.classification)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            reportedClassification(strip)?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             EcgWaveformCanvas(strip = strip)
             OutlinedButton(onClick = onDelete) { Text("Delete strip") }
         }
     }
 }
 
-private fun classificationLabel(c: EcgClassification?): String = when (c) {
-    EcgClassification.SINUS_RHYTHM -> "Sinus rhythm"
-    EcgClassification.ATRIAL_FIBRILLATION -> "Atrial fibrillation"
-    EcgClassification.INCONCLUSIVE -> "Inconclusive"
-    EcgClassification.OTHER -> "Other"
-    null -> "Unspecified"
-}
+/** "Classification reported by Apple Watch: SinusRhythm": the source's own text, named as the source's. */
+internal fun reportedClassification(strip: EcgStrip): String? =
+    strip.classification?.let { "Classification reported by ${strip.sourceVendor}: $it" }

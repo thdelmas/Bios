@@ -97,8 +97,8 @@ enum class TrendDirection { RISING, STABLE, FALLING }
 // MARK: - Alerts
 
 /**
- * Five tiers; `level` is the stored code (anomalies.severity,
- * emergency_contacts.minTierLevel) and rises with the ordinal. WARNING was
+ * Five tiers; `level` is the stored code (anomalies.severity) and rises
+ * with the ordinal. WARNING was
  * inserted between ADVISORY and URGENT on 2026-11-07 (schema v38 remapped
  * stored URGENT 3 → 4).
  */
@@ -113,22 +113,6 @@ enum class AlertTier(val level: Int, val label: String) {
         fun fromLevel(level: Int): AlertTier =
             entries.find { it.level == level } ?: OBSERVATION
     }
-}
-
-enum class ConditionCategory {
-    CARDIOVASCULAR, RESPIRATORY, METABOLIC, SLEEP,
-    MENTAL_HEALTH, INFECTIOUS, WOMENS_HEALTH, RECOVERY, SAFETY,
-    /** Environment-driven physiology screens — heat, cold, altitude, photoperiod (#197). */
-    ENVIRONMENTAL,
-    /** Movement / sleep-stage / cognitive-trajectory neurology screens (#206). */
-    NEUROLOGICAL,
-}
-
-// MARK: - Privacy
-
-enum class PrivacyTier {
-    PRIVATE,
-    COMMUNITY
 }
 
 // MARK: - Health Events

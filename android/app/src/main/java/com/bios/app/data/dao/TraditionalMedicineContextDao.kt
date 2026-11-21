@@ -15,11 +15,7 @@ import com.bios.app.model.TraditionalMedicineContext
  * Multi-row table — the owner may have a TCM row, an Ayurveda row, and a
  * curandera row all at once. Each is keyed by an independent string id.
  *
- * All queries are pull-side reads; nothing here drives a push-side
- * surface by itself. Vocabulary overlay (the only downstream surface
- * this DAO feeds) is gated row-by-row by
- * [TraditionalMedicineContext.vocabularyOverlayConsent] and renders at
- * most one footnote line in alert-detail views.
+ * Every query is a read for the owner's own record screen.
  */
 @Dao
 interface TraditionalMedicineContextDao {
@@ -44,18 +40,6 @@ interface TraditionalMedicineContextDao {
         ORDER BY createdAt DESC
     """)
     suspend fun fetchAll(): List<TraditionalMedicineContext>
-
-    /**
-     * Rows for which the owner has explicitly opted into vocabulary
-     * overlay. Used by alert-detail views to decide whether to render
-     * any tradition-vocabulary footnote at all.
-     */
-    @Query("""
-        SELECT * FROM traditional_medicine_context
-        WHERE vocabularyOverlayConsent = 1
-        ORDER BY createdAt DESC
-    """)
-    suspend fun fetchOverlayOptedIn(): List<TraditionalMedicineContext>
 
     /** Rows tagged with a specific tradition. */
     @Query("""

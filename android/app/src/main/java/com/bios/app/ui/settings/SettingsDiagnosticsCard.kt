@@ -25,8 +25,7 @@ import com.bios.app.engine.PpgCalibrationLogger
 /**
  * Settings → Diagnostics card. One toggle today: PPG calibration logger
  * (#266 Cut 1). Surfaced as its own card so the user sees this is *opt-in*
- * data collection scoped to their own device, distinct from the Community
- * privacy tier (which is about leaving the device at all).
+ * data collection that stays on their own device.
  *
  * Lives in a separate file because [SettingsScreen] is at the 500-line
  * limit; new toggles land here rather than growing the host file.
@@ -36,7 +35,7 @@ internal fun SettingsDiagnosticsCard() {
     val context = LocalContext.current
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Diagnostics", style = MaterialTheme.typography.titleSmall)
+            Text("Calibration", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
 
             var ppgEnabled by remember {

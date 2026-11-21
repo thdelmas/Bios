@@ -13,8 +13,7 @@ import android.content.Context
  *
  * Stored in plain SharedPreferences — no secrets, owner-tunable, and
  * the read happens on the worker thread once per firing so a synchronous
- * pref read is fine. Mirrors [com.bios.app.engine.SeizureDetectionPrefs]
- * so the settings-card pattern is uniform.
+ * pref read is fine.
  */
 object PhoneSleepPrefs {
 

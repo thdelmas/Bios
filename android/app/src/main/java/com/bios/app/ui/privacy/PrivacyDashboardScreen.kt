@@ -1,6 +1,5 @@
 package com.bios.app.ui.privacy
 
-import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +14,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.ReproductiveDatabase
-import com.bios.app.model.PrivacyTier
 import com.bios.app.platform.DataDestroyer
 import com.bios.app.platform.DataFootprint
 import com.bios.app.platform.ForensicRiskMonitor
@@ -29,7 +27,7 @@ import kotlinx.coroutines.launch
  * Shows:
  * - Data footprint (total readings, DB size, date range, retention)
  * - Connected sources and their last sync
- * - Privacy tier and what it means
+ * - What leaves the device, and when
  * - LETHE status (burner mode, dead man's switch) if embedded
  * - Forensic risk indicators
  * - Reproductive data status (separate store)
@@ -45,12 +43,6 @@ fun PrivacyDashboardScreen(viewModel: AppViewModel) {
     var showWipeDialog by remember { mutableStateOf(false) }
     var showReproWipeDialog by remember { mutableStateOf(false) }
     var showDestroyAllDialog by remember { mutableStateOf(false) }
-
-    val privacyTier = remember {
-        val prefs = context.getSharedPreferences("bios_settings", Context.MODE_PRIVATE)
-        val tier = prefs.getString("privacy_tier", PrivacyTier.PRIVATE.name)
-        PrivacyTier.valueOf(tier ?: PrivacyTier.PRIVATE.name)
-    }
 
     LaunchedEffect(Unit) {
         val monitor = ForensicRiskMonitor(context, viewModel.db)
@@ -112,20 +104,7 @@ fun PrivacyDashboardScreen(viewModel: AppViewModel) {
                 }
             }
 
-            // Privacy tier
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Privacy Tier", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        when (privacyTier) {
-                            PrivacyTier.PRIVATE -> "Private — all data stays on this device. Nothing is transmitted."
-                            PrivacyTier.COMMUNITY -> "Community — anonymized statistical patterns are contributed. " +
-                                "No raw readings, timestamps, or identifiers leave this device."
-                        },
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
+            WhatLeavesCard()
 
             // Platform status
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -292,3 +271,29 @@ private fun FootprintRow(label: String, value: String) {
         )
     }
 }
+
+/** Every way data can leave the device, stated as what the code does. */
+@Composable
+private fun WhatLeavesCard() {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("What leaves this device", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Nothing is sent anywhere unless you export it or sync it between your own devices.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            WHAT_LEAVES_LINES.forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+private val WHAT_LEAVES_LINES = listOf(
+    "Export: a file is written only when you ask for one, and goes where you send it.",
+    "Sync: only between devices you paired yourself, encrypted with a key that stays on them.",
+    "Connected accounts: when you sign in to a device maker's service, Bios fetches your " +
+        "readings from it. It sends your sign-in to that service and nothing else.",
+    "Companion apps: an app on this phone reads Bios data only after you approve it.",
+    "Bios has no server of its own, no analytics and no crash reporting.",
+)

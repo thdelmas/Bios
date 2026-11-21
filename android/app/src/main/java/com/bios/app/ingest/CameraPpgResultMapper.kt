@@ -1,10 +1,8 @@
 package com.bios.app.ingest
 
-import com.bios.app.engine.EctopyDetector
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.RejectionReason
-import com.bios.app.engine.RhythmClassifier
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
@@ -54,29 +52,6 @@ internal object CameraPpgResultMapper {
         }
 
         val durSec = ppg.durationSec.toInt().coerceAtLeast(1)
-        val rhythmVerdict = RhythmClassifier.classify(ppg.rrIntervalsMs)
-        // PPG-derived AFib screening burden (#180, cardiology audit §2.1).
-        // Per-session verdict 0.0 (regular) / 100.0 (irregularly irregular)
-        // — the pattern's rolling median over 7 days decides whether to fire.
-        // INSUFFICIENT_DATA windows are skipped so the burden estimate isn't
-        // biased by short captures.
-        val burdenReading = if (rhythmVerdict.verdict == RhythmClassifier.WindowVerdict.INSUFFICIENT_DATA) {
-            null
-        } else {
-            reading(MetricType.IRREGULAR_RHYTHM_BURDEN, if (rhythmVerdict.irregular) 100.0 else 0.0,
-                timestamp, durSec, sourceId)
-        }
-        // PVC-burden estimate (#216 / Triage #26). Skipped on rhythms the
-        // classifier scores irregularly-irregular — AFib's randomness inflates
-        // the short-long pair count and would confound the PVC interpretation.
-        val ectopyReading = if (rhythmVerdict.verdict != RhythmClassifier.WindowVerdict.REGULAR) {
-            null
-        } else {
-            EctopyDetector.analyse(ppg.rrIntervalsMs)?.let {
-                reading(MetricType.ECTOPY_BURDEN_ESTIMATE, it.burdenPercent, timestamp, durSec, sourceId)
-            }
-        }
-
         // Pick the HR estimator that's more accurate for this signal's SNR.
         //  - High SNR (Malik retained ≥ MALIK_RELIABLE_FRACTION of IBIs):
         //    trust [HrvAnalyzer]'s mean — it filters out the few false peaks
@@ -101,8 +76,6 @@ internal object CameraPpgResultMapper {
             reading(MetricType.LF_HF_RATIO, hrv.lfHfRatio, timestamp, durSec, sourceId),
             reading(MetricType.HRV_LF_POWER, hrv.lfPowerMs2, timestamp, durSec, sourceId),
             reading(MetricType.HRV_HF_POWER, hrv.hfPowerMs2, timestamp, durSec, sourceId),
-            burdenReading,
-            ectopyReading,
             // PPG pulse-wave morphology (#181, CARDIOLOGY_POV.md §2.2). Written
             // only when waveformFeatures is populated; rejected recordings and
             // sessions with too few clean beats skip every key in this block.

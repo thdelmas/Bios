@@ -20,18 +20,19 @@ import com.bios.app.model.AlertTier
 import com.bios.app.ui.theme.BiosTokens
 
 /**
- * The alert's tier on the four-step scale (criterion 7): segments filled up
- * to the current tier in its color, the four names underneath with the
- * current one in that color, and one line saying what the tier means in
- * Bios's own behaviour. Replaces the bare badge as the screen's heading.
+ * The alert's tier on the scale: segments filled up to the current tier in
+ * its color, the names underneath with the current one in that color, and one
+ * line saying how large the deviation is. The retired URGENT step is drawn
+ * only for a stored alert that carries it.
  */
 @Composable
 internal fun TierMeter(tier: AlertTier) {
     val color = BiosTokens.tierColor(tier)
     val empty = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = EMPTY_ALPHA)
+    val steps = AlertTier.entries.filter { it != AlertTier.URGENT || tier == AlertTier.URGENT }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            AlertTier.entries.forEach { step ->
+            steps.forEach { step ->
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -41,7 +42,7 @@ internal fun TierMeter(tier: AlertTier) {
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            AlertTier.entries.forEach { step ->
+            steps.forEach { step ->
                 val current = step == tier
                 Text(
                     step.label,

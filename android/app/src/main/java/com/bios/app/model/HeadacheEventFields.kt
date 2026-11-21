@@ -9,11 +9,7 @@ package com.bios.app.model
  *  - [com.bios.contracts.MetricType.CLUSTER_HEADACHE_ATTACK_EVENT]
  *
  * Centralised so the entry surface ([MigraineAttack] / [HeadacheLog] →
- * MetricReading-row writer, Cut 2), the chronic-migraine evaluator
- * (Cut 3), the MOH evaluator (already shipping, will be updated to
- * consume the structured rows), and any future clinician-share
- * exporter can't drift on spelling. Same shape and rationale as
- * [SeizureEventFields].
+ * MetricReading-row writer) and any exporter can't drift on spelling.
  *
  * The IHS ICHD-3 (International Classification of Headache Disorders,
  * 3rd ed.) field set is the documented contract. Onset and end are
@@ -93,10 +89,9 @@ object HeadacheEventFields {
 
     /** `MetricReading.id` of the linked
      *  [com.bios.contracts.MetricType.MEDICATION_INTAKE] row written by
-     *  the per-event writer (Cut 2). Lets the MOH evaluator (and any
-     *  future MS DMT adherence path) walk back from the structured
-     *  medication-intake row to the parent headache event. Stored on
-     *  `stringValue`. */
+     *  the per-event writer (Cut 2). Lets a reader walk back from the
+     *  structured medication-intake row to the parent headache event.
+     *  Stored on `stringValue`. */
     const val ABORTIVE_MEDICATION_INTAKE_ID = "abortive_medication_intake_id"
 
     /** Owner free-text note. */

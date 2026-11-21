@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: language override card. -->
+<resources>
+    <string name="settings_language_title">ʻŌlelo</string>
+    <string name="settings_language_subtitle">E hoʻololi i ka ʻōlelo o ka ʻōnaehana no nā kikokikona o Bios. Pili kēia i nā leka makaʻala a me nā ʻōlelo o ka pakuhi. E hoʻokumu hou iā Bios ma hope o ka hoʻololi.</string>
+    <string name="settings_language_system_default">Hoʻonohonoho mau o ka ʻōnaehana</string>
+    <string name="settings_language_apply">E hoʻohana</string>
+</resources>

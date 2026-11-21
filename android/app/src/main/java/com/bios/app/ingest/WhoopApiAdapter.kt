@@ -198,7 +198,7 @@ class WhoopApiAdapter(
      * Reads WHOOP `/activity/workout` records in the window and returns each
      * as a composite [ExerciseSession] — parent EXERCISE_SESSION reading +
      * `event_payloads` rows. Mirrors the HC / Oura emission shape so the
-     * pattern engine sees one schema regardless of source.
+     * metric bus carries one schema regardless of source.
      *
      * WHOOP's workout record carries:
      *  - `start` / `end` ISO timestamps

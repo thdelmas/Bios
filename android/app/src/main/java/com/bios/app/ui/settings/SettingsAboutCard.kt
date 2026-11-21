@@ -15,7 +15,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.bios.app.export.appVersionName
 
 /**
  * Settings → About card. Shows the app version and hosts the
@@ -48,7 +50,7 @@ internal fun SettingsAboutCard(
             ) {
                 Text("Version", style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "0.2.0",
+                    appVersionName(LocalContext.current),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

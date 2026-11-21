@@ -6,25 +6,12 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 /**
- * Owner-captured single-lead ECG strip (#188, audit gap §2.8 in
- * docs/audits/CARDIOLOGY_POV.md, also flagged by Emergency Medicine and
- * Neurology stroke-workup audits).
+ * Owner-imported single-lead ECG strip: a waveform plus its metadata, as
+ * the source device recorded it.
  *
- * Apple Watch Series 4+, Samsung Galaxy Watch 4+, KardiaMobile, Withings
- * ScanWatch, Fitbit Sense, and WHOOP MG all expose 30-second single-lead
- * ECG strips with a vendor-derived classification. The natural use case:
- * an owner with palpitations runs an on-watch ECG, Bios stores the strip
- * with timestamp + vendor classification, and the FHIR export carries
- * both to the clinical appointment.
- *
- * **Scope of this entity:**
- *  - Storage only. Bios does **not** classify ECG rhythms on-device
- *    (no automated diagnosis). The classification field carries the
- *    vendor's own label, verbatim.
- *  - Distinct from [MetricReading] — an ECG strip is a binary waveform
- *    plus metadata, not a scalar measurement. The `ECG_STRIP_AVAILABLE`
- *    boolean MetricType serves as the presence indicator that pattern
- *    engines can join against; the actual waveform lives here.
+ * Bios stores and draws the strip. It does not read the rhythm. The
+ * classification field carries the source's own text, verbatim, and is
+ * shown with the source named.
  *
  * **Waveform storage:** persisted as a [ByteArray] BLOB in the main
  * encrypted SQLCipher database. Typical strip size is 5–30 KB
@@ -64,8 +51,7 @@ data class EcgStrip(
      * + [voltageOffset] to interpret bytes back to millivolts.
      *
      * Stored as BLOB so the original byte stream is preserved for
-     * FHIR export and clinician review — the renderer's
-     * interpretation is downstream.
+     * export — the renderer's decoding is downstream.
      */
     val samples: ByteArray,
     /**
@@ -83,12 +69,11 @@ data class EcgStrip(
      */
     val sampleEncoding: String = "int16_le",
     /**
-     * Vendor-supplied rhythm classification, or null when the source
-     * file didn't carry one. Bios never derives this — see class
-     * comment. Stored as the enum name so the Room TypeConverter
-     * isn't needed (Room defaults handle String).
+     * The source's own classification text, verbatim, or null when the
+     * source file carried none. Rows imported by earlier versions hold one
+     * of four coarse names those versions reduced the text to.
      */
-    val classification: EcgClassification? = null,
+    val classification: String? = null,
     /**
      * Human-readable vendor / source identifier. Examples: "Apple Watch",
      * "Samsung Galaxy Watch", "KardiaMobile", "Withings ScanWatch",
@@ -97,8 +82,7 @@ data class EcgStrip(
      */
     val sourceVendor: String,
     /**
-     * Optional owner free-text annotation — symptoms, context,
-     * "palpitations after coffee," etc. Never read by any engine.
+     * Optional owner free-text annotation. Never read by any engine.
      */
     val note: String? = null,
     /** Epoch millis when the row was inserted into Bios. */
@@ -153,25 +137,4 @@ enum class LeadPlacement {
     LEAD_I,
     LEAD_II_DERIVED,
     UNKNOWN,
-}
-
-/**
- * Vendor-supplied rhythm classification labels. Mapped from the source's
- * own enum at import time:
- *  - Apple HealthKit `HKElectrocardiogramClassification`:
- *    `sinusRhythm` → SINUS_RHYTHM, `atrialFibrillation` → ATRIAL_FIBRILLATION,
- *    `inconclusive*` → INCONCLUSIVE, otherwise OTHER.
- *  - KardiaMobile: "Normal" → SINUS_RHYTHM, "Possible AFib" →
- *    ATRIAL_FIBRILLATION, "Unclassified" → INCONCLUSIVE.
- *  - Samsung / Withings / Fitbit similar.
- *
- * Bios never derives this label — it carries the vendor's verdict
- * unmodified. The manifesto's "evaluation belongs to the owner" applies
- * here: Bios's job is to keep the artefact intact for clinician review.
- */
-enum class EcgClassification {
-    SINUS_RHYTHM,
-    ATRIAL_FIBRILLATION,
-    INCONCLUSIVE,
-    OTHER,
 }

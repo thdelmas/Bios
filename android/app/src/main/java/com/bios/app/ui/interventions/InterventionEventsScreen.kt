@@ -61,9 +61,8 @@ import java.util.Locale
  * ceremony, Reiki, PT visits, etc. (#192).
  *
  * **Manifesto stance.** This screen exists to hold what the owner
- * declares happened. It never validates efficacy, never compares
- * against any condition pattern, never prompts "did the treatment
- * work?". Recording is not endorsement.
+ * declares happened. It never validates efficacy and never prompts
+ * "did the treatment work?". Recording is not endorsement.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -3,7 +3,6 @@ package com.bios.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.bios.app.alerts.FollowUpWorker
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.engine.LatencyPercentiles
 import com.bios.app.data.BiomarkerContext
@@ -18,10 +17,6 @@ import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
-import com.bios.app.model.ProfessionalReview
-import com.bios.app.model.ReviewStatus
-import com.bios.app.model.ShareMethod
-import com.bios.app.ui.diagnostics.DiagnosticResult
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +50,6 @@ class AppViewModel(
     val latencyTracker = deps.latencyTracker
     val ingestManager = deps.ingestManager
     val baselineEngine = deps.baselineEngine
-    val mlModel = deps.mlModel
     val anomalyDetector = deps.anomalyDetector
     val alertManager = deps.alertManager
 
@@ -81,16 +75,8 @@ class AppViewModel(
     val healthEvents: StateFlow<List<HealthEvent>> = _healthEvents
     private val _pendingActionItems = MutableStateFlow<List<ActionItem>>(emptyList())
     val pendingActionItems: StateFlow<List<ActionItem>> = _pendingActionItems
-    private val _diagnosticResults = MutableStateFlow<List<DiagnosticResult>>(emptyList())
-    val diagnosticResults: StateFlow<List<DiagnosticResult>> = _diagnosticResults
     private val _pipelineSummary = MutableStateFlow<List<LatencyPercentiles>>(emptyList())
     val pipelineSummary: StateFlow<List<LatencyPercentiles>> = _pipelineSummary
-    private val _anomalyForReview = MutableStateFlow<Anomaly?>(null)
-    val anomalyForReview: StateFlow<Anomaly?> = _anomalyForReview
-
-    private val _reviewsForAnomaly = MutableStateFlow<List<ProfessionalReview>>(emptyList())
-    val reviewsForAnomaly: StateFlow<List<ProfessionalReview>> = _reviewsForAnomaly
-
     private val _trackedMetricTypes = MutableStateFlow<Set<MetricType>>(emptySet())
     val trackedMetricTypes: StateFlow<Set<MetricType>> = _trackedMetricTypes
     private val _metricCoverage = MutableStateFlow<Map<MetricType, BaselineEngine.Coverage>>(emptyMap())
@@ -190,7 +176,7 @@ class AppViewModel(
                     baselineEngine.computeAllBaselines()
                     baselineEngine.computeDailyAggregates()
 
-                    _initStatus.value = "Detecting patterns..."
+                    _initStatus.value = "Comparing with your usual range..."
                     _initProgress.value = 0.85f
                     anomalyDetector.runDetection()
                 }
@@ -239,26 +225,10 @@ class AppViewModel(
         }
     }
 
-    fun saveAlertFeedback(
-        anomalyId: String,
-        feltSick: Boolean?,
-        visitedDoctor: Boolean?,
-        diagnosis: String?,
-        symptoms: String?,
-        notes: String?,
-        outcomeAccurate: Boolean?
-    ) {
+    /** Saves the owner's journal note for an alert. Columns of earlier versions are left as stored. */
+    fun saveAlertFeedback(anomalyId: String, note: String) {
         viewModelScope.launch {
-            db.anomalyDao().saveFeedback(
-                id = anomalyId,
-                feltSick = feltSick,
-                visitedDoctor = visitedDoctor,
-                diagnosis = diagnosis,
-                symptoms = symptoms,
-                notes = notes,
-                outcomeAccurate = outcomeAccurate
-            )
-            FollowUpWorker.cancel(getApplication(), anomalyId)
+            db.anomalyDao().saveNote(id = anomalyId, notes = note)
             refreshAlerts()
         }
     }
@@ -375,92 +345,10 @@ class AppViewModel(
         _metricCoverage.value = baselineEngine.coverageForTracked()
     }
 
-    fun refreshDiagnostics() {
-        viewModelScope.launch {
-            try {
-                _diagnosticResults.value = anomalyDetector.scoreAllPatterns()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
-    }
-
     // MARK: - Pipeline Health
 
     fun refreshPipelineSummary() {
         _pipelineSummary.value = latencyTracker.summary()
-    }
-
-    // MARK: - Professional Review
-
-    fun loadAnomalyForReview(anomalyId: String) {
-        viewModelScope.launch {
-            val allAnomalies = db.anomalyDao().fetchAll()
-            _anomalyForReview.value = allAnomalies.find { it.id == anomalyId }
-            _reviewsForAnomaly.value = db.professionalReviewDao().fetchByAnomalyId(anomalyId)
-        }
-    }
-
-    fun createProfessionalReview(
-        anomalyId: String,
-        shareMethod: ShareMethod?,
-        sharedWindowDays: Int,
-        sharedExplanation: Boolean,
-        sharedBaselines: Boolean
-    ) {
-        viewModelScope.launch {
-            val review = ProfessionalReview(
-                anomalyId = anomalyId,
-                status = if (shareMethod != null) ReviewStatus.PENDING.level else ReviewStatus.PENDING.level,
-                shareMethod = shareMethod?.key,
-                sharedWindowDays = sharedWindowDays,
-                sharedExplanation = sharedExplanation,
-                sharedBaselines = sharedBaselines
-            )
-            db.professionalReviewDao().insert(review)
-        }
-    }
-
-    fun markReviewShared(
-        reviewId: String,
-        shareMethod: ShareMethod,
-        sharedMetrics: String?,
-        sharedWindowDays: Int?,
-        sharedExplanation: Boolean,
-        sharedBaselines: Boolean
-    ) {
-        viewModelScope.launch {
-            db.professionalReviewDao().markShared(
-                reviewId, shareMethod.key, sharedMetrics,
-                sharedWindowDays, sharedExplanation, sharedBaselines
-            )
-        }
-    }
-
-    fun recordProfessionalResponse(
-        reviewId: String,
-        notes: String?,
-        clinicallyRelevant: Boolean?,
-        recommendation: String?,
-        ownerFoundHelpful: Boolean?
-    ) {
-        viewModelScope.launch {
-            db.professionalReviewDao().recordResponse(
-                reviewId,
-                notes = notes,
-                clinicallyRelevant = clinicallyRelevant,
-                recommendation = recommendation,
-                ownerFoundHelpful = ownerFoundHelpful
-            )
-        }
-    }
-
-    // MARK: - Feedback
-
-    fun submitFeedback(feedback: com.bios.app.model.UserFeedback) {
-        viewModelScope.launch {
-            db.userFeedbackDao().insert(feedback)
-        }
     }
 
     // MARK: - Manual biomarker entry

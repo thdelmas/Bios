@@ -2,7 +2,6 @@ package com.bios.app
 
 import android.app.Application
 import com.bios.app.alerts.DailyDigestWorker
-import com.bios.app.alerts.MohScreeningWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.ingest.GadgetbridgeReceiver
 import com.bios.app.ingest.PowerConnectionReceiver
@@ -10,8 +9,6 @@ import com.bios.app.ingest.SyncWorker
 import com.bios.app.platform.HealthApiServer
 import com.bios.app.platform.LetheCompat
 import com.bios.app.platform.PlatformDetector
-import com.bios.app.privacy.ContributionWorker
-import com.bios.app.push.PushRegistrationManager
 import com.bios.app.sync.p2p.IrohNode
 import com.bios.app.sync.p2p.LocalNetworkTransport
 import com.bios.app.sync.p2p.P2PTransport
@@ -49,11 +46,15 @@ class BiosApplication : Application() {
             healthApiServer?.start()
         }
 
-        // Initialize P2P transport (Iroh if available, else local network)
+        // P2P transport (Iroh if available, else local network). It opens a
+        // listener and announces itself on the local network, so it starts
+        // only when the owner has turned device-to-device sync on.
         val irohNode = IrohNode(this)
         p2pTransport = if (irohNode.isAvailable) irohNode else LocalNetworkTransport(this)
-        applicationScope.launch(Dispatchers.IO) {
-            p2pTransport.start()
+        if (P2PSyncWorker.isEnabled(this)) {
+            applicationScope.launch(Dispatchers.IO) {
+                p2pTransport.start()
+            }
         }
         // Schedule periodic P2P sync
         P2PSyncWorker.enqueuePeriodicSync(this)
@@ -64,7 +65,7 @@ class BiosApplication : Application() {
         registerReceiver(gadgetbridgeReceiver, GadgetbridgeReceiver.intentFilter(),
             RECEIVER_EXPORTED)
 
-        // Schedule periodic health data sync (HTTP/IPFS)
+        // Schedule periodic ingestion from the connected sources
         SyncWorker.enqueuePeriodicSync(this)
 
         // Schedule periodic phone-sleep sampling + morning inference.
@@ -80,15 +81,6 @@ class BiosApplication : Application() {
         // observe a state transition; attaching here means the sensor-
         // hub is already tracking when the first sample is taken.
         com.bios.app.ingest.WakeUpMotionTracker.attach(this)
-
-        // Start the wearable seizure-detection foreground service if
-        // the owner has opted in via Settings (#269 Cut 3b). No-op
-        // when the opt-in is off — the service self-stops in
-        // onStartCommand even if start is mis-triggered. The privacy
-        // gate (SeizureDetectionPrefs) and the safety gate (#287
-        // payload-exclusion on URGENT seizure patterns) are both
-        // independent of this start call.
-        com.bios.app.ingest.SeizureDetectionService.startIfOptedIn(this)
 
         // Register the charge-edge receiver for the new foreground
         // collection service (#241). ACTION_POWER_CONNECTED /
@@ -112,16 +104,6 @@ class BiosApplication : Application() {
             DailyDigestWorker.schedule(this)
         }
 
-        // Schedule the daily MOH screening worker (#276). Idempotent via
-        // WorkManager's unique-work policy. The worker is a no-op when
-        // the diary is empty, so it's safe to enqueue unconditionally.
-        MohScreeningWorker.schedule(this)
-
-        // Schedule the daily chronic-migraine screening worker (#283 Cut 3,
-        // IHS ICHD-3 §1.3). Same idempotent shape as MOH; reads from the
-        // headache-event metric_readings rows the #293 writer mirrors.
-        com.bios.app.alerts.ChronicMigraineWorker.schedule(this)
-
         // Schedule the nightly sleep-regularity derivation worker (#135
         // deliverable 2 — closes the gap between SleepRegularityCalculator
         // existing and rows actually landing on the bus). Pull-side
@@ -130,20 +112,9 @@ class BiosApplication : Application() {
         // unconditionally.
         com.bios.app.engine.SleepRegularityWorker.schedule(this)
 
-        // Schedule daily paediatric-band recompute (#198). Idempotent and
-        // a no-op when no birth date is on file — safe to enqueue on every
-        // launch.
-        com.bios.app.physiology.PaediatricBandWorker.schedule(this)
-
-        // Re-register UnifiedPush if previously enabled (idempotent — just
-        // confirms the registration with the distributor). Does NOT auto-enable;
-        // only fires if the owner previously opted in via Settings.
-        if (PushRegistrationManager.isEnabled(this)) {
-            PushRegistrationManager.register(this)
-        }
-
-        // Schedule community contributions (will no-op if Private tier)
-        ContributionWorker.enqueueNextContribution(this)
+        // Periodic work of removed features is cancelled on existing installs.
+        val workManager = androidx.work.WorkManager.getInstance(this)
+        REMOVED_PERIODIC_WORK.forEach { workManager.cancelUniqueWork(it) }
     }
 
     override fun onTerminate() {
@@ -153,5 +124,15 @@ class BiosApplication : Application() {
         healthApiServer?.stop()
         letheCompat.unregisterWipeReceivers(this)
         super.onTerminate()
+    }
+
+    private companion object {
+        val REMOVED_PERIODIC_WORK = listOf(
+            "bios_paediatric_band",
+            "bios_perioperative_state_transition",
+            "bios_chronic_migraine_screening",
+            "bios_moh_screening",
+            "bios_community_contribution",
+        )
     }
 }

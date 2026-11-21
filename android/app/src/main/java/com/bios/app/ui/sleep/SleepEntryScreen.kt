@@ -108,8 +108,7 @@ fun SleepEntryScreen(
                     Text(
                         "Log the total time you slept. Self-reported entries fill gaps when no " +
                             "wearable or Health Connect provider is feeding the metric. Stays on " +
-                            "device and is excluded from baseline learning so it can't skew " +
-                            "anomaly detection.",
+                            "device. Your usual range and alerts do not use it.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -14,55 +14,45 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.AlertDetail
 import com.bios.app.alerts.AlertDetailContent
 import com.bios.app.alerts.AlertManager
-import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.MeasuredSignal
-import com.bios.app.config.RegionConfigProvider
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 import com.bios.app.ui.AppViewModel
 import com.bios.app.ui.components.FeedbackForm
-import com.bios.app.ui.components.FeedbackInput
 import com.bios.app.ui.components.FeedbackSummary
 import com.bios.app.ui.theme.BiosTokens
 import java.text.DateFormat
 import java.util.Date
 
 /**
- * Where an alert notification tap lands (docs/specs/alert-detail.md): what was
- * measured in real units, which other signals agree, common causes as
- * possibilities, what to watch, when to seek care now, and the journal entry.
- * Pull-side: the owner opened it.
+ * Where an alert notification tap lands: the tier as a size of deviation,
+ * what was measured in real units against the owner's usual range, the other
+ * watched metrics over the same 24 hours, acknowledge and the owner's journal.
  */
 @Composable
 fun AlertDetailScreen(
     anomalyId: String,
     viewModel: AppViewModel,
     onBack: () -> Unit,
-    onOpenPattern: (String) -> Unit,
     onOpenTrend: (String) -> Unit,
 ) {
     var detail by remember { mutableStateOf<AlertDetail?>(null) }
@@ -82,23 +72,16 @@ fun AlertDetailScreen(
         when {
             d != null -> AlertDetailBody(
                 detail = d,
-                onOpenPattern = onOpenPattern,
                 onOpenTrend = onOpenTrend,
                 onAcknowledge = {
                     viewModel.acknowledgeAlert(anomalyId)
                     detail = d.copy(anomaly = d.anomaly.copy(acknowledged = true))
                 },
-                onSaveFeedback = { input ->
-                    viewModel.saveAlertFeedback(
-                        anomalyId = anomalyId,
-                        feltSick = input.feltSick,
-                        visitedDoctor = input.visitedDoctor,
-                        diagnosis = input.diagnosis,
-                        symptoms = input.symptoms,
-                        notes = input.notes,
-                        outcomeAccurate = input.outcomeAccurate,
+                onSaveFeedback = { note ->
+                    viewModel.saveAlertFeedback(anomalyId, note)
+                    detail = d.copy(
+                        anomaly = d.anomaly.copy(feedbackAt = System.currentTimeMillis(), notes = note),
                     )
-                    detail = d.copy(anomaly = d.anomaly.withFeedback(input))
                 },
             )
             loaded -> CenteredText("This alert is no longer stored on this device.")
@@ -112,17 +95,13 @@ fun AlertDetailScreen(
 @Composable
 private fun AlertDetailBody(
     detail: AlertDetail,
-    onOpenPattern: (String) -> Unit,
     onOpenTrend: (String) -> Unit,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit,
+    onSaveFeedback: (String) -> Unit,
 ) {
     val anomaly = detail.anomaly
     val deviating = detail.signals.filter { it.deviating }
     val others = detail.signals.filterNot { it.deviating }
-    val pattern = remember(anomaly.patternId) {
-        anomaly.patternId?.let { id -> ConditionPatterns.all.firstOrNull { it.id == id } }
-    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -132,10 +111,6 @@ private fun AlertDetailBody(
     ) {
         AlertHeader(anomaly)
         MeasuredSection(anomaly, deviating, detail.now)
-        pattern?.takeIf { it.risks.isNotBlank() }?.let { p ->
-            Section("Why this matters") { Body(p.risks) }
-            TextButton(onClick = { onOpenPattern(p.id) }) { Text("Read full context") }
-        }
         if (others.isNotEmpty()) OtherSignalsSection(others, detail.now)
         if (detail.signals.isNotEmpty()) {
             Text(
@@ -144,12 +119,8 @@ private fun AlertDetailBody(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        CausesSection(deviating)
-        anomaly.suggestedAction?.let { Section("Suggested next step") { Body(it) } }
-        Section("Worth watching") { Bullets(AlertDetailContent.WORTH_WATCHING) }
-        SeekCareCard()
         Text(
-            AlertDetailContent.ONE_ALERT_NOTE,
+            AlertDetailContent.HOW_COMPARED,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -160,7 +131,7 @@ private fun AlertDetailBody(
         }
         ActionsSection(anomaly, onAcknowledge, onSaveFeedback)
         Text(
-            AlertManager.resolveDisclaimer(LocalContext.current),
+            AlertManager.DISCLAIMER,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -200,7 +171,7 @@ private fun MeasuredSection(anomaly: Anomaly, deviating: List<MeasuredSignal>, n
 
 @Composable
 private fun OtherSignalsSection(others: List<MeasuredSignal>, now: Map<String, MeasuredSignal>) {
-    Section("Other signals, same 24 hours") {
+    Section("Other metrics, same 24 hours") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             others.forEach {
                 SignalStripRow(it, "within your usual range", AlertDetailContent.nowLine(it, now[it.metricKey]))
@@ -210,50 +181,15 @@ private fun OtherSignalsSection(others: List<MeasuredSignal>, now: Map<String, M
 }
 
 @Composable
-private fun CausesSection(deviating: List<MeasuredSignal>) {
-    deviating.take(2).forEach { s ->
-        val dir = if (s.above) "raise" else "lower"
-        Section("Things that commonly $dir ${AlertDetailContent.label(s.metricKey)}") {
-            Bullets(AlertDetailContent.commonCauses(s.metricKey, s.above))
-        }
-    }
-}
-
-@Composable
-private fun SeekCareCard() {
-    val context = LocalContext.current
-    val region = remember { RegionConfigProvider.forDevice(context) }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                AlertDetailContent.SEEK_CARE_HEADING,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Bullets(AlertDetailContent.SEEK_CARE_NOW, MaterialTheme.colorScheme.onErrorContainer)
-            Text(
-                AlertDetailContent.emergencyLine(region.emergencyNumber, region.displayName),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-        }
-    }
-}
-
-@Composable
 private fun ActionsSection(
     anomaly: Anomaly,
     onAcknowledge: () -> Unit,
-    onSaveFeedback: (FeedbackInput) -> Unit,
+    onSaveFeedback: (String) -> Unit,
 ) {
     if (!anomaly.acknowledged) {
         Button(onClick = onAcknowledge, modifier = Modifier.fillMaxWidth()) { Text("Acknowledge") }
     }
-    Section("What happened? (your journal)") {
+    Section("Your journal") {
         if (anomaly.feedbackAt != null) FeedbackSummary(anomaly) else FeedbackForm(onSubmit = onSaveFeedback)
     }
 }
@@ -277,25 +213,8 @@ private fun Body(text: String) {
 }
 
 @Composable
-private fun Bullets(items: List<String>, color: Color = Color.Unspecified) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        items.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium, color = color) }
-    }
-}
-
-@Composable
 private fun CenteredText(text: String) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-private fun Anomaly.withFeedback(input: FeedbackInput) = copy(
-    feedbackAt = System.currentTimeMillis(),
-    feltSick = input.feltSick,
-    visitedDoctor = input.visitedDoctor,
-    diagnosis = input.diagnosis,
-    symptoms = input.symptoms,
-    notes = input.notes,
-    outcomeAccurate = input.outcomeAccurate,
-)

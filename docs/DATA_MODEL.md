@@ -6,7 +6,7 @@
 2. **Temporal** -- all data is time-series; every reading has a precise timestamp and duration
 3. **Attributable** -- every reading tracks its source device, sensor type, and confidence
 4. **Extensible** -- new metric types can be added without schema migrations
-5. **Exportable** -- maps cleanly to FHIR Observation resources for healthcare interoperability
+5. **Exportable** -- maps to FHIR Observation resources
 6. **Platform-portable** -- schema is identical on LETHE (embedded) and stock Android (standalone); no platform-specific columns or tables. Works across Android API 28–35.
 
 ---
@@ -20,99 +20,57 @@ The atomic unit of data in Bios. One sensor measurement at one point in time.
 ```
 MetricReading {
     id:             UUID
-    metric_type:    MetricType          -- what was measured
-    value:          Float64             -- the measurement value
-    unit:           Unit                -- SI or medical-standard unit
-    timestamp:      DateTime (UTC)      -- when the measurement was taken
-    duration_sec:   Int?                -- for aggregated readings (e.g., "avg HR over 5 min")
-    source:         DataSource          -- which device/API produced this
-    confidence:     ConfidenceTier      -- how reliable is this reading
+    metric_type:    String              -- MetricType key; the unit is the key's canonical unit
+    value:          Float64
+    timestamp:      epoch ms            -- when the measurement was taken
+    duration_sec:   Int?                -- for readings that cover a span (a night, a session)
+    source_id:      DataSource.id       -- which device, API or app produced this
+    confidence:     ConfidenceTier
     is_primary:     Bool                -- selected as primary after deduplication
-    raw_payload:    JSON?               -- original vendor-specific data (for debugging)
-    created_at:     DateTime (UTC)
+    created_at:     epoch ms
+    seen_count:     Int                 -- revision tracking for sources that re-deliver a day value
+    first_seen_at:  epoch ms?
+    provisional:    Bool                -- true until a re-delivered value has settled; engines read settled rows only
+    note:           String?             -- the owner's free text; never read by any engine
 }
+                                        -- unique: (source_id, metric_type, timestamp)
 ```
 
 ### MetricType (enum)
 
-Organized by physiological domain. Each type has a canonical unit. Types marked **[implemented]** exist in `Enums.kt`; those marked **[planned]** are defined in this schema for future adapter expansion.
+The canonical list is `MetricType` in
+[`android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt`](../android/bios-contracts/src/main/kotlin/com/bios/contracts/MetricType.kt).
+Each entry has a string key, a canonical unit (`MetricUnit`), a domain
+(`MetricDomain`) and a flag saying whether the owner may enter it by hand.
+The module holds 190 keys. About half are lab values (`BIOMARKER`); the
+rest are spread over cardiovascular, respiratory, temperature, sleep,
+activity, metabolic, recovery, cycle, intake, environment, body
+measurements and the keys companion apps write.
 
-```
-// Cardiovascular
-heart_rate                  -- bpm                           [implemented]
-heart_rate_variability      -- ms (RMSSD)                    [implemented]
-resting_heart_rate          -- bpm                           [implemented]
-ecg_waveform                -- mV[] (raw waveform array)     [available — see EcgStrip model]
-ecg_strip_available         -- boolean presence indicator    [implemented — joins to ecg_strips table]
-blood_pressure_systolic     -- mmHg                          [implemented]
-blood_pressure_diastolic    -- mmHg                          [implemented]
-blood_oxygen                -- % (SpO2)                      [implemented]
+A key in the contract does not mean Bios produces it. Many keys have a
+producer only when the owner connects a given source, types the value, or
+installs a companion. The Data Coverage screen shows which keys have data
+on a given phone.
 
-// Respiratory
-respiratory_rate            -- breaths/min                   [implemented]
-respiratory_event           -- apnea/hypopnea event flag     [planned — sleep study adapters]
-cough_count                 -- count per hour                [planned — microphone adapter]
+Keys are append-only: `MetricTypeKeysSnapshotTest` fails if one is removed
+or renamed, because companion apps compile against them.
 
-// Temperature
-skin_temperature            -- degrees C                     [implemented]
-skin_temperature_deviation  -- delta C from personal baseline [implemented]
+#### Legacy keys with no producer in Bios
 
-// Sleep
-sleep_stage                 -- enum: awake | light | deep | rem [implemented]
-sleep_duration              -- seconds                       [implemented]
-sleep_latency               -- seconds (time to fall asleep) [planned — derived from sleep stage data]
-sleep_score                 -- 0-100 (vendor-normalized)     [planned — vendor-specific]
+Some keys remain in the contract from earlier versions and nothing in
+Bios writes them any more, or ever did. Examples: `sleep_score`,
+`sleep_apnea_event`, `seizure_event`, `ectopy_burden_estimate`,
+`tremor_amplitude_g`, `tremor_frequency_hz`, `gait_variability_cov`. They
+stay because removal would break the contract. Readings stored under such
+a key by an earlier version are left in the database and appear in the
+metric browser and the JSON export.
 
-// Activity
-steps                       -- count                         [implemented]
-active_calories             -- kcal                          [implemented]
-active_minutes              -- minutes                       [implemented]
-exercise_session            -- event (composite, payload below) [implemented — Health Connect]
-distance                    -- meters                        [planned — GPS-capable adapters]
-vo2_max                     -- mL/kg/min                     [planned — exercise-mode adapters]
+#### Epigenetic age clocks
 
-// Motion & Gait
-accelerometer_raw           -- m/s2 (x, y, z in raw_payload) [planned — motion analysis]
-gait_symmetry               -- % (0 = asymmetric, 100 = sym) [planned — gait analysis]
-tremor_amplitude            -- mm/s2                         [planned — neurological screening]
-
-// Metabolic
-blood_glucose               -- mg/dL                         [implemented]
-glucose_variability         -- coefficient of variation %    [planned — derived from CGM data]
-body_fat_pct                -- %                             [implemented — Withings scale]
-body_mass                   -- kg                            [implemented — Withings scale]
-
-// Stress & Recovery
-eda_level                   -- microsiemens                  [planned — EDA-capable wearables]
-stress_score                -- 0-100 (vendor-normalized)     [planned — vendor-specific]
-recovery_score              -- 0-100 (vendor-normalized)     [implemented]
-strain_score                -- 0-21 (WHOOP-style)            [planned — WHOOP adapter extension]
-
-// Women's Health
-basal_body_temperature      -- degrees C                     [implemented]
-cycle_day                   -- int (day of menstrual cycle)  [planned — cycle tracking UI]
-cycle_phase                 -- enum: menstrual | follicular | ovulatory | luteal [planned]
-
-// Environment
-ambient_light               -- lux                           [planned — phone sensor]
-ambient_noise               -- dB                            [planned — microphone adapter]
-
-// Epigenetic age clocks (slow-rolling, user-imported from labs like TruDiagnostic)
-epigenetic_age_dunedin_pace -- ratio (1.0 = aging at normal rate)  [implemented — manual entry]
-epigenetic_age_grim         -- years (biological age)              [implemented — manual entry]
-epigenetic_age_pheno        -- years (biological age)              [implemented — manual entry]
-epigenetic_age_horvath      -- years (biological age)              [implemented — manual entry]
-```
-
-#### Epigenetic age clocks — manifesto guard
-
-The four clocks above are imported as standalone biomarkers and displayed
-alongside HBA1C / ApoB / etc. in the lab-value surface. Bios **does not**
-compose them into a derived "Bios biological age" or "pace of aging" score
-— evaluating the person is explicitly out of scope. Owners see each clock's
-reading on its own; interpretation is the lab's job, not Bios's.
-
-**Summary:** 17 of 34 metric types are implemented. The remaining 17 are defined for future adapter expansion.
+`epigenetic_age_dunedin_pace`, `epigenetic_age_grim`, `epigenetic_age_pheno`
+and `epigenetic_age_horvath` are values the owner types in from a test
+report. Each is shown on its own, labelled with who produced it. Bios does
+not combine them into a figure of its own.
 
 ### EventPayloadField
 
@@ -134,8 +92,8 @@ EventPayloadField {
 
 #### Field-key vocabulary
 
-Field keys are part of the public contract — companions and the pattern
-engine compile against them. Renames are breaking changes. New field keys
+Field keys are part of the public contract — companions compile against
+them. Renames are breaking changes. New field keys
 land in this document alongside the metric type they describe; treat them
 with the same stability commitment as `MetricType.key` strings.
 
@@ -146,8 +104,8 @@ with the same stability commitment as `MetricType.key` strings.
 | `EXERCISE_SESSION` | `end_utc` | `long_value` | epoch ms |
 | `EXERCISE_SESSION` | `avg_hr_bpm` | `double_value` | nullable — mean of HR samples that fall inside the session window; omitted entirely when no samples land in window (null ≠ 0) |
 | `EXERCISE_SESSION` | `rpe` | `long_value` | 1–10, nullable — only populated if the source captured it |
-| *(any `BIOMARKER`)* | `lab_name` | `string_value` | Free-text lab/facility name. Provenance only — cross-lab calibration drift on assays like HbA1c, hsCRP, ApoB makes lab identity load-bearing for trend interpretation. |
-| *(any `BIOMARKER`)* | `fasting` | `long_value` | 0 = non-fasting, 1 = fasting. Omitted entirely when unknown (null ≠ 0). Required to interpret glucose, triglycerides, insulin meaningfully. |
+| *(any `BIOMARKER`)* | `lab_name` | `string_value` | Free-text lab/facility name. Provenance only: the same assay can differ between labs. |
+| *(any `BIOMARKER`)* | `fasting` | `long_value` | 0 = non-fasting, 1 = fasting. Omitted entirely when unknown (null ≠ 0). |
 | *(any `BIOMARKER`)* | `specimen` | `string_value` | enum: `SERUM`, `PLASMA`, `WHOLE_BLOOD`, `OTHER`. Some assays differ measurably across specimen types. |
 | *(any `BIOMARKER`)* | `source_uri` | `string_value` | Content URI to the original PDF/photo of the lab report — owner-attached, for retrieval; never parsed. |
 
@@ -155,7 +113,7 @@ with the same stability commitment as `MetricType.key` strings.
 
 Use a payload row when **all** of:
 1. The metric needs more than one structured value per reading.
-2. Pattern-engine code or a companion reader needs to query individual
+2. Bios code or a companion reader needs to query individual
    fields (`WHERE modality = 'CARDIO' AND avg_hr_bpm > 140`).
 3. Stuffing the data into `MetricReading.value` + a convention would
    require ad-hoc parsing on every read.
@@ -165,8 +123,7 @@ Do **not** use it for:
   event-shaped data) or `MetricReading.note` (for biomarker/manual-entry
   surfaces). The sidecar table is queryable by engines; owner-recall text
   isn't.
-- Vendor-specific raw blobs — those belong in the raw-payload field on
-  `MetricReading` (debug surface, never read by the engine).
+- Vendor-specific raw blobs — Bios does not store them.
 - Re-encoding the scalar that already fits in `value`.
 
 **Note on scalar metrics:** the "scalar metrics never use this table" rule
@@ -183,7 +140,7 @@ Tracks where a reading came from.
 ```
 DataSource {
     id:             UUID
-    source_type:    SourceType          -- enum: health_connect | gadgetbridge | direct_sensor | oura_api | whoop_api | garmin_api | withings_api | dexcom_api | phone_sensor
+    source_type:    SourceType          -- enum: health_connect | gadgetbridge | direct_sensor | oura_api | whoop_api | garmin_api | withings_api | dexcom_api | polar_api | coros_api | phone_sensor | phone_sensor_derived | bios_inferred | camera_ppg | ble_peripheral | self_reported
     device_name:    String?             -- "Apple Watch Series 11", "Oura Ring Gen 4"
     device_model:   String?             -- vendor model identifier
     sensor_type:    SensorType          -- enum: optical_hr | ecg | accelerometer | thermistor | ppg_camera | cgm | ...
@@ -194,12 +151,12 @@ DataSource {
 
 ### ConfidenceTier (enum)
 
-Used for deduplication and weighting in the Baseline Engine.
+Used for deduplication. The tier describes the kind of sensor, as recorded by the adapter.
 
 ```
-clinical        -- medical-grade device (e.g., chest-strap ECG, prescription CGM)
-high            -- FDA-cleared consumer sensor (e.g., Apple Watch ECG, Dexcom Stelo)
-medium          -- validated consumer sensor (e.g., optical wrist HR, ring SpO2)
+clinical        -- highest tier; the enum name is kept from earlier versions and no adapter assigns it by name
+high            -- e.g. a watch ECG, a continuous glucose sensor
+medium          -- e.g. optical wrist HR, ring SpO2
 low             -- estimated or derived (e.g., phone camera PPG, mic-based respiratory rate)
 vendor_derived  -- pre-computed by vendor algorithm (e.g., WHOOP strain, Oura readiness)
 ```
@@ -235,7 +192,7 @@ PersonalBaseline {
     id:             UUID
     metric_type:    MetricType
     context:        BaselineContext      -- enum: resting | active | sleeping | all
-    window_days:    Int                 -- rolling window used (default: 30)
+    window_days:    Int                 -- rolling window used (default: 14)
     computed_at:    DateTime (UTC)
     mean:           Float64
     std_dev:        Float64
@@ -248,48 +205,29 @@ PersonalBaseline {
 
 ### Anomaly
 
-Output of the Baseline Engine when a deviation is detected.
+One alert: watched metrics outside the owner's usual range. The table name
+and several column names predate the instrument-only decision.
 
 ```
 Anomaly {
     id:             UUID
     detected_at:    DateTime (UTC)
-    metric_types:   MetricType[]        -- involved metrics (1 for single-signal, N for cross-correlation)
+    metric_types:   MetricType[]        -- the metrics beyond the cut
     deviation_scores: Map<MetricType, Float64>  -- z-score per metric
-    combined_score: Float64             -- weighted multi-signal score
-    pattern_match:  ConditionPattern?   -- matched known condition signature, if any
-    severity:       AlertTier           -- enum: observation | notice | advisory | urgent
-    title:          String              -- human-readable summary
-    explanation:    String              -- what changed and why it matters
-    suggested_action: String?           -- what the user can do
-    readings:       MetricReading.id[]  -- linked raw readings
+    combined_score: Float64             -- DeviationScore
+    pattern_id:     String?             -- "ml_holistic_anomaly" on every alert raised now (identifier kept from earlier versions);
+                                        -- "earlier_alert" on rows raised by a removed pattern
+    severity:       AlertTier           -- observation | notice | advisory | warning (urgent: stored rows of earlier versions only)
+    title:          String              -- "Outside your usual range"
+    explanation:    String              -- the measured lines, in units
+    suggested_action: String?           -- always null now
+    signal_snapshot: JSON?              -- watched metrics as they stood at detection
     acknowledged:   Bool
     acknowledged_at: DateTime?
-}
-```
-
-### ConditionPattern
-
-Reference definitions for known condition signatures (shipped with the app, updated OTA).
-
-```
-ConditionPattern {
-    id:             UUID
-    condition_name: String              -- e.g., "Potential infection onset"
-    category:       ConditionCategory   -- enum: cardiovascular | respiratory | metabolic | sleep | mental_health | infectious | womens_health
-    required_signals: SignalRule[]       -- what must be present
-    confidence_level: String            -- from WEARABLES_AND_DETECTION.md research
-    description:    String              -- medical context
-    references:     String[]            -- published research citations
-    version:        Int                 -- for OTA updates
-}
-
-SignalRule {
-    metric_type:    MetricType
-    direction:      enum: above | below | irregular
-    threshold_sigma: Float64            -- deviation from baseline in std devs
-    min_duration_hours: Int             -- how long must deviation persist
-    weight:         Float64             -- contribution to combined score
+    notes:          String?             -- the owner's note
+    -- journal columns of earlier versions (felt_sick, visited_doctor, diagnosis,
+    -- symptoms, outcome_accurate, feedback_at) remain in the table. Nothing
+    -- writes them; the yes/no answers are no longer shown or exported.
 }
 ```
 
@@ -307,10 +245,8 @@ How vendor-specific data maps to Bios Unified Metrics:
 | Health Connect `OxygenSaturationRecord` | `blood_oxygen` | percentage (none needed) | medium |
 | Health Connect `SkinTemperatureRecord` | `skin_temperature_deviation` | delta C (none needed) | medium |
 | Oura `readiness.score` | `recovery_score` | normalize 0-100 | vendor_derived |
-| WHOOP `strain` | `strain_score` | 0-21 scale (none needed) | vendor_derived |
 | Dexcom `egv.value` | `blood_glucose` | mg/dL (none needed) | high |
-| Samsung Health `blood_pressure` | `blood_pressure_systolic` + `blood_pressure_diastolic` | mmHg (split into two readings) | medium |
-| Phone accelerometer | `accelerometer_raw` | normalize to m/s2 | low |
+| Withings blood pressure measure | `blood_pressure_systolic` + `blood_pressure_diastolic` | mmHg (split into two readings) | medium |
 | Phone camera PPG | `heart_rate` | bpm (extract from waveform) | low |
 
 ---
@@ -332,21 +268,22 @@ How vendor-specific data maps to Bios Unified Metrics:
 | **1 year (no CGM)** | | | **~9 MB** |
 | **1 year (with CGM)** | | | **~15 MB** |
 
-Well within the 100 MB budget, leaving ample room for raw payloads and baselines.
+Readings older than 90 days are deleted by the periodic sync, which bounds the size further.
 
 ---
 
-## FHIR Mapping (for healthcare export)
+## FHIR Mapping
 
 | Bios Entity | FHIR Resource |
 |---|---|
 | MetricReading | Observation |
 | DataSource | Device |
-| PersonalBaseline | Observation (with baseline interpretation) |
-| Anomaly | DetectedIssue / Flag |
-| ConditionPattern | Library (definition) |
+| PersonalBaseline | Observation |
+| Intervention events | Procedure |
+| Lab specimen context | Specimen |
 
-Export produces a FHIR Bundle that any EHR system can import.
+Alerts are not part of the FHIR bundle. The JSON and CSV exports carry an
+alert as what was measured (see [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md)).
 
 ---
 
@@ -359,7 +296,7 @@ Export produces a FHIR Bundle that any EHR system can import.
 - **Local-first / offline** — both work against data on-device, no cloud dependency
 - **Hide source-specific gore** — each Bios adapter and each HPI module encapsulates the messy parsing/locating/caching for one data source
 - **Typed outputs** — Bios uses `MetricReading` (Kotlin dataclass); HPI uses per-module `NamedTuple`s
-- **Defensive parsing** — Bios keeps `raw_payload` for debugging; HPI uses mypy-assisted error handling to surface partial failures without crashing
+- **Defensive parsing** — Bios isolates failures per adapter; HPI uses mypy-assisted error handling to surface partial failures without crashing
 - **Extensible without forking** — Bios via new adapter, HPI via namespace packages
 
 **Intentional divergence — source-agnostic vs. source-typed:**

@@ -1,266 +1,112 @@
 # Bios Tech Stack
 
-## Decision Framework
+## Constraints
 
-Choices are driven by Bios's core constraints:
-1. **Privacy-first** -- on-device processing, encrypted local storage
-2. **LETHE-primary, Android-portable** -- embedded on LETHE (OSmosis privacy-hardened ROM), runs on any Android 9+
-3. **No Play Services dependency** -- must work on degoogled ROMs (LETHE, LineageOS, CalyxOS, GrapheneOS)
-4. **Battery-efficient** -- background health processing must be lightweight
-5. **Small team** -- maximize code sharing, minimize maintenance surface
-
----
-
-## Mobile App
-
-### Approach: LETHE-primary, Android-portable
-
-**Android: Kotlin + Jetpack Compose**
-
-**Primary target: LETHE** (OSmosis privacy-hardened Android overlay, LineageOS 22.1 base):
-- Embedded as a system app via OSmosis overlay (`apply-overlays.sh`)
-- Deep integration with LETHE agent (local API on `localhost:8080`), Void launcher (health cards), and OTA system
-- Inherits OS-level privacy hardening: firewall, tracker blocking, burner mode, dead man's switch
-- No Play Services, no Google Analytics, no cloud dependency — matches LETHE's degoogled philosophy
-
-**Portable to stock Android (API 28–35):**
-- Runs as a standalone APK with no LETHE dependencies
-- Platform-specific behavior abstracted via `platform/` interfaces (see ARCHITECTURE.md)
-- Health Connect used on Android 14+; direct sensor adapters on older versions
-- No Google Play Services required (but tolerates their presence on stock ROMs)
-
-**Build flavors:**
-- `lethe`: System app, LETHE agent IPC, launcher integration, system-level sensor access
-- `standalone`: Standard APK, Health Connect or direct sensors, no LETHE dependencies
-
-**Why native over cross-platform (React Native / Flutter):**
-- Health Connect and direct sensor APIs are deeply platform-specific
-- Background processing (WorkManager), sensor access, and notifications work best natively
-- On-device ML via TensorFlow Lite integrates natively
-- Health apps demand the performance and battery efficiency of native code
-- LETHE system app integration requires native Android APIs
-
-**iOS (future):** If/when iOS is needed, build with Swift + SwiftUI using the same architecture. Shared logic can be extracted via Kotlin Multiplatform (KMP).
+1. **On-device.** All processing and storage happen on the phone. There is no Bios server.
+2. **LETHE first, Android portable.** Built for LETHE (LineageOS-based overlay), runs on any Android 9+.
+3. **No Play Services.** Must work on degoogled ROMs.
+4. **Battery.** Background work is periodic and batched.
+5. **Small team.** One codebase, few dependencies.
 
 ---
+
+## App
+
+**Kotlin + Jetpack Compose**, native Android. `compileSdk` and `targetSdk` 35, `minSdk` 28.
+
+Why native: Health Connect, sensors, WorkManager, foreground services, a ContentProvider with its own permissions and LETHE integration are all platform APIs.
+
+**Modules** (`android/settings.gradle.kts`):
+
+| Module | Content |
+|---|---|
+| `:app` | The application |
+| `:bios-contracts` | Metric keys, units, domains, the provider contract, permissions and intent actions. Companion apps compile against it. A snapshot test guards against removing a key. |
+
+**Build flavors** (dimension `platform`): `standalone` (published) and `lethe` (application id suffix `.lethe`). They share all source; LETHE behaviour is selected at runtime by `PlatformDetector`.
+
+## Libraries
+
+| Concern | Library |
+|---|---|
+| UI | Jetpack Compose (Material 3), Navigation Compose, Lifecycle ViewModel |
+| Database | Room 2.6 over SQLCipher (`net.zetetic:sqlcipher-android`) |
+| Key storage | AndroidX Security Crypto (`EncryptedSharedPreferences`, Keystore-backed master key) |
+| Background work | WorkManager |
+| Wearable data | Health Connect client |
+| HTTP (vendor APIs only) | OkHttp |
+| Camera capture | CameraX |
+| Lab report OCR | Tesseract (`tesseract4android`), on-device |
+| Export encryption | Zip4j (AES-256 zip) |
+| Serialization | kotlinx.serialization, `org.json` |
+| Async | Kotlin coroutines and Flow |
+
+No analytics SDK, no crash reporter, no advertising library, no Google Play Services.
 
 ## Local Data Store
 
-### Room + SQLCipher
+Room with SQLCipher: AES-256 full-database encryption, compile-time checked queries, versioned migrations run at startup. Two databases (main and reproductive), each with its own passphrase held in `EncryptedSharedPreferences`. See [DATA_MODEL.md](DATA_MODEL.md) and [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md).
 
-**Why Room:**
-- Official Android persistence library with compile-time query verification
-- Excellent coroutine/Flow support for reactive UI
-- Built-in migration framework
-- Battle-tested on billions of devices
+## Computation
 
-**Why SQLCipher:**
-- AES-256 full-database encryption at rest (privacy requirement)
-- Drop-in replacement for Android SQLite via SupportFactory
-- Open source, audited
-- Compatible with standard SQLite tooling
-
-**Encryption key:** Stored in Android Keystore (stock) or LETHE hardware-backed keystore (embedded). No GMS dependency for key storage.
-
-**Schema migrations:** Room versioned migrations, run at app startup.
-
----
-
-## On-Device ML
-
-### Statistical detection (active)
-
-Rolling mean, standard deviation, z-scores, exponential moving averages. 12 condition patterns with 33 signal rules (24 literature-backed). Implemented in Kotlin, no ML framework needed.
-
-### LiteRT (Google's rebranded TensorFlow Lite)
-
-- Anomaly detection model wrapper implemented (`TFLiteAnomalyModel.kt`)
-- Heuristic fallback active when model asset not present
-- Models shipped as .tflite bundles, updated OTA via `ModelUpdateManager`
-- Inference runs on-device, no network required
-
-### Federated learning (implemented)
-
-- `FederatedTrainer` computes on-device gradients from owner's feedback-labeled anomalies
-- Differential privacy noise (Laplace, epsilon=1.0) applied before export
-- Encrypted gradient transmission to server for secure aggregation
-- Owner opts in/out independently; opting out doesn't reduce features
-
-### Model training (offline, not on-device)
-
-- Python + scikit-learn + PyTorch for model development
-- Training on synthetic and anonymized research datasets
-- Export pipeline: PyTorch -> ONNX -> TFLite
-- Model signing: Ed25519 signatures verified on-device before installation
-
----
-
-## Backend (Opt-In Services)
-
-Minimal backend, only for features that require a server.
-
-### Runtime: Go
-
-**Why Go:**
-- Fast, small binaries, low memory footprint
-- Excellent concurrency for handling sync connections
-- Simple deployment (single static binary, no runtime)
-- Strong standard library for HTTP, crypto, JSON
-- Easy to hire for and maintain
-
-### API Framework: Standard library `net/http` + chi router
-
-No heavy frameworks. The backend is intentionally simple.
-
-### Database: PostgreSQL
-
-- For: user accounts, device registrations, anonymized aggregates, model version metadata
-- NOT for: raw health data (that stays on-device)
-
-### Object Storage: S3-compatible (model artifacts, encrypted sync blobs)
-
-### Infrastructure: Containerized (Docker), deployable to any cloud or self-hosted
-
-**Hosting (initial):** Fly.io or Railway for simplicity. Migrate to AWS/GCP if scale demands it.
-
----
-
-## Authentication
-
-### Device-level: Biometric / device credentials (app access)
-
-### Account-level (for opt-in sync): Passkey-first
-
-- WebAuthn / passkeys as primary auth (no passwords)
-- Fallback: email magic link
-- No OAuth social login (minimize third-party data exposure)
-- JWTs for API session management, short-lived (15 min) with refresh tokens
-
----
+Plain Kotlin in `engine/`: rolling mean, standard deviation, percentiles, z-scores, a fixed deviation-score table, band-pass filtering and peak detection for camera PPG, actigraphy rules for phone sleep. No ML framework and no trained model ship with the app.
 
 ## Networking
 
-### Wearable API integrations: OAuth 2.0 + REST
+- **Vendor APIs** (Oura, WHOOP, Garmin, Withings, Dexcom, Polar, COROS): HTTPS from the phone to the vendor, with the token or sign-in the owner provided, stored in `EncryptedSharedPreferences`.
+- **Loopback** (LETHE only): an HTTP server on `127.0.0.1:8080` for the LETHE agent, and a status post to the agent on loopback.
+- **Device-to-device sync**: code in `sync/` with a local-network transport and a stub for an Iroh node. Off; no screen enables it.
 
-Each third-party API (Oura, WHOOP, Garmin, Withings, Dexcom, Polar) uses OAuth 2.0 authorization code flow. Tokens stored in Android Keystore.
+Nothing else opens a connection.
 
-### Sync protocol: E2E encrypted, user-keyed
+## Possible later: raw biosensor boards
 
-- Client encrypts data with a key derived from user's passkey
-- Server stores and relays ciphertext only
-- Protocol: HTTPS + chunked upload/download
-- Conflict resolution: last-writer-wins per entity (health data is append-only, so conflicts are rare)
-
----
-
-## Future: Raw Biosensor Boards (EEG / BCI / dry-ECG)
-
-Current ingest covers consumer wearables (Oura/WHOOP/Garmin/etc.) and Health Connect. When Bios adds direct support for raw biosensor boards (OpenBCI Ganglion/Cyton, Muse, dry-ECG rigs), the path is **brainflow** ([brainflow-dev/brainflow](https://github.com/brainflow-dev/brainflow)) via its Java binding, not a custom protocol implementation.
-
-**Why:**
-- MIT-licensed, actively maintained, uniform SDK across boards
-- Already has Android NDK CI + a reference [BrainFlowAndroidTest](https://github.com/brainflow-dev/BrainFlowAndroidTest) app
-- OpenBCI partnership; covers the boards most likely to land first
-- Java binding can be consumed from Kotlin with minimal wrapping; new boards arrive without our code changes
-
-**Caveats:**
-- Author's own disclaimer: the Android reference app is "test quality, not production"
-- NDK wiring needed for the C/C++ core
-- Not needed for current camera-PPG + Health Connect phase — earmarked for the EEG/BCI roadmap milestone
-
----
+If Bios adds direct support for raw biosensor boards (OpenBCI Ganglion/Cyton, Muse, dry-ECG rigs), the path is **brainflow** ([brainflow-dev/brainflow](https://github.com/brainflow-dev/brainflow)) through its Java binding instead of a custom protocol implementation. It is MIT-licensed, has Android NDK CI and a uniform SDK across boards. The NDK wiring is not done and nothing depends on it today.
 
 ## Testing
 
 | Layer | Tool |
 |-------|------|
-| Unit tests | JUnit 5 + Kotest |
-| UI tests | Compose Testing + Espresso |
-| Backend tests | Go `testing` package |
-| Integration tests | Synthetic data generators that simulate wearable data patterns |
-| Anomaly detection validation | Ground-truth dataset of labeled healthy/sick periods |
-
----
+| Unit tests | JUnit 4 |
+| Tests that need Room or Android resources | Robolectric |
+| FHIR output | HAPI FHIR R4 parser and JSON Schema validation (test-only dependencies) |
+| Shown text | `VocabularyGateTest` over string resources and owner-facing string literals |
+| Contract | `MetricTypeKeysSnapshotTest` in `:bios-contracts` |
+| Static analysis | detekt with a per-module baseline; Android lint |
 
 ## CI/CD
 
-| Concern | Tool |
-|---------|------|
-| Android builds | GitHub Actions |
-| Backend builds | GitHub Actions |
-| Internal testing | Firebase App Distribution |
-| Model artifact delivery | GitHub Releases or S3 bucket with versioned manifests |
+| Workflow | Does |
+|---|---|
+| `ci.yml` | `scripts/code-quality-check.sh` (file length, secrets, lint, detekt, build, tests), debug build, dependency vulnerability scan, gitleaks |
+| `leakcheck.yml` | Fails on a reference to anything outside the repository |
+| `cross-repo-contracts.yml` | Builds companion apps against the current `bios-contracts` |
+| `release-please.yml` | Keeps the release PR, version bump and changelog |
+| `release.yml` | Builds, signs and attaches the standalone APK on a version tag |
 
----
-
-## Monitoring & Analytics
-
-### App analytics: PostHog (self-hostable, privacy-friendly)
-
-- Feature usage, retention, crash-free rate
-- No third-party analytics SDKs that phone home (no Firebase Analytics, no Mixpanel)
-- All analytics are opt-in and contain zero health data
-
-### Backend monitoring: Prometheus + Grafana
-
-- API latency, error rates, sync throughput
-- Deployed alongside the backend
-
-### Crash reporting: Sentry (self-hostable)
-
-- Symbolicated crash reports
-- No health data in crash payloads (enforced via scrubbing rules)
-
----
+The same checks run locally from `.githooks/` (install with `./scripts/install-hooks.sh`).
 
 ## Repository Structure
 
 ```
-bios/
-  android/                -- Android Studio project
-    app/src/main/java/com/bios/app/
-      model/              -- Data classes and enums (17 metric types, 9 source types)
-      data/               -- Room databases (main + reproductive), DAOs
-      platform/           -- LETHE integration (PlatformDetector, LetheCompat, DataDestroyer,
-                             SafeMode, HealthApiServer, OtaCoordinator, ForensicRiskMonitor)
-      ingest/             -- 9 adapters (HealthConnect, Gadgetbridge, DirectSensor, Oura,
-                             WHOOP, Garmin, Withings, Dexcom, PhoneSensor), IngestManager, SyncWorker
-      engine/             -- BaselineEngine, AnomalyDetector, TFLiteAnomalyModel, Statistics
-      federated/          -- FederatedTrainer, ModelUpdateManager
-      alerts/             -- 12 ConditionPatterns, AlertManager, AlertContentPolicy,
-                             BiomarkerReference, DailyDigestWorker, FollowUpWorker
-      privacy/            -- CommunityAggregator, ContributionWorker, PopulationHealthSignals,
-                             ResearchPipeline
-      export/             -- DataExporter, EncryptedZipExporter, FhirExporter, PdfReportExporter
-      sync/               -- SyncProtocol, SyncManager (E2E encrypted multi-device)
-      ui/                 -- 11 Jetpack Compose screens
-        home/ trends/ alerts/ settings/ onboarding/
-        diagnostics/ timeline/ journal/ privacy/ reference/
-        components/ theme/
-    app/src/test/         -- Unit tests (~20 test files)
-  backend/                -- Go backend (sync gateway, community, research, models)
-    cmd/gateway/          -- Application entry point
-    internal/
-      api/                -- HTTP handlers + middleware
-      auth/               -- Passkey/JWT authentication
-      model/              -- Data structures
-      store/              -- PostgreSQL (users, sync, contributions, signals, models)
-  docs/                   -- Architecture, roadmap, investigation
-  scripts/                -- Code quality checks, tooling
+android/
+  app/src/main/java/com/bios/app/
+    model/      -- Room entities and enums
+    data/       -- databases, migrations, repositories, dao/
+    ingest/     -- source adapters, deduplication, sync worker, phone sleep collection
+    engine/     -- baselines, deviation score, derivations, PPG signal processing
+    alerts/     -- the deviation alert, wording, notifications, source liveness
+    export/     -- JSON, CSV, FHIR, PDF export; FHIR import
+    labocr/     -- lab report OCR
+    provider/   -- BiosHealthProvider and the companion gate
+    platform/   -- LETHE integration, wipe, loopback API
+    sync/       -- device-to-device sync (off)
+    config/     -- region configuration (unit display, data-handling rules)
+    i18n/       -- language preference
+    ui/         -- Compose screens, components, theme
+  app/src/test/ -- unit tests
+  bios-contracts/ -- shared contract module
+docs/           -- architecture, data model, specs, design system
+scripts/        -- quality checks, hook installer, a FHIR export report script
+.githooks/      -- pre-commit, commit-msg, pre-push, leak check
 ```
-
----
-
-## Summary
-
-| Layer | Choice | Key Reason |
-|-------|--------|------------|
-| Android app | Kotlin + Jetpack Compose | Best Health Connect integration, LETHE system app support, broadest reach |
-| Primary platform | LETHE (LineageOS 22.1 overlay) | Privacy-hardened OS, degoogled, system-level integration |
-| Portability | Stock Android API 28–35 | Covers 95%+ active devices, no Play Services required |
-| Local DB | Room + SQLCipher | Encrypted, compile-time verified, fast time-series |
-| On-device ML | LiteRT + federated learning | Native acceleration, on-device gradients, no network needed |
-| Backend | Go + PostgreSQL | Simple, fast, small surface area |
-| Auth | Passkeys + magic link | No passwords, privacy-first |
-| CI/CD | GitHub Actions + Xcode Cloud | Standard, reliable |
-| Analytics | PostHog (self-hosted) | Privacy-friendly, no data leakage |
