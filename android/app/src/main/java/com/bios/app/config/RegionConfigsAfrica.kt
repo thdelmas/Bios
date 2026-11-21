@@ -7,7 +7,7 @@ package com.bios.app.config
  * Regulatory bodies: many countries have a national authority (e.g.
  * NAFDAC in NG, SAHPRA in ZA, EFDA in ET); when no authority is
  * verifiable, "Ministry of Health" or the WHO regional office is the
- * fallback. Cross-reference: docs/audits/AFRICAN_TRADITIONAL_POV.md.
+ * fallback.
  */
 internal object RegionConfigsAfrica {
 

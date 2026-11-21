@@ -328,8 +328,8 @@ enum class MetricType(
     NT_PRO_BNP_PG_PER_ML("nt_pro_bnp_pg_per_ml", MetricUnit.PG_PER_ML, MetricDomain.BIOMARKER, allowsManualEntry = true),
     ABSOLUTE_NEUTROPHIL_COUNT("absolute_neutrophil_count", MetricUnit.PER_MICRO_L, MetricDomain.BIOMARKER, allowsManualEntry = true),
 
-    // Wave-1 biomarker expansion (docs/audits/BLUEPRINT_PROTOCOL_AUDIT.md §3.1).
-    // Closes the highest-priority Blueprint-vs-Bios coverage gaps: independent
+    // Wave-1 biomarker expansion.
+    // Closes the highest-priority coverage gaps: independent
     // ASCVD risk markers, full CMP, full liver panel, CBC indices + 5-cell
     // differential, iron studies, and the reproductive-endocrine panel. All
     // pure-additive enum entries — no engine work, FHIR import via LOINC.

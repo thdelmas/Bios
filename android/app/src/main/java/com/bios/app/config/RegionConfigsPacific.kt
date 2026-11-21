@@ -5,8 +5,7 @@ package com.bios.app.config
  * sovereignty), Aotearoa New Zealand (flagged for Te Mana Raraunga),
  * Melanesia, Polynesia, and Micronesia.
  *
- * Indigenous data sovereignty flags (cross-reference:
- * docs/audits/OCEANIC_ARCTIC_POV.md):
+ * Indigenous data sovereignty flags:
  *  - AU: NACCHO + Maiam nayri Wingara Aboriginal & Torres Strait
  *    Islander Data Sovereignty principles.
  *  - NZ: Te Mana Raraunga / Māori Data Sovereignty Network.
