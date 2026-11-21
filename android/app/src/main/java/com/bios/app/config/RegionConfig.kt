@@ -20,9 +20,8 @@ data class RegionConfig(
     val clinicalThresholds: ClinicalThresholds,
     val regulatory: RegulatoryConfig,
     /**
-     * Local emergency services number for the region. Surfaced on alerts
-     * recommending professional escalation. `null` when no canonical number
-     * exists — UI falls back to "your local emergency services".
+     * Local emergency services number for the region. `null` when no
+     * canonical number exists.
      */
     val emergencyNumber: String? = null,
     /**
@@ -32,13 +31,6 @@ data class RegionConfig(
      * on data-export UI. Cross-ref: INDIGENOUS_AMERICAS_POV §2.5, OCEANIC_ARCTIC_POV.
      */
     val indigenousFlagged: Boolean = false,
-    /**
-     * Whether tropical / endemic-disease patterns (malaria, dengue, chikungunya,
-     * leptospirosis, scrub typhus, ciguatera) should fire in this region (#196,
-     * audit gap §2.6). Cross-ref: AFRICAN_TRADITIONAL_POV §2.6, OTHER_ASIAN_SYSTEMS_POV §2-3,
-     * OCEANIC_ARCTIC_POV §2.6. Owner override via [com.bios.app.physiology.OwnerCondition].
-     */
-    val tropicalDiseaseRelevant: Boolean = false,
     /**
      * Default climate zone for this region. Owner-overridable from
      * Settings → Environmental context. Used to seed heat / cold pattern
@@ -196,21 +188,6 @@ data class RegulatoryConfig(
     val explicitCommunityConsent: Boolean,
     /** Whether FHIR export should default to the region's national FHIR profile. */
     val fhirProfileUrl: String?,
-    /** Regulatory body name for disclaimers (e.g., "FDA", "EMA", "TGA"). */
+    /** Regulatory body of the region (e.g., "FDA", "EMA", "TGA"). */
     val regulatoryBody: String,
-    /**
-     * Required disclaimer text for health alerts. English source-of-truth
-     * — the [com.bios.app.alerts.AlertTextResolver]-style lookup using
-     * [alertDisclaimerKey] takes precedence when an Android [android.content.Context]
-     * is available, so callers running outside the framework (tests, headless
-     * jobs) still receive the disclaimer in English.
-     */
-    val alertDisclaimer: String,
-    /**
-     * Resource name (in `values/pattern_strings.xml` and locale overlays)
-     * for the localized form of [alertDisclaimer]. Resolved at notification
-     * render time. Null when no localized resource exists yet — caller
-     * falls back to [alertDisclaimer]. See issue #210.
-     */
-    val alertDisclaimerKey: String? = null,
 )

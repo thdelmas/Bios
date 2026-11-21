@@ -42,16 +42,15 @@ internal object RegionConfigsAmericas {
         py(),
         cr(),
         pa(),
-        // Caribbean + Central America (#196): tropical-flagged for dengue/chikungunya
-        // endemicity. SV stays default to mirror PR #225's authoritative list.
-        standardRegion("DO", "Dominican Republic", "911", "DIGEMAPS", tropicalDiseaseRelevant = true),
-        standardRegion("JM", "Jamaica", "110", "MOHWJM", tropicalDiseaseRelevant = true),
-        standardRegion("GT", "Guatemala", "122", "MSPAS", tropicalDiseaseRelevant = true),
-        standardRegion("HN", "Honduras", "911", "ARSA", tropicalDiseaseRelevant = true),
+        // Caribbean + Central America
+        standardRegion("DO", "Dominican Republic", "911", "DIGEMAPS"),
+        standardRegion("JM", "Jamaica", "110", "MOHWJM"),
+        standardRegion("GT", "Guatemala", "122", "MSPAS"),
+        standardRegion("HN", "Honduras", "911", "ARSA"),
         standardRegion("SV", "El Salvador", "911", "MINSAL"),
-        standardRegion("NI", "Nicaragua", "118", "MINSA", tropicalDiseaseRelevant = true),
-        standardRegion("CU", "Cuba", "185", "MINSAP", tropicalDiseaseRelevant = true),
-        standardRegion("HT", "Haiti", "118", "MSPP", tropicalDiseaseRelevant = true),
+        standardRegion("NI", "Nicaragua", "118", "MINSA"),
+        standardRegion("CU", "Cuba", "185", "MINSAP"),
+        standardRegion("HT", "Haiti", "118", "MSPP"),
     ).associateBy { it.regionCode }
 
     // -- Anchor regions --
@@ -81,9 +80,6 @@ internal object RegionConfigsAmericas {
             explicitCommunityConsent = true,
             fhirProfileUrl = "http://hl7.org/fhir/us/core",
             regulatoryBody = "FDA",
-            alertDisclaimer = "Bios is not an FDA-cleared medical device. " +
-                "Alerts are informational and do not constitute medical advice.",
-            alertDisclaimerKey = "alert_disclaimer_us",
         ),
         emergencyNumber = "911",
         climateZone = ClimateZone.TEMPERATE,
@@ -102,8 +98,6 @@ internal object RegionConfigsAmericas {
             explicitCommunityConsent = true,
             fhirProfileUrl = "https://www.infoway-inforoute.ca/fhir",
             regulatoryBody = "Health Canada",
-            alertDisclaimer = "Bios is not a Health Canada licensed medical device. " +
-                "Alerts are informational and do not constitute medical advice.",
         ),
         emergencyNumber = "911",
         climateZone = ClimateZone.COLD,
@@ -129,14 +123,9 @@ internal object RegionConfigsAmericas {
     // pattern (most countries report glucose in mmol/L on official
     // forms). Per-country override possible if a survey shows otherwise.
 
-    // Tropical-flagged regions activate TropicalDiseasePatterns (#196). CDC
-    // endemicity maps for dengue / chikungunya / malaria converge on the
-    // Americas tropics: Mexico through tropical South America, plus the
-    // Caribbean. AR/CL/UY/CR stay default (subtropical / temperate).
     private fun mx() = standardRegion(
         regionCode = "MX", displayName = "Mexico",
         emergencyNumber = "911", regulatoryBody = "COFEPRIS",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun ar() = standardRegion(
@@ -147,7 +136,6 @@ internal object RegionConfigsAmericas {
     private fun br() = standardRegion(
         regionCode = "BR", displayName = "Brazil",
         emergencyNumber = "192", regulatoryBody = "ANVISA",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun cl() = standardRegion(
@@ -158,31 +146,26 @@ internal object RegionConfigsAmericas {
     private fun co() = standardRegion(
         regionCode = "CO", displayName = "Colombia",
         emergencyNumber = "123", regulatoryBody = "INVIMA",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun pe() = standardRegion(
         regionCode = "PE", displayName = "Peru",
         emergencyNumber = "106", regulatoryBody = "DIGEMID",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun ve() = standardRegion(
         regionCode = "VE", displayName = "Venezuela",
         emergencyNumber = "171", regulatoryBody = "INHRR",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun ec() = standardRegion(
         regionCode = "EC", displayName = "Ecuador",
         emergencyNumber = "911", regulatoryBody = "ARCSA",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun bo() = standardRegion(
         regionCode = "BO", displayName = "Bolivia",
         emergencyNumber = "118", regulatoryBody = "AGEMED",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun uy() = standardRegion(
@@ -193,7 +176,6 @@ internal object RegionConfigsAmericas {
     private fun py() = standardRegion(
         regionCode = "PY", displayName = "Paraguay",
         emergencyNumber = "911", regulatoryBody = "DINAVISA",
-        tropicalDiseaseRelevant = true,
     )
 
     private fun cr() = standardRegion(
@@ -204,6 +186,5 @@ internal object RegionConfigsAmericas {
     private fun pa() = standardRegion(
         regionCode = "PA", displayName = "Panama",
         emergencyNumber = "911", regulatoryBody = "MINSA",
-        tropicalDiseaseRelevant = true,
     )
 }

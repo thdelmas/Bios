@@ -20,28 +20,28 @@ internal object RegionConfigsAsia {
 
     val configs: Map<String, RegionConfig> = listOf(
         jp(),
-        // East Asia — non-tropical (subtropical HK/TW excluded per PR #225 list).
+        // East Asia
         standardRegion("CN", "China", "120", "NMPA"),
         standardRegion("KR", "South Korea", "119", "MFDS"),
         standardRegion("HK", "Hong Kong", "999", "DH"),
         standardRegion("TW", "Taiwan", "119", "TFDA"),
         standardRegion("MN", "Mongolia", "103", "DRA"),
-        // South Asia — tropical flags per PR #225 / WHO dengue+malaria endemicity.
-        standardRegion("IN", "India", "108", "CDSCO", tropicalDiseaseRelevant = true),
-        standardRegion("PK", "Pakistan", "115", "DRAP", tropicalDiseaseRelevant = true),
-        standardRegion("BD", "Bangladesh", "199", "DGDA", tropicalDiseaseRelevant = true),
-        standardRegion("LK", "Sri Lanka", "1990", "NMRA", tropicalDiseaseRelevant = true),
+        // South Asia
+        standardRegion("IN", "India", "108", "CDSCO"),
+        standardRegion("PK", "Pakistan", "115", "DRAP"),
+        standardRegion("BD", "Bangladesh", "199", "DGDA"),
+        standardRegion("LK", "Sri Lanka", "1990", "NMRA"),
         standardRegion("NP", "Nepal", "102", "DDA"),
         standardRegion("BT", "Bhutan", "112", "DRA"),
-        // South-East Asia — tropical flags per PR #225.
-        standardRegion("VN", "Vietnam", "115", "DAV", tropicalDiseaseRelevant = true),
-        standardRegion("TH", "Thailand", "1669", "Thai FDA", tropicalDiseaseRelevant = true),
-        standardRegion("MY", "Malaysia", "999", "NPRA", tropicalDiseaseRelevant = true),
+        // South-East Asia
+        standardRegion("VN", "Vietnam", "115", "DAV"),
+        standardRegion("TH", "Thailand", "1669", "Thai FDA"),
+        standardRegion("MY", "Malaysia", "999", "NPRA"),
         standardRegion("SG", "Singapore", "995", "HSA"),
-        standardRegion("ID", "Indonesia", "119", "BPOM", tropicalDiseaseRelevant = true),
-        standardRegion("PH", "Philippines", "911", "FDA-PH", tropicalDiseaseRelevant = true),
-        standardRegion("MM", "Myanmar", "192", "FDA-MM", tropicalDiseaseRelevant = true),
-        standardRegion("KH", "Cambodia", "119", "DDF", tropicalDiseaseRelevant = true),
+        standardRegion("ID", "Indonesia", "119", "BPOM"),
+        standardRegion("PH", "Philippines", "911", "FDA-PH"),
+        standardRegion("MM", "Myanmar", "192", "FDA-MM"),
+        standardRegion("KH", "Cambodia", "119", "DDF"),
         standardRegion("LA", "Laos", "1623", "FDD"),
         standardRegion("BN", "Brunei", "991", "MOH"),
         // Central Asia
@@ -69,7 +69,6 @@ internal object RegionConfigsAsia {
             explicitCommunityConsent = true,  // APPI
             fhirProfileUrl = "http://jpfhir.jp",
             regulatoryBody = "PMDA",
-            alertDisclaimer = "Biosは医療機器ではありません。アラートは情報提供を目的としており、医学的助言ではありません。",
         ),
         emergencyNumber = "119",
     )

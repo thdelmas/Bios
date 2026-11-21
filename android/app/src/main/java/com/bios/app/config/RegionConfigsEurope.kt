@@ -34,9 +34,6 @@ internal object RegionConfigsEurope {
             explicitCommunityConsent = true,  // UK GDPR
             fhirProfileUrl = "https://fhir.hl7.org.uk",
             regulatoryBody = "MHRA",
-            alertDisclaimer = "Bios is not a registered medical device. " +
-                "Alerts are informational and do not constitute medical advice.",
-            alertDisclaimerKey = "alert_disclaimer_gb",
         ),
         emergencyNumber = "999",  // 112 also accepted EU-wide
         climateZone = ClimateZone.TEMPERATE,
@@ -58,9 +55,6 @@ internal object RegionConfigsEurope {
             explicitCommunityConsent = true,  // GDPR
             fhirProfileUrl = null,
             regulatoryBody = "EMA",
-            alertDisclaimer = "Bios is not a CE-marked medical device. " +
-                "Alerts are informational and do not constitute medical advice.",
-            alertDisclaimerKey = "alert_disclaimer_eu",
         ),
         emergencyNumber = "112",
         climateZone = ClimateZone.TEMPERATE,

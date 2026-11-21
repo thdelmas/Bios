@@ -48,9 +48,4 @@ class MetricFormatter(private val config: RegionConfig) {
             "${String.format("%.${decimals}f", mgPerDl)} mg/dL"
         }
     }
-
-    /**
-     * Returns the regulatory disclaimer for health alerts.
-     */
-    fun alertDisclaimer(): String = config.regulatory.alertDisclaimer
 }

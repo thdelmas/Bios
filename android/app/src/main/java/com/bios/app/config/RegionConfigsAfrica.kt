@@ -21,21 +21,18 @@ package com.bios.app.config
 internal object RegionConfigsAfrica {
 
     val configs: Map<String, RegionConfig> = listOf(
-        // -- Sub-Saharan -- (tropical flags per PR #225 / CDC dengue+malaria maps;
-        // Maghreb stays default — non-endemic). Other sub-Saharan regions in this
-        // file but not in the PR's authoritative list (MZ/AO/ZW/BW/NA/MW/ZM/RW/MG)
-        // stay default; a follow-up can extend coverage with audit support.
-        standardRegion("NG", "Nigeria", "112", "NAFDAC", tropicalDiseaseRelevant = true),
-        standardRegion("KE", "Kenya", "999", "PPB", tropicalDiseaseRelevant = true),
-        standardRegion("ZA", "South Africa", "10177", "SAHPRA", tropicalDiseaseRelevant = true),
-        standardRegion("GH", "Ghana", "193", "FDA-GH", tropicalDiseaseRelevant = true),
-        standardRegion("ET", "Ethiopia", "907", "EFDA", tropicalDiseaseRelevant = true),
-        standardRegion("TZ", "Tanzania", "114", "TMDA", tropicalDiseaseRelevant = true),
-        standardRegion("UG", "Uganda", "999", "NDA-UG", tropicalDiseaseRelevant = true),
+        // -- Sub-Saharan --
+        standardRegion("NG", "Nigeria", "112", "NAFDAC"),
+        standardRegion("KE", "Kenya", "999", "PPB"),
+        standardRegion("ZA", "South Africa", "10177", "SAHPRA"),
+        standardRegion("GH", "Ghana", "193", "FDA-GH"),
+        standardRegion("ET", "Ethiopia", "907", "EFDA"),
+        standardRegion("TZ", "Tanzania", "114", "TMDA"),
+        standardRegion("UG", "Uganda", "999", "NDA-UG"),
         standardRegion("MZ", "Mozambique", "117", "ANARME"),
-        standardRegion("SN", "Senegal", "15", "DPM", tropicalDiseaseRelevant = true),
-        standardRegion("CI", "Côte d'Ivoire", "185", "DPML", tropicalDiseaseRelevant = true),
-        standardRegion("CM", "Cameroon", "119", "MoH", tropicalDiseaseRelevant = true),
+        standardRegion("SN", "Senegal", "15", "DPM"),
+        standardRegion("CI", "Côte d'Ivoire", "185", "DPML"),
+        standardRegion("CM", "Cameroon", "119", "MoH"),
         standardRegion("AO", "Angola", "115", "INAMED"),
         standardRegion("ZW", "Zimbabwe", "999", "MCAZ"),
         standardRegion("BW", "Botswana", "911", "BoMRA"),
@@ -43,7 +40,7 @@ internal object RegionConfigsAfrica {
         standardRegion("MW", "Malawi", "998", "PMRA"),
         standardRegion("ZM", "Zambia", "902", "ZAMRA"),
         standardRegion("RW", "Rwanda", "912", "Rwanda FDA"),
-        standardRegion("CD", "DR Congo", "118", "ACOREP", tropicalDiseaseRelevant = true),
+        standardRegion("CD", "DR Congo", "118", "ACOREP"),
         standardRegion("MG", "Madagascar", "124", "Agence du Médicament"),
 
         // -- Maghreb / North Africa --

@@ -12,10 +12,6 @@ package com.bios.app.config
  * domestic number.
  *
  * Glucose unit: mmol/L is the regional clinical norm.
- *
- * Saudi-specific text uses Modern Standard Arabic for the disclaimer
- * since MSA reads cleanly across the GCC; non-GCC Arabic-speaking
- * countries use the same MSA disclaimer.
  */
 internal object RegionConfigsMiddleEast {
 
@@ -28,14 +24,12 @@ internal object RegionConfigsMiddleEast {
             displayName = "Saudi Arabia",
             emergencyNumber = "997",                                     // 997 Saudi Red Crescent
             regulatoryBody = "SFDA",
-            disclaimer = ARABIC_DISCLAIMER,
         ),
         standardRegion(
             regionCode = "QA",
             displayName = "Qatar",
             emergencyNumber = "999",
             regulatoryBody = "MOPH",
-            disclaimer = ARABIC_DISCLAIMER,
         ),
         standardRegion("IR", "Iran", "115", "IFDA"),
         standardRegion(
@@ -43,7 +37,6 @@ internal object RegionConfigsMiddleEast {
             displayName = "Iraq",
             emergencyNumber = "122",
             regulatoryBody = "Ministry of Health",
-            disclaimer = ARABIC_DISCLAIMER,
         ),
         standardRegion("JO", "Jordan", "911", "JFDA"),
         standardRegion(
@@ -51,25 +44,18 @@ internal object RegionConfigsMiddleEast {
             displayName = "Lebanon",
             emergencyNumber = "140",                                     // Lebanese Red Cross EMS
             regulatoryBody = "Ministry of Public Health",
-            disclaimer = ARABIC_DISCLAIMER,
         ),
         standardRegion(
             regionCode = "SY",
             displayName = "Syria",
             emergencyNumber = "110",                                     // Syrian Arab Red Crescent
             regulatoryBody = "Ministry of Health",
-            disclaimer = ARABIC_DISCLAIMER,
         ),
         standardRegion(
             regionCode = "YE",
             displayName = "Yemen",
             emergencyNumber = "119",
             regulatoryBody = "SBDMA",
-            disclaimer = ARABIC_DISCLAIMER,
         ),
     ).associateBy { it.regionCode }
-
-    /** Arabic-language disclaimer reused across GCC + Mashriq configs. */
-    private const val ARABIC_DISCLAIMER =
-        "Bios ليس جهازًا طبيًا مسجلًا. التنبيهات لأغراض إعلامية ولا تشكل نصيحة طبية."
 }

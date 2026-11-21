@@ -47,19 +47,6 @@ internal fun defaultThresholds(
 )
 
 /**
- * Builds the default informational disclaimer for a region. Localised
- * variants can be passed by the per-region builder; this is the English
- * fallback ("Bios is not a registered medical device. Alerts are
- * informational and do not constitute medical advice.").
- *
- * This text is push-side and must comply with [AlertContentPolicy] —
- * factual statement, no "you should" / no judgment.
- */
-internal fun defaultDisclaimer(): String =
-    "Bios is not a registered medical device. " +
-        "Alerts are informational and do not constitute medical advice."
-
-/**
  * Standard mmol/L config (WHO / IDF — fasting concern 5.6 mmol/L).
  * Used as the default for the vast majority of regions outside US/JP.
  */
@@ -80,9 +67,7 @@ internal fun standardRegion(
     emergencyNumber: String?,
     regulatoryBody: String,
     indigenousFlagged: Boolean = false,
-    tropicalDiseaseRelevant: Boolean = false,
     thresholds: ClinicalThresholds = mmolGlucoseDefaults(),
-    disclaimer: String = defaultDisclaimer(),
     fhirProfileUrl: String? = null,
     reproductiveDataIsolation: Boolean = false,
     explicitCommunityConsent: Boolean = true,
@@ -98,11 +83,9 @@ internal fun standardRegion(
         explicitCommunityConsent = explicitCommunityConsent,
         fhirProfileUrl = fhirProfileUrl,
         regulatoryBody = regulatoryBody,
-        alertDisclaimer = disclaimer,
     ),
     emergencyNumber = emergencyNumber,
     indigenousFlagged = indigenousFlagged,
-    tropicalDiseaseRelevant = tropicalDiseaseRelevant,
 )
 
 // -- Unit conversion helpers --

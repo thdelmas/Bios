@@ -14,8 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,17 +26,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.AlertDetail
 import com.bios.app.alerts.AlertDetailContent
 import com.bios.app.alerts.AlertManager
 import com.bios.app.alerts.MeasuredSignal
-import com.bios.app.config.RegionConfigProvider
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
 import com.bios.app.ui.AppViewModel
@@ -50,10 +45,9 @@ import java.text.DateFormat
 import java.util.Date
 
 /**
- * Where an alert notification tap lands (docs/specs/alert-detail.md): what was
- * measured in real units, which other signals agree, common causes as
- * possibilities, what to watch, when to seek care now, and the journal entry.
- * Pull-side: the owner opened it.
+ * Where an alert notification tap lands: the tier as a size of deviation,
+ * what was measured in real units against the owner's usual range, the other
+ * watched metrics over the same 24 hours, acknowledge and the owner's journal.
  */
 @Composable
 fun AlertDetailScreen(
@@ -124,12 +118,8 @@ private fun AlertDetailBody(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        CausesSection(deviating)
-        anomaly.suggestedAction?.let { Section("Suggested next step") { Body(it) } }
-        Section("Worth watching") { Bullets(AlertDetailContent.WORTH_WATCHING) }
-        SeekCareCard()
         Text(
-            AlertDetailContent.ONE_ALERT_NOTE,
+            AlertDetailContent.HOW_COMPARED,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -180,46 +170,11 @@ private fun MeasuredSection(anomaly: Anomaly, deviating: List<MeasuredSignal>, n
 
 @Composable
 private fun OtherSignalsSection(others: List<MeasuredSignal>, now: Map<String, MeasuredSignal>) {
-    Section("Other signals, same 24 hours") {
+    Section("Other metrics, same 24 hours") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             others.forEach {
                 SignalStripRow(it, "within your usual range", AlertDetailContent.nowLine(it, now[it.metricKey]))
             }
-        }
-    }
-}
-
-@Composable
-private fun CausesSection(deviating: List<MeasuredSignal>) {
-    deviating.take(2).forEach { s ->
-        val dir = if (s.above) "raise" else "lower"
-        Section("Things that commonly $dir ${AlertDetailContent.label(s.metricKey)}") {
-            Bullets(AlertDetailContent.commonCauses(s.metricKey, s.above))
-        }
-    }
-}
-
-@Composable
-private fun SeekCareCard() {
-    val context = LocalContext.current
-    val region = remember { RegionConfigProvider.forDevice(context) }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                AlertDetailContent.SEEK_CARE_HEADING,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Bullets(AlertDetailContent.SEEK_CARE_NOW, MaterialTheme.colorScheme.onErrorContainer)
-            Text(
-                AlertDetailContent.emergencyLine(region.emergencyNumber, region.displayName),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
         }
     }
 }
@@ -233,7 +188,7 @@ private fun ActionsSection(
     if (!anomaly.acknowledged) {
         Button(onClick = onAcknowledge, modifier = Modifier.fillMaxWidth()) { Text("Acknowledge") }
     }
-    Section("What happened? (your journal)") {
+    Section("Your journal") {
         if (anomaly.feedbackAt != null) FeedbackSummary(anomaly) else FeedbackForm(onSubmit = onSaveFeedback)
     }
 }
@@ -254,13 +209,6 @@ private fun Section(label: String, content: @Composable () -> Unit) {
 @Composable
 private fun Body(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium)
-}
-
-@Composable
-private fun Bullets(items: List<String>, color: Color = Color.Unspecified) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        items.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium, color = color) }
-    }
 }
 
 @Composable
