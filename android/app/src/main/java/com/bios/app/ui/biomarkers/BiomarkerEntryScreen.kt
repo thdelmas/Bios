@@ -159,8 +159,8 @@ fun BiomarkerEntryScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Self-reported", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        "Lab values you enter here stay on your device. They show up in trends and FHIR export, " +
-                            "but the baseline engine and anomaly detector ignore them — labs are diagnostic, not streaming.",
+                        "Lab values you enter here stay on your device. They show up in trends and FHIR export. " +
+                            "Your usual ranges and alerts do not use them.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

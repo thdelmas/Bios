@@ -2,7 +2,7 @@
 <!--
     Māori (mi-NZ) — base UI strings (permissions + monthly ask).
     Honest scope statement: machine-assisted translation, pending native
-    review — same caveat as the pattern_strings.xml overlay.
+    review.
 -->
 <resources>
     <string name="permission_read_health_desc">Ka whakaae ki ngā taupānga hoa kua hainatia ki te kī ōrite kia pānui i ngā raraunga inenga hauora mai i a Bios.</string>

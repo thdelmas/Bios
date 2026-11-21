@@ -53,7 +53,7 @@ object BiomarkerPanels {
 
     val inflammation = BiomarkerPanel(
         id = "inflammation",
-        title = "Inflammation & Iron",
+        title = "C-reactive protein & Iron",
         metrics = listOf(
             MetricType.HSCRP,
             MetricType.CRP,

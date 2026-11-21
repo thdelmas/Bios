@@ -176,7 +176,7 @@ class AppViewModel(
                     baselineEngine.computeAllBaselines()
                     baselineEngine.computeDailyAggregates()
 
-                    _initStatus.value = "Detecting patterns..."
+                    _initStatus.value = "Comparing with your usual range..."
                     _initProgress.value = 0.85f
                     anomalyDetector.runDetection()
                 }

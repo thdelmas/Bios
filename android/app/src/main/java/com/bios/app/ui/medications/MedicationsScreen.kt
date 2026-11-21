@@ -98,12 +98,9 @@ fun MedicationsScreen(onBack: () -> Unit) {
         ) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Why record medications?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Your medication list", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        "Several Bios alerts depend on the medication backdrop. " +
-                            "Beta-blockers explain low resting heart rate; levothyroxine over-replacement " +
-                            "explains tachycardia; steroid courses explain glucose variability. " +
-                            "Recording active medications adds that context to the explanation of any alert. " +
+                        "Your own list of what you take, shown back as written. " +
                             "No reminders, no schedule — just the list.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

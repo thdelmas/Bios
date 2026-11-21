@@ -5,21 +5,19 @@ import com.bios.app.engine.HolisticSignals
 import com.bios.app.model.AlertTier
 
 /**
- * Banlist for the text Bios raises on its own (alert titles, alert lines,
- * tier descriptions, notification channels, the disclaimer). Those texts
- * state measurements; they never judge the owner, grade them, or turn the
- * numbers into a game.
+ * What the text Bios writes may not say (docs/specs/instrument-only.md).
  *
- * Prohibited:
- * - Second-person lifestyle judgments ("you should exercise")
- * - Scores or grade language about the person ("your health score is")
- * - Guilt mechanics ("you haven't", "you missed")
- * - Gamification ("streak", "badge")
- * - Prognostic or risk statements about the person
+ * Two lists:
+ * - [PROHIBITED_PHRASES]: judgment of the owner. Second-person lifestyle
+ *   advice, grades, guilt, gamification, prognosis.
+ * - [MEDICAL_VOCABULARY]: names of conditions and words of medical
+ *   purpose. Bios measures and shows; it names no condition as something
+ *   it detects, and attaches no meaning, advice or urgency to a number.
  *
- * Violations fail in unit tests. Bios-state notices (a source stopped
- * syncing, see [DisconnectDetector] / [DisconnectNotifier]) are about the
- * app's own plumbing and follow the same factual register.
+ * Both are enforced in unit tests over every string resource and every
+ * string literal of the user-facing packages. The legitimate uses of a
+ * listed word (an owner naming their own record, a source quoted with
+ * attribution, the disclaimer) are an explicit allowlist next to the test.
  */
 object AlertContentPolicy {
 
@@ -72,15 +70,6 @@ object AlertContentPolicy {
         "capacity loss",
         "losing capacity",
         "cognitive decline detected",
-        // Prognostic push-side language (#206, NEUROLOGY_POV §3.3). RBD has
-        // a strong long-horizon conversion rate to synucleinopathies but
-        // push-side communication of that horizon is explicitly forbidden.
-        // The screen pattern is pull-side only; this banlist keeps any
-        // future pattern from drifting into push-side prognostic framing.
-        // "prodromal" and "neurodegenerative" intentionally NOT banned:
-        // both are neutral clinical descriptors that legitimate existing
-        // patterns use in earlyDetection / risks framing (e.g. NAFLD,
-        // COPD, mania-prodrome citations).
         "parkinson's risk",
         "parkinsons risk",
         "synucleinopathy",
@@ -88,6 +77,61 @@ object AlertContentPolicy {
         "you may develop",
         "you're at risk of",
     )
+
+    /**
+     * Condition names and words of medical purpose, lowercase. Matched at
+     * the start of a word, so "stroke" does not match "keystroke" and
+     * "diagnos" matches "diagnosis" and "diagnostic".
+     */
+    val MEDICAL_VOCABULARY: List<String> = listOf(
+        // Conditions the removed patterns and screens named.
+        "sepsis", "septic", "infection", "dengue", "malaria", "typhoid", "ketoacidosis", "apnea", "apnoea",
+        "fibrillation", "afib", "arrhythmia", "seizure", "convulsion", "epilep", "stroke", "hypertension",
+        "hypotension", "hypoglyc", "hyperglyc", "anaphyla", "heart failure", "heart attack", "bipolar", "mania",
+        "manic", "depression", "pre-eclampsia", "preeclampsia", "frailty", "tremor", "parkinson", "dementia",
+        "diabet", "cancer", "pneumonia", "asthma", "copd", "anemia", "anaemia", "migraine", "overtraining",
+        "exacerbation", "decompensation", "tachycard", "bradycard", "hypoxi", "fever", "palpitation",
+        "inflammation",
+        // Medical purpose: detecting, judging, advising.
+        "diagnos", "screening", "screen for", "early detection", "early warning", "early sign", "illness",
+        "disease", "disorder", "syndrome", "seek care", "seek medical", "medical advice", "emergency", "symptom",
+        "clinical", "clinician", "physician", "at risk", "risk of", "risk factor", "consult", "your doctor",
+        "a doctor", "the doctor", "healthcare provider", "health care provider", "treatment", "prognos",
+        "abnormal",
+        // Meaning attached to a number.
+        "may indicate", "can indicate", "could indicate", "associated with", "linked to", "why this matters",
+        "what this means", "anomal",
+    )
+
+    /** The same register in the languages of the shipped overlays that have reviewed lists. */
+    private val LOCALIZED_MEDICAL_VOCABULARY: Map<String, List<String>> = mapOf(
+        "es" to listOf(
+            "diagnóst", "enfermedad", "síntoma", "emergencia", "urgencias", "consulte", "su médico",
+            "tratamiento", "riesgo de", "infección", "trastorno",
+        ),
+        "pt" to listOf(
+            "diagnóst", "doença", "sintoma", "emergência", "consulte", "seu médico", "tratamento",
+            "risco de", "infecção", "transtorno",
+        ),
+    )
+
+    private fun wordStart(term: String) =
+        Regex("(?<![\\p{L}\\p{N}_])" + Regex.escape(term).replace(" ", "\\E\\s+\\Q"), RegexOption.IGNORE_CASE)
+
+    private val medicalPatterns: Map<String, List<Pair<String, Regex>>> by lazy {
+        val english = MEDICAL_VOCABULARY.map { it to wordStart(it) }
+        LOCALIZED_MEDICAL_VOCABULARY.mapValues { (_, terms) -> english + terms.map { it to wordStart(it) } } +
+            ("en" to english)
+    }
+
+    /**
+     * Listed medical words found in [text], for [languageCode] (ISO 639-1).
+     * The English list always applies; empty when the text is clean.
+     */
+    fun medicalVocabularyIn(text: String, languageCode: String = "en"): List<String> {
+        val patterns = medicalPatterns[languageCode.lowercase()] ?: medicalPatterns.getValue("en")
+        return patterns.filter { (_, pattern) -> pattern.containsMatchIn(text) }.map { it.first }
+    }
 
     /**
      * Per-locale prohibited phrases. The English banlist above is always
@@ -143,7 +187,7 @@ object AlertContentPolicy {
         val context: String,
     )
 
-    /** Every English text Bios pushes on its own, keyed by where it appears. */
+    /** Every English text of an alert, keyed by where it appears. */
     fun pushTexts(): Map<String, String> = buildMap {
         put("alert.title", AnomalyDetector.TITLE)
         put("alert.fallback", HolisticSignals.FALLBACK)

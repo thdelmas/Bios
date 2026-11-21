@@ -35,7 +35,7 @@ internal fun SettingsDiagnosticsCard() {
     val context = LocalContext.current
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Diagnostics", style = MaterialTheme.typography.titleSmall)
+            Text("Calibration", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
 
             var ppgEnabled by remember {

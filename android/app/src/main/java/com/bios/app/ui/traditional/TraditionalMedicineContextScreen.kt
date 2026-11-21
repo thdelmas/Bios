@@ -163,19 +163,15 @@ private fun ManifestoCard(onAdd: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "Why this matters",
+                "What goes here?",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "Bios is the instrument you read; the traditions you practice " +
-                    "within are part of how you read your own life. Record any " +
-                    "tradition you want Bios to be aware of — a TCM practitioner " +
+                "Record any tradition you practice within — a TCM practitioner " +
                     "and formula, an Ayurvedic routine, a curandera, Hoʻoponopono. " +
-                    "Bios stores what you say about your practice and never " +
-                    "classifies within the tradition: no dosha typing, no pulse " +
-                    "classifier, no Sasang typing, no Mizaj inference. Recording " +
-                    "is not endorsement; nothing here is inferred.",
+                    "Bios stores what you say about your practice and shows it back " +
+                    "as written. Nothing is inferred from it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -316,7 +312,7 @@ private fun NullableFrequencyDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column {
-        Text("Practitioner consulted", style = MaterialTheme.typography.labelMedium)
+        Text("How often you see a practitioner", style = MaterialTheme.typography.labelMedium)
         Spacer(Modifier.height(4.dp))
         Box {
             OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {

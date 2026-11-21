@@ -97,10 +97,8 @@ fun ImmunisationsScreen(onBack: () -> Unit) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Immunisation record", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        "Recording your vaccines lets Bios surface what's coming due " +
-                            "(flu this season, shingles after 50, Tdap booster every 10 years) " +
-                            "and travels with the data you share with a clinician. " +
-                            "No reminders, no nudges — record on your own terms; review when you ask.",
+                        "Your own record of the vaccines you received, shown back as written. " +
+                            "Bios sends no reminder and keeps no schedule.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

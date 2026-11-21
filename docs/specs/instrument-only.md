@@ -36,8 +36,10 @@ baselines, source views, sleep and cycle dashboards as logged, the camera
 HRV measurement, the owner's own records shown back as written (headache
 diary, health events, medication list), PDF and FHIR export.
 
-Verified when: the vocabulary gate test passes (no medical-purpose
-vocabulary in user-visible strings of `main`); a walk through the installed
+Verified when: the vocabulary gate test passes (`VocabularyGateTest`: no
+condition name and no medical-purpose vocabulary in the string resources or
+in the string literals of the owner-facing packages, outside the reasoned
+allowlist in `VocabularyGateAllowlist`); a walk through the installed
 build shows no pattern list, no causes, no care card; the JSON and FHIR
 exports of an account with stored alerts contain no condition name.
 
@@ -52,9 +54,18 @@ exports of an account with stored alerts contain no condition name.
 
 ## Open
 
-- Glucose time-in-range uses a clinical range. Proposal: drop it, keep
-  variability.
-- The derived sleep score line is a computed number, not a judgment of the
-  person. Proposal: keep, to be read on the device.
+- Closed: glucose time-in-range used a clinical range and was removed;
+  variability stays.
+- Closed: the derived sleep score scored a night against duration, latency
+  and awakening bands and was removed. Duration, time in bed, efficiency,
+  latency, time awake after sleep onset, stage durations and the spread of
+  bedtime, midpoint and wake time stay.
+- The sleep regularity reading is still stored as a 0–100 rescale of the
+  midpoint spread between two fixed anchors (15 and 90 minutes). The sleep
+  dashboard shows the spreads in minutes and not that figure; the stored
+  reading keeps its contract key. To decide: store the spread itself.
+- Stored readings of removed derivations (the sleep score among them) are
+  left in the database and remain selectable in the metric browser and
+  present in the JSON export.
 - The "other installers" seat is empty: it closes when the community channel
   has been told what is removed.

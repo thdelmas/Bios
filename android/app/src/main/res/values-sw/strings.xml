@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Swahili (sw) — base UI strings (permissions + monthly ask).
-    Neutral descriptive register, matching the pattern_strings.xml
-    overlay conventions.
+    Neutral descriptive register.
 -->
 <resources>
     <string name="permission_read_health_desc">Huruhusu programu shirikishi zilizosainiwa kwa ufunguo ule ule kusoma data ya vipimo vya afya kutoka Bios.</string>

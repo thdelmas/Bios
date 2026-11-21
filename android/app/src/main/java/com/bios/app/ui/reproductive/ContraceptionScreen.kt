@@ -141,13 +141,10 @@ fun ContraceptionScreen(onBack: () -> Unit) {
 private fun ManifestoCard() {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Why this matters", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("Your record", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
-                "Hormonal contraception changes BBT pattern, cycle phase, HRV " +
-                    "across cycle, and resting heart rate. Annotation is your tool: " +
-                    "when Bios sees a cycle change, your record tells the engine " +
-                    "(and your future self) that the cause was expected. Stored in " +
-                    "the separately-encrypted reproductive database; never the main DB.",
+                "Your own record of the method you use and when, shown back as written. " +
+                    "Stored in the separately-encrypted reproductive database; never the main DB.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

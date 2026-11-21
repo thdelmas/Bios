@@ -234,7 +234,7 @@ fun QuickSymptomCard(onLogSymptom: (String) -> Unit) {
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Log symptom",
+                            contentDescription = "Save entry",
                             modifier = Modifier.size(16.dp)
                         )
                     }

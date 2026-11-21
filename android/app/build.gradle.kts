@@ -156,9 +156,6 @@ dependencies {
     // app/src/main/assets/tessdata/README.md.
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
 
-    // Ed25519 signature verification (model updates) — needed for API < 33
-    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
-
     // Iroh P2P sync (Willow protocol for delta sync between devices)
     // TODO: Add iroh-ffi-android when published to Maven Central
     // Track: https://github.com/n0-computer/iroh-ffi
