@@ -1,9 +1,7 @@
 package com.bios.app
 
-import com.bios.app.data.dao.FastStrokeEventDao
 import com.bios.app.data.dao.HeadacheLogDao
 import com.bios.app.data.dao.MigraineAttackDao
-import com.bios.app.model.FastStrokeEvent
 import com.bios.app.model.HeadacheLog
 import com.bios.app.model.HeadacheType
 import com.bios.app.model.MigraineAttack
@@ -19,10 +17,10 @@ import org.junit.Test
 
 /**
  * Unit tests for the neurology owner-symptom-logging persistence layer
- * (issue #207). Covers DAO round-trips and the converter for the three
- * new entities ([MigraineAttack], [HeadacheLog], [FastStrokeEvent]).
+ * (issue #207). Covers DAO round-trips and the converter for
+ * [MigraineAttack] and [HeadacheLog].
  *
- * The fake-DAO pattern mirrors [EsasReportTest] / [CompanionGateTest] —
+ * The fake-DAO pattern mirrors [CompanionGateTest] —
  * the Robolectric-free unit-test source set can't exercise Room SQLite
  * directly.
  */
@@ -87,36 +85,6 @@ class NeurologySymptomLoggingTest {
             rows.sortedByDescending { it.timestamp }
 
         override suspend fun fetchInRange(fromMillis: Long, toMillis: Long): List<HeadacheLog> =
-            rows.filter { it.timestamp in fromMillis..toMillis }
-                .sortedByDescending { it.timestamp }
-
-        override suspend fun count(): Int = rows.size
-    }
-
-    private class FakeFastStrokeDao : FastStrokeEventDao {
-        private val rows = mutableListOf<FastStrokeEvent>()
-
-        override suspend fun insert(event: FastStrokeEvent): Long {
-            rows.removeAll { it.id == event.id }
-            rows.add(event)
-            return 1L
-        }
-
-        override suspend fun delete(event: FastStrokeEvent) {
-            rows.removeAll { it.id == event.id }
-        }
-
-        override suspend fun deleteById(id: String) {
-            rows.removeAll { it.id == id }
-        }
-
-        override suspend fun fetchById(id: String): FastStrokeEvent? =
-            rows.firstOrNull { it.id == id }
-
-        override suspend fun fetchAll(): List<FastStrokeEvent> =
-            rows.sortedByDescending { it.timestamp }
-
-        override suspend fun fetchInRange(fromMillis: Long, toMillis: Long): List<FastStrokeEvent> =
             rows.filter { it.timestamp in fromMillis..toMillis }
                 .sortedByDescending { it.timestamp }
 
@@ -213,41 +181,6 @@ class NeurologySymptomLoggingTest {
     }
 
     @Test
-    fun `FastStrokeEventDao round-trip preserves all fields`() = runBlocking {
-        val dao = FakeFastStrokeDao()
-        val event = FastStrokeEvent(
-            id = "fast-1",
-            timestamp = 1_700_000_000_000L,
-            facialDrooping = true,
-            armWeakness = false,
-            speechDifficulty = true,
-            notes = "left-side facial drooping, dysarthria",
-        )
-
-        dao.insert(event)
-
-        val fetched = dao.fetchById("fast-1")
-        assertNotNull(fetched)
-        assertTrue(fetched!!.facialDrooping)
-        assertFalse(fetched.armWeakness)
-        assertTrue(fetched.speechDifficulty)
-        assertEquals("left-side facial drooping, dysarthria", fetched.notes)
-    }
-
-    @Test
-    fun `FastStrokeEvent isPositive is true when any item is set`() {
-        assertTrue(fastEvent(face = true).isPositive)
-        assertTrue(fastEvent(arm = true).isPositive)
-        assertTrue(fastEvent(speech = true).isPositive)
-        assertTrue(fastEvent(face = true, arm = true, speech = true).isPositive)
-    }
-
-    @Test
-    fun `FastStrokeEvent isPositive is false when all items are negative`() {
-        assertFalse(fastEvent().isPositive)
-    }
-
-    @Test
     fun `MigraineTriggerConverter round-trips known enum values`() {
         val converter = MigraineTriggerConverter()
         val input = setOf(MigraineTrigger.STRESS, MigraineTrigger.WEATHER, MigraineTrigger.OTHER)
@@ -300,15 +233,4 @@ class NeurologySymptomLoggingTest {
             // ok
         }
     }
-
-    private fun fastEvent(
-        face: Boolean = false,
-        arm: Boolean = false,
-        speech: Boolean = false,
-    ) = FastStrokeEvent(
-        timestamp = 1_700_000_000_000L,
-        facialDrooping = face,
-        armWeakness = arm,
-        speechDifficulty = speech,
-    )
 }

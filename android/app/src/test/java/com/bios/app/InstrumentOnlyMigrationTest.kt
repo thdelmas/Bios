@@ -21,8 +21,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Schema 38 → 39 on a real SQLite file, opened by Room afterwards so the
- * migrated schema is validated against the entities. The limit under test
+ * Schema 38 → 39 on a real SQLite file, opened by Room afterwards (which
+ * also runs the later steps) so the migrated schema is validated against
+ * the entities. The limit under test
  * (docs/specs/instrument-only.md): a stored alert loses its interpretation
  * text and nothing else.
  */
@@ -36,7 +37,7 @@ class InstrumentOnlyMigrationTest {
 
     private fun open(): BiosDatabase =
         Room.databaseBuilder(context, BiosDatabase::class.java, name)
-            .addMigrations(InstrumentOnlyMigrations.MIGRATION_38_39)
+            .addMigrations(InstrumentOnlyMigrations.MIGRATION_38_39, InstrumentOnlyMigrations.MIGRATION_39_40)
             .allowMainThreadQueries()
             .build()
             .also { db = it }
@@ -140,11 +141,11 @@ class InstrumentOnlyMigrationTest {
     }
 
     @Test
-    fun `the review table is dropped and the file reports version 39`() {
+    fun `the review table is dropped and the file reports the current version`() {
         migrated()
         db?.close()
         SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READONLY).use { raw ->
-            assertEquals(39, raw.version)
+            assertEquals(40, raw.version)
             raw.rawQuery("SELECT name FROM sqlite_master WHERE name = 'professional_reviews'", null).use { c ->
                 assertEquals(0, c.count)
             }

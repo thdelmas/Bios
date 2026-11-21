@@ -51,12 +51,9 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Settings → Immunisation Record. Closes audit gap §2.3.
- *
- * Free-text + CVX-coded entries; both flow through the same
- * [ImmunizationRepo]. The screening-cadence engine (#155) reads this
- * surface to compute "due for shingles" / "due for flu this season"
- * prompts.
+ * Immunisation record. Free-text + CVX-coded entries; both flow through
+ * the same [ImmunizationRepo]. The record is a dated list; nothing
+ * computes when a dose is due.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

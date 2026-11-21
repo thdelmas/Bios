@@ -52,7 +52,6 @@ class FhirExporter(
     private val anomalyDao = db.anomalyDao()
     private val baselineDao = db.personalBaselineDao()
     private val payloadDao = db.eventPayloadFieldDao()
-    private val fastStrokeDao = db.fastStrokeEventDao()
 
     companion object {
         private const val TAG = "FhirExporter"
@@ -141,15 +140,6 @@ class FhirExporter(
 
         for (anomaly in anomalyDao.fetchAll()) {
             entries.put(bundleEntry(buildDetectedIssueResource(anomaly)))
-        }
-
-        // Owner-recorded FAST stroke-recognition events (#207). Only positive
-        // screens are emitted as flag observations — the negative checks stay
-        // in the local diary but don't add noise to the clinician bundle.
-        for (event in fastStrokeDao.fetchAll()) {
-            if (event.isPositive) {
-                entries.put(bundleEntry(buildFastStrokeFlagResource(event)))
-            }
         }
 
         val bundle = buildBundleResource(entries)

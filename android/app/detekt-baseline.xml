@@ -117,7 +117,6 @@
     <ID>MaxLineLength:CameraPpgAdapter.kt$CameraPpgAdapter$"capture done device=${Build.MODEL} samples=${snapshot.size} fps=%.2f dur=%.2fs meanR=%.2f var=%.2f sat=%.3f reason=${ppg.rejectionReason} sqi=${ppg.sqiScore} peaks=${ppg.peakCount} peakAmpCov=%.3f hrv=$hrvOutcome cleanIbi=$hrvCleanIbis artifacts=$hrvArtifacts"</ID>
     <ID>MaxLineLength:CircadianEngineTest.kt$FakeMetricReadingDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:ClinicalEncounterTest.kt$ClinicalEncounterTest$dischargeSummaryText = "Dada ausencia de signos de alarma se da alta a domicilio aconsejando seguimiento por médico de AP y Neurología de zona."</ID>
-    <ID>MaxLineLength:FastStrokeFhirFlag.kt$return "Owner-recorded FAST stroke screen — positive items: $itemsText. Recorded via the Bios FAST screen; owner-input only, not an automated detection."</ID>
     <ID>MaxLineLength:HrRecoveryPersisterTest.kt$FakeReadingDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:HrbsEngineTest.kt$FakeHrbsDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchGadgetbridgeReadings(s: Instant, e: Instant)</ID>

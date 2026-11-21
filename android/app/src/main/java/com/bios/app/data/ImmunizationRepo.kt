@@ -4,8 +4,7 @@ import com.bios.app.model.ImmunizationRecord
 
 /**
  * Thin repository wrapper over [com.bios.app.data.dao.ImmunizationRecordDao]
- * for the immunisations entry screen and the future screening-cadence
- * engine (#155). Closes audit gap §2.3.
+ * for the immunisation record screen.
  */
 class ImmunizationRepo(private val db: BiosDatabase) {
 

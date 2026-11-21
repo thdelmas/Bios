@@ -11,13 +11,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import android.util.Log
 import com.bios.app.data.dao.ContraceptionEntryDao
 import com.bios.app.data.dao.DataSourceDao
-import com.bios.app.data.dao.GenderAffirmingCareEntryDao
-import com.bios.app.data.dao.MenopauseStageEntryDao
 import com.bios.app.data.dao.MetricReadingDao
 import com.bios.app.model.ContraceptionEntry
 import com.bios.app.model.DataSource
-import com.bios.app.model.GenderAffirmingCareEntry
-import com.bios.app.model.MenopauseStageEntry
 import com.bios.app.model.MetricReading
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
@@ -40,10 +36,8 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         MetricReading::class,
         DataSource::class,
         ContraceptionEntry::class,
-        MenopauseStageEntry::class,
-        GenderAffirmingCareEntry::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class ReproductiveDatabase : RoomDatabase() {
@@ -51,8 +45,6 @@ abstract class ReproductiveDatabase : RoomDatabase() {
     abstract fun readingDao(): MetricReadingDao
     abstract fun dataSourceDao(): DataSourceDao
     abstract fun contraceptionEntryDao(): ContraceptionEntryDao
-    abstract fun menopauseStageEntryDao(): MenopauseStageEntryDao
-    abstract fun genderAffirmingCareEntryDao(): GenderAffirmingCareEntryDao
 
     companion object {
         @Volatile
@@ -164,7 +156,10 @@ abstract class ReproductiveDatabase : RoomDatabase() {
                 DB_NAME
             )
                 .openHelperFactory(factory)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
+                    InstrumentOnlyMigrations.REPRODUCTIVE_MIGRATION_5_6,
+                )
                 .build()
         }
 

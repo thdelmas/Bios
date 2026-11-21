@@ -9,13 +9,10 @@ import androidx.room.Update
 import com.bios.app.model.ImmunizationRecord
 
 /**
- * Persistence layer for owner-recorded immunisations (audit gap §2.3).
- *
- * Queries the screening-cadence engine (#155) will consume:
+ * Persistence layer for owner-recorded immunisations.
  *
  *  - [fetchAll] — full immunisation history, newest first
- *  - [fetchLatestByCvxCode] — "when did the owner last get vaccine X" —
- *    the cadence engine uses this to compute "next dose due in N months"
+ *  - [fetchLatestByCvxCode] — "when did the owner last get vaccine X"
  */
 @Dao
 interface ImmunizationRecordDao {

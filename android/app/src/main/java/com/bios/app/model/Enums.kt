@@ -97,8 +97,8 @@ enum class TrendDirection { RISING, STABLE, FALLING }
 // MARK: - Alerts
 
 /**
- * Five tiers; `level` is the stored code (anomalies.severity,
- * emergency_contacts.minTierLevel) and rises with the ordinal. WARNING was
+ * Five tiers; `level` is the stored code (anomalies.severity) and rises
+ * with the ordinal. WARNING was
  * inserted between ADVISORY and URGENT on 2026-11-07 (schema v38 remapped
  * stored URGENT 3 → 4).
  */
