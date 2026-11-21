@@ -110,10 +110,9 @@ class BiosApplication : Application() {
         // unconditionally.
         com.bios.app.engine.SleepRegularityWorker.schedule(this)
 
-        // Schedule daily paediatric-band recompute (#198). Idempotent and
-        // a no-op when no birth date is on file — safe to enqueue on every
-        // launch.
-        com.bios.app.physiology.PaediatricBandWorker.schedule(this)
+        // Periodic work of removed features is cancelled on existing installs.
+        val workManager = androidx.work.WorkManager.getInstance(this)
+        REMOVED_PERIODIC_WORK.forEach { workManager.cancelUniqueWork(it) }
 
         // Re-register UnifiedPush if previously enabled (idempotent — just
         // confirms the registration with the distributor). Does NOT auto-enable;
@@ -133,5 +132,14 @@ class BiosApplication : Application() {
         healthApiServer?.stop()
         letheCompat.unregisterWipeReceivers(this)
         super.onTerminate()
+    }
+
+    private companion object {
+        val REMOVED_PERIODIC_WORK = listOf(
+            "bios_paediatric_band",
+            "bios_perioperative_state_transition",
+            "bios_chronic_migraine_screening",
+            "bios_moh_screening",
+        )
     }
 }

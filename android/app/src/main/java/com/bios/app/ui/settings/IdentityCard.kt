@@ -43,7 +43,6 @@ internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
     val sections = listOf(
         "Body & baseline" to listOf(
             "Anthropometry" to "anthropometry",
-            "Physiology state" to "physiology_state",
             "Environmental context" to "environmental_context",
         ),
         "Medical record" to listOf(
@@ -51,7 +50,6 @@ internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
             "Immunisation record" to "immunisations",
             "Treatment courses" to "treatment_courses",
             "Intervention events" to "intervention_events",
-            "Surgical recovery" to "surgical_recovery",
             "ECG strips" to "ecg_strips",
         ),
         "Diaries" to listOf(
@@ -59,9 +57,6 @@ internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
         ),
         "Reproductive" to listOf(
             "Contraception" to "contraception",
-            "Menopause / perimenopause" to "menopause_stage",
-            "Gender-affirming care" to "gender_affirming_care",
-            "PCOS / Endometriosis context" to "pcos_endometriosis",
         ),
         "Practices" to listOf(
             "Traditional medicine" to "traditional_medicine_context",

@@ -18,14 +18,8 @@ import com.bios.app.ui.reproductive.reproductiveCompletenessRoutes
  * arguments, or other coupling stay in [MainActivity] for now.
  */
 internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
-    composable("physiology_state") {
-        com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
-    }
     composable("environmental_context") {
         com.bios.app.ui.environmental.EnvironmentalContextScreen(onBack = { navController.popBackStack() })
-    }
-    composable("frail_assessment") {
-        com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
     }
     composable("headache_diary") {
         com.bios.app.ui.headache.HeadacheDiaryScreen(onBack = { navController.popBackStack() })
@@ -41,9 +35,6 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     }
     composable("ecg_strips") {
         com.bios.app.ui.ecg.EcgStripsScreen(onBack = { navController.popBackStack() })
-    }
-    composable("surgical_recovery") {
-        com.bios.app.ui.physiology.SurgicalRecoveryScreen(onBack = { navController.popBackStack() })
     }
     composable("intervention_events") {
         com.bios.app.ui.interventions.InterventionEventsScreen(onBack = { navController.popBackStack() })

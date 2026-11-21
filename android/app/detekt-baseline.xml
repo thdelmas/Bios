@@ -62,9 +62,6 @@
     <ID>LongMethod:EnvironmentalContextScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EnvironmentalContextScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:FeedbackPrompt.kt$@Composable fun FeedbackPrompt( surface: String, itemId: String? = null, question: String = "Was this useful?", onSubmit: (UserFeedback) -&gt; Unit )</ID>
     <ID>LongMethod:FhirMetricCodings.kt$internal fun loincCode(metricType: MetricType): Pair&lt;String, String&gt;?</ID>
-    <ID>LongMethod:FrailAssessmentScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun FrailAssessmentScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:GenderAffirmingCareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun GenderAffirmingCareScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:GenderAffirmingCareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddDialog( onDismiss: () -&gt; Unit, onSave: (type: GenderAffirmingHormoneType, startDate: Long, endDate: Long?, dose: String?, notes: String?) -&gt; Unit, )</ID>
     <ID>LongMethod:HeadacheDiaryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HeadacheDiaryScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:HealthEventCard.kt$@Composable fun HealthEventCard( event: HealthEvent, actionItems: List&lt;ActionItem&gt;, childEvents: List&lt;HealthEvent&gt;, onStatusChange: (HealthEventStatus) -&gt; Unit, onAddFollowUp: () -&gt; Unit, onToggleAction: (String, Boolean) -&gt; Unit, onDeleteAction: (String) -&gt; Unit, onAddAction: (String) -&gt; Unit )</ID>
     <ID>LongMethod:HealthEventSheet.kt$@OptIn(ExperimentalLayoutApi::class) @Composable private fun HealthEventForm( onSave: (HealthEventInput) -&gt; Unit, parentEventId: String?, defaultType: HealthEventType? )</ID>
@@ -77,21 +74,18 @@
     <ID>LongMethod:MedicationsScreen.kt$@Composable private fun MedicationRow( medication: MedicationAnnotation, onDiscontinue: () -&gt; Unit, onDelete: () -&gt; Unit, )</ID>
     <ID>LongMethod:MedicationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MedicationsScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:MedicationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddMedicationDialog( onDismiss: () -&gt; Unit, onSave: ( name: String, startDate: Long, note: String?, source: SubstanceSource?, code: String?, traditional: String?, ) -&gt; Unit, )</ID>
-    <ID>LongMethod:MenopauseStageScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MenopauseStageScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:MetricBrowserSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun MetricBrowserSheet( selected: MetricType, onSelect: (MetricType) -&gt; Unit, onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:MetricChartCard.kt$@Composable internal fun MetricChart( metric: MetricType, readings: List&lt;MetricReading&gt;, loaded: Boolean, selectedWindow: MetricChartTimeWindow, onSelectWindow: (MetricChartTimeWindow) -&gt; Unit, )</ID>
     <ID>LongMethod:MetricSourcesScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MetricSourcesScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, )</ID>
     <ID>LongMethod:OnboardingScreen.kt$@Composable fun OnboardingScreen( onRequestPermissions: () -&gt; Unit, permissionDenied: Boolean )</ID>
     <ID>LongMethod:PdfReportExporter.kt$private fun renderPage( canvas: Canvas, focalMetric: MetricType, focalReadings: List&lt;MetricReading&gt;, focalBaseline: PersonalBaseline?, biomarkerLatest: List&lt;Pair&lt;MetricType, MetricReading&gt;&gt;, bands: Map&lt;MetricType, BiomarkerBands&gt;, startMillis: Long, endMillis: Long, ownerNote: String?, versionName: String, generatedAtMillis: Long, )</ID>
     <ID>LongMethod:PhoneSleepWorker.kt$PhoneSleepWorker$override suspend fun doWork(): Result</ID>
-    <ID>LongMethod:PhysiologyStateScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PhysiologyStateScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:PpgSignalProcessor.kt$PpgSignalProcessor$fun extract( luminanceSamples: List&lt;Double&gt;, samplingRateHz: Double, profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT, ): PpgResult</ID>
     <ID>LongMethod:PrivacyDashboardScreen.kt$@Composable fun PrivacyDashboardScreen(viewModel: AppViewModel)</ID>
     <ID>LongMethod:SettingsPhoneSleepCard.kt$@Composable internal fun SettingsPhoneSleepCard()</ID>
     <ID>LongMethod:SettingsScreen.kt$@Composable fun SettingsScreen( viewModel: AppViewModel, onNavigate: (route: String) -&gt; Unit = {}, )</ID>
     <ID>LongMethod:SleepDashboardScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SleepDashboardScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onSeeWearableRecommendations: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:SleepEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SleepEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onOpenDashboard: (() -&gt; Unit)? = null, )</ID>
-    <ID>LongMethod:SurgicalRecoveryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SurgicalRecoveryScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:SyncWorker.kt$SyncWorker$override suspend fun doWork(): Result</ID>
     <ID>LongMethod:TimelineScreen.kt$@Composable fun TimelineScreen( viewModel: AppViewModel, onRequestEventSheet: (parentEventId: String?) -&gt; Unit )</ID>
     <ID>LongMethod:TraditionalMedicineContextScreen.kt$@Composable private fun AddOrEditDialog( initial: TraditionalMedicineContext?, onDismiss: () -&gt; Unit, onSave: (TraditionalMedicineContext) -&gt; Unit, )</ID>
@@ -230,7 +224,6 @@
     <ID>SpreadOperator:CameraPpgAdapter.kt$CameraPpgAdapter$(lifecycleOwner, selector, *useCases)</ID>
     <ID>SwallowedException:CameraPpgAdapter.kt$CameraPpgAdapter$e: Exception</ID>
     <ID>SwallowedException:ContributionWorker.kt$ContributionWorker$e: Exception</ID>
-    <ID>SwallowedException:FrailScoreTest.kt$FrailScoreTest$e: IllegalArgumentException</ID>
     <ID>SwallowedException:LocalNetworkTransport.kt$LocalNetworkTransport$e: Exception</ID>
     <ID>SwallowedException:ModelUpdateManagerTest.kt$ModelUpdateManagerTest$e: Exception</ID>
     <ID>ThrowsCount:SyncProtocol.kt$SyncProtocol$fun decryptBlob(blob: ByteArray, syncKey: ByteArray): DecryptedBlob</ID>
