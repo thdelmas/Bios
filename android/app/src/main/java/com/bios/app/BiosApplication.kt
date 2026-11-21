@@ -2,7 +2,6 @@ package com.bios.app
 
 import android.app.Application
 import com.bios.app.alerts.DailyDigestWorker
-import com.bios.app.alerts.MohScreeningWorker
 import com.bios.app.data.BiosDatabase
 import com.bios.app.ingest.GadgetbridgeReceiver
 import com.bios.app.ingest.PowerConnectionReceiver
@@ -111,16 +110,6 @@ class BiosApplication : Application() {
         if (DailyDigestWorker.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
         }
-
-        // Schedule the daily MOH screening worker (#276). Idempotent via
-        // WorkManager's unique-work policy. The worker is a no-op when
-        // the diary is empty, so it's safe to enqueue unconditionally.
-        MohScreeningWorker.schedule(this)
-
-        // Schedule the daily chronic-migraine screening worker (#283 Cut 3,
-        // IHS ICHD-3 §1.3). Same idempotent shape as MOH; reads from the
-        // headache-event metric_readings rows the #293 writer mirrors.
-        com.bios.app.alerts.ChronicMigraineWorker.schedule(this)
 
         // Schedule the nightly sleep-regularity derivation worker (#135
         // deliverable 2 — closes the gap between SleepRegularityCalculator

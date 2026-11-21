@@ -22,7 +22,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.alerts.AlertDetail
 import com.bios.app.alerts.AlertDetailContent
 import com.bios.app.alerts.AlertManager
-import com.bios.app.alerts.ConditionPatterns
 import com.bios.app.alerts.MeasuredSignal
 import com.bios.app.config.RegionConfigProvider
 import com.bios.app.model.AlertTier
@@ -62,7 +60,6 @@ fun AlertDetailScreen(
     anomalyId: String,
     viewModel: AppViewModel,
     onBack: () -> Unit,
-    onOpenPattern: (String) -> Unit,
     onOpenTrend: (String) -> Unit,
 ) {
     var detail by remember { mutableStateOf<AlertDetail?>(null) }
@@ -82,22 +79,13 @@ fun AlertDetailScreen(
         when {
             d != null -> AlertDetailBody(
                 detail = d,
-                onOpenPattern = onOpenPattern,
                 onOpenTrend = onOpenTrend,
                 onAcknowledge = {
                     viewModel.acknowledgeAlert(anomalyId)
                     detail = d.copy(anomaly = d.anomaly.copy(acknowledged = true))
                 },
                 onSaveFeedback = { input ->
-                    viewModel.saveAlertFeedback(
-                        anomalyId = anomalyId,
-                        feltSick = input.feltSick,
-                        visitedDoctor = input.visitedDoctor,
-                        diagnosis = input.diagnosis,
-                        symptoms = input.symptoms,
-                        notes = input.notes,
-                        outcomeAccurate = input.outcomeAccurate,
-                    )
+                    viewModel.saveAlertFeedback(anomalyId, input)
                     detail = d.copy(anomaly = d.anomaly.withFeedback(input))
                 },
             )
@@ -112,7 +100,6 @@ fun AlertDetailScreen(
 @Composable
 private fun AlertDetailBody(
     detail: AlertDetail,
-    onOpenPattern: (String) -> Unit,
     onOpenTrend: (String) -> Unit,
     onAcknowledge: () -> Unit,
     onSaveFeedback: (FeedbackInput) -> Unit,
@@ -120,9 +107,6 @@ private fun AlertDetailBody(
     val anomaly = detail.anomaly
     val deviating = detail.signals.filter { it.deviating }
     val others = detail.signals.filterNot { it.deviating }
-    val pattern = remember(anomaly.patternId) {
-        anomaly.patternId?.let { id -> ConditionPatterns.all.firstOrNull { it.id == id } }
-    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -132,10 +116,6 @@ private fun AlertDetailBody(
     ) {
         AlertHeader(anomaly)
         MeasuredSection(anomaly, deviating, detail.now)
-        pattern?.takeIf { it.risks.isNotBlank() }?.let { p ->
-            Section("Why this matters") { Body(p.risks) }
-            TextButton(onClick = { onOpenPattern(p.id) }) { Text("Read full context") }
-        }
         if (others.isNotEmpty()) OtherSignalsSection(others, detail.now)
         if (detail.signals.isNotEmpty()) {
             Text(
@@ -160,7 +140,7 @@ private fun AlertDetailBody(
         }
         ActionsSection(anomaly, onAcknowledge, onSaveFeedback)
         Text(
-            AlertManager.resolveDisclaimer(LocalContext.current),
+            AlertManager.DISCLAIMER,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -293,8 +273,6 @@ private fun CenteredText(text: String) {
 private fun Anomaly.withFeedback(input: FeedbackInput) = copy(
     feedbackAt = System.currentTimeMillis(),
     feltSick = input.feltSick,
-    visitedDoctor = input.visitedDoctor,
-    diagnosis = input.diagnosis,
     symptoms = input.symptoms,
     notes = input.notes,
     outcomeAccurate = input.outcomeAccurate,

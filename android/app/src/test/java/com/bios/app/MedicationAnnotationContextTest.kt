@@ -82,9 +82,7 @@ class MedicationAnnotationContextTest {
                 lower.contains(phrase)
             )
         }
-        // And the actual AlertContentPolicy validator path is happy with the
-        // existing pattern library — if the meds line ever lands in pattern
-        // text via a different route, this catches it.
+        // And the texts Bios pushes on its own pass the same validator.
         assertTrue(AlertContentPolicy.validateAll().isEmpty())
     }
 

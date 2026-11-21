@@ -25,7 +25,6 @@ internal fun NavGraphBuilder.alertRoutes(navController: NavController, viewModel
             anomalyId = entry.arguments?.getString("anomalyId").orEmpty(),
             viewModel = viewModel,
             onBack = { if (!navController.popBackStack()) navController.navigate("notice") },
-            onOpenPattern = { navController.navigate("condition/$it") },
             onOpenTrend = { navController.navigate("trends?metric=$it") },
         )
     }

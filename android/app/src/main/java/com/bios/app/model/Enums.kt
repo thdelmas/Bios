@@ -115,15 +115,6 @@ enum class AlertTier(val level: Int, val label: String) {
     }
 }
 
-enum class ConditionCategory {
-    CARDIOVASCULAR, RESPIRATORY, METABOLIC, SLEEP,
-    MENTAL_HEALTH, INFECTIOUS, WOMENS_HEALTH, RECOVERY, SAFETY,
-    /** Environment-driven physiology screens — heat, cold, altitude, photoperiod (#197). */
-    ENVIRONMENTAL,
-    /** Movement / sleep-stage / cognitive-trajectory neurology screens (#206). */
-    NEUROLOGICAL,
-}
-
 // MARK: - Privacy
 
 enum class PrivacyTier {

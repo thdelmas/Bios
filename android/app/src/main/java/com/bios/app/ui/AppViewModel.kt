@@ -3,7 +3,6 @@ package com.bios.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.bios.app.alerts.FollowUpWorker
 import com.bios.app.engine.BaselineEngine
 import com.bios.app.engine.LatencyPercentiles
 import com.bios.app.data.BiomarkerContext
@@ -20,8 +19,8 @@ import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import com.bios.app.model.ProfessionalReview
 import com.bios.app.model.ReviewStatus
+import com.bios.app.ui.components.FeedbackInput
 import com.bios.app.model.ShareMethod
-import com.bios.app.ui.diagnostics.DiagnosticResult
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +54,6 @@ class AppViewModel(
     val latencyTracker = deps.latencyTracker
     val ingestManager = deps.ingestManager
     val baselineEngine = deps.baselineEngine
-    val mlModel = deps.mlModel
     val anomalyDetector = deps.anomalyDetector
     val alertManager = deps.alertManager
 
@@ -81,8 +79,6 @@ class AppViewModel(
     val healthEvents: StateFlow<List<HealthEvent>> = _healthEvents
     private val _pendingActionItems = MutableStateFlow<List<ActionItem>>(emptyList())
     val pendingActionItems: StateFlow<List<ActionItem>> = _pendingActionItems
-    private val _diagnosticResults = MutableStateFlow<List<DiagnosticResult>>(emptyList())
-    val diagnosticResults: StateFlow<List<DiagnosticResult>> = _diagnosticResults
     private val _pipelineSummary = MutableStateFlow<List<LatencyPercentiles>>(emptyList())
     val pipelineSummary: StateFlow<List<LatencyPercentiles>> = _pipelineSummary
     private val _anomalyForReview = MutableStateFlow<Anomaly?>(null)
@@ -239,26 +235,18 @@ class AppViewModel(
         }
     }
 
-    fun saveAlertFeedback(
-        anomalyId: String,
-        feltSick: Boolean?,
-        visitedDoctor: Boolean?,
-        diagnosis: String?,
-        symptoms: String?,
-        notes: String?,
-        outcomeAccurate: Boolean?
-    ) {
+    /** Saves the owner's journal entry for an alert. The two retired columns are written as null. */
+    fun saveAlertFeedback(anomalyId: String, input: FeedbackInput) {
         viewModelScope.launch {
             db.anomalyDao().saveFeedback(
                 id = anomalyId,
-                feltSick = feltSick,
-                visitedDoctor = visitedDoctor,
-                diagnosis = diagnosis,
-                symptoms = symptoms,
-                notes = notes,
-                outcomeAccurate = outcomeAccurate
+                feltSick = input.feltSick,
+                visitedDoctor = null,
+                diagnosis = null,
+                symptoms = input.symptoms,
+                notes = input.notes,
+                outcomeAccurate = input.outcomeAccurate
             )
-            FollowUpWorker.cancel(getApplication(), anomalyId)
             refreshAlerts()
         }
     }
@@ -373,16 +361,6 @@ class AppViewModel(
         _baselines.value = allBaselines
         _trackedMetricTypes.value = allBaselines.mapNotNull { MetricType.fromKey(it.metricType) }.toSet()
         _metricCoverage.value = baselineEngine.coverageForTracked()
-    }
-
-    fun refreshDiagnostics() {
-        viewModelScope.launch {
-            try {
-                _diagnosticResults.value = anomalyDetector.scoreAllPatterns()
-            } catch (e: Exception) {
-                _error.value = e.message
-            }
-        }
     }
 
     // MARK: - Pipeline Health

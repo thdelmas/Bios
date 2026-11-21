@@ -97,18 +97,4 @@ object BiosTokens {
         AlertTier.WARNING -> severe
         AlertTier.URGENT -> error
     }
-
-    /**
-     * Canonical color for a diagnostic match probability. Shared by
-     * DiagnosticCard and ConditionDetailScreen so a given probability
-     * reads the same on the card and on the detail screen.
-     */
-    @Composable
-    @ReadOnlyComposable
-    fun probabilityColor(probability: Double): Color = when {
-        probability >= 0.75 -> error
-        probability >= 0.50 -> attention
-        probability >= 0.25 -> warning
-        else -> success
-    }
 }

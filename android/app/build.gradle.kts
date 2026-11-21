@@ -82,10 +82,6 @@ android {
         }
     }
 
-    androidResources {
-        noCompress += "tflite"
-    }
-
     testOptions {
         // Robolectric: validation replays (tools/validation) run the real Room DAOs in-memory.
         unitTests.isIncludeAndroidResources = true
@@ -155,10 +151,6 @@ dependencies {
     // an empty 1-byte jar by the standard Guava/stub dedup rules.
     implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
     implementation("com.google.guava:guava:33.3.1-android")
-
-    // LiteRT (on-device ML) – rebranded TF Lite with 16KB page alignment
-    implementation("com.google.ai.edge.litert:litert:1.4.2")
-    implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
 
     // Tesseract OCR (lab-report ingestion, Phase 10) — Tesseract4Android is
     // Apache-2.0, Google-Play-Services-free, and built with NDK r27c so its

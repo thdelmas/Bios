@@ -85,7 +85,7 @@ class PushMessageHandler(private val context: Context) {
         }
 
         val channelId = when {
-            severity >= 3 -> AlertManager.CHANNEL_URGENT
+            severity >= 3 -> AlertManager.CHANNEL_WARNING
             severity >= 2 -> AlertManager.CHANNEL_ADVISORY
             else -> AlertManager.CHANNEL_NOTICE
         }

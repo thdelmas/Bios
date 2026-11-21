@@ -13,8 +13,6 @@ class OnboardingScreenTest {
     fun `FeedbackInput defaults are all null`() {
         val input = FeedbackInput()
         assertNull(input.feltSick)
-        assertNull(input.visitedDoctor)
-        assertNull(input.diagnosis)
         assertNull(input.symptoms)
         assertNull(input.notes)
         assertNull(input.outcomeAccurate)
@@ -24,15 +22,11 @@ class OnboardingScreenTest {
     fun `FeedbackInput preserves all fields`() {
         val input = FeedbackInput(
             feltSick = true,
-            visitedDoctor = true,
-            diagnosis = "Common cold",
             symptoms = "Fever, sore throat",
             notes = "Started feeling better after 3 days",
             outcomeAccurate = true
         )
         assertTrue(input.feltSick!!)
-        assertTrue(input.visitedDoctor!!)
-        assertEquals("Common cold", input.diagnosis)
         assertEquals("Fever, sore throat", input.symptoms)
         assertEquals("Started feeling better after 3 days", input.notes)
         assertTrue(input.outcomeAccurate!!)
@@ -40,10 +34,8 @@ class OnboardingScreenTest {
 
     @Test
     fun `FeedbackInput with blank strings treated as null by form logic`() {
-        val diagnosis = "".ifBlank { null }
         val symptoms = "   ".ifBlank { null }
         val notes = "Real note".ifBlank { null }
-        assertNull(diagnosis)
         assertNull(symptoms)
         assertEquals("Real note", notes)
     }
@@ -58,9 +50,9 @@ class OnboardingScreenTest {
     @Test
     fun `FeedbackInput copy allows partial updates`() {
         val original = FeedbackInput(feltSick = true)
-        val updated = original.copy(visitedDoctor = false, diagnosis = "Flu")
+        val updated = original.copy(outcomeAccurate = false, notes = "Late night")
         assertTrue(updated.feltSick!!)
-        assertFalse(updated.visitedDoctor!!)
-        assertEquals("Flu", updated.diagnosis)
+        assertFalse(updated.outcomeAccurate!!)
+        assertEquals("Late night", updated.notes)
     }
 }

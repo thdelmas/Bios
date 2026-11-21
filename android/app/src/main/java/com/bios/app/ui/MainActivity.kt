@@ -33,7 +33,6 @@ import com.bios.app.ui.settings.SettingsScreen
 import com.bios.app.model.HealthEventType
 import com.bios.app.ui.clinical.AddReadingScreen
 import com.bios.app.ui.journal.HealthEventSheet
-import com.bios.app.ui.diagnostics.ConditionDetailScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.bios.app.ui.ppg.PpgCaptureScreen
@@ -250,16 +249,6 @@ fun BiosApp(viewModel: AppViewModel) {
                 })
             }
             composable(
-                route = "condition/{patternId}",
-                arguments = listOf(navArgument("patternId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                ConditionDetailScreen(
-                    patternId = backStackEntry.arguments?.getString("patternId") ?: "",
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable(
                 route = "trends?metric={metric}",
                 arguments = listOf(
                     navArgument("metric") {
@@ -278,9 +267,6 @@ fun BiosApp(viewModel: AppViewModel) {
             composable("notice") {
                 NoticeScreen(
                     viewModel = viewModel,
-                    onNavigateToCondition = { patternId ->
-                        navController.navigate("condition/$patternId")
-                    },
                     onNavigateToCompanions = { navController.navigate("companions") },
                     onNavigateToReference = { navController.navigate("longevity_reference") },
                     onNavigateToAlert = { navController.navigate(alertDetailRoute(it)) },

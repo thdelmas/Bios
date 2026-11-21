@@ -2,7 +2,8 @@ package com.bios.app.federated
 
 import android.content.Context
 import com.bios.app.data.BiosDatabase
-import com.bios.app.engine.TFLiteAnomalyModel
+import com.bios.app.alerts.AlertDetailContent
+import com.bios.app.engine.DeviationScore
 import com.bios.contracts.MetricType
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -53,7 +54,7 @@ class FederatedTrainer(
         for (anomaly in feedbackAnomalies) {
             // Build feature vector from the anomaly's z-scores
             val zScores = parseDeviationScores(anomaly.deviationScores)
-            val featureVector = TFLiteAnomalyModel.buildFeatureVector(zScores)
+            val featureVector = FloatArray(FEATURE_COUNT) { zScores[AlertDetailContent.WATCHED_METRICS[it]]?.toFloat() ?: 0f }
 
             // Label: 1.0 if owner confirmed illness, 0.0 if false alarm
             val label = when {
@@ -70,9 +71,9 @@ class FederatedTrainer(
         if (features.size < MIN_FEEDBACK_FOR_TRAINING) return null
 
         // Compute pseudo-gradients: difference between predicted and actual
-        val gradients = FloatArray(TFLiteAnomalyModel.FEATURE_COUNT)
+        val gradients = FloatArray(FEATURE_COUNT)
         for (i in features.indices) {
-            val predicted = TFLiteAnomalyModel.heuristicScore(features[i])
+            val predicted = DeviationScore.of(features[i].map { it.toDouble() })
             val error = predicted - labels[i]
             for (j in gradients.indices) {
                 gradients[j] += error * features[i][j] / features.size
@@ -85,7 +86,7 @@ class FederatedTrainer(
         return GradientUpdate(
             gradients = noisyGradients,
             sampleCount = features.size,
-            modelVersion = TFLiteAnomalyModel.MODEL_VERSION,
+            modelVersion = MODEL_VERSION,
             timestamp = System.currentTimeMillis()
         )
     }
@@ -159,6 +160,8 @@ class FederatedTrainer(
     companion object {
         const val MIN_FEEDBACK_FOR_TRAINING = 5
         const val EPSILON = 1.0 // Differential privacy budget
+        private val FEATURE_COUNT = AlertDetailContent.WATCHED_METRICS.size
+        private const val MODEL_VERSION = 1
     }
 }
 

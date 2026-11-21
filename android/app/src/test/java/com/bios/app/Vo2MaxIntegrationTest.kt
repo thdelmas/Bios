@@ -1,8 +1,5 @@
 package com.bios.app
 
-import com.bios.app.alerts.BaselineDeviationPatterns
-import com.bios.app.alerts.ConditionPatterns
-import com.bios.app.alerts.DeviationDirection
 import com.bios.app.export.loincCode
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
@@ -55,21 +52,6 @@ class Vo2MaxIntegrationTest {
         // half trips the test.
         assertEquals("97090-9", mapping!!.first)
         assertTrue(mapping.second.lowercase().contains("oxygen"))
-    }
-
-    @Test
-    fun `cardiorespiratory deconditioning pattern consumes VO2_MAX as a BELOW signal`() {
-        // The pattern's prose ("VO2 max, the clinical gold standard")
-        // pre-existed the ingestion path — adding a SignalRule closes
-        // the loop. Direction BELOW is load-bearing: a VO2 increase is
-        // not a deconditioning signal.
-        val pattern = BaselineDeviationPatterns.cardiorespiratoryDeconditioning
-        val vo2Rule = pattern.signalRules.singleOrNull { it.metricType == MetricType.VO2_MAX }
-        assertNotNull(
-            "Cardiorespiratory deconditioning pattern must include a VO2_MAX SignalRule (#26)",
-            vo2Rule,
-        )
-        assertEquals(DeviationDirection.BELOW, vo2Rule!!.direction)
     }
 
     @Test

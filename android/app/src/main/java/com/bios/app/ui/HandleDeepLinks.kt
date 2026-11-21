@@ -11,7 +11,7 @@ import com.bios.app.ui.alerts.alertDetailRoute
 
 /**
  * Cross-process deep links delivered via the launching Intent:
- *  - AlertManager / FollowUpWorker notifications → the alert detail screen
+ *  - AlertManager notifications → the alert detail screen
  *  - CompanionAccessNotifier → Settings → Companion Apps
  *  - DisconnectNotifier → Data Coverage (so the owner can reconnect a
  *    failing source)

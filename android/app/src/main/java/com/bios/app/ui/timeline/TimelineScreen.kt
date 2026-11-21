@@ -118,17 +118,7 @@ fun TimelineScreen(
                         anomaly = item.anomaly,
                         timeFormat = timeFormat,
                         onAcknowledge = { viewModel.acknowledgeAlert(item.anomaly.id) },
-                        onSaveFeedback = { input ->
-                            viewModel.saveAlertFeedback(
-                                anomalyId = item.anomaly.id,
-                                feltSick = input.feltSick,
-                                visitedDoctor = input.visitedDoctor,
-                                diagnosis = input.diagnosis,
-                                symptoms = input.symptoms,
-                                notes = input.notes,
-                                outcomeAccurate = input.outcomeAccurate
-                            )
-                        }
+                        onSaveFeedback = { viewModel.saveAlertFeedback(item.anomaly.id, it) }
                     )
                     is TimelineItem.EventItem -> TimelineEventEntry(
                         event = item.event,

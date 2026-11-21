@@ -11,13 +11,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * Handles notification-action taps for URGENT alerts (#179, EM/CC §2.1):
+ * Handles the acknowledge action of an alert notification:
+ * [ACTION_ACKNOWLEDGE] marks the alert acknowledged and dismisses the
+ * notification.
  *
- *  - [ACTION_ACKNOWLEDGE] — owner taps "I'm OK". Marks the anomaly
- *    acknowledged, cancels the pending [UrgentAckTimeoutWorker] so the
- *    escalation does not fire, and dismisses the notification.
- *
- * Registered in [com.bios.app.alerts.AlertManager] via PendingIntent.
  * Declared in AndroidManifest with android:exported="false" — only Bios
  * itself fires these intents.
  */
@@ -36,10 +33,6 @@ class AlertActionReceiver : BroadcastReceiver() {
         // Dismiss the notification immediately for owner feedback.
         NotificationManagerCompat.from(context).cancel(notificationId)
 
-        // Cancel the pending escalation — must happen before the worker
-        // would otherwise fire.
-        UrgentAckTimeoutWorker.cancel(context, anomalyId)
-
         // Persist the acknowledgement asynchronously. Using a detached
         // scope is acceptable here: the broadcast is short-lived and the
         // DAO call is idempotent.
@@ -49,8 +42,7 @@ class AlertActionReceiver : BroadcastReceiver() {
                 val db = BiosDatabase.getInstance(context.applicationContext)
                 db.anomalyDao().acknowledge(anomalyId)
             } catch (_: Exception) {
-                // The acknowledgement is best-effort persistence; the
-                // escalation cancellation above is the load-bearing side.
+                // Best-effort persistence; the alert stays unacknowledged in-app.
             }
         }
     }

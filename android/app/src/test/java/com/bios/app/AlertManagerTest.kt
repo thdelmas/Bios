@@ -1,140 +1,151 @@
 package com.bios.app
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.bios.app.alerts.AlertContentPolicy
 import com.bios.app.alerts.AlertManager
+import com.bios.app.data.BiosDatabase
 import com.bios.app.model.AlertTier
 import com.bios.app.model.Anomaly
-import com.bios.app.model.InterventionLevel
-import com.bios.app.physiology.PhysiologyState
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
-/**
- * Tests for AlertManager's pure notification decisions: the NOTICE-and-above
- * notify gate and the goals-of-care channel selection (#184). These call the
- * real AlertManager decision functions directly (no Android context needed),
- * so a regression in either is caught here instead of hiding behind a copy.
- */
+/** AlertManager: the notify gate, the channel per tier, and the channels an install ends up with. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], application = android.app.Application::class)
 class AlertManagerTest {
 
-    // Adapters over the real AlertManager decision functions — these
-    // re-implement no logic, they only shape an Anomaly / (state, level) into
-    // the arguments the production functions take.
-    private fun shouldNotify(anomaly: Anomaly): Boolean =
-        AlertManager.shouldNotify(AlertTier.fromLevel(anomaly.severity))
+    private val context: Context = ApplicationProvider.getApplicationContext()
+    private val notifications = context.getSystemService(NotificationManager::class.java)
 
-    private fun resolveChannel(
-        tier: AlertTier,
-        state: PhysiologyState,
-        level: InterventionLevel,
-    ): String = AlertManager.resolveChannel(
-        tier,
-        AlertManager.isUrgentEscalationSuppressedFor(tier, state, level),
-    ).first
+    private fun manager(): Pair<AlertManager, BiosDatabase> {
+        val db = Room.inMemoryDatabaseBuilder(context, BiosDatabase::class.java).allowMainThreadQueries().build()
+        return AlertManager(context, db) to db
+    }
 
     private fun anomaly(severity: AlertTier) = Anomaly(
         metricTypes = "[\"heart_rate\"]",
         deviationScores = "{\"heart_rate\":2.0}",
-        combinedScore = 2.0,
-        patternId = "test",
+        combinedScore = 0.75,
+        patternId = "ml_holistic_anomaly",
         severity = severity.level,
-        title = "Test Alert",
-        explanation = "Test explanation"
+        title = "Outside your usual range",
+        explanation = "Resting heart rate 66 bpm over the last 24 h, above your usual 53–60 bpm.",
     )
 
     @Test
-    fun `observation does not trigger notification`() {
-        assertFalse(shouldNotify(anomaly(AlertTier.OBSERVATION)))
+    fun `observation is stored silently, every higher tier notifies`() {
+        assertFalse(AlertManager.shouldNotify(AlertTier.OBSERVATION))
+        for (tier in AlertTier.entries - AlertTier.OBSERVATION) assertTrue(tier.name, AlertManager.shouldNotify(tier))
     }
 
     @Test
-    fun `notice triggers notification`() {
-        assertTrue(shouldNotify(anomaly(AlertTier.NOTICE)))
+    fun `each tier has its channel and nothing lands on a removed one`() {
+        assertEquals(AlertManager.CHANNEL_NOTICE, AlertManager.resolveChannel(AlertTier.NOTICE).first)
+        assertEquals(AlertManager.CHANNEL_ADVISORY, AlertManager.resolveChannel(AlertTier.ADVISORY).first)
+        assertEquals(AlertManager.CHANNEL_WARNING, AlertManager.resolveChannel(AlertTier.WARNING).first)
+        // URGENT stays in the enum for stored rows; it has no channel of its own.
+        assertEquals(AlertManager.CHANNEL_WARNING, AlertManager.resolveChannel(AlertTier.URGENT).first)
+        for (tier in AlertTier.entries) {
+            assertFalse(AlertManager.resolveChannel(tier).first in AlertManager.REMOVED_CHANNELS)
+        }
     }
 
     @Test
-    fun `advisory triggers notification`() {
-        assertTrue(shouldNotify(anomaly(AlertTier.ADVISORY)))
+    fun `an install keeps four channels and loses the removed ones`() {
+        AlertManager.REMOVED_CHANNELS.forEach {
+            notifications.createNotificationChannel(NotificationChannel(it, it, NotificationManager.IMPORTANCE_HIGH))
+        }
+        val (_, db) = manager()
+        try {
+            assertEquals(
+                setOf("bios_notice", "bios_advisory", "bios_warning", "bios_digest"),
+                notifications.notificationChannels.map { it.id }.toSet(),
+            )
+            assertNull(notifications.getNotificationChannel("bios_urgent"))
+            assertNull(notifications.getNotificationChannel("bios_followup"))
+            assertEquals("Notices", notifications.getNotificationChannel("bios_notice").name)
+            assertEquals(
+                "A wide deviation from your usual range",
+                notifications.getNotificationChannel("bios_warning").description,
+            )
+        } finally {
+            db.close()
+        }
     }
 
     @Test
-    fun `urgent triggers notification`() {
-        assertTrue(shouldNotify(anomaly(AlertTier.URGENT)))
+    fun `channel names and descriptions pass the content policy`() {
+        val (_, db) = manager()
+        try {
+            for (channel in notifications.notificationChannels) {
+                val text = "${channel.name} ${channel.description}"
+                assertTrue(text, AlertContentPolicy.validate(channel.id, text).isEmpty())
+                for (word in listOf("health", "condition", "attention", "urgent", "illness")) {
+                    assertFalse("'$word' in $text", text.lowercase().contains(word))
+                }
+            }
+        } finally {
+            db.close()
+        }
     }
 
     @Test
-    fun `anomaly default values are reasonable`() {
+    fun `a notification carries the measured line and the disclaimer, nothing else`() {
+        shadowOf(context as android.app.Application).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        val (alerts, db) = manager()
+        try {
+            val a = anomaly(AlertTier.ADVISORY)
+            alerts.sendNotification(a)
+            val posted = shadowOf(notifications).allNotifications.single()
+            assertEquals(AlertManager.CHANNEL_ADVISORY, posted.channelId)
+            assertEquals(a.title, posted.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString())
+            assertEquals(
+                "${a.explanation}\n\n${AlertManager.DISCLAIMER}",
+                posted.extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT).toString(),
+            )
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `an observation posts no notification`() {
+        shadowOf(context as android.app.Application).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        val (alerts, db) = manager()
+        try {
+            alerts.sendNotification(anomaly(AlertTier.OBSERVATION))
+            assertTrue(shadowOf(notifications).allNotifications.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `the disclaimer is the one sentence`() {
+        assertEquals(
+            "Bios is not a medical device. It shows measurements and does not interpret them.",
+            AlertManager.DISCLAIMER,
+        )
+    }
+
+    @Test
+    fun `anomaly defaults`() {
         val a = anomaly(AlertTier.NOTICE)
         assertFalse(a.acknowledged)
         assertNull(a.acknowledgedAt)
-        assertTrue(a.detectedAt > 0)
-        assertTrue(a.id.isNotBlank())
-    }
-
-    @Test
-    fun `anomaly id is unique per instance`() {
-        val a1 = anomaly(AlertTier.NOTICE)
-        val a2 = anomaly(AlertTier.NOTICE)
-        assertNotEquals(a1.id, a2.id)
-    }
-
-    // -- #184: goals-of-care escalation gate --
-
-    @Test
-    fun `urgent alert in standard state with full goals lands on urgent channel`() {
-        // Happy path: no goals of care declared (or full treatment
-        // declared). URGENT alerts must escalate as before — this is
-        // the regression guard for owners who never visit the
-        // goals-of-care screen.
-        assertEquals(
-            AlertManager.CHANNEL_URGENT,
-            resolveChannel(AlertTier.URGENT, PhysiologyState.STANDARD, InterventionLevel.FULL),
-        )
-        assertEquals(
-            AlertManager.CHANNEL_URGENT,
-            resolveChannel(AlertTier.URGENT, PhysiologyState.STANDARD, InterventionLevel.UNSPECIFIED),
-        )
-    }
-
-    @Test
-    fun `urgent alert in hospice mode lands on notice channel`() {
-        // Silencing path: URGENT alert is demoted to the low-
-        // importance NOTICE channel, so no sound or vibration
-        // fires. The downstream SMS-to-emergency-contact / tap-to-
-        // call escalation (#215) consults the same gate and skips.
-        assertEquals(
-            AlertManager.CHANNEL_NOTICE,
-            resolveChannel(AlertTier.URGENT, PhysiologyState.HOSPICE_MODE, InterventionLevel.UNSPECIFIED),
-        )
-    }
-
-    @Test
-    fun `urgent alert with comfort-only intervention lands on notice channel`() {
-        // Symmetric path via GoalsOfCare rather than the hospice
-        // mode toggle.
-        assertEquals(
-            AlertManager.CHANNEL_NOTICE,
-            resolveChannel(AlertTier.URGENT, PhysiologyState.STANDARD, InterventionLevel.COMFORT_ONLY),
-        )
-    }
-
-    @Test
-    fun `goals-of-care note text avoids prohibited push-side phrases`() {
-        // AlertContentPolicy bans second-person lifestyle judgments,
-        // wellness-score language, guilt mechanics, and gamification
-        // on the push side. The goals-of-care suppression note is
-        // appended to push-side alert text, so it must pass the
-        // same bar. Mirror the policy's checks here so the constant
-        // is pinned at the test boundary.
-        val text = AlertManager.GOALS_OF_CARE_NOTE.lowercase()
-        val forbidden = listOf(
-            "you should", "you need to", "you must", "you failed",
-            "your health score", "grade:", "streak", "achievement",
-        )
-        for (phrase in forbidden) {
-            assertFalse(
-                "GOALS_OF_CARE_NOTE must not contain '$phrase'",
-                text.contains(phrase)
-            )
-        }
+        assertNull(a.suggestedAction)
+        assertNotEquals(a.id, anomaly(AlertTier.NOTICE).id)
     }
 }
