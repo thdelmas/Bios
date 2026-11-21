@@ -83,7 +83,7 @@ android {
     }
 
     testOptions {
-        // Robolectric: validation replays (tools/validation) run the real Room DAOs in-memory.
+        // Robolectric: tests run the real Room DAOs in-memory.
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
             // FHIR R4 JSON Schema validation (FhirSchemaValidationTest) loads

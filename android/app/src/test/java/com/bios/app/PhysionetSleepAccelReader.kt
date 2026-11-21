@@ -8,7 +8,7 @@ import kotlin.math.sqrt
  * Fixture reader + variance translator for the Walch 2019 PhysioNet
  * `sleep-accel` dataset (#244 Cut 3). Test-only.
  *
- * Dataset layout (after running scripts/download-physionet-sleep-accel.sh):
+ * Dataset layout (as downloaded from physionet.org/content/sleep-accel/1.0.0/):
  *
  * ```
  * sleep-accel/

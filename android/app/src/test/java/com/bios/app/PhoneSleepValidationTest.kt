@@ -18,10 +18,10 @@ import org.junit.Test
  * meaningfully regresses overall accuracy fails CI.
  *
  * **Dataset acquisition** — the data is ~700 MB and intentionally
- * **not** checked into the repo. Fetch it once with
- * `scripts/download-physionet-sleep-accel.sh` (uses the standard
- * PhysioNet `wget` recipe; ODC-By license, no credentialing
- * required), then point the test at the fixture directory via
+ * **not** checked into the repo. Fetch it once from
+ * https://physionet.org/content/sleep-accel/1.0.0/ (ODC-By license,
+ * no credentialing required), then point the test at the fixture
+ * directory via
  * either the `bios.physionet.dir` JVM system property or the
  * `BIOS_PHYSIONET_DIR` environment variable.
  *
@@ -46,8 +46,8 @@ class PhoneSleepValidationTest {
     fun rmse_under_target_across_all_subjects() {
         val fixtureDir = resolveFixtureDir()
         Assume.assumeTrue(
-            "PhysioNet sleep-accel fixture not present. Run " +
-                "scripts/download-physionet-sleep-accel.sh and set " +
+            "PhysioNet sleep-accel fixture not present. Download it from " +
+                "https://physionet.org/content/sleep-accel/1.0.0/ and set " +
                 "BIOS_PHYSIONET_DIR (or -Dbios.physionet.dir) to enable this test.",
             fixtureDir != null,
         )
