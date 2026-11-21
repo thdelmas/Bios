@@ -3,7 +3,6 @@ package com.bios.app.sync
 import android.content.Context
 import android.util.Log
 import com.bios.app.data.BiosDatabase
-import com.bios.app.model.Anomaly
 import com.bios.app.model.HealthEvent
 import com.bios.app.model.MetricReading
 import com.bios.app.model.PersonalBaseline
@@ -251,27 +250,7 @@ class SyncManager(
         val anomalies = db.anomalyDao().fetchAll()
         if (anomalies.isEmpty()) return ByteArray(0)
         val arr = JSONArray()
-        for (a in anomalies) {
-            arr.put(JSONObject().apply {
-                put("id", a.id); put("detectedAt", a.detectedAt)
-                put("metricTypes", a.metricTypes)
-                put("deviationScores", a.deviationScores)
-                put("combinedScore", a.combinedScore)
-                put("patternId", a.patternId ?: JSONObject.NULL)
-                put("severity", a.severity); put("title", a.title)
-                put("explanation", a.explanation)
-                put("suggestedAction", a.suggestedAction ?: JSONObject.NULL)
-                put("acknowledged", a.acknowledged)
-                put("acknowledgedAt", a.acknowledgedAt ?: JSONObject.NULL)
-                put("feedbackAt", a.feedbackAt ?: JSONObject.NULL)
-                put("feltSick", a.feltSick ?: JSONObject.NULL)
-                put("visitedDoctor", a.visitedDoctor ?: JSONObject.NULL)
-                put("diagnosis", a.diagnosis ?: JSONObject.NULL)
-                put("symptoms", a.symptoms ?: JSONObject.NULL)
-                put("notes", a.notes ?: JSONObject.NULL)
-                put("outcomeAccurate", a.outcomeAccurate ?: JSONObject.NULL)
-            })
-        }
+        for (a in anomalies) arr.put(AlertSyncCodec.toJson(a))
         return arr.toString().toByteArray(Charsets.UTF_8)
     }
 
@@ -339,27 +318,8 @@ class SyncManager(
         val arr = JSONArray(String(data, Charsets.UTF_8))
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            db.anomalyDao().insert(Anomaly(
-                id = o.getString("id"),
-                detectedAt = o.getLong("detectedAt"),
-                metricTypes = o.getString("metricTypes"),
-                deviationScores = o.getString("deviationScores"),
-                combinedScore = o.getDouble("combinedScore"),
-                patternId = if (o.isNull("patternId")) null else o.getString("patternId"),
-                severity = o.getInt("severity"),
-                title = o.getString("title"),
-                explanation = o.getString("explanation"),
-                suggestedAction = if (o.isNull("suggestedAction")) null else o.getString("suggestedAction"),
-                acknowledged = o.getBoolean("acknowledged"),
-                acknowledgedAt = if (o.isNull("acknowledgedAt")) null else o.getLong("acknowledgedAt"),
-                feedbackAt = if (o.isNull("feedbackAt")) null else o.getLong("feedbackAt"),
-                feltSick = if (o.isNull("feltSick")) null else o.getBoolean("feltSick"),
-                visitedDoctor = if (o.isNull("visitedDoctor")) null else o.getBoolean("visitedDoctor"),
-                diagnosis = if (o.isNull("diagnosis")) null else o.getString("diagnosis"),
-                symptoms = if (o.isNull("symptoms")) null else o.getString("symptoms"),
-                notes = if (o.isNull("notes")) null else o.getString("notes"),
-                outcomeAccurate = if (o.isNull("outcomeAccurate")) null else o.getBoolean("outcomeAccurate")
-            ))
+            val existing = db.anomalyDao().fetchById(o.getString("id"))
+            db.anomalyDao().insert(AlertSyncCodec.fromPeer(o, existing))
         }
         Log.d(TAG, "Imported ${arr.length()} anomalies")
     }

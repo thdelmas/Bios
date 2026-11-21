@@ -78,8 +78,8 @@ class DataExporterTest {
     }
 
     @Test
-    fun `schema version reflects health events addition`() {
-        assertEquals("1.2", DataExporter.SCHEMA_VERSION)
+    fun `schema version reflects the measurement-only alert shape`() {
+        assertEquals("2.0", DataExporter.SCHEMA_VERSION)
     }
 
     // -- CSV escaping edge cases (tested via the export patterns) --

@@ -1,7 +1,9 @@
 package com.bios.app.platform
 
 import android.util.Log
+import com.bios.app.alerts.AlertMeasurements
 import com.bios.app.data.BiosDatabase
+import com.bios.app.engine.AnomalyDetector
 import com.bios.app.model.AlertTier
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
@@ -207,8 +209,8 @@ class HealthApiServer(
             alerts.put(JSONObject().apply {
                 put("id", a.id)
                 put("severity", AlertTier.fromLevel(a.severity).label)
-                put("title", a.title)
-                put("explanation", a.explanation)
+                put("title", AnomalyDetector.TITLE)
+                put("measured", JSONArray(AlertMeasurements.lines(a)))
                 put("detectedAt", a.detectedAt)
             })
         }

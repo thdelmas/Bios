@@ -72,14 +72,14 @@ class EncryptedZipExporterTest {
     @Test
     fun `inner entry name matches source file name`() {
         val dir = tempDir()
-        val source = writeSource(dir, "bios_doctor_summary.pdf", byteArrayOf(1, 2, 3, 4))
-        val out = File(dir, "bios_doctor_summary.pdf.zip")
+        val source = writeSource(dir, "bios_summary.pdf", byteArrayOf(1, 2, 3, 4))
+        val out = File(dir, "bios_summary.pdf.zip")
 
         EncryptedZipExporter.encryptTo(out, source, "passphrase-123")
 
         val headers = ZipFile(out).fileHeaders
         assertEquals(1, headers.size)
-        assertEquals("bios_doctor_summary.pdf", headers[0].fileName)
+        assertEquals("bios_summary.pdf", headers[0].fileName)
     }
 
     @Test

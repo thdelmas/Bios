@@ -5,17 +5,14 @@ import ca.uhn.fhir.parser.IParser
 import ca.uhn.fhir.parser.StrictErrorHandler
 import com.bios.app.export.buildBaselineObservation
 import com.bios.app.export.buildBundleResource
-import com.bios.app.export.buildDetectedIssueResource
 import com.bios.app.export.buildDeviceResource
 import com.bios.app.export.buildObservationResource
 import com.bios.app.export.bundleEntry
-import com.bios.app.model.Anomaly
 import com.bios.app.model.DataSource
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
 import org.hl7.fhir.r4.model.Bundle
-import org.hl7.fhir.r4.model.DetectedIssue
 import org.hl7.fhir.r4.model.Device
 import org.hl7.fhir.r4.model.Observation
 import org.json.JSONArray
@@ -70,18 +67,6 @@ class FhirSchemaValidationTest {
         p95 = 78.0
     )
 
-    private fun sampleAnomaly(acknowledged: Boolean = false, withPattern: Boolean = true) = Anomaly(
-        id = "anomaly-1",
-        metricTypes = "[\"heart_rate\"]",
-        deviationScores = "{\"heart_rate\": 2.3}",
-        combinedScore = 2.3,
-        patternId = if (withPattern) "pattern-cold" else null,
-        severity = 2,
-        title = "Elevated resting HR",
-        explanation = "Resting HR 2.3 sigma above personal baseline for 18h.",
-        acknowledged = acknowledged
-    )
-
     @Test
     fun `Device resource conforms to FHIR R4`() {
         assertParsesAsR4("Device", buildDeviceResource(sampleSource()).toString(), Device::class.java)
@@ -117,25 +102,6 @@ class FhirSchemaValidationTest {
     }
 
     @Test
-    fun `DetectedIssue conforms to FHIR R4 (preliminary)`() {
-        assertParsesAsR4(
-            "DetectedIssue preliminary",
-            buildDetectedIssueResource(sampleAnomaly()).toString(),
-            DetectedIssue::class.java
-        )
-    }
-
-    @Test
-    fun `DetectedIssue conforms to FHIR R4 (final, no pattern)`() {
-        val anomaly = sampleAnomaly(acknowledged = true, withPattern = false)
-        assertParsesAsR4(
-            "DetectedIssue final",
-            buildDetectedIssueResource(anomaly).toString(),
-            DetectedIssue::class.java
-        )
-    }
-
-    @Test
     fun `Empty Bundle conforms to FHIR R4`() {
         assertParsesAsR4(
             "Empty Bundle",
@@ -150,7 +116,6 @@ class FhirSchemaValidationTest {
             .put(bundleEntry(buildDeviceResource(sampleSource())))
             .put(bundleEntry(buildObservationResource(sampleReading(), MetricType.HEART_RATE)))
             .put(bundleEntry(buildBaselineObservation(sampleBaseline())))
-            .put(bundleEntry(buildDetectedIssueResource(sampleAnomaly())))
         assertParsesAsR4(
             "Full Bundle",
             buildBundleResource(entries).toString(),

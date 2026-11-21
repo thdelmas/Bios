@@ -147,12 +147,13 @@ object DataDestroyer {
             cacheDir.listFiles()?.filter { file ->
                 val n = file.name
                 // Every export artifact left in cache: the data dumps
-                // (bios_export_*), FHIR bundles (bios_fhir_*), doctor PDFs
-                // (bios_doctor_summary_*), and their encrypted ".zip" wrappers.
+                // (bios_export_*), FHIR bundles (bios_fhir_*), PDF summaries
+                // (bios_summary_*, bios_doctor_summary_* on earlier versions), and
+                // their encrypted ".zip" wrappers.
                 // ".bios" is legacy (retired EncryptedExporter) — still purged if
                 // a stray file from an older build lingers.
                 (n.startsWith("bios_export_") || n.startsWith("bios_fhir_") ||
-                    n.startsWith("bios_doctor_summary_")) &&
+                    n.startsWith("bios_summary_") || n.startsWith("bios_doctor_summary_")) &&
                     (n.endsWith(".json") || n.endsWith(".zip") ||
                         n.endsWith(".pdf") || n.endsWith(".bios"))
             }?.forEach { file ->

@@ -17,8 +17,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Renders a single-page A4 PDF the owner can share with a doctor before or
- * after a consult. Designed to be readable in ~30 seconds. Generated on the
+ * Renders a single-page A4 PDF summary the owner can keep or hand to anyone.
+ * Designed to be readable in ~30 seconds. Generated on the
  * device, written to `context.cacheDir`, shared via the standard share sheet
  * (`FileProvider` + `ACTION_SEND`) — same pattern as the other exporters.
  *
@@ -77,7 +77,7 @@ class PdfReportExporter(
         )
         document.finishPage(page)
 
-        val filename = "bios_doctor_summary_${timestampForFile()}.pdf"
+        val filename = "bios_summary_${timestampForFile()}.pdf"
         val file = File(context.cacheDir, filename)
         file.outputStream().use { document.writeTo(it) }
         document.close()

@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.bios.app.data.BiosDatabase
 import com.bios.app.model.*
+import com.bios.app.sync.AlertSyncCodec
 import com.bios.app.sync.BlobType
 import com.bios.app.sync.SyncProtocol
 import kotlinx.coroutines.Dispatchers
@@ -160,20 +161,7 @@ class WillowSyncAdapter(
     }
 
     private suspend fun fetchAnomaliesSince(sinceMillis: Long): List<Pair<String, String>> {
-        return anomalyDao.fetchCreatedAfter(sinceMillis).map { a ->
-            a.id to JSONObject().apply {
-                put("id", a.id); put("detectedAt", a.detectedAt)
-                put("metricTypes", a.metricTypes)
-                put("deviationScores", a.deviationScores)
-                put("combinedScore", a.combinedScore)
-                put("patternId", a.patternId ?: JSONObject.NULL)
-                put("severity", a.severity); put("title", a.title)
-                put("explanation", a.explanation)
-                put("suggestedAction", a.suggestedAction ?: JSONObject.NULL)
-                put("acknowledged", a.acknowledged)
-                put("acknowledgedAt", a.acknowledgedAt ?: JSONObject.NULL)
-            }.toString()
-        }
+        return anomalyDao.fetchCreatedAfter(sinceMillis).map { a -> a.id to AlertSyncCodec.toJson(a).toString() }
     }
 
     private suspend fun fetchHealthEventsSince(sinceMillis: Long): List<Pair<String, String>> {
@@ -233,20 +221,7 @@ class WillowSyncAdapter(
     }
 
     private suspend fun importAnomaly(o: JSONObject) {
-        anomalyDao.insert(Anomaly(
-            id = o.getString("id"),
-            detectedAt = o.getLong("detectedAt"),
-            metricTypes = o.getString("metricTypes"),
-            deviationScores = o.getString("deviationScores"),
-            combinedScore = o.getDouble("combinedScore"),
-            patternId = if (o.isNull("patternId")) null else o.getString("patternId"),
-            severity = o.getInt("severity"),
-            title = o.getString("title"),
-            explanation = o.getString("explanation"),
-            suggestedAction = if (o.isNull("suggestedAction")) null else o.getString("suggestedAction"),
-            acknowledged = o.optBoolean("acknowledged", false),
-            acknowledgedAt = if (o.isNull("acknowledgedAt")) null else o.getLong("acknowledgedAt")
-        ))
+        anomalyDao.insert(AlertSyncCodec.fromPeer(o, anomalyDao.fetchById(o.getString("id"))))
     }
 
     private suspend fun importHealthEvent(o: JSONObject) {

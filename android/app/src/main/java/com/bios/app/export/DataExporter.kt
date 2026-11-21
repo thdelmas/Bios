@@ -140,28 +140,7 @@ class DataExporter(
 
     private suspend fun buildAnomaliesJson(): JSONArray {
         val array = JSONArray()
-        for (a in anomalyDao.fetchAll()) {
-            array.put(JSONObject().apply {
-                put("id", a.id)
-                put("detectedAt", a.detectedAt)
-                put("metricTypes", a.metricTypes)
-                put("deviationScores", a.deviationScores)
-                put("combinedScore", a.combinedScore)
-                put("patternId", a.patternId)
-                put("severity", a.severity)
-                put("title", a.title)
-                put("explanation", a.explanation)
-                put("suggestedAction", a.suggestedAction)
-                put("acknowledged", a.acknowledged)
-                put("acknowledgedAt", a.acknowledgedAt)
-                put("feltSick", a.feltSick)
-                put("visitedDoctor", a.visitedDoctor)
-                put("diagnosis", a.diagnosis)
-                put("symptoms", a.symptoms)
-                put("notes", a.notes)
-                put("outcomeAccurate", a.outcomeAccurate)
-            })
-        }
+        for (a in anomalyDao.fetchAll()) array.put(AlertExport.json(a))
         return array
     }
 
@@ -243,18 +222,8 @@ class DataExporter(
         return rows
     }
 
-    private suspend fun anomaliesCsvRows(): List<String> {
-        val header = "id,detectedAt,severity,title,combinedScore,patternId," +
-            "acknowledged,feltSick,visitedDoctor,diagnosis,outcomeAccurate"
-        val rows = mutableListOf(header)
-        for (a in anomalyDao.fetchAll()) {
-            rows += "${csvEscape(a.id)},${a.detectedAt},${a.severity}," +
-                "${csvEscape(a.title)},${a.combinedScore},${csvEscape(a.patternId ?: "")}," +
-                "${a.acknowledged},${a.feltSick ?: ""},${a.visitedDoctor ?: ""}," +
-                "${csvEscape(a.diagnosis ?: "")},${a.outcomeAccurate ?: ""}"
-        }
-        return rows
-    }
+    private suspend fun anomaliesCsvRows(): List<String> =
+        listOf(AlertExport.CSV_HEADER) + anomalyDao.fetchAll().map { AlertExport.csvRow(it, ::csvEscape) }
 
     private suspend fun aggregatesCsvRows(): List<String> {
         val header = "id,metricType,period,periodStart,mean,median,min,max,stdDev,sampleCount"
@@ -325,6 +294,6 @@ class DataExporter(
 
     companion object {
         const val SCHEMA_ID = "bios-open-health"
-        const val SCHEMA_VERSION = "1.2"
+        const val SCHEMA_VERSION = "2.0"
     }
 }

@@ -15,7 +15,7 @@ import java.io.File
  * Unlike [EncryptedExporter]'s Bios-only `.bios` container, a standard AES zip
  * opens **outside** Bios with just the password — 7-Zip, Keka, the macOS/Windows
  * archive tools (with an AES-capable helper), Python's `pyzipper` — so a
- * clinician, the owner, or another agent can read the data given the passphrase.
+ * reader the owner hands it to can open the data given the passphrase.
  * That interoperability is the whole point: the encryption protects the file in
  * transit/at rest without locking the owner into Bios to read it back.
  *

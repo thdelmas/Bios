@@ -38,10 +38,8 @@ import kotlinx.coroutines.launch
  * [SettingsScreen] only needs to call this composable — keeps that file
  * under the 500-line limit and groups all PDF-summary UI in one place.
  *
- * The dialog asks for two owner inputs: a focal metric (the chart axis the
- * doctor will look at first) and an optional free-text note (one to two
- * lines, e.g., "Visit on 2026-05-22 — fatigue + palpitations"). Both
- * mirror the MVP scope in issue #104.
+ * The dialog asks for two owner inputs: a focal metric (the one the chart
+ * shows) and an optional free-text note of one to two lines.
  */
 @Composable
 fun PdfSummaryButton(
@@ -99,7 +97,7 @@ fun PdfSummaryButton(
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
         }
-        Text(if (isExporting) "Generating PDF…" else "PDF summary (for doctors)")
+        Text(if (isExporting) "Generating PDF…" else "PDF summary")
     }
 
     if (showDialog) {
@@ -111,8 +109,8 @@ fun PdfSummaryButton(
             isExporting = isExporting,
             onSave = {
                 showDialog = false
-                if (encrypt) saveZipLauncher.launch("bios_doctor_summary.pdf.zip")
-                else savePdfLauncher.launch("bios_doctor_summary.pdf")
+                if (encrypt) saveZipLauncher.launch("bios_summary.pdf.zip")
+                else savePdfLauncher.launch("bios_summary.pdf")
             },
             onShare = {
                 showDialog = false
@@ -123,7 +121,7 @@ fun PdfSummaryButton(
                         shareFile(
                             context, file,
                             if (encrypt) "application/zip" else "application/pdf",
-                            "Share summary with your doctor",
+                            "Share your summary",
                         )
                     } finally {
                         isExporting = false
@@ -155,7 +153,7 @@ private fun PdfSummaryDialog(
             Column {
                 Text(
                     "Pick the metric to feature on the chart and (optionally) " +
-                        "add a short note for the doctor. The PDF is generated " +
+                        "add a short note. The PDF is generated " +
                         "on-device — save it here or share it.",
                 )
                 Spacer(Modifier.height(12.dp))
@@ -177,7 +175,7 @@ private fun PdfSummaryDialog(
                 OutlinedTextField(
                     value = ownerNote,
                     onValueChange = onNoteChange,
-                    label = { Text("Note for the doctor (optional)") },
+                    label = { Text("Note (optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = false,
                     maxLines = 2,

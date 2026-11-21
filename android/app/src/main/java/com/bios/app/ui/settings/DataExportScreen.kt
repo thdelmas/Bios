@@ -58,7 +58,7 @@ import java.io.File
 
 /**
  * Your data & export — the owner's own data, and the ways to take it off the
- * device: open formats (JSON/CSV), a FHIR bundle for clinicians, and a
+ * device: open formats (JSON/CSV), a FHIR bundle (standard health-record format), and a
  * one-page PDF summary. Surfaced as its own route off the Self tab so export
  * is one tap from the landing page instead of buried inside the wearable
  * connection screen — owners kept failing to find it (export discoverability).
@@ -97,7 +97,7 @@ fun DataExportScreen(
         ) {
             Text(
                 "Your data is yours. Save a copy to the device in an open format, " +
-                    "or share a clinician-ready summary. Save works offline with no " +
+                    "or share a one-page summary. Save works offline with no " +
                     "other app installed; nothing leaves until you choose where it goes.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -198,11 +198,11 @@ private fun ExportFormatList(
     ) { DataExporter(it, viewModel.db).exportToCsvZip() }
     Spacer(Modifier.height(12.dp))
     ExportRow(
-        label = "FHIR bundle — for doctors",
+        label = "FHIR bundle (standard health-record format)",
         enabled = enabled,
         mimeType = "application/fhir+json",
         suggestedName = "bios_fhir.json",
-        shareChooserTitle = "Share FHIR Bundle with your doctor",
+        shareChooserTitle = "Share FHIR bundle",
         encrypt = encrypt,
         passphrase = passphrase,
     ) { FhirExporter(it, viewModel.db).exportToFhirBundle() }
@@ -310,7 +310,7 @@ private fun ImportFhirButton(viewModel: AppViewModel) {
  *    other app installed, so it is the reliable path on degoogled builds
  *    (LETHE) where the share sheet can be empty. Listed first for that reason.
  *  - **Share** — the original [ACTION_SEND] chooser, for handing the file to
- *    mail / a clinician app / cloud when one is present.
+ *    mail, another app or cloud storage when one is present.
  *
  * Both run [produceFile] off the main thread; [produceFile] writes a temp
  * copy to cache, which Save streams to the chosen URI and Share exposes via
