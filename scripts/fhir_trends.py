@@ -103,14 +103,6 @@ def report(bundle):
         else:
             print(f"{k:30.30s} {len(series[k]):>4}  {'(sparse)':>9}")
 
-    issues = [x["resource"] for x in bundle.get("entry", [])
-              if x["resource"].get("resourceType") == "DetectedIssue"]
-    if issues:
-        print(f"\n{'-'*64}\nDETECTED ISSUES ({len(issues)}):")
-        for r in issues:
-            detail = r.get("detail") or r.get("code", {}).get("text") or ""
-            print(f"  [{r.get('severity','?')}] {detail}")
-
 
 def main():
     ap = argparse.ArgumentParser(description="Bios FHIR evolution report")
