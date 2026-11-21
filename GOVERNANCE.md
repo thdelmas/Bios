@@ -1,6 +1,6 @@
 # Bios Governance: Async-First, Written Decisions
 
-> Inspired by Alan's no-meetings culture. Adapted for an open-source health project where every decision must be auditable and every contributor must be able to participate regardless of timezone.
+> For an open-source project where every decision must be auditable and every contributor must be able to participate regardless of timezone.
 
 ---
 
@@ -18,7 +18,7 @@ Every decision — technical, product, or policy — is made in writing. No deci
 
 Open a GitHub issue with:
 - **What** you want to change or build
-- **Why** it matters (link to the roadmap principle it serves)
+- **Why** it matters (link to the spec or roadmap item it serves)
 - **Trade-offs** you considered
 - **Scope** — what this does and does not include
 
@@ -54,11 +54,11 @@ Not everything needs a formal proposal. Use judgment:
 
 | Needs a proposal | Just do it |
 |---|---|
-| New condition pattern | Bug fix with obvious cause |
+| Change to what Bios measures or shows | Bug fix with obvious cause |
 | Architecture change | Dependency version bump |
 | New data source adapter | Typo / docs fix |
 | Privacy model change | Test coverage improvement |
-| Alert content policy change | Refactor within existing patterns |
+| Change to the vocabulary gate or its allowlist | Refactor within existing patterns |
 | New region config | Adding translations |
 | Anything touching wipe/erasure | CI/build improvements |
 
@@ -80,7 +80,7 @@ Not everything needs a formal proposal. Use judgment:
 
 ### Owner (project lead)
 - Tiebreaker when maintainers disagree
-- Veto on anything that violates non-negotiable principles (see ROADMAP.md)
+- Veto on anything that contradicts the product decision in [docs/specs/instrument-only.md](docs/specs/instrument-only.md)
 - Veto is rare and always explained in writing
 
 ---
@@ -113,4 +113,4 @@ No Slack, no Discord, no email threads for project decisions. Discord is the com
 
 ## Why This Matters for Bios
 
-Bios protects the owner. That protection is only as trustworthy as the decisions behind it. When a user asks "why does Bios handle my data this way?" — we can point to a specific issue, with the reasoning, the trade-offs considered, and any dissent. That's not just good governance; it's accountability to the people we protect.
+Bios holds its owner's measurements. When someone asks "why does Bios handle my data this way?", the answer is a specific issue, with the reasoning, the trade-offs considered, and any dissent. That is accountability to the people who use it.

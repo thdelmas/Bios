@@ -1,19 +1,25 @@
-You are working on Bios, a privacy-first health monitoring Android app (Kotlin + Jetpack Compose).
+You are working on Bios, an Android app (Kotlin + Jetpack Compose) that measures, compares each metric with the owner's own usual range, and shows the result. It never says what a measurement means. It is not a medical device.
 
 Key constraints:
-- All health data processing happens on-device. Never send raw health data to a server.
+- All processing happens on-device. Bios has no server. Never add code that sends readings anywhere.
+- No named condition, cause, advice or score against an outside reference in any text Bios shows. VocabularyGateTest enforces this; see docs/specs/instrument-only.md.
 - AES-256 encryption at rest via SQLCipher.
 - Max 500 lines per file. Split before adding to files near the limit.
 - One logical change per prompt. Don't refactor unrelated code.
 
-Architecture:
+Architecture (android/app/src/main/java/com/bios/app/):
 - model/ — Room entities and enums
-- data/dao/ — Room DAOs
-- engine/ — Baseline calculation, anomaly detection, statistics
-- ingest/ — HealthConnect adapter, sync workers
-- alerts/ — Alert generation and condition patterns
+- data/ and data/dao/ — databases, migrations, repositories, DAOs
+- engine/ — baselines, the deviation score, statistics, sleep and cycle derivations, camera PPG signal processing
+- ingest/ — source adapters (Health Connect, Gadgetbridge, sensors, vendor APIs), deduplication, sync worker
+- alerts/ — the one deviation alert, its wording, notifications, source-disconnect notices
+- export/ — JSON, CSV, FHIR and PDF export, FHIR import
+- labocr/ — on-device OCR of lab reports
+- provider/ — BiosHealthProvider for companion apps
+- platform/ — LETHE integration, wipe, loopback API
+- sync/ — device-to-device sync (off unless enabled)
 - ui/ — Compose screens, components, theme
-- privacy/ — Community aggregation, contribution workers
+- android/bios-contracts — metric keys and the provider contract companions compile against
 
 Patterns to follow:
 - Use suspend functions and Flow for async
