@@ -123,6 +123,12 @@ Criteria:
 
 ## Limits
 
+> Superseded in part by `instrument-only.md`: there are no rules any more.
+> Where criterion 10, the fourth row below and the Open section say "rules",
+> read baselines and the one deviation alert, which still read all SENSOR
+> sources. In criterion 9, the entry screen is now labelled "Reading taken
+> elsewhere" and the provenance field holds a device or method.
+
 | Cost | Bearer (seat) | Seat | Balance as the bearer sees it | Fires when |
 | --- | --- | --- | --- | --- |
 | A day the watch was worn briefly is counted by the watch alone, and the phone's fuller count for that day is dropped | owner | filled | Per day, not per gap: a gap-filling rule brings the overlap back inside the day. Accepted 2026-10-14 ("yes" to per-day fallback). | A day total far below the phone's count on a day the owner knows the watch was on for an hour or two. Then the question is a per-gap rule, a later spec. |

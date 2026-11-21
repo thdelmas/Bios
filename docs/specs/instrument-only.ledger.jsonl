@@ -2,3 +2,4 @@
 {"date":"2026-11-21","kind":"asked","seat":"owner","by":"pair","reason":"four seats put to the owner: where the patterns go, depth of the cut, the published builds, the manifesto"}
 {"date":"2026-11-21","kind":"answered","seat":"owner","by":"owner","reason":"patterns leave the public repo; strict cut (everything that screens, scores or advises goes); published APKs withdrawn; manifesto redrafted and read before it returns"}
 {"date":"2026-11-21","kind":"written","seat":"_spec","by":"pair","reason":"written after the plan was approved; cost class irreversible; other-installers seat left empty"}
+{"date":"2026-11-21","kind":"build-changed","seat":"_spec","by":"pair","reason":"the build removed the sleep score and glucose time-in-range and recorded both as closed, replaced the identifier of stored alerts from removed patterns with a neutral one, and aligned the repository text with the instrument"}

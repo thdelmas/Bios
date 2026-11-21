@@ -12,12 +12,23 @@ was in the window. A missing watch made an old night count twice.
 
 ## Intent
 
+> Superseded in part by `instrument-only.md`: condition patterns and their
+> rules are removed. One comparison remains, the deviation alert over a
+> single 24 h window.
+
 A baseline-deviation alert speaks only about data that exists, is recent,
 and covers the span the rule claims. Missing data is reported as missing,
 never read as a deviation, and one night's readings raise at most one
 alert.
 
 ## Goal
+
+> Superseded in part by `instrument-only.md`: with one 24 h window, rules 1
+> and 2 hold by construction (one slot; a reading inside the window is under
+> 24 h old) and `WindowCoverage.sample` has no caller left in the app. Rule 3
+> has no pattern screen to show on: a metric with no reading in the window is
+> left out of the alert. Rule 4 applies to the one alert as written. The
+> replay named under "Verified when" is no longer in the repository.
 
 Four rules, agreed by the owner 2026-10-04:
 
@@ -44,6 +55,9 @@ person-month).
 
 ## Limits
 
+> Superseded in part by `instrument-only.md`: the first row's trigger is
+> measured on a replay that is no longer in the repository.
+
 | Cost | Bearer (seat) | Seat | Balance as the bearer sees it | Fires when |
 | --- | --- | --- | --- | --- |
 | Real deviations missed when the watch is worn irregularly | owner | filled 2026-10-04 ("agree for the 4 fixes") | A rule that cannot see the span it claims stays silent; the source-liveness surface already reports the gap. | Replay sensitivity drops by more than 2 of 24 participants. |
@@ -61,6 +75,9 @@ person-month).
   limit for this change; the owner's alert ledger is the instrument.
 
 ## Open
+
+> Superseded in part by `instrument-only.md`: the alert now states
+> deviations in units, and the replay item has no tooling left.
 
 - 0.6 slot coverage and 30 h freshness are first values, to be tuned on the
   owner's alert ledger, not on priors.
