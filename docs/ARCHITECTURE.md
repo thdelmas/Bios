@@ -1,325 +1,190 @@
 # Bios Technical Architecture
 
+Bios is a measuring instrument. It collects readings, stores them encrypted on the phone, compares each metric with the owner's own usual range, and shows the result. It does not interpret. The product decision is in [specs/instrument-only.md](specs/instrument-only.md).
+
+Everything described here runs on the phone. Bios has no server.
+
 ## Platform Model
 
-Bios is **primarily designed to be embedded on LETHE** (OSmosis privacy-hardened Android overlay, LineageOS 22.1 base) and **portable across stock Android versions** (API 28–35).
+One Android codebase (API 28 to 35), two build flavors:
 
-## Scope: Bios vs. Ecosystem Apps
+| Flavor | Context | Notes |
+|---|---|---|
+| `standalone` | Portable APK for any Android 9+ device | The published flavor. Standard app permissions, Health Connect where available. |
+| `lethe` | Built for LETHE (LineageOS-based overlay) | Application id suffix `.lethe`, version suffix `-lethe`. Not distributed from this repository. |
 
-Bios is the **sensor backbone and generic body guardian**. Domain specialists
-(neurological, mood, safety) live in separate companion apps that read from
-Bios and — where applicable — push computed scores back into Bios's metric
-bus. See [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) for the full rule
-and per-app breakdown (W2F, Virgil).
-
-In short, Bios owns: ingestion adapters, encrypted storage, personal
-baselines, canonical metric vocabulary, and the generic multi-system
-detection engine. It does **not** own: domain-specific active tests
-(AccessibilityService keystroke capture, SDMT/tapping, grip dynamometers),
-domain-specific detection models (MS relapse, bipolar state), or social
-features (emergency contacts, SMS/call handling).
-
-Bios *does* host capture and import surfaces for its own sensor adapters
-and biomarker-style manual data (camera PPG, manual sleep entry, the Data
-Coverage screen). The line is producer-by-capture-surface: a surface
-lives wherever its produced metric key lives. New capture surfaces should
-cite the "No domain-specific active tests in Bios" rule in
-[ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md).
-
-### Build Flavors
-
-| Flavor | Context | Install method | Permissions |
-|---|---|---|---|
-| `lethe` | Embedded system app on LETHE ROM | Pre-installed via OSmosis overlay | System-level sensor access, LETHE agent IPC, launcher integration |
-| `standalone` | Portable APK for any Android 9+ device | Sideload or app store | Standard app permissions, Health Connect where available |
-
-### Platform Abstraction
-
-All platform-specific behavior is abstracted behind interfaces in the `platform/` package:
+The two flavors share all source. LETHE-specific behaviour is chosen at runtime, not at build time: `PlatformDetector` looks for the LETHE system property or the LETHE agent package and returns `LETHE` or `STOCK_ANDROID`.
 
 ```
 platform/
-  PlatformDetector.kt        -- detect LETHE vs stock Android at runtime
-  LetheCompat.kt             -- interface for LETHE agent, launcher cards, OTA hooks
-  HealthDataSource.kt        -- Health Connect (API 14+) vs direct sensor fallback
-  KeystoreProvider.kt        -- LETHE hardware keystore vs Android Keystore
-  BackgroundScheduler.kt     -- WorkManager (stock) vs LETHE job scheduler
+  PlatformDetector.kt     -- LETHE vs stock Android, capability flags
+  LetheCompat.kt          -- interface: wipe signals, agent status, reboot safety
+  LetheCompatImpl.kt      -- used when LETHE is detected
+  LetheCompatNoop.kt      -- used everywhere else
+  HealthApiServer.kt      -- loopback API for the LETHE agent (LETHE only)
+  OtaCoordinator.kt       -- answers "is it safe to reboot now?"
+  DataDestroyer.kt        -- full wipe: key, database files, tokens, exports, preferences
+  ForensicRiskMonitor.kt  -- data footprint figures and partial wipes for the privacy dashboard
+  SafeMode.kt             -- wipe on entry of a separate PIN (no screen sets one today)
+  IpfsClient.kt           -- client for a local IPFS daemon, used only by the sync code
 ```
 
-On stock Android, LETHE-specific interfaces return no-ops. No LETHE classes are loaded.
+**No Google Play Services dependency.** Bios runs on degoogled ROMs.
 
-### Android Version Compatibility
-
-| API Level | Android Version | Support Level |
+| API Level | Android Version | Support |
 |---|---|---|
 | 35 | Android 15 | Full (targetSdk) |
-| 34 | Android 14 | Full (Health Connect native) |
-| 33 | Android 13 | Full (Health Connect via APK) |
-| 28–32 | Android 9–12L | Core features, direct sensor adapters instead of Health Connect |
+| 34 | Android 14 | Full (Health Connect built in) |
+| 28–33 | Android 9–13 | Health Connect if its APK is installed; otherwise direct sensors, Gadgetbridge and vendor APIs |
 | < 28 | Android 8.1 and below | Not supported |
 
-**No Google Play Services dependency.** Bios must run on degoogled ROMs (LETHE, LineageOS, CalyxOS, GrapheneOS, etc.).
+## Scope: Bios vs. Companion Apps
 
----
+Bios owns ingestion, encrypted storage, usual-range baselines, the one deviation alert, the owner's records, export, and the provider that companion apps read from and write to. Companion apps are separate APKs. See [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) and [CONSUMER_API.md](CONSUMER_API.md).
 
 ## System Overview
 
 ```
 +------------------------------------------------------------------+
-|                     MOBILE APP (Android 9+)                       |
-|              [LETHE embedded  /  Standalone portable]             |
+|                        PHONE (Android 9+)                         |
 |                                                                   |
-|  +------------------+  +------------------+  +-----------------+  |
-|  | Sensor Ingest    |  | Baseline Engine  |  | Insight UI      |  |
-|  | Layer            |  | (on-device ML)   |  | & Alerts        |  |
-|  +--------+---------+  +--------+---------+  +--------+--------+  |
-|           |                     |                      |          |
-|  +--------v---------------------v----------------------v--------+ |
-|  |                   Local Data Store                           | |
-|  |              (Room + SQLCipher encrypted)                    | |
-|  +-------------------------------+------------------------------+ |
-|                                  |                                |
-|             (opt-in sync only)   |                                |
-+----------------------------------+--------------------------------+
-                                   |
-                    +--------------v---------------+
-                    |       Sync Gateway           |
-                    |  (E2E encrypted, user-keyed) |
-                    +--------------+---------------+
-                                   |
-                    +--------------v---------------+
-                    |        Backend Services       |
-                    |  (stateless, zero-knowledge)  |
-                    +--------------+---------------+
-                                   |
-              +--------------------+--------------------+
-              |                    |                     |
-   +----------v--------+ +--------v---------+ +--------v---------+
-   | Model Update       | | Aggregate        | | Research         |
-   | Service            | | Insights API     | | Pipeline         |
-   | (federated / OTA)  | | (anonymized)     | | (opt-in, de-ID)  |
-   +--------------------+ +------------------+ +------------------+
+|  +----------------+   +------------------+   +-----------------+  |
+|  | Ingest         |   | Engine           |   | UI              |  |
+|  | (adapters,     |-->| (baselines,      |-->| (home, trends,  |  |
+|  |  dedup)        |   |  deviation score)|   |  alerts, log,   |  |
+|  +-------+--------+   +---------+--------+   |  records)       |  |
+|          |                      |            +--------+--------+  |
+|  +-------v----------------------v---------------------v--------+  |
+|  |          Local store (Room + SQLCipher, two databases)      |  |
+|  +------+--------------------+---------------------+-----------+  |
+|         |                    |                     |              |
+|  +------v-------+   +--------v---------+   +-------v----------+   |
+|  | Export       |   | BiosHealthProvider|  | Loopback API     |   |
+|  | (owner asks) |   | (companion apps,  |  | (LETHE agent,    |   |
+|  |              |   |  owner-approved)  |  |  LETHE only)     |   |
+|  +--------------+   +------------------+   +------------------+   |
++------------------------------------------------------------------+
 ```
+
+The only outbound network traffic is the fetch from a device maker's API the owner has signed into. See [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md) for the complete list of ways data can leave the phone.
 
 ## Core Components
 
 ### 1. Sensor Ingest Layer
 
-Responsible for pulling data from all supported sources and normalizing it into Bios's unified schema.
+Pulls data from each connected source and normalizes it into `MetricReading` rows (see [DATA_MODEL.md](DATA_MODEL.md)).
 
-**Adapters** (one per data source, 9 implemented):
-- **Health Connect Adapter** (Android 14+) -- Samsung Galaxy Watch, Pixel Watch, Fitbit, other Android wearables
-- **Gadgetbridge Adapter** -- open-source companion for degoogled devices (Mi Band, PineTime, Amazfit, 40+ devices)
-- **Direct Sensor Adapter** -- HR, HRV (inter-beat interval), steps via Android SensorManager APIs
-- **Oura API Adapter** -- Oura Ring v2 REST API (HR, HRV, sleep stages, temperature, readiness)
-- **WHOOP API Adapter** -- WHOOP v2 REST API (HR, HRV, SpO2, skin temp, sleep, strain, recovery)
-- **Garmin API Adapter** -- Garmin Connect API (HR, resting HR, SpO2, respiration, sleep, steps)
-- **Withings API Adapter** -- Withings Health Mate API (blood pressure, skin temp, sleep, body composition)
-- **Dexcom API Adapter** -- Dexcom CGM API (continuous glucose, 5-min intervals, FDA-cleared)
-- **Phone Sensor Adapter** -- raw accelerometer, step counter (activity intensity proxy)
+**Adapters** (`ingest/`):
 
-**Responsibilities:**
-- Poll or subscribe to data source changes
-- Convert vendor-specific formats into Bios Unified Metrics (see DATA_MODEL.md)
-- Deduplicate overlapping readings (e.g., HR from both Apple Watch and Oura)
-- Tag each reading with source, confidence level, and timestamp
-- Buffer and batch-write to local store
+- **Health Connect** (`HealthConnectAdapter`): whatever other apps write there (watch companions, the handset pedometer). Each count record keeps the app that wrote it as its source.
+- **Gadgetbridge** (`GadgetbridgeAdapter`, `GadgetbridgeReceiver`): broadcast intake from the open-source companion for bands and watches.
+- **Direct sensors** (`DirectSensorAdapter`): heart rate, heart beat, step counter and accelerometer sensors exposed through Android's `SensorManager`.
+- **Phone sensors** (`PhoneSensorAdapter`): the phone's own accelerometer and gyroscope.
+- **Phone sleep** (`PhoneSleepAdapter`, `PhoneSleepCollectionService`): accelerometer, screen and charging samples overnight, turned into a sleep window by `PhoneSleepInference`.
+- **Camera PPG** (`CameraPpgAdapter`): an owner-triggered fingertip capture. See [CAMERA_PPG.md](CAMERA_PPG.md).
+- **BLE air-quality peripheral** (`BleAirQualityAdapter`): Environmental Sensing readings from a paired device.
+- **Vendor APIs** the owner signs into or pastes a token for: Oura, WHOOP, Garmin, Withings, Dexcom, Polar, COROS. Each call goes from the phone straight to the vendor.
+- **Imports**: FHIR bundles (`export/FhirImporter`), Apple Health ECG files (`AppleHealthEcgImporter`), lab reports read by on-device OCR (`labocr/`, see [LAB_OCR_INGESTION.md](LAB_OCR_INGESTION.md)).
+- **Manual entry**: readings and records the owner types in (see [SELF_REPORTED_DATA_HOME.md](SELF_REPORTED_DATA_HOME.md)).
 
-**Deduplication strategy:**
+**Adapter contract.** An adapter fetches from one source, converts to `MetricReading` with a `sourceId` and a `ConfidenceTier`, and hands the batch to `IngestManager`. `IngestManager` isolates failures per adapter, records source health (`SourceHealthStore`, see [specs/source-liveness.md](specs/source-liveness.md)), runs deduplication, then the derivations (sleep components, resting heart rate, heart-rate recovery, circadian figures).
 
-One pass in `ingest/Deduplicator.kt`, two rules:
+**Deduplication** (`ingest/Deduplicator.kt`), two rules:
 
-1. **Point-in-time metrics (HR, HRV, RHR, SpO2, sleep stages, biomarkers).** Readings with identical `(metricType, timestamp)` collapse to the highest-confidence one, across sources. A 1-second skew between two adapters sampling HR is legitimate sampling, not a duplicate.
-2. **Count metrics (`STEPS`, `ACTIVE_CALORIES`, `ACTIVE_MINUTES`).** One row per `(metricType, timestamp, sourceId)`: every witness's count is stored. Nothing collapses across sources at ingest; the day total picks **one source per calendar day** at read time by the owner's order (`data/CountSourceOrder.kt`, `data/CountTotals.kt`, spec `docs/specs/source-preference.md`). A Health Connect count record's source is the app that wrote it (`ingest/HealthConnectOrigins.kt`), so COROS, Fitbit and the handset pedometer are three sources. The earlier cross-source 5-minute window pass (issue #14) is gone: with three apps writing per-minute buckets it would have deleted the watch's minutes next to every phone bucket.
+1. **Point-in-time metrics (HR, HRV, RHR, SpO2, sleep stages, lab values).** Readings with identical `(metricType, timestamp)` collapse to the highest-confidence one, across sources.
+2. **Count metrics (`STEPS`, `ACTIVE_CALORIES`, `ACTIVE_MINUTES`).** One row per `(metricType, timestamp, sourceId)`: every source's count is stored. The day total picks **one source per calendar day** at read time by the owner's order (`data/CountSourceOrder.kt`, `data/CountTotals.kt`, spec [specs/source-preference.md](specs/source-preference.md)).
 
-Confidence tier ordering: ECG > optical chest > optical wrist > phone camera.
+`SyncWorker` runs ingestion periodically through WorkManager, then deletes readings older than the retention window (90 days).
 
 ### 2. Local Data Store
 
-All health data lives on-device by default. The store is the single source of truth.
+Two SQLCipher-encrypted Room databases:
 
-**Structure:**
-- **Raw readings** -- immutable append-only log of every ingested data point
-- **Computed metrics** -- rolling aggregates (hourly, daily, weekly) pre-calculated for performance
-- **Baselines** -- per-user personal baselines computed by the Baseline Engine
-- **Alerts** -- generated anomaly records with severity, explanation, and linked readings
-- **User preferences** -- alert thresholds, connected sources, display settings
+- **Main database** (`data/BiosDatabase.kt`): readings, payload fields, sources, aggregates, baselines, alerts, and the owner's records (logged events, health events, headache diary, medication list, immunisations, allergies, encounters, imaging studies, intervention events and treatment courses, ECG strips, body measurements).
+- **Reproductive database** (`data/ReproductiveDatabase.kt`): cycle readings and contraception records, in a separate file with its own passphrase so it can be destroyed on its own.
 
-**Requirements:**
-- AES-256 encryption at rest (SQLCipher)
-- Key stored in Android Keystore, protected by device credentials
-- Exportable (user owns their data -- full export in open format)
-- Prunable (user controls retention period)
+Tables of features removed from the app are left in the file with their rows; nothing reads them (see the instrument-only spec).
 
-### 3. Baseline Engine (On-Device ML)
+### 3. Engine
 
-The core intelligence of Bios. Runs entirely on-device to preserve privacy.
+`engine/` holds all computation. Nothing in it names a cause or attaches a meaning to a number.
 
-**What it does:**
-- Builds a **personal baseline** for each metric over a rolling window (default: 30 days)
-- Computes **normal ranges** per user (not population averages)
-- Detects **deviations** from personal baseline using statistical and ML methods
-- Cross-correlates **multiple signals** to increase detection confidence (e.g., elevated resting HR + rising temperature + declining HRV = potential infection onset)
+- **`BaselineEngine`**: per metric, mean, standard deviation, 5th and 95th percentile and trend over a rolling 14-day window. A baseline needs at least 10 sensor samples in the window, and detection starts once 7 days of data exist. Only sensor readings feed baselines. Manual entries never do.
+- **`HolisticSignals`**: for each watched metric, the mean of the last 24 hours of sensor readings against the owner's baseline, as a z-score. A metric with no reading in the window or no baseline is left out.
+- **`DeviationScore`**: a fixed table that turns the count and mean size of the z-scores beyond 1.5 into one score. An alert is raised at 0.65 (three watched metrics beyond the cut). Every alert can be re-derived by hand from its stored snapshot.
+- **`AnomalyDetector`**: applies the score, a 24-hour cool-down, and the rule that evidence already used by an earlier alert does not raise a second one ([specs/rule-window-coverage.md](specs/rule-window-coverage.md), rule 4).
+- **Derivations**: sleep components and regularity (`SleepDerivations`, `SleepRegularityCalculator`), cycle statistics (`CycleInference`, `CycleStats`), glucose variability, circadian figures, HRV measures, camera PPG signal processing (`PpgSignalProcessor`, `HrvAnalyzer`, `PulseWaveformFeatures`), estimated amount of a logged substance over time (`ConcentrationCalculator`).
 
-**Detection pipeline:**
+Watched metrics: heart rate, heart rate variability, resting heart rate, blood oxygen, respiratory rate, skin temperature deviation, sleep duration, steps, active calories.
 
-```
-Raw readings
-    |
-    v
-Rolling statistics (mean, std, percentiles per metric)
-    |
-    v
-Deviation scoring (z-score against personal baseline)
-    |
-    v
-Multi-signal correlation (weighted combination of deviations)
-    |
-    v
-Pattern matching (known condition signatures from medical literature)
-    |
-    v
-Confidence scoring + severity classification
-    |
-    v
-Alert generation (if threshold met)
-```
+### 4. Alerts
 
-**Condition patterns (12 implemented, 33 signal rules):**
-- Infection onset, sleep disruption, cardiovascular stress, overtraining (Phase 1)
-- Metabolic drift, cardiorespiratory deconditioning, chronic inflammation, recovery deficit (Phase 3B — longevity science)
-- Respiratory infection, AFib screening, mental health correlate, menstrual cycle anomaly (Phase 4)
-- 24 of 33 signal rules carry literature-backed thresholds with citations
+One kind of alert: watched metrics outside the owner's usual range, stated in units. Title "Outside your usual range". The text is the measured lines. No cause, no next step.
 
-**Model approach:**
-- **Statistical methods** (current): Rolling z-scores, exponential moving averages, percentile-based thresholds. Simple, interpretable, low compute.
-- **On-device ML**: LiteRT (Google's rebranded TensorFlow Lite). Anomaly detection model wrapper implemented with heuristic fallback. Shipped as frozen models, updated OTA via ModelUpdateManager.
-- **Federated learning**: FederatedTrainer computes on-device gradients from owner feedback, applies differential privacy, encrypts for server aggregation. Owner opts in; opting out doesn't reduce features.
+| Tier | When | Delivery |
+|------|------|----------|
+| Observation | Score at the threshold | Stored, no notification |
+| Notice | Score above 0.7 | Low-priority notification |
+| Advisory | Score above 0.85 | Default-priority notification |
+| Warning | Advisory-level score and at least one metric 3 standard deviations or more from baseline | High-priority notification |
 
-### 4. Insight & Alert System
+The tier describes the size of the deviation and nothing else. A fifth tier value, `URGENT`, remains in the enum and in the companion contract for rows stored by earlier versions; nothing emits it.
 
-A guardian that watches for what the owner might miss, then speaks clearly when something matters.
+The alert detail screen shows the tier meter, a range strip per watched metric, the readings and sources behind them, the snapshot taken at detection, acknowledge, and the owner's note ([specs/alert-detail.md](specs/alert-detail.md)).
 
-**Alert tiers:**
-| Tier | Trigger | User experience |
-|------|---------|-----------------|
-| **Observation** | Single metric mild deviation (1-2 sigma) | Visible in daily summary, no push notification |
-| **Notice** | Sustained deviation (2+ sigma for 48h+) or multi-signal mild correlation | Push notification, detail card in app |
-| **Advisory** | Strong multi-signal correlation matching a known condition pattern | Prominent alert, explanation, suggested action (e.g., "consider talking to your doctor") |
-| **Urgent** | Acute anomaly (e.g., SpO2 < 90%, HR > 150 at rest, suspected AFib) | Immediate notification, emergency guidance, option to call emergency services |
+Other notifications: an optional daily digest of yesterday's figures (`DailyDigestWorker`) and a notice when a connected source stops delivering (`DisconnectDetector`, [specs/source-liveness.md](specs/source-liveness.md)).
 
-**Guardian Principles (aligned with LETHE):**
-- **Report data, never judge the person.** Say "resting HR elevated +2σ for 48h" — never "you're unhealthy" or "you should exercise more"
-- **Silence is a feature.** No daily "streak" notifications, no gamification, no engagement farming. Bios speaks when something matters, not to fill a feed
-- **The owner is final.** Every alert includes what changed, how it compares to baseline, and what the owner can do — but the owner decides whether to act
-- **No behavioral nudges.** No "you haven't walked today", no guilt mechanics, no wellness scores designed to drive app opens
-- **No medical diagnoses.** Always framed as patterns worth discussing with a healthcare provider
-- Owner can tune sensitivity per condition category
-- Cool-down periods to prevent alert fatigue
-- On LETHE: alerts surface through the agent mascot in the Void launcher, matching LETHE's calm, factual communication style
+`AlertContentPolicy` lists the words Bios's own text may not use. `VocabularyGateTest` enforces it over string resources and owner-facing string literals.
 
-### 5. Backend Services (Optional, Opt-In)
+### 5. Export and Import
 
-The backend exists only for features that genuinely require it. It never stores raw health data.
+`export/`: JSON (`DataExporter`), CSV zip, FHIR R4 bundle (`FhirExporter`: Observation, Device, Procedure, Specimen), a one-page PDF summary (`PdfReportExporter`), optional AES-256 zip wrapping (`EncryptedZipExporter`). An alert leaves the app as what was measured: time, tier, the metrics with their value and the usual range at detection, acknowledgement and the owner's note. Alerts are not part of the FHIR bundle.
 
-**Sync Gateway:**
-- End-to-end encrypted sync for multi-device access
-- User holds the encryption key; server sees only ciphertext
-- Can be self-hosted for maximum control
+### 6. Companion Provider
 
-**Model Update Service:**
-- Distributes updated detection models OTA
-- Receives federated learning gradients (not data) in Phase 3
+`provider/BiosHealthProvider` is a ContentProvider guarded by an Android runtime permission and a per-app approval the owner gives inside Bios; writes are limited to a per-package list of keys. Companions read metrics, baselines and source liveness, and write the metric keys assigned to them. Contract: [CONSUMER_API.md](CONSUMER_API.md); shared constants: the `android/bios-contracts` module.
 
-**Aggregate Insights API:**
-- Powers anonymized, population-level insights (e.g., "flu activity is elevated in your region")
-- Built from differential-privacy-protected aggregates, never individual data
+### 7. LETHE Integration (only when LETHE is detected)
 
-**Research Pipeline (opt-in only):**
-- Users can voluntarily contribute de-identified data to medical research
-- Requires explicit informed consent
-- Full de-identification pipeline (k-anonymity, l-diversity)
+- **Loopback API** (`HealthApiServer`): bound to `127.0.0.1:8080`, not reachable from the network. Endpoints: `GET /health/status` (highest unacknowledged tier and alert count), `GET /health/summary` (last 24 hours per metric), `GET /health/alerts` (id, tier label, title, measured lines, detection time), `GET /health/baseline/{metric}`, `POST /health/acknowledge`.
+- **Agent status** (`LetheCompatImpl`): posts the status summary to the LETHE agent on loopback when it changes.
+- **Wipe signals**: LETHE broadcasts for burner mode, dead man's switch, panic and duress trigger `DataDestroyer.destroyAll`.
+- **OTA coordination** (`OtaCoordinator`): answers whether a reboot is safe now.
 
-### 6. API Layer
+### 8. Device-to-Device Sync (present, not enabled)
 
-Internal API between app layers, and external API for future integrations.
-
-**Internal (app modules):**
-- Ingest -> Store (write normalized readings)
-- Store -> Baseline Engine (read time-series for analysis)
-- Baseline Engine -> Alert System (write anomaly detections)
-- Alert System -> UI (push alerts, render insight cards)
-
-**External (future):**
-- REST API for third-party integrations (e.g., telehealth platforms, EHR export)
-- FHIR-compatible export for healthcare interoperability
-- Webhook support for custom automations
-
-### 7. LETHE Integration Layer (lethe flavor only)
-
-When running as an embedded system app on LETHE, Bios gains deep OS-level integration:
-
-**Agent Integration:**
-- Bios exposes a local API (`localhost:8080/health/`) that LETHE's on-device agent queries
-- The agent can surface health insights in the Void launcher (LETHE's home screen)
-- Example: agent mascot says "Your resting HR has been elevated for 48h — consider resting today"
-
-**Launcher Health Cards:**
-- Bios renders summary cards (daily score, active alerts, trends) in LETHE's WebView launcher
-- Cards update on boot and on-demand via local IPC
-
-**OTA Coordination:**
-- LETHE's OTA update script (`lethe-ota-update.sh`) queries Bios state before rebooting
-- Delays system updates during active workouts, sleep tracking, or critical health monitoring
-- Installs during detected recovery/idle windows
-
-**Privacy Stack Synergy:**
-- LETHE's firewall rules block all outbound traffic by default — Bios's zero-network-required design fits natively
-- LETHE's tracker-blocking hosts file provides defense-in-depth against any analytics leakage
-- Burner mode (wipe-on-boot) clears Bios data too — appropriate for high-threat-model users
-- Dead man's switch can trigger Bios data destruction alongside OS-level wipe
-
-**Sensor Access:**
-- As a system app, Bios can access sensors directly without Health Connect as an intermediary
-- Enables continuous background monitoring with lower battery overhead than a third-party app
-
----
+`sync/` contains a payload codec, a local-network transport and a stub for an Iroh node. The transport starts only when a preference is set, and no screen sets it. See [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md).
 
 ## Data Flow Summary
 
 ```
-Wearable / Phone Sensor
+Wearable / phone sensor / vendor API / manual entry
         |
         v
-   Ingest Adapter (normalize, dedupe, tag)
+   Ingest adapter (normalize, tag source and confidence)
         |
         v
-   Local Encrypted Store (append raw, compute aggregates)
+   Deduplicator -> local encrypted store -> derivations
         |
         v
-   Baseline Engine (personal baseline, deviation detection, cross-correlation)
+   BaselineEngine (owner's usual range per metric)
         |
         v
-   Alert System (classify severity, generate human-readable insight)
+   AnomalyDetector (DeviationScore over the last 24 h)
         |
         v
-   User Interface (daily summary, alert cards, trends, export)
+   AlertManager (store, notify from Notice upward)
         |
-        v (opt-in only)
-   E2E Encrypted Sync -> Backend (multi-device, model updates, anonymized aggregates)
+        v
+   UI (home, trends, alert detail, records)      Export (when the owner asks)
 ```
-
----
 
 ## Non-Functional Requirements
 
 | Concern | Target |
 |---------|--------|
-| **Latency** | Alert generation within 5 minutes of data availability |
-| **Battery** | Baseline engine uses < 2% daily battery budget (< 1% on LETHE with system-level scheduling) |
-| **Storage** | < 100 MB for 1 year of data at typical wearable sampling rates |
-| **Offline** | Fully functional with no network connection (core value; LETHE default is network-off) |
-| **Startup** | App usable within 7 days of data collection (minimum baseline period) |
-| **Portability** | Single codebase runs on LETHE (embedded) and stock Android 9+ (standalone) |
-| **No Play Services** | Must not depend on Google Play Services, Firebase, or GMS Core |
-| **Min SDK** | API 28 (Android 9 Pie, 2018) — covers 95%+ of active devices including older degoogled phones |
+| **Offline** | Fully functional with no network connection |
+| **Portability** | One codebase for LETHE and stock Android 9+ |
+| **No Play Services** | No dependency on Google Play Services, Firebase or GMS Core |
+| **Min SDK** | API 28 (Android 9) |
+| **Baseline start** | A metric gets a usual range after 10 sensor samples within 14 days |

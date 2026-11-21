@@ -190,7 +190,7 @@ Each app picks once and locks. Mixed-mode within the ecosystem is allowed and in
 
 | App | Mode | Why |
 |---|---|---|
-| Bios | Light | Hub / medical-instrument register |
+| Bios | Light | Hub / measuring-instrument register |
 | Smokeless | Dark | Intensity of breaking addiction |
 | W2F | Dark | Cyberpunk cognitive Flow |
 | Idun | Light (locked) | Parchment / artisanal warmth |

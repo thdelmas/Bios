@@ -1,418 +1,110 @@
 # Ecosystem Boundaries
 
-Defines what belongs to Bios and what belongs to its companion apps (Virgil,
-W2F, SoulRadio, Smokeless). The goal is to keep Bios a clean,
-domain-neutral backbone and push domain specialization to companions — so
-each app stays sharp, and none grows into an everything-app.
+Defines what belongs to Bios and what belongs to the apps around it. Bios is described here by what it does. Companion apps are described only by the data they read and write through `BiosHealthProvider`.
+
+## Bios owns
+
+- **Ingestion.** Adapters for Health Connect, Gadgetbridge, phone and direct sensors, camera PPG, a BLE air-quality peripheral and the vendor APIs the owner signs into ([ARCHITECTURE.md §1](ARCHITECTURE.md)).
+- **Storage.** Encrypted time-series and records (Room + SQLCipher), retention, erasure.
+- **Usual range.** Per-metric baselines from the owner's own sensor readings.
+- **The one deviation alert.** Watched metrics outside the owner's usual range, stated in units.
+- **The owner's records.** Logged events, diaries, medication list, lab values, body measurements, shown back as written.
+- **Export.** JSON, CSV, FHIR, PDF.
+- **The canonical metric vocabulary.** `MetricType` in the `bios-contracts` module is the single source of truth for metric keys.
+- **The companion provider.** `BiosHealthProvider` read URIs and the per-package write slot ([CONSUMER_API.md](CONSUMER_API.md)).
+
+Bios does not interpret what it stores, and it does not interpret what companions write. A companion-written reading is stored, shown with its source, exported, and served back through the provider. The one computation Bios runs on logged intakes is the estimated amount remaining over time (`ConcentrationCalculator`).
 
 ## The rule
 
-Ask three questions in order:
+Ask in order:
 
-1. **Is it a raw sensor, personal baseline, or multi-system body signal?**
-   → **Bios.**
-2. **Does it require a specialized capture surface** (AccessibilityService for
-   typing, foreground sensor analysis for gait, active micro-tests, SMS/call
-   handling) **or a domain-specific detection model?** → **Companion.**
-3. **Is the feature about the person's surroundings or relationships**
-   (emergency contacts, call handling, location broadcast) **rather than their
-   physiology?** → **Companion** — and likely standalone, not a Bios consumer
-   at all.
+1. **Is it a raw sensor reading, a usual range, or a derivation any app with Bios's canonical inputs could compute?** It belongs in **Bios**.
+2. **Does it need a capture surface Bios does not have** (an AccessibilityService, a foreground detection service, an active test, tap-to-log for a specific domain, SMS or call handling)? It belongs in a **companion**.
+3. **Is it about the person's surroundings or contacts** (messages, calls, location broadcast) and not a measurement? It belongs in a **companion**, and probably not on the provider at all.
 
 ### Producer is determined by capture surface, not by consumer
 
-When a derived metric *could* be computed by more than one party, the
-producer is whoever owns the unique capture surface that produces its
-inputs — not whoever happens to consume the score first. A signal that any
-party with Bios's canonical inputs could compute belongs to **Bios**, even
-if today only one companion consumes it. A signal that requires an
-AccessibilityService, foreground sensor service, or active test surface
-belongs to that **companion**.
+When a derived metric could be computed by more than one party, the producer is whoever owns the capture surface that produces its inputs, not whoever reads the result first.
 
-Applied:
-
-| Metric | Inputs | Producer | Why |
+| Metric key | Inputs | Producer | Why |
 |---|---|---|---|
-| `typing_cadence` | per-keystroke timing | **W2F** | requires AccessibilityService |
-| `gait_asymmetry` | raw phone accel at sample rate | **a neurology companion (none built)** | requires foreground accel service |
-| `mood_drift_score` | ADA-1/HDA-1 composite, mood-specific | **W2F** | domain-specific detection model |
-| `motor_score`, `relapse_risk` | MS-specific composites | **a neurology companion (none built)** | domain-specific detection model |
-| `tobacco_use`, `fall_event`, etc. | discrete user actions | **companion** | requires tap-to-log / fall-detection surface |
-| `reaction_time_ms` | active test result | **W2F** | requires active-test surface |
-| `circadian_phase_shift` | sleep-onset times | **Bios** | inputs are canonical (sleep timing from 9 adapters); no companion-specific surface |
-| `heart_rate_before_sleep` | HR stream + sleep onset | **Bios** | inputs are canonical; consumed read-only by Smokeless (substance modifiers), W2F (stress correlate), SoulRadio (parasympathetic before/after) — see #309 |
-| `sleep_duration` from screen-off | long quiet screen-off windows | **W2F** (LOW confidence) | UsageStatsTracker / screen-off is W2F's unique surface; Bios accepts the write via companion URI |
-| `sleep_duration` from phone sensors | accel + screen-off + charging + ambient-light fusion | **Bios** (MEDIUM confidence) | universal-infrastructure: every phone has these sensors; not domain-specific |
-| `cognitive_speed` (planned) | TBD | **decide at landing** | if active test output → a neurology companion (none built); if composite over canonical inputs → Bios |
+| `typing_cadence` | per-keystroke timing | W2F | needs an AccessibilityService |
+| `mood_drift_score` | W2F's own inputs | W2F | computed from data only W2F captures |
+| `caffeine_intake` | tap-to-log in W2F | W2F | W2F owns the logging surface |
+| `sleep_duration` from screen-off windows | usage statistics | W2F (LOW confidence) | W2F owns that surface; Bios accepts the write |
+| `sleep_duration` from phone sensors | accelerometer, screen, charging | Bios | every phone has these sensors |
+| `circadian_phase_shift` | sleep-onset times | Bios (`CircadianEngine`) | inputs are canonical. W2F still holds write permission for this key from the period before Bios computed it. |
+| `heart_rate_before_sleep` | heart rate stream and sleep onset | Bios | inputs are canonical |
+| `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` | tap-to-log | Smokeless | Smokeless owns the logging surface |
+| `fall_event`, `near_miss_fall`, `check_in_miss` | foreground detection service, check-in timer | Virgil | Virgil owns those surfaces |
+| `sedentary_bout`, `movement_break` | sit detector in a foreground service | Anastasis | Anastasis owns that surface |
+| `reaction_time_ms` | an active test | reserved, no producer | needs an active-test surface no app has shipped |
 
-The corollary: if a companion has built logic that turns canonical Bios
-inputs into a score, that logic should be hoisted to Bios when feasible.
-The companion keeps the *consumption* of the score (its domain-specific
-interpretation), not the *production* of it.
+The corollary: if a companion turns canonical Bios inputs into a figure, that computation should move to Bios when feasible, and the companion reads the result.
 
-Bios is intentionally silent about categories it can't measure objectively
-from wearable data alone: neurological fine-motor state, mood/mania, fall
-response, cognitive processing speed. Those live in companions, and
-companions push computed scores back into Bios's metric bus so the
-cross-correlation engine can use them.
+### Second-consumer rule
 
-The same rule governs *capture surfaces* (not just derived scores): a
-capture surface lives wherever its produced key lives. See the "No
-domain-specific active tests in Bios" rule below for the worked
-application to camera PPG, manual sleep entry, and the Data Coverage
-screen — all of which are correctly placed in Bios because they produce
-Bios-owned keys.
+Data captured by one companion for its own use stays in that companion. When a second app needs it, the key moves to `MetricType` and the data flows through the provider, instead of living in two private tables.
 
-## Bios owns — the sensor backbone and generic body guardian
+## Companions
 
-Bios owns whatever is **domain-neutral** and shared by every companion:
+Each companion is a separate APK. Any approved companion can read the provider's read URIs (readings, baselines, status, sources). Writes are limited per package (`provider/CompanionContract.kt`):
 
-- **Ingestion** — 9 adapters: Health Connect, Gadgetbridge, Oura, WHOOP,
-  Garmin, Withings, Dexcom, Direct Sensors, Phone Sensors
-  ([ARCHITECTURE.md §1](ARCHITECTURE.md))
-- **Storage** — encrypted time-series (Room + SQLCipher), retention,
-  export (FHIR/JSON), erasure
-- **Personal baselines** — rolling stats, z-scores, trend slopes per metric
-- **Generic multi-system detection** — the 12 condition patterns (infection,
-  cardiovascular, sleep, metabolic, respiratory, AFib, cycle, etc.) in
-  [ARCHITECTURE.md §3](ARCHITECTURE.md)
-- **Canonical metric vocabulary** — `MetricType` in
-  [Enums.kt](../android/app/src/main/java/com/bios/app/model/Enums.kt) is the
-  single source of truth for metric keys
-- **Consumer API** — `BiosHealthProvider` read URIs and the narrow
-  MENTAL_HEALTH companion-write slot ([CONSUMER_API.md](CONSUMER_API.md))
+| App | Package | Writes to Bios |
+|---|---|---|
+| W2F | `com.w2f.app` | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score`, `sleep_duration`, `caffeine_intake` |
+| Smokeless | `com.smokless.smokeless` | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` |
+| Virgil | `com.virgil.app` | `fall_event`, `near_miss_fall`, `check_in_miss` |
+| Anastasis | `com.anastasis.app` | `sedentary_bout`, `movement_break` |
+| SoulRadio | none | nothing. It neither reads nor writes the provider. |
 
-## Companions — domain specialists that compose on top
+The write URI accepts a value and a timestamp and nothing else: no free text, location or contact.
 
-Each companion owns a domain Bios cannot reasonably own because it requires
-specialized sensing, active user interaction, or domain-specific detection
-logic.
+`BiosIntentActions` in `bios-contracts` reserves two intent actions addressed to SoulRadio (`SUGGEST_BAND`, `REQUEST_STOP`). They are names only. Bios sends neither.
 
-| App | Domain | Owns | Reads from Bios | Writes to Bios |
-|---|---|---|---|---|
-| **W2F** | Mood / bipolar | ADA-1, HDA-1, Friction Vault, SOS Mechanical Restart, typing cadence capture | sleep, HRV, activity, `circadian_phase_shift` | `typing_cadence`, `mood_drift_score`, `sleep_duration` (LOW conf., screen-off derivation) |
-| **Virgil** | Solitary-living safety | Fall detection, check-in timer, SMS + GPS alerts, emergency call | *nothing — standalone* | `fall_event`, `near_miss_fall`, `check_in_miss` (opt-in, future) |
-| **SoulRadio** | Ambient sound / nervous-system rest | 24-hour Solfeggio + Schumann auto-loop, dial, listener library, frequency-band catalogue | *nothing — standalone* | *nothing* |
-| **Smokeless** | Substance-use tracking / cessation | Use + craving event capture, per-substance history, widget, cessation UI | *nothing — standalone* (Phase 3 plan: RHR/HRV/sleep/SpO2 reads for recovery trajectory) | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` (shipped Phase 2.1); `caffeine_use`, `caffeine_craving`, `alcohol_use`, `alcohol_craving` (reserved — Phase 2.4, paired with W2F FuelLog hoist) |
-
-### Neurology — no companion
-
-Fil, the planned MS / neurology companion, was dropped on 2026-10-03
-before it reached users; its repository is deleted. The neurology keys
-below (`gait_asymmetry`, `motor_score`, `relapse_risk`,
-`cognitive_speed`) keep their capture-surface ownership rule, but no
-app produces them and none should be reserved until one does.
-
-### W2F — the mood/bipolar navigator
-
-W2F's domain is mood state detection and mechanical intervention (friction
-for surge, restart for stasis). It owns the typing-cadence capture surface
-(AccessibilityService), the ADA-1/HDA-1 detection models, and the
-intervention protocols. It writes two MENTAL_HEALTH keys
-(`typing_cadence`, `mood_drift_score`) and reads `circadian_phase_shift`
-from Bios.
-
-**Note on circadian phase shift:** W2F today computes phase shift locally
-via cosinor + DLMO algorithms from sleep-onset timing. The math is
-universal — sleep onset is canonical Bios data, and the computation is not
-mood-specific — so the producer-by-capture-surface rule says this belongs
-in Bios. Migration: Bios builds its own circadian engine; W2F reads
-`circadian_phase_shift` instead of computing it locally; W2F's write
-permission is revoked.
-
-### Virgil — the solitary-living safety net
-
-Virgil's user may not own a wearable, may not have Bios installed, and
-often just wants fall detection and a dead-man check-in with nothing
-else. Virgil shares the ecosystem's *principles* (local-only, no
-accounts, honest framing) and remains fully functional standalone.
-
-Where Virgil **does** belong on the metric bus is outbound: discrete fall
-and check-in events. Recurrent falls are a clinically significant signal
-for gait instability, syncope, orthostatic hypotension, neuropathy,
-hypoglycemia, MS relapse, and medication side effects — exactly the
-cross-system patterns Bios's condition engine exists to detect. Virgil's own
-[`docs/ECOSYSTEM.md`](https://github.com/thdelmas/Virgil/blob/main/docs/ECOSYSTEM.md) reserves three
-metric keys (`FALL_EVENT`, `NEAR_MISS_FALL`, `CHECK_IN_MISS`), all opt-in
-and timestamp-only — no GPS, no SMS contents, no contact identity. None
-of these keys yet exist in `MetricType`; adding them is a Bios-side
-change that pairs with a companion-write URI extension.
-
-Virgil also names a small set of admissible inbound integrations
-(suppress check-in expiry during detected exercise; treat SoulRadio
-playback as a sign of life) — all opt-in, all bounded, none currently
-wired.
-
-### Smokeless — the substance-use ledger
-
-Smokeless owns discrete substance-use and craving event capture: tap-to-log
-UI, per-substance history, widget for one-tap logging, and the cessation
-UX (streak/abstinence framing is owned by Smokeless and intentionally kept
-*out* of Bios — Bios is silent about behavioral judgments).
-
-Where Smokeless belongs on the metric bus is outbound: timestamp-only
-events that the Bios cross-correlation engine consumes against RHR, HRV,
-SpO2, sleep latency, and skin temperature trajectories. Tobacco affects
-all five; cravings cluster around sleep debt and autonomic stress —
-exactly the cross-system patterns Bios is built to surface.
-
-Smokeless's [`docs/ECOSYSTEM.md`](https://github.com/thdelmas/Smokeless/blob/master/docs/ECOSYSTEM.md)
-defines four metric keys: `TOBACCO_USE`, `TOBACCO_CRAVING`,
-`CANNABIS_USE`, `CANNABIS_CRAVING`. All four are timestamp + opaque
-event-id only — no dose, no brand, no location, no method. All four are
-whitelisted on the companion-write URI as of Smokeless Phase 2.1, which
-landed the `Substance` enum (`TOBACCO`, `CANNABIS`) on the session
-entity and routes each event to its substance-matched key.
-
-A new `MetricDomain` (`INTAKE`) and `MetricUnit.EVENT` are introduced for
-this purpose. They are the natural home for any future discrete-intake
-events (caffeine, meals, supplements) that hoist up from W2F when a
-second consumer appears — see the "case study: nutrition in W2F" rule
-below.
-
-**Caffeine + alcohol expansion (reserved, paired with Smokeless Phase 2.4):**
-the audit identified asymmetric substance coverage — tobacco/cannabis on
-the bus but caffeine/alcohol still W2F-local-only. The second-consumer
-trigger has fired (Bios cessation patterns + Smokeless as canonical
-ledger), so the four-key extension (`caffeine_use`, `caffeine_craving`,
-`alcohol_use`, `alcohol_craving`) is reserved on `INTAKE` and whitelisted
-for `com.smokless.smokeless`. W2F drops its caffeine write and reads
-from Bios.
-
-### SoulRadio — the ambient surface
-
-SoulRadio is a sibling, not a companion in the data-bus sense. It does
-not read Bios and does not write to the metric bus. Its role in the
-ecosystem is the room's air: a 24-hour frequency-band loop that recedes
-into the background. The manifesto rule "wallpaper, not wallpaper-paste"
-makes auto-switching by biometric a violation by construction.
-
-SoulRadio's own [`docs/ECOSYSTEM.md`](https://github.com/thdelmas/SoulRadio/blob/main/docs/ECOSYSTEM.md)
-defines the narrow inbound surface it would accept: `ACTION_SUGGEST_BAND`
-(non-modal hint, 5-minute hysteresis) and `ACTION_REQUEST_STOP` (used by
-Virgil during an emergency, by W2F during SOS state). No `PLAY_BAND`, no
-override of the auto-loop, no biometric reads. Bios may, in the future,
-emit suggestions from HRV or arousal state — but only as hints the
-listener must reach for.
+Some keys in `MetricType` have no producer in any shipped app (for example `reaction_time_ms`, `sleep_apnea_event`, `seizure_event`). They stay because removing a key breaks the contract; see the legacy note in [DATA_MODEL.md](DATA_MODEL.md).
 
 ## Consequences for Bios design
 
-- **No diagnostic verticals in Bios.** If a feature needs a
-  specialized model (MS, bipolar, Parkinson's, postpartum, etc.), it belongs
-  in a companion. Bios exposes the primitives; companions compose them.
-- **No domain-specific active tests in Bios.** Bios *may* host capture
-  surfaces for its own sensor adapters (camera PPG, phone-mic respiration),
-  import surfaces for slow-moving manual data (manual sleep duration,
-  biomarker values, epigenetic-age reports), and read-only awareness
-  surfaces (the Data Coverage screen and its "fix this" CTAs). What Bios
-  may *not* host is a domain-specific active test whose output is a
-  companion-owned metric — keystroke dynamics for mood live in W2F,
-  SDMT/tapping for MS would live in a neurology companion (none built), grip-strength dynamometers live in a
-  physical-tests companion. The test is the producer-by-capture-surface
-  principle above: **whose canonical metric does this surface produce?**
-  Bios-owned key (camera HR via PPG, manual sleep duration, a logged
-  biomarker) → surface can live in Bios. Companion-owned key (typing
-  cadence, gait asymmetry, reaction time, SDMT score) → surface lives in
-  that companion. The *results* of an active test, wherever it runs, are
-  still data; once a second app consumes them, the canonical key belongs
-  in Bios's metric bus per the second-consumer rule. See
-  [SELF_REPORTED_DATA_HOME.md §5](SELF_REPORTED_DATA_HOME.md). Worked
-  examples already on `main`: PPG capture deep link + live preview /
-  steadiness coaching (#87, #82), manual sleep duration entry (#86), Data
-  Coverage screen with metric-fix CTAs (#83).
-- **No capture surfaces beyond sensors.** AccessibilityService, foreground
-  fall-detection services, SMS/call handling, call-answering — all companion
-  concerns.
-- **No social or relational features.** Emergency contacts, message sending,
-  location broadcast, shared dashboards — companion concerns.
-- **New metric keys require a home.** Before adding a key to `MetricType`,
-  identify which companion (or Bios's own engine) produces it and which
-  consumes it. If it's a computed score owned by one companion, it still
-  needs the canonical key in Bios for the cross-correlation engine.
+- **No interpretation in Bios, of its own data or a companion's.** See [specs/instrument-only.md](specs/instrument-only.md).
+- **No domain-specific active tests in Bios.** Bios may host capture surfaces for its own sensor adapters (camera PPG), entry surfaces for slow-moving manual data (sleep duration, lab values, body measurements), and read-only views over its own inventory (the Data Coverage screen). It does not host an active test whose output is a companion-owned key. The test is the producer rule above: whose key does this surface produce? See [SELF_REPORTED_DATA_HOME.md](SELF_REPORTED_DATA_HOME.md).
+- **No capture surfaces beyond sensors and owner entry.** AccessibilityService, foreground fall detection, SMS and call handling are companion concerns.
+- **No contact or messaging features.** Contacts, message sending, location broadcast and shared dashboards are companion concerns.
+- **New metric keys need a home.** Before adding a key to `MetricType`, name the app that produces it and the app that reads it.
 
-## Case study: nutrition in W2F
+## Scope decisions
 
-A worked example of how to apply the rule when a companion grows a feature
-that sounds out-of-scope. Nutrition *seems* like it belongs in Bios (it
-affects physiology) or in a dedicated nutrition app — yet W2F has a
-nutrition surface. Why is that correct?
-
-### What W2F actually ships
-
-Three things, under one "nutrition" umbrella:
-
-1. **`FuelLog` entity** — logs `CAFFEINE`, `MEAL`, `SUPPLEMENT` events with
-   timestamp and dose. The drift engine consumes a single derived feature:
-   **fuel gap** — hours between caffeine and a meal (empty-stomach caffeine
-   is a hypomania amplifier). Used as one of seven factors in the
-   `InfluencesAnalyzer`.
-2. **Supplement adherence** — Magnesium and Riboflavin, tracked because
-   they're migraine prophylactics.
-3. **`GuideNutritionScreen`** — a static reference page with 22 foods and
-   supplements and their rationale for mood/cognitive/physical stability.
-   No logging, no tracker — pure education.
-
-### Why each piece is correctly placed
-
-| Piece | Verdict | Reasoning |
+| Topic | Verdict | Reason |
 |---|---|---|
-| FuelLog (caffeine, meal, fuel gap) | ✅ Correct in W2F | Intake logging *because it's a mood signal* — same pattern as typing cadence. Not general nutrition tracking. |
-| Static nutrition reference page | ✅ Correct in W2F | Content is framed for mood stability. No capture, no data bus involvement — just in-app education. W2F's own SCOPE.md (private repository) explicitly chose this compromise. |
-| Supplement adherence (Mg, B2) | ⚠️ Scope-adjacent | Migraine prevention, not mood detection. Tolerable today because it reuses `FuelLog`; should move to a migraine companion if one ever ships. |
+| Food, macro and calorie log | Out of scope | Several entries a day by hand; the sensor stack already records glucose and heart rate without typing |
+| Hydration log | Out of scope | Manual entry with no reader |
+| Water quality | Out of scope | No reader in Bios |
+| Intervention log (sauna, cold exposure and similar) | In scope | Owner-entered event log, shown back as written |
+| Medication list | In scope | Owner-entered record, shown back as written |
+| Grip strength, additional active-test keys | Deferred | No shipped app produces them |
+| `reaction_time_ms` | Reserved | Key exists; no producer |
+| Exercise sessions | In scope | Read from adapters (`EXERCISE_SESSION`) |
+| Air quality | In scope | BLE Environmental Sensing adapter |
+| Camera PPG capture | In scope | Produces Bios-owned keys from a phone sensor |
+| Manual sleep duration entry | In scope | Produces `SLEEP_DURATION`, a Bios-owned key |
+| Data Coverage screen | In scope | Read-only view over Bios's own metric inventory |
 
-### What would make this *wrong*
+### Design rule for owner-entered logs
 
-If W2F grew any of these, it would be drifting into an everything-app:
+A manual logging surface in Bios must not carry the mechanics that drive repeat sessions:
 
-- Calorie or macro tracking
-- Meal planning, recipes, grocery lists
-- Weight-loss goals
-- Hydration tracking untied to mood
-- Nutritional completeness (vitamins, fiber, etc.) as a goal in itself
-- Food database lookups or barcode scanning
+- No streak counters, completeness percentages or daily-goal gauges.
+- No "you haven't logged today" empty states and no reminders to log.
+- No "log everything to see results" prompts. Sparse logging is a normal state.
+- An empty state says what is true ("no entries in this window") and stops.
+- A chart shows what is there and says nothing about what is missing.
+- Bios does not ask for data. It works with what the owner gives.
 
-### The architectural observation
+This rule does not apply to notices about Bios's own plumbing (a source that stopped delivering).
 
-The mood-relevant intake signals (`caffeine_intake`, `meal_timing_variance`,
-`fuel_gap_hours`) live only in W2F's local `fuel_logs` table. They are
-**not** pushed to Bios. That is fine today — no second consumer exists.
+## See also
 
-If/when a second app needs intake data (e.g., a neurology companion wants caffeine as
-an HRV confounder, or a migraine companion ships), the right move is:
-
-1. Add the keys to Bios's canonical `MetricType` vocabulary
-2. Extend the companion-write URI to accept them by adding the keys to the
-   appropriate package's entry in `provider.CompanionContract.WHITELIST_BY_PACKAGE`
-   — see [CONSUMER_API.md](CONSUMER_API.md). Each key belongs to exactly one
-   companion to prevent cross-package spoofing.
-3. W2F writes to Bios; the second app reads from Bios
-
-Do not pre-emptively hoist the schema before a second consumer exists. YAGNI
-applies to metric keys too — each key is a commitment to stability.
-
-### Rule of thumb distilled from this case
-
-> A companion may capture data *outside* its strict domain **if and only if**
-> that data is consumed as a signal *inside* its domain. The moment a second
-> app needs to consume it, the data belongs in Bios's metric bus — not in
-> two parallel private tables.
-
-## Scope decisions log
-
-A running record of "is X in scope for Bios or a companion?" questions, with
-the verdict and the principle that drove it. Append new decisions; do not
-rewrite history.
-
-### 2026-05 — Blueprint / Don't Die audit triage
-
-Following the Blueprint and Don't Die investigations (issues #36–#43), the
-following scope calls were made. The first three of the manifesto's
-prohibitions (never evaluate the person; no behavioral nudges; silence is a
-feature) and the second-consumer rule were the load-bearing principles.
-
-| Topic | Verdict | Principle |
-|---|---|---|
-| Food / macro / calorie log (#36) | ❌ Out of scope — permanently | Inherently evaluative (deficit/surplus, "good food"). Violates "never evaluate the person" + "no behavioral nudges". *(Reasoning revised 2026-05 manifesto-frame revisit — verdict stands, but on operational not philosophical grounds. See subsection below.)* |
-| Intervention log — sauna / NIR / HBOT / cold (#39) | ❌ Out of scope | Quantified-self self-experimentation framing ("did X improve my recovery?") is exactly the optimization framing the manifesto rejects. *(Superseded by 2026-05 manifesto-frame revisit — verdict now ✅ in scope as a pull-side event log. See subsection below.)* |
-| Self-exam / fertility self-report (#42) | ❌ Out of scope | Self-exam reminders are habit-tracker territory, not health-guardian. Involuntary fertility signal (BBT) already covered by #32. Privacy bar too high for marginal pattern benefit. |
-| Hydration logging (`HYDRATION_ML`) | ❌ Out of scope | Manual entry drifts into "are you drinking enough?" behavioral judgment. |
-| Water quality / TDS / mineralization | ❌ Out of scope | Blueprint-style optimization, no Bios pattern consumes it. |
-| Supplement / medication adherence (#37) | ⏸ Deferred — second-consumer rule | No Bios pattern needs adherence input today. Re-evaluate when a concrete consumer emerges (likely: future migraine / chronic-condition companion). If reserved, mirror Smokeless posture exactly (timestamp + opaque event-id, no substance names). *(Superseded by 2026-05 manifesto-frame revisit — verdict now ✅ in scope, pull-side only. See subsection below.)* |
-| Grip strength `GRIP_STRENGTH_KG` (#41) | ⏸ Deferred — second-consumer rule | Re-evaluate when a physical-tests or neurology companion ships an active grip test AND a second Bios-side consumer exists. |
-| Additional cognitive keys — `N_BACK`, `STROOP`, `DIGIT_SPAN_*`, `PROCESSING_SPEED_SCORE` (#40) | ⏸ Deferred — second-consumer rule | Unlike `REACTION_TIME_MS`, these had only Fil (dropped 2026-10-03, never built) as a consumer. Reserve when a companion's active-test surface ships. |
-| `REACTION_TIME_MS` (#40) | ✅ Keep reserved | Reserved while Fil (dropped 2026-10-03) was the planned producer; W2F reads it as a cross-check on its passive psychomotor-acceleration signal. Documented producer + reader satisfies the second-consumer rule. |
-| Exercise sessions — modality / duration / avg HR / RPE (#38) | ✅ In scope for Bios — auto-derive from adapters | This is passive sensor data (HC `ExerciseSessionRecord`, Garmin/WHOOP/Oura native session entities). No companion, no manual logging UI in Bios. Add `EXERCISE_SESSION` to `MetricType`. |
-| Air quality — `AIR_PM25`, `AIR_VOC`, `AIR_CO2` (#43) | ✅ In scope for Bios — BLE adapter pattern | Sensor-grade, passive, confounds nearly every existing pattern (sleep, HRV, infection, respiratory). Fits the existing 9-adapter pattern as a 10th. No `Habitat` companion needed. |
-
-### 2026-05 — Producer-by-capture-surface audit
-
-After codifying the rule that producer is determined by the unique capture
-surface (not by the score's consumer), audited every companion-injected
-key against it. One key was found miscategorized.
-
-| Key | Before | After | Reasoning |
-|---|---|---|---|
-| `CIRCADIAN_PHASE_SHIFT` | W2F-produced | **Bios-produced** | Inputs are sleep-onset times — canonical Bios data from all 9 adapters. Cosinor/DLMO math is universal, not mood-specific. W2F's existing `CircadianCalculator` should be hoisted into Bios; W2F reads the result instead of computing locally. |
-| `typing_cadence`, `mood_drift_score` | W2F-produced | **W2F-produced** (affirmed) | Requires AccessibilityService surface / mood-specific composite. No alternative producer. |
-| `gait_asymmetry`, `motor_score`, `relapse_risk` (planned) | Fil-produced | **a neurology companion (none built)** (Fil dropped 2026-10-03) | Requires foreground accel service / MS-specific composites. No alternative producer. |
-| `cognitive_speed` (planned) | Fil-produced | **Decide at landing** | If output of active SDMT/tapping test → a neurology companion (none built). If composite over canonical inputs (typing-cadence + reaction-time + HRV) → Bios. Do not reserve in `MetricType` until the producing surface is concrete. |
-| Substance events, fall events, reaction-time, biomarkers, etc. | as-is | **affirmed** | Each requires a surface (tap-to-log, fall service, active test, lab draw) the producer uniquely owns. |
-
-### 2026-05 — Active-capture-surface line for Bios
-
-The "Bios is passive, no active tests" wording predated three Bios-side
-surfaces that ask the user to *do* something: camera PPG capture (live
-preview + steadiness coaching), manual sleep duration entry, and the Data
-Coverage screen's metric-fix CTAs. Each is correctly placed — but the rule
-as written would have predicted otherwise. The rule was tightened to
-"no *domain-specific* active tests in Bios" with the producer-by-capture-
-surface principle as the test: surfaces that produce Bios-owned keys are
-in scope, surfaces that produce companion-owned keys are not.
-
-| Surface | Verdict | Reasoning |
-|---|---|---|
-| Camera PPG (`bios://capture/ppg`, live preview, steadiness coach) | ✅ Bios | Produces `HEART_RATE_BPM` — a Bios-owned key. Camera is a Bios sensor adapter, not a companion-specific test. |
-| Manual sleep duration entry | ✅ Bios | Produces `SLEEP_DURATION` — Bios-owned. Slow-moving, biomarker-style manual import, not a domain-specific active test. |
-| Data Coverage screen + "fix this" CTAs | ✅ Bios | Read-only awareness over Bios's own metric inventory. No companion-owned data, no domain-specific judgment. |
-| Hypothetical SDMT / tapping / contrast micro-test | ❌ Companion (neurology, none built) | Produces companion-owned cognitive scores. Domain-specific active test. |
-| Hypothetical keystroke-cadence capture UI | ❌ Companion (W2F) | Produces `typing_cadence` — W2F-owned. AccessibilityService surface, mood-specific consumer. |
-| Hypothetical grip-strength dynamometer test | ❌ Companion (physical-tests) | Produces an active-test key with no canonical Bios producer. |
-
-### 2026-05 — Manifesto-frame revisit (post-PR #103)
-
-[MANIFESTO.md](../MANIFESTO.md) Principle 7 ("instrument, not coach") replaced
-the earlier "never evaluate the person" load-bearing constraint with a
-push/pull distinction: **unsolicited push-side evaluation is prohibited;
-owner-pulled / owner-driven surfaces are not.** The 2026-05 Blueprint audit
-above made two rejections on grounds that no longer hold — both cited the
-old framing's "the manifesto rejects optimization" reasoning, which the new
-manifesto explicitly authorizes ("steer your own course over time — toward
-maintaining what works and improving what doesn't").
-
-Verdict revisions:
-
-| Topic | Old verdict | New verdict | Reasoning |
-|---|---|---|---|
-| Food / macro / calorie log (#36) | ❌ "inherently evaluative" | ❌ unchanged — **reasoning rewritten** | The new frame doesn't disqualify "inherently evaluative" on its own. Real disqualifiers are operational: multi-meal-per-day capture surfaces have well-documented abandonment curves, and the sensor stack (glucose variability via Dexcom, post-meal HR/HRV) already produces the metabolic signal without owner typing. |
-| Intervention log — sauna / NIR / HBOT / cold (#39) | ❌ "optimization framing the manifesto rejects" | ✅ **in scope as a pull-side event log** | The old rejection cited a frame the manifesto no longer holds. Surface is admissible under the new principle. Constraint rides on the design rule below. |
-| Supplement / medication adherence (#37) | ⏸ deferred — second-consumer rule | ✅ **in scope, pull-side only** | The owner-pulled correlation IS the second consumer when the owner asks "did I take the magnesium on the nights I slept poorly?" The trigger fires as soon as the owner navigates into that comparison. Storage shape per the original Smokeless posture (timestamp + opaque event-id, no substance names) still right. |
-
-Decisions the frame change does **not** move (unchanged from above): #41
-Grip strength (still gated on the producer + second-consumer rule, both
-independent of push/pull); #42 self-exam (habit-tracker territory
-regardless of frame); hydration (the behavioral-judgment slippery slope is
-a push-side concern, still applies); water quality (no Bios consumer in
-either direction); the other "in scope / affirmed" rows.
-
-### Design rule for owner-driven pull-side logs
-
-When a manual logging surface is admitted under the new frame
-(intervention log, supplement/medication adherence, future analogous
-surfaces), the **firewall lives in the UI design line, not the feature
-line.** The surface must not host engagement-app DNA. Specifically:
-
-- **No streak counters, no completeness percentages, no daily-goal gauges.**
-- **No "you haven't logged today" empty states or daily-reminder UI.**
-- **No "log everything to see results" prompts.** Sparse logging is
-  expected and treated as a first-class state.
-- **Empty state reads what's true** — "no interventions logged in this
-  window" — full stop, no nudge.
-- **Correlation surfaces show what's there**, say nothing about what's
-  missing. Sparse log → sparse chart → honest insight.
-- **Bios does not ask for data.** It works with whatever the owner gives.
-
-These rules apply to pull surfaces because pull-side absolutism alone
-doesn't prevent engagement loops — empty boxes pull at people, "did X
-improve my recovery?" charts re-create the optimization pathology even
-without a single notification firing. The defence is structural: don't
-build the pieces engagement apps use to drive sessions.
-
-The rule does **not** apply to:
-- Bios-state pushes (the third push category — "Oura hasn't synced in 5
-  days") — those are about Bios's plumbing, not the owner.
-- Pull surfaces that don't host owner-typed event data (Data Coverage,
-  trends, alerts review) — these were never at risk of the loop.
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) — Bios system components
-- [CONSUMER_API.md](CONSUMER_API.md) — `BiosHealthProvider` contract
-- [DATA_MODEL.md](DATA_MODEL.md) — canonical metric schema
+- [ARCHITECTURE.md](ARCHITECTURE.md): components
+- [CONSUMER_API.md](CONSUMER_API.md): `BiosHealthProvider` contract
+- [DATA_MODEL.md](DATA_MODEL.md): metric schema

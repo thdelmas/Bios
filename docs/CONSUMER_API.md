@@ -148,9 +148,10 @@ Current allocations:
 
 | Companion | `applicationId` | Writable keys |
 |---|---|---|
-| W2F | `com.w2f.app` | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score` |
+| W2F | `com.w2f.app` | `typing_cadence`, `circadian_phase_shift`, `mood_drift_score`, `sleep_duration`, `caffeine_intake` |
 | Smokeless | `com.smokless.smokeless` | `tobacco_use`, `tobacco_craving`, `cannabis_use`, `cannabis_craving` |
 | Virgil | `com.virgil.app` | `fall_event`, `near_miss_fall`, `check_in_miss` |
+| Anastasis | `com.anastasis.app` | `sedentary_bout`, `movement_break` |
 
 `ContentValues`:
 - `value` (Double) — required

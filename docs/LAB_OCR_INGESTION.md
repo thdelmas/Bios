@@ -7,13 +7,17 @@
 > **on-device**, eyeball the pre-filled values, and confirm — turning a
 > 10-minute transcription chore into a 30-second review.
 >
-> It is a thin extraction layer in front of the already-shipped §8.6 lab
-> pipeline. It adds no new persistence, no new metric keys, no network, and
+> It is a thin extraction layer in front of the existing lab-value entry
+> pipeline (FHIR import and manual entry). It adds no new persistence, no new metric keys, no network, and
 > no Google Play Services. The owner confirms every value before it is
 > written — OCR proposes, the owner disposes.
 
-Status: **DESIGN** (targets v0.3). Builds on §8.6 (lab inbound surface,
-COMPLETE).
+Status: **implemented** in `labocr/` with the Tesseract engine
+(`TesseractLabOcrEngine`); trained-data files are provisioned by the
+operator, not vendored. This document is the design it was built from.
+Where it recommends ML Kit, the engine in the code is Tesseract. Section 10
+lists what was planned beyond the first cut and has not been checked off
+here.
 
 ---
 
@@ -277,7 +281,7 @@ avoids a second numeric-validation path.
 
 ## 7. Write path — unchanged
 
-Each confirmed row calls the **existing** §8.6 write path, once per reading:
+Each confirmed row calls the **existing** lab-value write path, once per reading:
 
 ```kotlin
 viewModel.addManualBiomarker(reading.metricType, reading.value, reading.timestamp, reading.context)
@@ -305,12 +309,13 @@ than lowering the tier — the owner verified it.)
 - **Source file** is copied into app-private (SQLCipher-adjacent) storage
   and referenced by `source_uri`; it is destroyed by the existing
   `DataDestroyer` wipe path along with the readings.
-- **No new companion, no metric-bus change.** Lab data is canonical
-  multi-system body signal owned by Bios (per §8.6 and
-  `ECOSYSTEM_BOUNDARIES.md`); this is an input method, not a new data class.
-- **Manifesto:** the feature reads numbers, it does not evaluate them. Any
-  judgment ("Borderline") is the *separate*, already-shipped clinical-bands
-  surface; OCR only gets the value onto the time-series.
+- **No new companion, no contract change.** Lab values are owned by Bios
+  (see `ECOSYSTEM_BOUNDARIES.md`); this is an input method, not a new data
+  class.
+- **No evaluation.** The feature reads numbers off the page and stores
+  them. Bios does not classify or colour a lab value; the reference range
+  printed on the report is used only as a plausibility check on what the
+  OCR read (section 4.4).
 
 ---
 

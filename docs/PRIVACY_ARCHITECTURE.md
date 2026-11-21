@@ -1,492 +1,168 @@
 # Bios Privacy Architecture
 
-## Core Principle
+## Principle
 
-**Bios exists to protect its owner. Their health. Their data. Their autonomy over both.**
+The owner's measurements stay on the owner's phone. Bios has no server, no account, no analytics and no crash reporting. Nothing leaves the phone unless the owner sends it.
 
-This is not a privacy policy — it is an architectural constraint. Every design decision flows from one question: *does this protect the person holding the device?*
+This document states where data lives, how it is protected, and every way it can leave the phone in the code as it is.
 
-- Health data stays on-device because that protects the owner from data brokers, insurers, advertisers, and legal compulsion
-- Detection runs on-device because that protects the owner from cloud outages, surveillance, and vendor lock-in
-- Unsolicited alerts are factual, never judgmental, because that protects the owner's autonomy and mental health. Evaluation belongs to the owner — the system answers when asked and stays silent otherwise
-- The owner decides what leaves the device — nothing does by default
+## What Bios Holds
 
-### Alignment with LETHE
+- Readings from sensors, wearables and vendor APIs (heart rate, HRV, SpO2, sleep, steps, glucose and others)
+- The owner's usual range per metric and computed aggregates
+- Alerts: which metrics were outside the usual range, by how much, and the owner's note
+- The owner's own records: logged events, diaries, medication list, immunisations, lab values, body measurements, ECG strips
+- Cycle readings and contraception records, in a separate database
+- Source names and sync state
+- Tokens or sign-ins for the vendor services the owner connected
 
-On LETHE, Bios is not an app running on a phone — it is part of the phone's immune system. LETHE protects the owner's digital life; Bios protects the owner's physical life. Same guardian philosophy, same threat model, same answer to conflicting interests: **the owner wins.**
+## Where It Lives
 
-| LETHE Principle | Bios Implementation |
+```
++---------------------------------------------------+
+|                   OWNER'S PHONE                    |
+|                                                    |
+|  Main database (SQLCipher)                         |
+|    readings, aggregates, baselines, alerts,        |
+|    records, sources                                |
+|                                                    |
+|  Reproductive database (SQLCipher, separate file,  |
+|    separate passphrase)                            |
+|                                                    |
+|  EncryptedSharedPreferences (Keystore-backed)      |
+|    database passphrases, vendor tokens             |
+|                                                    |
+|  App-private files                                 |
+|    export files awaiting delivery, lab report      |
+|    scans the owner attached                        |
++---------------------------------------------------+
+```
+
+All computation (baselines, deviation score, derivations, OCR of lab reports, camera PPG processing) runs on the phone. The app works with no network connection.
+
+## What Can Leave the Phone
+
+This is the complete list. The privacy dashboard in the app shows the same list in short form.
+
+### 1. Vendor APIs the owner signs into
+
+Oura, WHOOP, Garmin, Withings, Dexcom, Polar, COROS. When the owner connects one, Bios calls that vendor's API from the phone to fetch the owner's readings.
+
+- What is sent: the owner's token or sign-in for that service, and the request for a date range.
+- What is not sent: any reading, baseline or record held by Bios.
+- The vendor sees the request and the phone's IP address, as it would from its own app.
+- Tokens are stored in `EncryptedSharedPreferences` and removed on disconnect and on full wipe.
+
+```
+Vendor API  <--(owner's token, HTTPS)--  phone  -->  Bios database (local)
+```
+
+There is no Bios server between the phone and the vendor.
+
+### 2. Export and share, started by the owner
+
+JSON, CSV, FHIR bundle, PDF summary. A file is written only when the owner asks for one, to app-private cache, and is delivered through the system file picker ("Save to device") or the share sheet. It goes where the owner sends it.
+
+- **Plaintext** by default.
+- **Password-protected** when the owner turns it on: a standard AES-256 zip (`EncryptedZipExporter`, Zip4j; passphrase entered twice, not recoverable if lost). The container opens outside Bios with common tools. The plaintext cache copy is deleted once the zip is produced.
+
+An exported alert carries what was measured: time, tier, the metrics with their value and the usual range at detection, acknowledgement and the owner's note. Alerts are not included in the FHIR bundle.
+
+### 3. Companion apps on the same phone
+
+`BiosHealthProvider` lets another app on the phone read metrics, baselines and source liveness, and write the metric keys assigned to it. Gates: an Android runtime permission the OS asks the owner to grant (`READ_HEALTH`, `WRITE_COMPANION`); a per-app approval inside Bios, where a first call is recorded as pending and denied until the owner approves it; and, for writes, a per-package list of allowed keys with an optional pin of the companion's signing certificate (no pin is set for any companion today). Data read this way stays on the phone but leaves Bios's database; what the companion does with it is that app's responsibility. Contract: [CONSUMER_API.md](CONSUMER_API.md).
+
+### 4. Loopback API, on LETHE only
+
+When Bios detects LETHE at runtime it starts an HTTP server bound to `127.0.0.1:8080` for the LETHE agent, and posts a status summary to the agent on loopback. Loopback traffic does not leave the phone, but any process on the phone that can open a loopback connection can read these endpoints: alert status, a 24-hour summary per metric, the alert list as measured lines, and baselines. On stock Android the server is never started.
+
+### 5. Device-to-device sync: code present, not enabled
+
+`sync/` contains a payload codec, a local-network transport that opens a listener and announces itself, a stub for an Iroh node, and functions that push and pull encrypted blobs to a relay URL passed in by the caller. None of it runs in the app as built:
+
+- the transport starts only when the preference `bios_p2p_settings/enabled` is true, and no screen sets it;
+- the periodic sync worker returns immediately while that preference is false;
+- nothing constructs `SyncManager`, so the relay functions and the local IPFS client are never called, and no relay URL exists in the code.
+
+The privacy dashboard mentions sync between the owner's own devices as a way data could leave; today there is no switch to turn it on.
+
+### 6. Other inputs that are not outputs
+
+Health Connect, Gadgetbridge broadcasts, Bluetooth peripherals and the phone's sensors deliver data to Bios. Bios does not write back to them.
+
+### Not present
+
+- No Bios server, account or cloud backup (`android:allowBackup="false"`)
+- No analytics, telemetry or crash reporting
+- No advertising identifiers
+- No contribution of data, aggregated or not, to anyone
+- No push messaging from a server
+- No model download or update channel
+- No location data: Bios reads no position. Bluetooth scanning is declared `neverForLocation`; on Android 11 and below the location permission is declared only because the OS requires it for a Bluetooth scan.
+
+## Encryption at Rest
+
+| Layer | Implementation |
 |---|---|
-| The user is final | Owner controls alert thresholds, data retention, what to share, and when to delete — Bios advises, never overrides |
-| Defense by encryption and erasure | SQLCipher AES-256, hardware-backed keystore, instant key destruction, LETHE burner/dead-man's-switch integration |
-| Instrument, not coach — evaluation belongs to the owner | Report deviations from baseline ("resting HR +2σ for 48h"), hold what the owner annotates about themselves, answer when asked. Never push lifestyle judgments ("you're unhealthy") unsolicited |
-| Silence is a feature | Bios speaks when something matters, not to fill a feed or drive engagement |
-| No hidden agendas | No behavioral nudges, no engagement metrics, no data sold to anyone, no dark patterns |
-| Each instance is sovereign | Health data belongs to this device and this owner — no cross-device aggregation without explicit opt-in |
-| Presence, not performance | Guardian at rest, watching for patterns the owner might miss — not a productivity tool |
+| Databases | SQLCipher, AES-256, one passphrase per database |
+| Passphrases | Random, generated on first launch, stored in `EncryptedSharedPreferences` under a Keystore-backed master key (hardware-backed where the device provides it) |
+| Vendor tokens | `EncryptedSharedPreferences` |
+| Backups | Excluded: `allowBackup=false` |
 
-### Privacy Tiers
+The passphrases are never transmitted.
 
-Every user gets the same health intelligence. How your data contributes back is your choice.
+## Deletion
 
-- **Private tier:** Your health data never leaves your device. Period. Zero-knowledge architecture. This is the same model a traditional privacy-first app would offer.
-- **Community tier:** Your health data is processed entirely on-device. Before anything is transmitted, it is aggregated into anonymized statistical patterns using differential privacy. The server never sees raw readings, never sees anything tied to your identity. What it receives are pre-anonymized population-level signals that help improve detection for all users.
+**Delete all data** (`DataDestroyer.destroyAll`):
 
-Both tiers run the same app, the same detection engine, the same features. The difference is whether your anonymized patterns help improve the commons.
+1. destroys the database passphrase, which makes the database file unreadable;
+2. deletes the database files, vendor tokens, pending export files and attached lab scans;
+3. cancels scheduled work, clears notifications, releases file permissions, clears preferences and any sync state.
 
----
+The reproductive database can be destroyed on its own (`destroyReproductiveData`).
 
-## Threat Model
+**Partial wipe.** The privacy dashboard shows the data footprint (number of readings, age of the oldest data, database size) and can delete the last 1, 7 or 30 days.
 
-### What we protect
+**Retention.** The periodic sync deletes readings older than 90 days.
 
-- Raw health readings (HR, HRV, SpO2, sleep, glucose, etc.)
-- Personal baselines and computed aggregates
-- Anomaly detections and alert history
-- Source device information
-- Reproductive health data (cycle tracking, fertility indicators)
-- Any data that could reveal health status, behavior patterns, or identity
-- The owner's autonomy over their health information
+**On LETHE.** The OS broadcasts for burner mode, dead man's switch, panic and duress wipe trigger the same full destruction. The dashboard shows whether burner mode and the dead man's switch are active.
 
-### Who we protect against
+**Wipe PIN.** `SafeMode` can wipe everything and return the app to its first-run screen when a separate PIN is entered. No screen sets such a PIN today.
 
-| Threat Actor | Attack Vector | Bios Defense | + LETHE Defense |
-|---|---|---|---|
-| **Bios (ourselves)** | Server-side data access | Zero-knowledge backend; server only sees ciphertext or differentially private aggregates | N/A — same |
-| **Data brokers / insurers** | Purchasing health data from app vendors | No data to sell — everything is on-device | OS-level tracker blocking, no Play Services telemetry |
-| **Advertisers / SDKs** | Analytics tools exfiltrating health data | No third-party analytics SDKs with health data access; self-hosted tooling | System-wide firewall blocks all outbound by default; hosts-file tracker blocking |
-| **Device theft / seizure** | Physical access to phone | SQLCipher AES-256 encryption keyed to device credentials | Burner mode wipes on boot; panic button (5x power press); dead man's switch escalation |
-| **Forensic examination** | Recovering data from seized device | Encrypted DB; key destruction on "Delete all data" | dm-default-key metadata encryption; burner mode prevents data accumulation; Stage 3 brick option |
-| **Network interception** | MITM, ISP surveillance | E2E encryption on sync; TLS defense-in-depth | All traffic through Tor; per-app circuit isolation; no cleartext DNS |
-| **Legal compulsion** | Subpoena for user data | We cannot produce what we do not have (zero-knowledge server) | No server data + device encryption + duress PIN triggers silent wipe |
-| **Coercion** | Forced to unlock device and reveal health data | Encrypted DB requires device credentials | Duress PIN shows working home screen while silently wiping; dead man's switch if owner incapacitated |
-| **Reproductive prosecution** | Period/fertility data used as evidence post-Dobbs | On-device only, no server-side data to subpoena, no third-party SDK access | OS-level wipe features; Tor hides any network activity; no metadata trail |
-| **Employer / insurer surveillance** | Health data used for discrimination | No data sharing with third parties; no cloud processing | Degoogled ROM eliminates Play Services reporting; firewall blocks corporate MDM telemetry |
-| **Malicious insider** | Backend access by Bios employee | No raw health data on servers; encrypted sync blobs are opaque | N/A — same |
-| **App Store / OS-level** | Backup extraction, cloud sync | `allowBackup=false`; exclude health DB from cloud backups | LETHE disables cloud backup OS-wide; no Google account on device |
-| **Google Play Services** | Silent telemetry, health data correlation | No Play Services dependency; tolerates but doesn't require GMS | Absent entirely (degoogled ROM) |
+## Threats and What Answers Them
 
----
-
-## Data Residency
-
-### On-Device (default, always)
-
-```
-+---------------------------------------------------+
-|                    USER'S DEVICE                   |
-|                                                    |
-|  +---------------------------------------------+  |
-|  |          SQLCipher Encrypted Database         |  |
-|  |                                               |  |
-|  |  - Raw MetricReadings                        |  |
-|  |  - ComputedAggregates                        |  |
-|  |  - PersonalBaselines                         |  |
-|  |  - Anomalies & Alerts                        |  |
-|  |  - ConditionPatterns (reference data)        |  |
-|  |  - User Preferences                          |  |
-|  +---------------------------------------------+  |
-|                                                    |
-|  +---------------------------------------------+  |
-|  |          Platform Keychain                    |  |
-|  |                                               |  |
-|  |  - Database encryption key                   |  |
-|  |  - OAuth tokens for wearable APIs            |  |
-|  |  - Sync encryption key (if sync enabled)     |  |
-|  +---------------------------------------------+  |
-+---------------------------------------------------+
-```
-
-**All health data processing happens on-device:**
-- Baseline computation
-- Anomaly detection
-- Alert generation
-- Trend analysis
-- Data export
-
-The app is fully functional with no network connection whatsoever.
-
-### On-Server (opt-in only)
-
-If the user enables multi-device sync, the following lives on the server:
-
-```
-+---------------------------------------------------+
-|                    BIOS SERVER                     |
-|                                                    |
-|  +---------------------------------------------+  |
-|  |     User Account (minimal)                   |  |
-|  |  - account ID (UUID)                         |  |
-|  |  - passkey credential                        |  |
-|  |  - email (for magic link fallback)           |  |
-|  |  - created_at, last_login_at                 |  |
-|  +---------------------------------------------+  |
-|                                                    |
-|  +---------------------------------------------+  |
-|  |     Encrypted Sync Blobs                     |  |
-|  |  - opaque ciphertext (server cannot read)    |  |
-|  |  - blob ID, timestamp, size                  |  |
-|  |  - account ID (for routing only)             |  |
-|  +---------------------------------------------+  |
-|                                                    |
-|  NOT ON SERVER:                                    |
-|  - No raw health data                             |
-|  - No baselines or aggregates                     |
-|  - No alert history                               |
-|  - No device names or types                       |
-|  - No encryption keys                             |
-+---------------------------------------------------+
-```
-
-### Community Tier: On-Device Aggregation Pipeline
-
-Community users contribute anonymized patterns. The critical design constraint is that **anonymization happens on-device, before transmission** -- not on the server after the fact.
-
-```
-+---------------------------------------------------+
-|                    USER'S DEVICE                   |
-|                                                    |
-|  +---------------------------------------------+  |
-|  |          Local Health Database               |  |
-|  |  (same as Private tier -- fully encrypted)   |  |
-|  +---------------------------------------------+  |
-|              |                                     |
-|              v                                     |
-|  +---------------------------------------------+  |
-|  |     On-Device Aggregation Engine             |  |
-|  |                                               |  |
-|  |  1. Compute statistical summaries from       |  |
-|  |     local data (means, distributions,        |  |
-|  |     pattern signatures)                      |  |
-|  |  2. Strip all identifiers, timestamps,       |  |
-|  |     device info, and raw values              |  |
-|  |  3. Apply differential privacy noise         |  |
-|  |     (calibrated epsilon)                     |  |
-|  |  4. Output: anonymous statistical vector     |  |
-|  +---------------------------------------------+  |
-|              |                                     |
-|              v                                     |
-|  +---------------------------------------------+  |
-|  |     Transmission (TLS 1.3)                   |  |
-|  |  - Pre-anonymized aggregate only             |  |
-|  |  - No account ID attached                    |  |
-|  |  - No device fingerprint                     |  |
-|  |  - Cannot be linked back to this device      |  |
-|  +---------------------------------------------+  |
-+---------------------------------------------------+
-              |
-              v
-+---------------------------------------------------+
-|                    BIOS SERVER                     |
-|                                                    |
-|  +---------------------------------------------+  |
-|  |     Aggregate Collection Pool                |  |
-|  |  - Receives anonymous statistical vectors    |  |
-|  |  - Cannot identify source user or device     |  |
-|  |  - Cannot reconstruct individual readings    |  |
-|  |  - Used to train and improve detection       |  |
-|  |    models across the population              |  |
-|  +---------------------------------------------+  |
-+---------------------------------------------------+
-```
-
-**Key properties:**
-- The server cannot distinguish Community contributions from each other
-- Even if the server is compromised, individual health data cannot be reconstructed
-- Contribution frequency is randomized (not on a schedule tied to usage patterns)
-- Users can inspect exactly what is being sent before it leaves (transparency dashboard)
-- Aggregation code is open-source and auditable
-
-### What Community Contributions Include
-
-| Included | Example | Why |
+| Threat | In Bios | Added by LETHE (as LETHE documents itself; not verified in this repository) |
 |---|---|---|
-| Statistical distributions | "HRV mean in range 40-50ms" | Improves baseline models across demographics |
-| Pattern signatures | "Sleep pattern type C detected" | Trains condition detection algorithms |
-| Alert feedback | "Alert dismissed" / "Alert confirmed" | Improves alert accuracy for everyone |
-| Device type class | "Wrist wearable" (not brand/model) | Accounts for sensor differences |
-| Age bracket | "30-39" (if user provides age) | Enables age-appropriate baselines |
+| A vendor or data broker obtaining readings from Bios | There is no Bios server and no SDK that reports out | OS firewall, tracker blocking |
+| Device theft or seizure | Encrypted databases; key destruction on wipe | Burner mode, panic and duress wipe, dead man's switch |
+| Backup extraction | `allowBackup=false` | Cloud backup disabled OS-wide |
+| Network interception | The only traffic is HTTPS to vendors the owner connected | Traffic routed through Tor |
+| Legal demand addressed to the project | The project holds no user data | Same |
+| Another app on the phone | Runtime permission and owner approval on the provider; loopback API not started on stock Android | Loopback API is readable by local processes |
+| Play Services telemetry | No dependency on Play Services | Absent from the ROM |
 
-### What Community Contributions Never Include
+Limits to state plainly: an unlocked phone with Bios open shows everything; a vendor the owner connected keeps its own copy of the owner's data under its own terms; an exported plaintext file is unprotected once it leaves the app.
 
-- Raw sensor readings (HR, HRV, SpO2, temp, glucose values)
-- Timestamps or time-series data
-- Account ID, device ID, or any persistent identifier
-- Location, IP address, or network information
-- Anything that could single out an individual
+## Text Policy
 
----
+`AlertContentPolicy` lists what Bios's own text may not say: condition names and words of medical purpose (detecting, judging, advising, attaching a meaning to a number). `VocabularyGateTest` scans every string resource and the string literals of the owner-facing packages and of the notification code. Uses that are legitimate (the owner's own record kinds, vaccine names, standard code descriptions in the FHIR export) sit in `VocabularyGateAllowlist`, one entry per file and text, each with a reason.
 
-## Encryption Design
+## Owner Controls
 
-### At Rest (on-device)
-
-| Layer | LETHE (embedded) | Stock Android (standalone) |
-|---|---|---|
-| Database | SQLCipher AES-256-CBC with HMAC-SHA512 | Same |
-| DB key storage | LETHE hardware-backed keystore (no GMS dependency) | Android Keystore (hardware-backed where available) |
-| DB key generation | Random 256-bit key generated on first launch | Same |
-| Backup exclusion | LETHE disables cloud backup OS-wide | `android:allowBackup="false"` per-app |
-| Additional protections | LETHE firewall blocks all outbound by default; tracker-blocking hosts file; burner mode wipes DB on reboot if enabled; dead man's switch triggers key destruction | Standard Android sandbox isolation |
-
-The database key is:
-- Generated once, stored in the platform's hardware-backed keychain
-- Protected by the device's passcode / biometric
-- Never transmitted anywhere
-- Destroyed if the user chooses "Delete all data"
-- On LETHE: also destroyed by dead man's switch or burner mode reboot
-
-### Exports (off-device)
-
-Exports (JSON / CSV / FHIR / PDF) leave the SQLCipher boundary, so the owner
-controls their protection at export time:
-
-- **Plaintext** by default — a clinician needs to read the FHIR bundle or PDF,
-  and an owner backup is often re-imported. Files are written to app-private
-  cache and delivered via SAF "Save to device" or the share sheet; nothing
-  leaves until the owner picks a destination.
-- **Password-protected** when the owner enables it — the export is wrapped in a
-  standard **AES-256 zip** (`EncryptedZipExporter`, Zip4j; passphrase entered
-  twice, unrecoverable if lost). Crucially this is an *interoperable* container:
-  it opens outside Bios with the password (7-Zip, Keka, `pyzipper`), so a
-  doctor or agent can read it without Bios. The plaintext cache copy is deleted
-  once the encrypted zip is produced.
-
-> Superseded design note: an earlier plan used a Bios-only `.bios` container
-> (`EncryptedExporter`, custom AES-GCM format). It was never wired to the UI and
-> was retired because a Bios-only format can't be read by the clinician/agent
-> the export is for. The AES-256 zip replaces it.
-
-### In Transit (sync)
-
-```
-User device                         Bios server
-    |                                    |
-    |  1. Derive sync key from passkey   |
-    |     (HKDF-SHA256)                  |
-    |                                    |
-    |  2. Encrypt data blob              |
-    |     (XChaCha20-Poly1305)           |
-    |                                    |
-    |  3. Upload ciphertext over TLS  -->|
-    |                                    |  4. Store opaque blob
-    |                                    |     (cannot decrypt)
-    |                                    |
-    |  5. Other device downloads blob <--|
-    |                                    |
-    |  6. Decrypt with same sync key     |
-    |     (derived from same passkey)    |
-```
-
-**Key properties:**
-- Sync key is derived client-side from the user's passkey using HKDF
-- Server never sees the sync key or any material to derive it
-- Each blob is encrypted with a unique nonce
-- TLS 1.3 minimum for transport (defense-in-depth)
-- If the user loses their passkey, sync data is irrecoverable (by design)
-
-### Key Rotation
-
-- Sync key rotates when the user resets their passkey
-- Old blobs are re-encrypted with the new key during the next full sync
-- DB encryption key can be rotated via Settings (re-encrypts database in place)
-
----
-
-## Data Minimization
-
-### What we collect (on-device)
-
-Only what is needed for health analysis:
-- Sensor readings with timestamps
-- Source device identifiers (for deduplication)
-- Computed baselines and aggregates
-- Alert records
-
-### What we never collect
-
-- Location data (GPS is not used, even if available)
-- Contact lists, call logs, messages
-- App usage patterns outside Bios
-- Photos, files, or media
-- Advertising identifiers
-- IP addresses (not logged on backend)
-
-### Retention
-
-- User controls retention period (default: 1 year of raw readings)
-- Computed aggregates retained longer (space-efficient, useful for long-term trends)
-- Automatic pruning runs weekly
-- User can delete all data instantly ("nuclear option" in Settings)
-
----
-
-## Third-Party Data Flow
-
-### Wearable API connections (HealthKit, Oura, WHOOP, etc.)
-
-```
-Wearable API  --(OAuth 2.0)-->  User's device  --(local only)-->  Bios DB
-
-NOT:
-Wearable API  -->  Bios server  -->  User's device
-```
-
-- All API calls go directly from the user's device to the wearable API
-- OAuth tokens stored in the device keychain, never on our server
-- We are a client of these APIs, not a proxy
-
-### Analytics (PostHog, self-hosted)
-
-Events sent to analytics contain:
-- Feature usage (screens viewed, features used) -- opt-in
-- App performance metrics (launch time, memory)
-- Crash metadata (stack traces, device model)
-
-Events never contain:
-- Health readings or derived values
-- Alert content or anomaly details
-- User identity (anonymous device ID only)
-- Anything from the encrypted database
-
-**Enforcement:** Analytics calls go through a sanitization layer that strips any field matching health data patterns before transmission.
-
----
-
-## User Rights & Controls
-
-| Right | Implementation |
+| Control | Where |
 |---|---|
-| **Access** | Full data export (JSON + FHIR) at any time |
-| **Portability** | Export format is open and documented |
-| **Deletion** | "Delete all data" destroys the encryption key, rendering all data irrecoverable |
-| **Correction** | Users can delete individual readings or time ranges |
-| **Objection** | Any optional feature (sync, analytics, research) can be disabled independently |
-| **Transparency** | Privacy dashboard shows: what data exists, where it lives, what's connected |
-
-### The "Delete All Data" flow
-
-1. User confirms deletion (double confirmation required)
-2. App destroys the database encryption key from the keychain
-3. App deletes the encrypted database file
-4. If sync was enabled: app sends a deletion request to the server
-5. Server deletes all encrypted blobs for that account within 24 hours
-6. Server deletes the account record within 24 hours
-7. App resets to fresh install state
-
-Without the encryption key, even if the database file were forensically recovered, the data is computationally irrecoverable.
-
----
-
-## Compliance Considerations
-
-| Regulation | How Bios Aligns |
-|---|---|
-| **GDPR** | Data minimization, right to access/delete/port, no cross-border health data transfer (data stays on-device), privacy by design |
-| **HIPAA** | Bios is not a covered entity (we don't store PHI on our servers). If future partnerships require it, the zero-knowledge architecture means minimal BAA scope |
-| **CCPA/CPRA** | No sale of personal information, user deletion rights, transparency |
-| **Apple App Store health data rules** | No health data shared with third parties, no advertising use |
-| **Google Play health data policy** | Prominent disclosure, no undisclosed data use, encryption required |
-| **Post-Dobbs reproductive data** | On LETHE: data is unreachable by design (no cloud, no Play Services, firewall-blocked, encryption key in hardware keystore). On stock Android: data stays on-device with no third-party SDK access. No server-side data means nothing to subpoena. |
-
-### LETHE vs Stock Android: Privacy Comparison
-
-| Protection | LETHE (embedded) | Stock Android (standalone) |
-|---|---|---|
-| Network isolation | OS-level firewall blocks all outbound by default | App-level: Bios makes no network calls unless user opts in |
-| Tracker blocking | System-wide hosts file blocks known trackers | App-level: no analytics SDKs that phone home |
-| Play Services telemetry | Absent (degoogled ROM) | Present unless manually disabled |
-| Backup exfiltration | Disabled OS-wide | Disabled per-app (`allowBackup=false`) |
-| Forensic resistance | Burner mode wipes on boot; dead man's switch | Standard Android FDE/FBE |
-| Legal compulsion | No server data + device-level encryption + LETHE wipe features | No server data + device-level encryption |
-
-On LETHE, Bios inherits OS-level privacy hardening that is impossible to replicate at the app level on stock Android. The standalone flavor still provides strong privacy through on-device-only architecture, but LETHE provides defense-in-depth at every layer.
-
----
-
-## Forensic Risk Awareness
-
-The `ForensicRiskMonitor` helps the owner understand their data footprint:
-- Total readings stored, data age, database size on disk
-- Whether burner mode is active (LETHE)
-- Whether dead man's switch is armed (LETHE)
-- Flags when data accumulates beyond 30 days with burner mode off (LETHE)
-- Quick-wipe controls: wipe last 1/7/30 days without destroying baselines
-
-The owner should know what they're accumulating. On a device that could be seized, health data history is a liability. Bios surfaces this information without nagging — available when the owner looks for it.
-
-## Alert Content Policy
-
-The `AlertContentPolicy` enforces the **unsolicited-judgment ban** at the code level. It governs the push surface — alerts and notifications Bios raises on its own. Pull-side surfaces (screens the owner navigates into, biomarker context they annotate themselves, comparisons they ask for) are owner-driven and not constrained by this policy.
-
-- Prohibited (push side): second-person lifestyle judgments ("you should", "you need to"), guilt mechanics ("you haven't", "you missed"), gamification ("streak", "achievement", "leaderboard")
-- Allowed (push side): data statements ("resting HR +2σ"), questions ("have you felt unwell?"), professional referrals ("discuss with your healthcare provider")
-- All 12 condition patterns are validated against this policy
-- Future push-side patterns must pass the same check in CI
-
-## Coercion Resistance
-
-The `SafeMode` provides protection under duress:
-- On LETHE: duress PIN triggers data destruction + fresh-install appearance
-- On stock Android: owner can set a separate "safe PIN" that triggers the same behavior
-- After activation: app shows onboarding screen — visually indistinguishable from a fresh install
-- No trace that data ever existed
-
----
+| See what exists and how old it is | Privacy dashboard |
+| Export everything | Settings, export (JSON, CSV, FHIR, PDF) |
+| Delete everything, or the last days | Privacy dashboard, settings |
+| Connect and disconnect each vendor | Data sources |
+| Approve or revoke each companion app | Companion apps |
+| Turn each source's metrics on or off | Metric sources |
 
 ## Security Practices
 
 | Practice | Detail |
 |---|---|
-| Dependency auditing | Automated vulnerability scanning in CI (Dependabot / Snyk) |
-| Code review | All changes reviewed; health data handling changes require 2 reviewers |
-| Penetration testing | Annual third-party pentest of backend and sync protocol |
-| Encryption library | Use platform-provided crypto (Apple CryptoKit, Android Jetpack Security) -- no custom crypto |
-| Secret management | No hardcoded secrets; all keys in platform keychain or CI secrets |
-| Incident response | Documented runbook; users notified within 72 hours of any confirmed breach |
-
----
-
-## Summary
-
-```
-+------------------------------------------------------+
-|           BIOS PROTECTION MODEL                       |
-|     "Protect the person holding the device."          |
-|                                                       |
-|  ON-DEVICE (always, both tiers):                      |
-|    - All health data                                  |
-|    - All processing & detection                       |
-|    - All encryption keys                              |
-|    - Fully functional offline                         |
-|    - Same features, same intelligence                 |
-|                                                       |
-|  ON-SERVER (Private tier, opt-in sync):               |
-|    - Opaque encrypted blobs (zero-knowledge)          |
-|    - Minimal account info (UUID, passkey, email)      |
-|                                                       |
-|  ON-SERVER (Community tier):                          |
-|    - Same as Private if sync enabled                  |
-|    - PLUS: anonymous statistical aggregates           |
-|      (differentially private, pre-anonymized          |
-|       on-device, no identifiers, no raw data)         |
-|                                                       |
-|  ON LETHE (embedded flavor):                          |
-|    - OS-level firewall, tracker blocking, Tor         |
-|    - Burner mode: health data wiped on boot           |
-|    - Dead man's switch: data destroyed if             |
-|      owner incapacitated or coerced                   |
-|    - Duress PIN: silent wipe under coercion           |
-|    - No Google Play Services, no telemetry            |
-|                                                       |
-|  NOWHERE (any platform, any tier):                    |
-|    - Plaintext health data on any server              |
-|    - Encryption keys outside the owner's device       |
-|    - Health data in analytics or crash reports         |
-|    - Individual data sold to anyone                   |
-|    - Data tied to an identity shared with partners    |
-|    - Unsolicited lifestyle judgments, pushed          |
-|      wellness scores, or behavioral nudges            |
-|      targeting the owner                              |
-+------------------------------------------------------+
-```
+| Dependency audit | OWASP dependency check in CI (non-blocking) |
+| Secret scanning | gitleaks in CI, `scripts/check-secrets.sh` in the pre-commit hook |
+| Outside references | `.githooks/leakcheck.py` in hooks and CI |
+| Crypto | Platform and library crypto only (SQLCipher, AndroidX Security, Zip4j). No custom cipher. |
