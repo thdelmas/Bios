@@ -13,9 +13,8 @@ package com.bios.app.data
  * surface accepts any string but cannot distinguish "metoprolol" (RxNorm
  * 6918) from "Ashwagandha" (a botanical / Ayurvedic dravya) from "六味地黄丸"
  * (a TCM formula). The enum lets owners — when they want to — tag the
- * vocabulary their substance is drawn from so downstream surfaces (Beers
- * filtering, CredibleMeds QT context, FHIR export, clinician share) can
- * reason about it.
+ * vocabulary their substance is drawn from so the FHIR export can carry
+ * the code.
  *
  * **Manifesto-aligned.**
  *  - *Recording is not endorsement.* Bios never validates whether a
@@ -35,8 +34,7 @@ package com.bios.app.data
 enum class SubstanceSource {
     /**
      * RxNorm CUI (US National Library of Medicine). The canonical
-     * allopathic-pharmacy vocabulary in the US. Used by CredibleMeds
-     * (QT-prolonging drug registry) and the AGS Beers Criteria pickers.
+     * allopathic-pharmacy vocabulary in the US.
      */
     RXNORM,
 

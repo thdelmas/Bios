@@ -17,14 +17,12 @@ import androidx.concurrent.futures.await
 import androidx.lifecycle.LifecycleOwner
 import android.os.Build
 import com.bios.app.engine.CaptureQuality
-import com.bios.app.engine.EctopyDetector
 import com.bios.app.engine.HrvAnalyzer
 import com.bios.app.engine.PpgCalibrationLogger
 import com.bios.app.engine.PpgDeviceProfiles
 import com.bios.app.engine.PpgResult
 import com.bios.app.engine.PpgSignalProcessor
 import com.bios.app.engine.RejectionReason
-import com.bios.app.engine.RhythmClassifier
 import com.bios.app.model.ConfidenceTier
 import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricType

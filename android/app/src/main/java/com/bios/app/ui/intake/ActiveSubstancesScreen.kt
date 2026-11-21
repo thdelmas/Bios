@@ -209,12 +209,6 @@ private fun DosedBody(card: SubstanceCard) {
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         StatCell("Last dose", lastDoseLabel(card))
-        card.thresholdMg?.let {
-            StatCell(
-                "Below ${formatAmount(it, card.metricKey)} at",
-                belowThresholdLabel(card),
-            )
-        }
         StatCell("Kinetics", kineticsLabel(pk.kinetics))
     }
 
@@ -266,10 +260,7 @@ private fun Sparkline(card: SubstanceCard) {
     val curve = card.curve
     val lineColor = MaterialTheme.colorScheme.primary
     val markerColor = MaterialTheme.colorScheme.tertiary
-    val thresholdColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val maxY = (curve.maxOfOrNull { it.second } ?: 0.0)
-        .coerceAtLeast(card.thresholdMg ?: 0.0)
-        .coerceAtLeast(1e-6)
+    val maxY = (curve.maxOfOrNull { it.second } ?: 0.0).coerceAtLeast(1e-6)
     val firstTs = curve.firstOrNull()?.first ?: return
     val lastTs = curve.lastOrNull()?.first ?: return
     val spanMs = (lastTs - firstTs).coerceAtLeast(1L).toDouble()
@@ -297,15 +288,6 @@ private fun Sparkline(card: SubstanceCard) {
                     cap = StrokeCap.Round,
                 )
             }
-        }
-        card.thresholdMg?.let { thr ->
-            val y = h - (thr / maxY).toFloat() * h
-            drawLine(
-                color = thresholdColor.copy(alpha = 0.5f),
-                start = Offset(0f, y),
-                end = Offset(w, y),
-                strokeWidth = 2f,
-            )
         }
         for (dose in card.recentDoses) {
             val x = ((dose.timestampMs - firstTs).coerceAtLeast(0L) / spanMs).toFloat() * w
@@ -372,13 +354,6 @@ private fun lastDoseLabel(card: SubstanceCard): String {
     }
 }
 
-private fun belowThresholdLabel(card: SubstanceCard): String {
-    val ms = card.timeUntilBelowThresholdMs ?: return "no crossing in 10 days"
-    if (ms <= 0L) return "already below"
-    val target = System.currentTimeMillis() + ms
-    return clockFormat.format(Date(target))
-}
-
 private fun formatAmount(mg: Double, metricKey: String): String {
     // Display amounts in the metric's native unit so the owner sees the
     // same number they entered: caffeine in mg, alcohol back in g.
@@ -389,6 +364,5 @@ private fun formatAmount(mg: Double, metricKey: String): String {
     }
 }
 
-private val clockFormat = SimpleDateFormat("HH:mm", Locale.US)
 private val dateTimeFormat = SimpleDateFormat("EEE HH:mm", Locale.US)
 private fun formatTime(millis: Long): String = dateTimeFormat.format(Date(millis))

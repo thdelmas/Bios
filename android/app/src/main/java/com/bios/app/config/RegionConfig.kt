@@ -3,9 +3,8 @@ package com.bios.app.config
 import com.bios.contracts.MetricType
 
 /**
- * Region-specific configuration for localized health thresholds, unit display,
- * and regulatory compliance. Adding a new locale means adding a new config —
- * not new code paths.
+ * Region-specific configuration for unit display and data-handling rules.
+ * Adding a new locale means adding a new config, not new code paths.
  *
  * [climateZone] and [defaultLatitudeDeg] / [defaultElevationM] feed
  * [com.bios.app.config.EnvironmentalContextProvider] (#197). They are
@@ -17,13 +16,9 @@ data class RegionConfig(
     val regionCode: String,
     val displayName: String,
     val unitOverrides: Map<MetricType, UnitDisplay>,
-    val clinicalThresholds: ClinicalThresholds,
+    /** Blood glucose unit for display: true = mmol/L, false = mg/dL. */
+    val glucoseInMmol: Boolean,
     val regulatory: RegulatoryConfig,
-    /**
-     * Local emergency services number for the region. `null` when no
-     * canonical number exists.
-     */
-    val emergencyNumber: String? = null,
     /**
      * `true` when this locale sits inside a recognised indigenous data-
      * sovereignty framework (e.g. Te Mana Raraunga in NZ, NACCHO in AU,
@@ -33,8 +28,7 @@ data class RegionConfig(
     val indigenousFlagged: Boolean = false,
     /**
      * Default climate zone for this region. Owner-overridable from
-     * Settings → Environmental context. Used to seed heat / cold pattern
-     * thresholds when the owner has not entered a value.
+     * Settings → Environmental context.
      */
     val climateZone: ClimateZone = ClimateZone.TEMPERATE,
     /**
@@ -54,8 +48,7 @@ data class RegionConfig(
 /**
  * Köppen-derived broad climate band (#197). Five bins cover the gradient
  * from tropical heat to Arctic cold without committing the codebase to a
- * full Köppen vocabulary. Sets the default heat/cold thresholds the
- * `heat_exhaustion_screen` and `hypothermia_screen` patterns use.
+ * full Köppen vocabulary.
  */
 enum class ClimateZone(val displayName: String) {
     TROPICAL("Tropical"),
@@ -74,106 +67,6 @@ data class UnitDisplay(
     val fromMetric: (Double) -> Double,
     val toMetric: (Double) -> Double
 )
-
-/**
- * Absolute clinical thresholds that vary by regional medical standards.
- * These complement the personal-baseline sigma thresholds in ConditionPatterns —
- * they provide hard floors/ceilings based on clinical consensus.
- */
-data class ClinicalThresholds(
-    /** SpO2 below this is clinically significant (%, typically 95). */
-    val spo2ConcernThreshold: Double,
-    /** SpO2 below this is urgent (%, typically 92). */
-    val spo2UrgentThreshold: Double,
-    /** Fever threshold for skin temperature delta (°C, varies by region). */
-    val feverDeltaCelsius: Double,
-    /** High fever absolute threshold (°C, typically 39.4). */
-    val highFeverCelsius: Double,
-    /** Resting HR above this in adults is tachycardic (bpm, typically 100). */
-    val tachycardiaBpm: Int,
-    /** Resting HR below this in non-athletes is bradycardic (bpm, typically 50). */
-    val bradycardiaBpm: Int,
-    /** Blood glucose unit for display: true = mmol/L, false = mg/dL. */
-    val glucoseInMmol: Boolean,
-    /** Fasting glucose concern threshold (in the display unit). */
-    val fastingGlucoseConcern: Double,
-    /** Blood pressure systolic hypertension stage 1 threshold (mmHg). */
-    val hypertensionSystolic: Int,
-    /** Blood pressure diastolic hypertension stage 1 threshold (mmHg). */
-    val hypertensionDiastolic: Int,
-    /**
-     * Clinical bands (low risk / borderline / high risk) for biomarker
-     * readings, indexed by [MetricType]. Values in the metric's native unit
-     * (matching the contract). Missing entries mean Bios has no clinical
-     * band defined for that biomarker yet — the reading is shown without
-     * a risk classification.
-     */
-    val biomarkerBands: Map<MetricType, BiomarkerBands> = emptyMap()
-)
-
-/**
- * Three-band clinical classification for a lab value. Always declared in
- * ascending value order — [normalCeiling] < [borderlineCeiling] — and the
- * [concerningDirection] flag picks which extreme is clinically concerning:
- *
- *  - [BandDirection.ABOVE] (default): high values are concerning. Typical
- *    for hsCRP, HbA1c, LDL, ApoB, triglycerides — values at or above
- *    [borderlineCeiling] classify as [BiomarkerBand.CONCERNING].
- *  - [BandDirection.BELOW]: low values are concerning. Typical for HDL,
- *    25-OH vitamin D — values below [normalCeiling] classify as
- *    [BiomarkerBand.CONCERNING].
- *
- * For markers that are concerning at **both** extremes (TSH is the canonical
- * case: low → hyperthyroid, high → hypothyroid), [lowCeiling] adds a second
- * CONCERNING band on the low side without breaking the simple ABOVE shape.
- * Only meaningful when [concerningDirection] is `ABOVE`.
- *
- * Comparisons are inclusive at the lower edge and exclusive at the upper
- * edge so values sitting exactly on a published cut-off slot into the
- * higher-risk band by clinical convention (e.g. HbA1c = 6.5% reads as
- * diabetic; HDL = 40 reads as borderline, not concerning).
- */
-data class BiomarkerBands(
-    val normalCeiling: Double,
-    val borderlineCeiling: Double,
-    val concerningDirection: BandDirection = BandDirection.ABOVE,
-    val lowCeiling: Double? = null,
-) {
-    init {
-        require(normalCeiling < borderlineCeiling) {
-            "normalCeiling ($normalCeiling) must be < borderlineCeiling ($borderlineCeiling)"
-        }
-        if (lowCeiling != null) {
-            require(concerningDirection == BandDirection.ABOVE) {
-                "lowCeiling only applies when concerningDirection = ABOVE (BELOW already treats low values as concerning)"
-            }
-            require(lowCeiling < normalCeiling) {
-                "lowCeiling ($lowCeiling) must be < normalCeiling ($normalCeiling)"
-            }
-        }
-    }
-
-    fun classify(value: Double): BiomarkerBand {
-        if (lowCeiling != null && value < lowCeiling) return BiomarkerBand.CONCERNING
-        return when (concerningDirection) {
-            BandDirection.ABOVE -> when {
-                value < normalCeiling -> BiomarkerBand.NORMAL
-                value < borderlineCeiling -> BiomarkerBand.BORDERLINE
-                else -> BiomarkerBand.CONCERNING
-            }
-            BandDirection.BELOW -> when {
-                value >= borderlineCeiling -> BiomarkerBand.NORMAL
-                value >= normalCeiling -> BiomarkerBand.BORDERLINE
-                else -> BiomarkerBand.CONCERNING
-            }
-        }
-    }
-}
-
-enum class BiomarkerBand { NORMAL, BORDERLINE, CONCERNING }
-
-/** Which end of the value range is clinically concerning. */
-enum class BandDirection { ABOVE, BELOW }
 
 /**
  * Regulatory and compliance configuration per region.

@@ -11,23 +11,16 @@ import kotlin.math.sqrt
  * Bios ingests raw CGM samples through [com.bios.app.ingest.DexcomApiAdapter]
  * (or Health Connect's blood-glucose feed) at the device's native cadence —
  * typically every 5 minutes for Dexcom, less frequent for finger-stick
- * imports. The four derivations here describe how variable that stream is
- * over the window the caller passes in, which is what the metabolic
- * literature flags as an earlier marker than absolute glucose level:
+ * imports. The three derivations here describe how variable that stream is
+ * over the window the caller passes in. None of them compares a value with
+ * a target range:
  *
  *  - **GLUCOSE_CV** — coefficient of variation (SD / mean × 100), in
- *    percent. The ADA's "stable" cut-off is < 36 % (Battelino et al. 2019);
- *    Blueprint's OCOR range pushes tighter at < 18 %.
+ *    percent.
  *  - **GLUCOSE_MAGE** — Mean Amplitude of Glycemic Excursions, in mg/dL,
  *    using Service et al.'s 1970 algorithm: among the peak↔nadir transitions
  *    in the series, keep those whose amplitude exceeds 1 SD and average
- *    them. The Baghurst (2011) variant is more rigorous but its automated
- *    deterministic form is a follow-up; Service is the canonical reference
- *    and matches what most published thresholds (< 60 mg/dL "good control")
- *    were derived against.
- *  - **GLUCOSE_TIME_IN_RANGE** — percent of readings in the 70-140 mg/dL
- *    target window. Tighter than the ADA's 70-180 for diabetics; matches
- *    the Blueprint protocol's post-prandial target and the issue's spec.
+ *    them.
  *  - **GLUCOSE_PEAK_24H** — max value in the window, in mg/dL.
  *
  * **Window semantics.** Each function takes the readings already pulled into
@@ -37,11 +30,10 @@ import kotlin.math.sqrt
  * responsible for the window — these functions don't query the DAO. That
  * keeps the derivations pure and testable without Room.
  *
- * **Minimum-data threshold.** All four return `null` below
+ * **Minimum-data threshold.** All three return `null` below
  * [MIN_SAMPLES_FOR_VARIABILITY] readings — under ~8 hours of 5-min CGM
  * coverage, the statistics are too sparse to be informative and would
- * mostly add baseline noise. TIR is the most forgiving but still needs
- * enough samples to make the percentage meaningful.
+ * mostly add baseline noise.
  *
  * Confidence and sourceId are inherited from the input rows, mirroring
  * the [SleepDerivations] convention.
@@ -57,14 +49,6 @@ object GlucoseVariability {
         val variance = series.sumOf { (it.value - mean) * (it.value - mean) } / series.size
         val cv = sqrt(variance) / mean * 100.0
         return derivedReading(MetricType.GLUCOSE_CV, cv, series, sourceId)
-    }
-
-    /** Time in 70–140 mg/dL, expressed as percent of the input rows. */
-    fun deriveTimeInRange(readings: List<MetricReading>, sourceId: String): MetricReading? {
-        val series = glucoseSeries(readings) ?: return null
-        val inRange = series.count { it.value in TIR_LOW_MG_DL..TIR_HIGH_MG_DL }
-        val pct = inRange.toDouble() / series.size * 100.0
-        return derivedReading(MetricType.GLUCOSE_TIME_IN_RANGE, pct, series, sourceId)
     }
 
     /** Highest mg/dL value in the window. */
@@ -151,9 +135,4 @@ object GlucoseVariability {
     /** ~8 hours of 5-min CGM coverage. Below this the stats are too sparse
      *  to be informative — see "Minimum-data threshold" in the class kdoc. */
     internal const val MIN_SAMPLES_FOR_VARIABILITY = 96
-
-    /** TIR target window. Tighter than the ADA 70-180 standard; matches
-     *  the Blueprint protocol cited in the issue. */
-    internal const val TIR_LOW_MG_DL = 70.0
-    internal const val TIR_HIGH_MG_DL = 140.0
 }

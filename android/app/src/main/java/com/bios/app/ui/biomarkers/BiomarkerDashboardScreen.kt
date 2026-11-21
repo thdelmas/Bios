@@ -29,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.model.EventPayloadField
@@ -44,18 +43,13 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Biomarker / body-levels dashboard (#137). Slow-rolling clinical
- * snapshot — *"where does my body sit right now"* — sibling to the
- * fast-moving Active Substances surface (#138).
+ * Lab values dashboard (#137): the most recent recorded value per
+ * [MetricType], grouped by panel, with its unit, date and source.
+ * Tap-through routes to the trends view so the per-metric time series
+ * re-uses one screen.
  *
- * Panels render the most-recent reading per [MetricType] with descriptive
- * within / below / above coloring driven by [BiomarkerReferenceRanges].
- * Tap-through routes to the existing trends view so the per-metric
- * time series re-uses one screen.
- *
- * Manifesto-clean: classification is a passthrough of the lab's own
- * flagging, no composite "health score" across panels, no
- * supplement / protocol upsell, no "your X is concerning" framing.
+ * Values are shown as recorded: no colour, no comparison with a
+ * reference range, no score across panels.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,8 +129,7 @@ fun BiomarkerDashboardScreen(
 @Composable
 private fun Intro() {
     Text(
-        "Most-recent lab values, grouped by panel. Classification mirrors " +
-            "the lab's own flagging — you read the picture.",
+        "Most recent lab values as recorded, grouped by panel.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -211,33 +204,16 @@ private fun TileRow(tile: Tile, onTrend: (MetricType) -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
-                ValueAndClassification(tile)
+                Text(
+                    formatValue(tile),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             ProvenanceLine(tile)
         }
     }
     Spacer(Modifier.height(4.dp))
-}
-
-@Composable
-private fun ValueAndClassification(tile: Tile) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            formatValue(tile),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (tile.classification != ReferenceRange.Classification.UNKNOWN &&
-            tile.classification != ReferenceRange.Classification.WITHIN
-        ) {
-            Spacer(Modifier.height(0.dp))
-            Text(
-                "  · ${classificationLabel(tile.classification)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = classificationColor(tile.classification),
-            )
-        }
-    }
 }
 
 @Composable
@@ -248,7 +224,6 @@ private fun ProvenanceLine(tile: Tile) {
         tile.context.specimen?.let { add(it.readable) }
         tile.context.fasting?.let { add(if (it) "fasting" else "non-fasting") }
         tile.sourceLabel?.let { if (tile.context.labName.isNullOrBlank()) add(it) }
-        tile.range?.let { add("ref ${rangeLabel(it)}") }
     }
     if (parts.isEmpty()) return
     Text(
@@ -266,36 +241,9 @@ private fun ProvenanceLine(tile: Tile) {
     }
 }
 
-@Composable
-private fun classificationColor(c: ReferenceRange.Classification): Color = when (c) {
-    ReferenceRange.Classification.WITHIN -> MaterialTheme.colorScheme.primary
-    ReferenceRange.Classification.BELOW -> MaterialTheme.colorScheme.tertiary
-    ReferenceRange.Classification.ABOVE -> MaterialTheme.colorScheme.error
-    ReferenceRange.Classification.UNKNOWN -> MaterialTheme.colorScheme.onSurfaceVariant
-}
-
-private fun classificationLabel(c: ReferenceRange.Classification): String = when (c) {
-    ReferenceRange.Classification.BELOW -> "below ref"
-    ReferenceRange.Classification.ABOVE -> "above ref"
-    ReferenceRange.Classification.WITHIN -> "within ref"
-    ReferenceRange.Classification.UNKNOWN -> "no range"
-}
-
-private fun rangeLabel(r: ReferenceRange): String {
-    val low = r.low
-    val high = r.high
-    return when {
-        low != null && high != null -> "${formatNumber(low)}–${formatNumber(high)} ${r.units}"
-        low != null -> "≥ ${formatNumber(low)} ${r.units}"
-        high != null -> "≤ ${formatNumber(high)} ${r.units}"
-        else -> r.units
-    }
-}
-
 private fun formatValue(tile: Tile): String {
     val v = tile.value ?: return "—"
-    val units = tile.range?.units ?: tile.metricType.unit.symbol
-    return "${formatNumber(v)} $units"
+    return "${formatNumber(v)} ${tile.metricType.unit.symbol}"
 }
 
 private fun formatNumber(value: Double): String {

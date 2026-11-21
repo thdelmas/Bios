@@ -3,15 +3,14 @@ package com.bios.app.ui.biomarkers
 import com.bios.contracts.MetricType
 
 /**
- * One row group on the biomarker dashboard (#137). A panel is the
- * smallest unit of clinical co-meaning — labs that are typically drawn
- * together, that the owner reads as one story. Splitting the dashboard
- * by panel matches how lab reports themselves are organised.
+ * One row group on the lab values dashboard (#137): labs that are
+ * typically drawn together. Splitting the dashboard by panel matches how
+ * lab reports themselves are organised.
  *
  * The list of panels is the dashboard's shipping contract. Adding a
  * panel here is a deliberate dashboard expansion; per-metric tiles are
  * driven by [BiomarkerPanel.metrics] so adding a [MetricType] to an
- * existing panel needs no UI work beyond its reference range.
+ * existing panel needs no UI work.
  *
  * Manifesto: no panel composes a *"health score"* across its metrics —
  * each tile renders on its own and the owner reads the picture.
@@ -180,13 +179,7 @@ object BiomarkerPanels {
         ),
     )
 
-    /**
-     * Reproductive endocrine axis (Blueprint audit §1.9 + §1.12). FSH/LH/
-     * SHBG/AMH/free testosterone/prolactin/DHEA-S — sex- and (for women)
-     * cycle-phase-dependent reference ranges, so the dashboard renders
-     * the value without a coloured cutoff and the owner reads the lab's
-     * own range supplied via the FHIR import.
-     */
+    /** FSH, LH, SHBG, AMH, free testosterone, prolactin, DHEA-S. */
     val reproductiveEndocrine = BiomarkerPanel(
         id = "reproductive_endocrine",
         title = "Reproductive Endocrine",
@@ -203,7 +196,7 @@ object BiomarkerPanels {
 
     val epigenetic = BiomarkerPanel(
         id = "epigenetic",
-        title = "Aging Biomarkers",
+        title = "Epigenetic",
         metrics = listOf(
             MetricType.EPIGENETIC_AGE_DUNEDIN_PACE,
             MetricType.EPIGENETIC_AGE_GRIM,
@@ -213,37 +206,26 @@ object BiomarkerPanels {
         ),
     )
 
-    /**
-     * Men's prostate screening (Wave-2, audit §3.2). PSA Total is the
-     * routine men-50+ screen; PSA Free / Total ratio refines borderline
-     * elevated total PSA values.
-     */
+    /** PSA total and free. */
     val prostate = BiomarkerPanel(
         id = "prostate",
-        title = "Prostate Screening",
+        title = "Prostate",
         metrics = listOf(
             MetricType.PSA_TOTAL,
             MetricType.PSA_FREE,
         ),
     )
 
-    /**
-     * Skeletal health (Wave-2, audit §3.2). DEXA T-score is the single-
-     * number osteoporosis screen; anatomical site rides in event_payloads.
-     */
+    /** DEXA T-score; the anatomical site rides in event_payloads. */
     val skeletal = BiomarkerPanel(
         id = "skeletal",
-        title = "Bone Health",
+        title = "Bone",
         metrics = listOf(
             MetricType.BONE_DENSITY_T_SCORE,
         ),
     )
 
-    /**
-     * Plasma neurology (Wave-2, audit §3.2). pTau-217 is the emerging
-     * Alzheimer's blood biomarker; single-tile panel today, will fill
-     * out as additional neuro biomarkers ship (Aβ42/40 ratio, NfL, GFAP).
-     */
+    /** Plasma pTau-217; single-tile panel today. */
     val neurology = BiomarkerPanel(
         id = "neurology",
         title = "Neurology",
@@ -252,18 +234,10 @@ object BiomarkerPanels {
         ),
     )
 
-    /**
-     * Cardio-oncology panel (#201). NT-proBNP and high-sensitivity troponin
-     * are the AHA 2018 / ASCO 2017 cardio-oncology cardiac biomarkers used
-     * to surveil for anthracycline / trastuzumab cardiotoxicity. ANC anchors
-     * the IDSA 2010 febrile-neutropenia screen. The panel is dashboard-
-     * visible to every owner because the assays are also used outside
-     * cancer therapy (NT-proBNP for HF rule-out; troponin for ACS; ANC for
-     * any cytopenia work-up).
-     */
+    /** NT-proBNP, high-sensitivity troponin and absolute neutrophil count (#201). */
     val cardioOncology = BiomarkerPanel(
         id = "cardio_oncology",
-        title = "Cardio-Oncology",
+        title = "Cardiac markers & neutrophils",
         metrics = listOf(
             MetricType.NT_PRO_BNP_PG_PER_ML,
             MetricType.TROPONIN_NG_PER_L,
@@ -271,13 +245,7 @@ object BiomarkerPanels {
         ),
     )
 
-    /**
-     * Coagulation panel (#352). PT/INR/aPTT plus the EU-convention Quick
-     * index and the aPTT ratio. Routine ER bloodwork bundle; INR is the
-     * load-bearing one for warfarin / vitamin-K-antagonist monitoring.
-     * Bands for INR are universal (ACCP 2012 alarm thresholds); the rest
-     * are descriptive-only because therapeutic windows depend on indication.
-     */
+    /** PT, INR, aPTT, the Quick index, the aPTT ratio and D-dimer (#352). */
     val coagulation = BiomarkerPanel(
         id = "coagulation",
         title = "Coagulation",

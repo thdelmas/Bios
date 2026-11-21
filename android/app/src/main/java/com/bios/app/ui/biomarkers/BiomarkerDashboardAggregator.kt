@@ -11,17 +11,13 @@ import com.bios.contracts.MetricType
  *
  * Takes a flat list of biomarker [MetricReading]s + their `event_payloads`
  * sidecar fields + the source-label map, picks the most recent value per
- * [MetricType], classifies it descriptively against the population
- * reference range from [BiomarkerReferenceRanges], and groups the tiles
- * into [BiomarkerPanels].
+ * [MetricType] and groups the tiles into [BiomarkerPanels].
  *
- * Pure so the screen layer is a thin renderer — staleness math, range
- * classification, panel staleness rollup, and the empty-state contract
- * are all exercised under JUnit. The screen reads the output and lays
- * it out, that's it.
+ * Pure so the screen layer is a thin renderer: age-of-reading math and the
+ * empty-state contract are exercised under JUnit.
  *
- * Manifesto: descriptive only. Classification is a passthrough of what
- * the lab itself flags. No composite "score" across panels.
+ * A tile is the recorded value, its unit, its date and where it came from.
+ * Nothing compares the value with a reference range.
  */
 object BiomarkerDashboardAggregator {
 
@@ -32,8 +28,6 @@ object BiomarkerDashboardAggregator {
         val value: Double?,
         val lastReadingTimestampMs: Long?,
         val ageDays: Long?,
-        val range: ReferenceRange?,
-        val classification: ReferenceRange.Classification,
         val sourceLabel: String?,
         val context: BiomarkerContext,
     ) {
@@ -45,7 +39,7 @@ object BiomarkerDashboardAggregator {
         val tiles: List<Tile>,
     ) {
         /** Oldest age across populated tiles. Null when the panel has no
-         *  readings. The dashboard uses this for the staleness chip. */
+         *  readings. The dashboard shows it next to the panel title. */
         val oldestAgeDays: Long?
             get() = tiles.mapNotNull { it.ageDays }.maxOrNull()
 
@@ -99,7 +93,6 @@ object BiomarkerDashboardAggregator {
         sourceLabels: Map<String, String>,
         nowMs: Long,
     ): Tile {
-        val range = BiomarkerReferenceRanges.forMetric(metric)
         val value = latest?.value
         val timestamp = latest?.timestamp
         val ageDays = timestamp?.let { ((nowMs - it) / MILLIS_PER_DAY).coerceAtLeast(0L) }
@@ -109,18 +102,11 @@ object BiomarkerDashboardAggregator {
                 note = it.note,
             )
         } ?: BiomarkerContext()
-        val classification = if (value != null && range != null) {
-            range.classify(value)
-        } else {
-            ReferenceRange.Classification.UNKNOWN
-        }
         return Tile(
             metricType = metric,
             value = value,
             lastReadingTimestampMs = timestamp,
             ageDays = ageDays,
-            range = range,
-            classification = classification,
             sourceLabel = latest?.sourceId?.let { sourceLabels[it] },
             context = context,
         )

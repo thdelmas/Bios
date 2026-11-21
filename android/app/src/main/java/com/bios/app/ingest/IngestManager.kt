@@ -389,7 +389,6 @@ class IngestManager @Suppress("LongParameterList") constructor(
             SleepDerivations.deriveWakeAfterSleepOnset(rows, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepScore(rows, sourceId)?.let { derived += it }
             GlucoseVariability.deriveCv(rows, sourceId)?.let { derived += it }
-            GlucoseVariability.deriveTimeInRange(rows, sourceId)?.let { derived += it }
             GlucoseVariability.derivePeak(rows, sourceId)?.let { derived += it }
             GlucoseVariability.deriveMage(rows, sourceId)?.let { derived += it }
         }

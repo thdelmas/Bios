@@ -4,11 +4,7 @@ package com.bios.app.config
  * Europe region configs: UK, EU (umbrella fallback), and the EU-as-final-
  * fallback rules referenced by [RegionConfigProvider]. Individual EU
  * member-state configs are not enumerated yet — the EU umbrella applies
- * GDPR + EMA + ESC/ESH defaults that work for every member state.
- *
- * Emergency numbers verified against Wikipedia's
- * "List of emergency telephone numbers". The EU-wide 112 line is the
- * canonical number across all member states; 999 is the British line.
+ * GDPR defaults that work for every member state.
  */
 internal object RegionConfigsEurope {
 
@@ -24,10 +20,7 @@ internal object RegionConfigsEurope {
         regionCode = "GB",
         displayName = "United Kingdom",
         unitOverrides = emptyMap(),
-        clinicalThresholds = defaultThresholds(
-            glucoseInMmol = true,
-            fastingGlucoseConcern = 5.5,  // NICE pre-diabetes
-        ),
+        glucoseInMmol = true,
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
@@ -35,7 +28,6 @@ internal object RegionConfigsEurope {
             fhirProfileUrl = "https://fhir.hl7.org.uk",
             regulatoryBody = "MHRA",
         ),
-        emergencyNumber = "999",  // 112 also accepted EU-wide
         climateZone = ClimateZone.TEMPERATE,
         defaultLatitudeDeg = 54.0,
         defaultElevationM = 80.0,
@@ -45,10 +37,7 @@ internal object RegionConfigsEurope {
         regionCode = "EU",
         displayName = "European Union",
         unitOverrides = emptyMap(),
-        clinicalThresholds = defaultThresholds(
-            glucoseInMmol = true,
-            fastingGlucoseConcern = 5.6,  // IDF / ESC
-        ),
+        glucoseInMmol = true,
         regulatory = RegulatoryConfig(
             reproductiveDataIsolation = false,
             defaultRetentionDays = 90,
@@ -56,7 +45,6 @@ internal object RegionConfigsEurope {
             fhirProfileUrl = null,
             regulatoryBody = "EMA",
         ),
-        emergencyNumber = "112",
         climateZone = ClimateZone.TEMPERATE,
         defaultLatitudeDeg = 50.5,
         defaultElevationM = 150.0,

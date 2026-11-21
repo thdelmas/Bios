@@ -1,6 +1,5 @@
 package com.bios.app.ui.anthropometry
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,18 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bios.app.data.BiosDatabase
 import com.bios.app.data.GrowthMeasurementRepo
-import com.bios.app.engine.GrowthChartEngine
-import com.bios.app.engine.GrowthIndicator
-import com.bios.app.engine.GrowthSex
-import com.bios.app.model.GrowthChartReference
 import com.bios.app.model.GrowthMeasurement
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -53,17 +45,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Settings → Identity → Anthropometry (#199, audit gap §2.7).
- *
- * Owner-records height + weight + head circumference. For paediatric
- * owners (PhysiologyState.PAEDIATRIC) the growth-chart percentile curve
- * is plotted via [GrowthChartCanvas]. For adults the screen is a plain
- * trajectory log; the sarcopenia / cachexia screens consume the underlying
- * measurements directly.
- *
- * Per the manifesto: pull-side surface. The owner navigates here to see
- * the data; no nudges, no percentile-band warnings pushed at the person.
- * The percentile is rendered as a data statement next to each measurement.
+ * Body measurements (#199): the owner records height, weight, head
+ * circumference and lean / fat mass, and reads them back as a dated list.
+ * Values are shown as recorded, with the derived BMI; nothing compares
+ * them with a population reference.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,7 +71,7 @@ fun AnthropometryScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Anthropometry") },
+                title = { Text("Body measurements") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -104,13 +89,10 @@ fun AnthropometryScreen(onBack: () -> Unit) {
         ) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Growth and body composition", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Height, weight and body composition", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        "Record height, weight, and head circumference at routine paediatric visits, " +
-                            "or weight and body composition at adult check-ins. " +
-                            "The growth-chart percentile is plotted against the WHO 0–5y reference for " +
-                            "paediatric owners; adult readings feed the body-composition trajectory view " +
-                            "consumed by the sarcopenia and cachexia screens.",
+                        "Record height, weight, head circumference, lean mass and fat mass. " +
+                            "Each entry is kept as you recorded it and listed by date.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -122,11 +104,6 @@ fun AnthropometryScreen(onBack: () -> Unit) {
                         Text("Add measurement")
                     }
                 }
-            }
-
-            // Percentile-curve plot (paediatric)
-            if (measurements.any { it.growthChartReference == GrowthChartReference.WHO_0_5Y && it.weightKg != null }) {
-                GrowthChartCanvas(measurements = measurements)
             }
 
             if (measurements.isEmpty()) {
@@ -170,7 +147,6 @@ fun AnthropometryScreen(onBack: () -> Unit) {
                         headCircumferenceCm = input.headCircumferenceCm,
                         leanBodyMassKg = input.leanBodyMassKg,
                         fatMassKg = input.fatMassKg,
-                        growthChartReference = input.reference,
                         note = input.note,
                     )
                     refresh()
@@ -207,29 +183,6 @@ private fun MeasurementRow(measurement: GrowthMeasurement, onDelete: () -> Unit)
             }
             Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
 
-            // Percentile statement (paediatric WHO 0–5y only)
-            val sex = GrowthSex.MALE // default; sex routing is a follow-up
-            val ref = measurement.growthChartReference
-            val weightKg = measurement.weightKg
-            val ageDays = measurement.ageInDays
-            if (ref == GrowthChartReference.WHO_0_5Y && weightKg != null && ageDays in 0..731) {
-                val point = GrowthChartEngine.compute(
-                    reference = ref,
-                    sex = sex,
-                    indicator = GrowthIndicator.WEIGHT_FOR_AGE,
-                    ageInDays = ageDays,
-                    measurement = weightKg.toDouble(),
-                )
-                point?.let {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Weight-for-age (WHO 0–5y): ${"%.0f".format(it.percentile)}th percentile",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
             measurement.note?.takeIf { it.isNotBlank() }?.let {
                 Spacer(Modifier.height(2.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall)
@@ -243,93 +196,6 @@ private fun MeasurementRow(measurement: GrowthMeasurement, onDelete: () -> Unit)
             }
         }
     }
-}
-
-/**
- * Minimal Compose Canvas percentile-curve plot. Renders the 3rd / 50th /
- * 97th percentile bands across the WHO 0–24 month range plus the owner's
- * own measurements as dots. Sex-routing and CDC tables are follow-ups.
- */
-@Composable
-private fun GrowthChartCanvas(measurements: List<GrowthMeasurement>) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("Weight-for-age (WHO 0–5y)", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(8.dp))
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-            ) {
-                val w = size.width
-                val h = size.height
-                val maxAge = 731
-                val minWeight = 0.0
-                val maxWeight = 16.0
-
-                fun mapPoint(ageDays: Int, weightKg: Double): Offset {
-                    val x = (ageDays.toDouble() / maxAge) * w
-                    val y = h - ((weightKg - minWeight) / (maxWeight - minWeight)) * h
-                    return Offset(x.toFloat(), y.toFloat())
-                }
-
-                // Reference bands (3rd / 50th / 97th)
-                val sex = GrowthSex.MALE
-                val ages = (0..maxAge step 30).toList()
-                listOf(3.0, 50.0, 97.0).forEach { pct ->
-                    val color = when (pct) {
-                        50.0 -> Color(0xFF1976D2)
-                        else -> Color(0xFF90A4AE)
-                    }
-                    val pts = ages.mapNotNull { age ->
-                        // Invert: from percentile we want the weight at that percentile
-                        weightForPercentile(sex, age, pct)?.let { mapPoint(age, it) }
-                    }
-                    for (i in 1 until pts.size) {
-                        drawLine(color, pts[i - 1], pts[i], strokeWidth = 2f)
-                    }
-                }
-
-                // Owner points
-                measurements
-                    .filter { it.growthChartReference == GrowthChartReference.WHO_0_5Y && it.weightKg != null && it.ageInDays in 0..maxAge }
-                    .forEach {
-                        val p = mapPoint(it.ageInDays, it.weightKg!!.toDouble())
-                        drawCircle(Color(0xFFD32F2F), radius = 6f, center = p, style = Stroke(width = 2f))
-                        drawCircle(Color(0xFFD32F2F), radius = 3f, center = p)
-                    }
-            }
-            Text(
-                "Blue: median. Grey: 3rd / 97th. Red dots: recorded measurements.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-/**
- * Inverse LMS lookup: weight at the requested percentile for a given age.
- * Numerical bisection over the standard range; good enough for a 220-px
- * canvas (the published WHO tables agree to one decimal).
- */
-private fun weightForPercentile(sex: GrowthSex, ageInDays: Int, percentile: Double): Double? {
-    var lo = 0.5
-    var hi = 25.0
-    var iters = 0
-    while (hi - lo > 0.01 && iters < 30) {
-        val mid = (lo + hi) / 2.0
-        val point = GrowthChartEngine.compute(
-            reference = GrowthChartReference.WHO_0_5Y,
-            sex = sex,
-            indicator = GrowthIndicator.WEIGHT_FOR_AGE,
-            ageInDays = ageInDays,
-            measurement = mid,
-        ) ?: return null
-        if (point.percentile < percentile) lo = mid else hi = mid
-        iters++
-    }
-    return (lo + hi) / 2.0
 }
 
 private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)

@@ -7,8 +7,7 @@ import com.bios.contracts.MetricType
  *
  * Each spec carries:
  *  - a *staleness budget* — how recent a reading must be for the coverage
- *    engine to call it LIVE — anchored in clinical or wearable conventions
- *    rather than UX preference; and
+ *    engine to call it LIVE; and
  *  - the set of *route kinds* that could deliver this metric, which the
  *    runtime engine matches against [AdapterReadiness] to produce
  *    actionable [CoverageRoute] entries.
@@ -148,10 +147,6 @@ object MetricCoverageRegistry {
         ),
         MetricCoverageSpec(
             MetricType.GLUCOSE_MAGE, 4 * H,
-            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
-        ),
-        MetricCoverageSpec(
-            MetricType.GLUCOSE_TIME_IN_RANGE, 4 * H,
             listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
         ),
         MetricCoverageSpec(

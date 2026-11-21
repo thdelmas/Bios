@@ -55,15 +55,12 @@ data class MedicationAnnotation(
     val endDate: Long? = null,
     /**
      * Optional owner free-text note (dose, indication, "morning only",
-     * etc.). Never parsed by the engine; surfaced verbatim on the
-     * medications screen and in the alert context line.
+     * etc.). Never parsed; shown verbatim on the medications screen.
      */
     val note: String? = null,
     /**
      * Optional vocabulary the [substanceCode] is drawn from. Defaults to
-     * `null` so the legacy free-text path stays the default. When set,
-     * lets companion surfaces (CredibleMeds QT context, AGS Beers
-     * filtering) reason about the substance without parsing [name].
+     * `null` so the legacy free-text path stays the default.
      * See [com.bios.app.data.SubstanceSource].
      */
     val substanceSource: String? = null,

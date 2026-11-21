@@ -17,11 +17,8 @@ internal object MigrationsAnthropometry {
     /**
      * Adds the [com.bios.app.model.GrowthMeasurement] table. Stores
      * anthropometric measurement events (height + weight + head
-     * circumference + derived BMI + lean / fat mass) so the growth-chart
-     * percentile engine can plot WHO / CDC curves and the sarcopenia /
-     * cachexia screens can detect declining trajectories. Mainline
-     * encrypted DB — anthropometry is not cycle-linked and stays alongside
-     * the rest of the owner's data.
+     * circumference + derived BMI + lean / fat mass). Mainline encrypted
+     * DB, alongside the rest of the owner's data.
      */
     val MIGRATION_25_26: Migration = object : Migration(25, 26) {
         override fun migrate(db: SupportSQLiteDatabase) {

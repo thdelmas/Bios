@@ -13,96 +13,15 @@ import java.util.Locale
  * African Traditional, Oceanic / Arctic, Other Asian, and Primary Care
  * audits (issue #195):
  *
- *  - Every newly-added region returns a verified emergency number.
  *  - Indigenous-data-sovereignty flagging surfaces on the regions that
  *    sit under named frameworks (NZ, AU, NACCHO; Canadian territories;
  *    Pacific Island states).
  *  - The locale-fallback chain resolves the locales the
  *    INDIGENOUS_AMERICAS_POV.md §2.5 audit named ("es_MX", "pt_BR")
  *    to their own configs rather than silently substituting the EU
- *    ESC/ESH thresholds.
+ *    config.
  */
 class RegionConfigCoverageTest {
-
-    // -- Emergency numbers (canonical EMS / ambulance lines) --
-
-    @Test
-    fun latam_regions_have_verified_emergency_numbers() {
-        assertEquals("911", RegionConfigProvider.forRegion("MX").emergencyNumber)
-        assertEquals("107", RegionConfigProvider.forRegion("AR").emergencyNumber)
-        assertEquals("192", RegionConfigProvider.forRegion("BR").emergencyNumber)
-        assertEquals("131", RegionConfigProvider.forRegion("CL").emergencyNumber)
-        assertEquals("123", RegionConfigProvider.forRegion("CO").emergencyNumber)
-        assertEquals("106", RegionConfigProvider.forRegion("PE").emergencyNumber)
-        assertEquals("171", RegionConfigProvider.forRegion("VE").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("EC").emergencyNumber)
-        assertEquals("118", RegionConfigProvider.forRegion("BO").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("UY").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("PY").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("CR").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("PA").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("DO").emergencyNumber)
-        assertEquals("185", RegionConfigProvider.forRegion("CU").emergencyNumber)
-    }
-
-    @Test
-    fun africa_regions_have_verified_emergency_numbers() {
-        assertEquals("112", RegionConfigProvider.forRegion("NG").emergencyNumber)
-        assertEquals("999", RegionConfigProvider.forRegion("KE").emergencyNumber)
-        assertEquals("10177", RegionConfigProvider.forRegion("ZA").emergencyNumber)
-        assertEquals("193", RegionConfigProvider.forRegion("GH").emergencyNumber)
-        assertEquals("907", RegionConfigProvider.forRegion("ET").emergencyNumber)
-        assertEquals("114", RegionConfigProvider.forRegion("TZ").emergencyNumber)
-        assertEquals("15", RegionConfigProvider.forRegion("SN").emergencyNumber)
-        assertEquals("14", RegionConfigProvider.forRegion("DZ").emergencyNumber)
-        assertEquals("15", RegionConfigProvider.forRegion("MA").emergencyNumber)
-        assertEquals("123", RegionConfigProvider.forRegion("EG").emergencyNumber)
-    }
-
-    @Test
-    fun middle_east_regions_have_verified_emergency_numbers() {
-        assertEquals("101", RegionConfigProvider.forRegion("IL").emergencyNumber)
-        assertEquals("112", RegionConfigProvider.forRegion("TR").emergencyNumber)
-        assertEquals("998", RegionConfigProvider.forRegion("AE").emergencyNumber)
-        assertEquals("997", RegionConfigProvider.forRegion("SA").emergencyNumber)
-        assertEquals("999", RegionConfigProvider.forRegion("QA").emergencyNumber)
-        assertEquals("115", RegionConfigProvider.forRegion("IR").emergencyNumber)
-        assertEquals("140", RegionConfigProvider.forRegion("LB").emergencyNumber)
-    }
-
-    @Test
-    fun asia_regions_have_verified_emergency_numbers() {
-        assertEquals("120", RegionConfigProvider.forRegion("CN").emergencyNumber)
-        assertEquals("119", RegionConfigProvider.forRegion("KR").emergencyNumber)
-        assertEquals("108", RegionConfigProvider.forRegion("IN").emergencyNumber)
-        assertEquals("115", RegionConfigProvider.forRegion("VN").emergencyNumber)
-        assertEquals("1669", RegionConfigProvider.forRegion("TH").emergencyNumber)
-        assertEquals("999", RegionConfigProvider.forRegion("MY").emergencyNumber)
-        assertEquals("995", RegionConfigProvider.forRegion("SG").emergencyNumber)
-        assertEquals("119", RegionConfigProvider.forRegion("ID").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("PH").emergencyNumber)
-        assertEquals("1990", RegionConfigProvider.forRegion("LK").emergencyNumber)
-    }
-
-    @Test
-    fun pacific_regions_have_verified_emergency_numbers() {
-        assertEquals("111", RegionConfigProvider.forRegion("NZ").emergencyNumber)
-        assertEquals("000", RegionConfigProvider.forRegion("AU").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("FJ").emergencyNumber)
-        assertEquals("111", RegionConfigProvider.forRegion("PG").emergencyNumber)
-        assertEquals("999", RegionConfigProvider.forRegion("SB").emergencyNumber)
-        assertEquals("112", RegionConfigProvider.forRegion("VU").emergencyNumber)
-        assertEquals("994", RegionConfigProvider.forRegion("KI").emergencyNumber)
-    }
-
-    @Test
-    fun anchor_regions_still_have_their_existing_emergency_numbers() {
-        assertEquals("911", RegionConfigProvider.forRegion("US").emergencyNumber)
-        assertEquals("911", RegionConfigProvider.forRegion("CA").emergencyNumber)
-        assertEquals("999", RegionConfigProvider.forRegion("GB").emergencyNumber)
-        assertEquals("112", RegionConfigProvider.forRegion("EU").emergencyNumber)
-        assertEquals("119", RegionConfigProvider.forRegion("JP").emergencyNumber)
-    }
 
     // -- Indigenous data sovereignty flagging --
 

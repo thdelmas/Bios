@@ -16,18 +16,14 @@ import java.util.Locale
  *     continent (e.g. `en_BZ` — Belize is LATAM), fall back to that
  *     continent's anchor: LATAM → MX, Africa → ZA, Asia → JP,
  *     Pacific → AU, Europe → EU. Geography beats language here because
- *     clinical norms track jurisdiction.
+ *     units and data rules track jurisdiction.
  *  3. **Language-only anchor** — for the bare-language case
  *     (`Locale("es", "")`) or when the country code is unrecognised:
  *     `es → MX`, `pt → BR`, `ar → SA`, `sw → TZ`, `mi → NZ`, etc.
  *     The anchor map is intentional, not alphabetic — picked by
- *     population / clinical-guideline relevance.
+ *     population.
  *  4. **Ultimate fallback** — EU (GDPR-aligned, metric, conservative
- *     privacy posture). This is the silent-fallback that the
- *     Indigenous-Americas audit (§2.5) flagged as harmful when EU
- *     thresholds substituted for `es_MX` / `pt_BR` clinical norms; with
- *     the LATAM tables now defined, that substitution can no longer
- *     happen silently for those locales.
+ *     privacy posture).
  */
 object RegionConfigProvider {
 
