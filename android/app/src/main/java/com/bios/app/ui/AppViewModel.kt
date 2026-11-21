@@ -17,10 +17,7 @@ import com.bios.app.model.MetricReading
 import com.bios.contracts.MetricDomain
 import com.bios.contracts.MetricType
 import com.bios.app.model.PersonalBaseline
-import com.bios.app.model.ProfessionalReview
-import com.bios.app.model.ReviewStatus
 import com.bios.app.ui.components.FeedbackInput
-import com.bios.app.model.ShareMethod
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,12 +78,6 @@ class AppViewModel(
     val pendingActionItems: StateFlow<List<ActionItem>> = _pendingActionItems
     private val _pipelineSummary = MutableStateFlow<List<LatencyPercentiles>>(emptyList())
     val pipelineSummary: StateFlow<List<LatencyPercentiles>> = _pipelineSummary
-    private val _anomalyForReview = MutableStateFlow<Anomaly?>(null)
-    val anomalyForReview: StateFlow<Anomaly?> = _anomalyForReview
-
-    private val _reviewsForAnomaly = MutableStateFlow<List<ProfessionalReview>>(emptyList())
-    val reviewsForAnomaly: StateFlow<List<ProfessionalReview>> = _reviewsForAnomaly
-
     private val _trackedMetricTypes = MutableStateFlow<Set<MetricType>>(emptySet())
     val trackedMetricTypes: StateFlow<Set<MetricType>> = _trackedMetricTypes
     private val _metricCoverage = MutableStateFlow<Map<MetricType, BaselineEngine.Coverage>>(emptyMap())
@@ -367,70 +358,6 @@ class AppViewModel(
 
     fun refreshPipelineSummary() {
         _pipelineSummary.value = latencyTracker.summary()
-    }
-
-    // MARK: - Professional Review
-
-    fun loadAnomalyForReview(anomalyId: String) {
-        viewModelScope.launch {
-            val allAnomalies = db.anomalyDao().fetchAll()
-            _anomalyForReview.value = allAnomalies.find { it.id == anomalyId }
-            _reviewsForAnomaly.value = db.professionalReviewDao().fetchByAnomalyId(anomalyId)
-        }
-    }
-
-    fun createProfessionalReview(
-        anomalyId: String,
-        shareMethod: ShareMethod?,
-        sharedWindowDays: Int,
-        sharedExplanation: Boolean,
-        sharedBaselines: Boolean
-    ) {
-        viewModelScope.launch {
-            val review = ProfessionalReview(
-                anomalyId = anomalyId,
-                status = if (shareMethod != null) ReviewStatus.PENDING.level else ReviewStatus.PENDING.level,
-                shareMethod = shareMethod?.key,
-                sharedWindowDays = sharedWindowDays,
-                sharedExplanation = sharedExplanation,
-                sharedBaselines = sharedBaselines
-            )
-            db.professionalReviewDao().insert(review)
-        }
-    }
-
-    fun markReviewShared(
-        reviewId: String,
-        shareMethod: ShareMethod,
-        sharedMetrics: String?,
-        sharedWindowDays: Int?,
-        sharedExplanation: Boolean,
-        sharedBaselines: Boolean
-    ) {
-        viewModelScope.launch {
-            db.professionalReviewDao().markShared(
-                reviewId, shareMethod.key, sharedMetrics,
-                sharedWindowDays, sharedExplanation, sharedBaselines
-            )
-        }
-    }
-
-    fun recordProfessionalResponse(
-        reviewId: String,
-        notes: String?,
-        clinicallyRelevant: Boolean?,
-        recommendation: String?,
-        ownerFoundHelpful: Boolean?
-    ) {
-        viewModelScope.launch {
-            db.professionalReviewDao().recordResponse(
-                reviewId,
-                notes = notes,
-                clinicallyRelevant = clinicallyRelevant,
-                recommendation = recommendation,
-                ownerFoundHelpful = ownerFoundHelpful
-            )
-        }
     }
 
     // MARK: - Feedback
