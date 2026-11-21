@@ -54,14 +54,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Settings → Current Medications. Owner records what they're currently
- * taking so the alert-explanation surface can contextualise patterns that
- * depend on the medication backdrop (audit gap §2.5).
+ * Settings → Current Medications. The owner's own list of what they take.
  *
  * Free-text v1 — no RxNorm taxonomy, no class-detection, no reminders.
- * Discontinued medications stay on record (mark-discontinued, not delete)
- * so a recently-stopped beta-blocker can still explain a present RHR
- * trend.
+ * Discontinued medications stay on record (mark-discontinued, not delete).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

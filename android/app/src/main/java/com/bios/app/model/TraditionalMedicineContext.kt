@@ -12,20 +12,10 @@ import androidx.room.PrimaryKey
  * what the owner says about their own practice; Bios does **not** classify
  * within any of these traditions.
  *
- * **Eleven audits converge on this surface.** TCM, Ayurveda, Siddha,
- * Sowa Rigpa, Unani, Korean Medicine, Kampo, African Traditional,
- * Indigenous Americas, Oceanic/Arctic, and Modern Non-Allopathic audits
- * all asked for the same shape: a place to record tradition context
- * without Bios diagnosing within the tradition. The audits unanimously
- * flag that Bios must **not** ship automated tradition-diagnosis: no
- * dosha classifier, no TCM pulse classifier, no fukushin palpation
- * interpreter, no Mizaj inference, no Sasang typing. This entity is for
- * *owner-recorded context only.*
- *
  * **Multi-row by design.** The owner may consult both a TCM practitioner
  * **and** a curandera **and** keep a Dinacharya routine. Each context
  * entry is independent: own [tradition], own [practitionerConsultedFrequency],
- * own [notes], own [vocabularyOverlayConsent]. There is no singleton row.
+ * own [notes]. There is no singleton row.
  *
  * **Recording is not endorsement.** Bios stores what the owner declares
  * about their practice. Bios never validates "does TCM work" or "is this
@@ -33,22 +23,8 @@ import androidx.room.PrimaryKey
  * owner is the practitioner of their own life; Bios is the instrument
  * they read.
  *
- * **Vocabulary overlay is opt-in per row.** [vocabularyOverlayConsent]
- * defaults to `false`. When the owner explicitly opts in for a specific
- * tradition, downstream alert-detail surfaces *may* render a single
- * additional footnote line using that tradition's vocabulary (e.g.
- * "RHR pattern: 治未病 territory" or "rLung-disturbance signature"). The
- * footnote is informational, never diagnostic — it carries no claim.
- * Vocabulary text must pass [com.bios.app.alerts.AlertContentPolicy].
- * When the consent flag is `false`, no tradition vocabulary appears
- * anywhere. (Vocabulary catalogues are deferred — see TODO in
- * [com.bios.app.data.TraditionalMedicineContextRepo].)
- *
- * **Manifesto guard: pull-side only.** The owner navigates in, the owner
- * adds, the owner edits, the owner deletes. Nothing on this surface
- * pushes a notification. Storing a context entry never alters which
- * patterns Bios detects — only how (optionally) certain alert-detail
- * views may add an extra footnote line.
+ * The owner navigates in, adds, edits and deletes. Nothing reads these
+ * rows to produce an alert, a comment or a notification.
  */
 @Entity(
     tableName = "traditional_medicine_context",
@@ -90,10 +66,8 @@ data class TraditionalMedicineContext(
      */
     val regionOfPractice: String? = null,
     /**
-     * Per-tradition opt-in. When `true`, alert-detail views *may*
-     * render an additional footnote line in this tradition's
-     * vocabulary. Defaults to **false** — no tradition vocabulary
-     * appears anywhere unless the owner opts in for that specific row.
+     * A switch earlier versions offered per row. Nothing reads it; the
+     * column keeps what was stored.
      */
     val vocabularyOverlayConsent: Boolean = false,
     /** Epoch millis when this row was created. */

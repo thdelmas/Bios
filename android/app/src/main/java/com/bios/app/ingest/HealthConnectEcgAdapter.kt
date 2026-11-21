@@ -83,7 +83,7 @@ class HealthConnectEcgAdapter(
                 voltageScale = 0.001,
                 voltageOffset = 0.0,
                 sampleEncoding = "int16_le",
-                classification = AppleHealthEcgImporter.mapClassification(classificationRaw),
+                classification = AppleHealthEcgImporter.verbatimClassification(classificationRaw),
                 sourceVendor = sourceVendor,
             )
         }

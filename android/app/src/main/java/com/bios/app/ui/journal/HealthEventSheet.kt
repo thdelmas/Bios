@@ -118,7 +118,7 @@ private fun HealthEventForm(
         // disclosure so the routine free-text path stays the default.
         if (selectedType == HealthEventType.DIAGNOSIS) {
             TextButton(onClick = { showCodeFields = !showCodeFields }) {
-                Text(if (showCodeFields) "Hide clinical code" else "Add clinical code (optional)")
+                Text(if (showCodeFields) "Hide code" else "Add a code (optional)")
             }
             if (showCodeFields) {
                 OutlinedTextField(

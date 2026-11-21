@@ -60,7 +60,7 @@ object SleepDerivations {
 
     /**
      * Sleep efficiency: (time asleep) / (total session duration) × 100, in percent.
-     * Standard clinical formula (TST / TIB × 100). The session duration here is
+     * Standard formula (TST / TIB × 100). The session duration here is
      * approximated by the sum of all stage durations in the input — AWAKE rows at
      * the head/tail of the session count toward the denominator but not the
      * numerator, matching the in-bed-but-awake semantics of TIB.
@@ -220,95 +220,4 @@ object SleepDerivations {
             confidence = stages.first().confidence
         )
     }
-
-    /**
-     * Composite sleep score on a 0–100 scale, averaging four sub-scores
-     * (each weighted equally, each clamped to 0–100):
-     *
-     *  - **Duration**: 100 in the 7–9h "recommended" band (Hirshkowitz et al.
-     *    2015 / NSF 2015), drops linearly to 0 at 4h below / 11h above.
-     *  - **Efficiency**: the SLEEP_EFFICIENCY value itself (already 0–100).
-     *  - **Latency**: 100 if ≤ 15 min, drops linearly to 0 at 60 min
-     *    (clinical cut-offs: ≤ 30 min normal, > 45 min abnormal).
-     *  - **Fragmentation**: 100 if 0 post-onset awakenings, drops linearly
-     *    to 0 at 8 awakenings (NSF: < 5 awakenings is normal).
-     *
-     * The score is descriptive, not evaluative — it aggregates published
-     * clinical norms into one number for trending. Bios does not push
-     * judgments on top of this value.
-     *
-     * Returns null when any of the four components can't be derived from
-     * the input — partial scores would mis-rank nights with missing
-     * components against complete ones.
-     */
-    fun deriveSleepScore(
-        readings: List<MetricReading>,
-        sourceId: String
-    ): MetricReading? {
-        val latency = deriveSleepLatency(readings, sourceId) ?: return null
-        val efficiency = deriveSleepEfficiency(readings, sourceId) ?: return null
-        val fragmentation = deriveSleepFragmentation(readings, sourceId) ?: return null
-        val sessionDurationSec = efficiency.durationSec ?: return null
-        if (sessionDurationSec <= 0) return null
-
-        val durationScore = durationSubScore(sessionDurationSec)
-        val efficiencyScore = efficiency.value.coerceIn(0.0, 100.0)
-        val latencyScore = latencySubScore(latency.value)
-        val fragmentationScore = fragmentationSubScore(fragmentation.value)
-
-        val composite = (durationScore + efficiencyScore + latencyScore + fragmentationScore) / 4.0
-
-        return MetricReading(
-            metricType = MetricType.SLEEP_SCORE.key,
-            value = composite,
-            timestamp = latency.timestamp,
-            durationSec = sessionDurationSec,
-            sourceId = sourceId,
-            confidence = efficiency.confidence
-        )
-    }
-
-    private fun durationSubScore(sessionDurationSec: Int): Double {
-        val hours = sessionDurationSec / 3600.0
-        return when {
-            hours in MIN_RECOMMENDED_HOURS..MAX_RECOMMENDED_HOURS -> 100.0
-            hours < MIN_RECOMMENDED_HOURS -> {
-                // 100 at MIN_RECOMMENDED_HOURS, 0 at MIN_DURATION_HOURS_FLOOR.
-                ((hours - MIN_DURATION_HOURS_FLOOR) /
-                    (MIN_RECOMMENDED_HOURS - MIN_DURATION_HOURS_FLOOR) * 100.0)
-                    .coerceIn(0.0, 100.0)
-            }
-            else -> {
-                // 100 at MAX_RECOMMENDED_HOURS, 0 at MAX_DURATION_HOURS_CEIL.
-                ((MAX_DURATION_HOURS_CEIL - hours) /
-                    (MAX_DURATION_HOURS_CEIL - MAX_RECOMMENDED_HOURS) * 100.0)
-                    .coerceIn(0.0, 100.0)
-            }
-        }
-    }
-
-    private fun latencySubScore(latencySec: Double): Double {
-        val minutes = latencySec / 60.0
-        return when {
-            minutes <= LATENCY_OPTIMAL_MIN -> 100.0
-            minutes >= LATENCY_ABNORMAL_MIN -> 0.0
-            else -> ((LATENCY_ABNORMAL_MIN - minutes) /
-                (LATENCY_ABNORMAL_MIN - LATENCY_OPTIMAL_MIN) * 100.0)
-        }
-    }
-
-    private fun fragmentationSubScore(awakenings: Double): Double = when {
-        awakenings <= 0.0 -> 100.0
-        awakenings >= FRAGMENTATION_FLOOR_AWAKENINGS -> 0.0
-        else -> ((FRAGMENTATION_FLOOR_AWAKENINGS - awakenings) /
-            FRAGMENTATION_FLOOR_AWAKENINGS * 100.0)
-    }
-
-    private const val MIN_RECOMMENDED_HOURS = 7.0
-    private const val MAX_RECOMMENDED_HOURS = 9.0
-    private const val MIN_DURATION_HOURS_FLOOR = 4.0
-    private const val MAX_DURATION_HOURS_CEIL = 11.0
-    private const val LATENCY_OPTIMAL_MIN = 15.0
-    private const val LATENCY_ABNORMAL_MIN = 60.0
-    private const val FRAGMENTATION_FLOOR_AWAKENINGS = 8.0
 }

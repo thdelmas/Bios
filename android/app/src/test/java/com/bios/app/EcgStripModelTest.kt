@@ -1,6 +1,6 @@
 package com.bios.app
 
-import com.bios.app.model.EcgClassification
+import com.bios.app.ui.ecg.reportedClassification
 import com.bios.app.model.EcgStrip
 import com.bios.app.model.LeadPlacement
 import org.junit.Assert.assertEquals
@@ -14,14 +14,14 @@ import org.junit.Test
  * No Android runtime — these guard the data-class equality semantics
  * (load-bearing for Room change detection and for DAO-round-trip tests
  * that compare inserted vs fetched rows) and the enum-name encoding
- * Room uses for the [LeadPlacement] / [EcgClassification] columns.
+ * Room uses for the [LeadPlacement] column.
  */
 class EcgStripModelTest {
 
     private fun sampleStrip(
         id: String = "abc-123",
         samples: ByteArray = byteArrayOf(0, 1, 2, 3, 4, 5),
-        classification: EcgClassification? = EcgClassification.SINUS_RHYTHM,
+        classification: String? = "SinusRhythm",
     ) = EcgStrip(
         id = id,
         timestamp = 1_700_000_000_000L,
@@ -79,11 +79,12 @@ class EcgStripModelTest {
     }
 
     @Test
-    fun classification_enum_matches_vendor_buckets() {
-        // Apple iOS Health and KardiaMobile both collapse to four
-        // buckets at the level Bios cares about. SINUS_RHYTHM /
-        // ATRIAL_FIBRILLATION / INCONCLUSIVE / OTHER.
-        assertEquals(4, EcgClassification.entries.size)
+    fun classification_is_shown_as_the_source_reported_it() {
+        assertEquals(
+            "Classification reported by Apple Watch: SinusRhythm",
+            reportedClassification(sampleStrip(classification = "SinusRhythm")),
+        )
+        assertNull(reportedClassification(sampleStrip(classification = null)))
     }
 
     @Test

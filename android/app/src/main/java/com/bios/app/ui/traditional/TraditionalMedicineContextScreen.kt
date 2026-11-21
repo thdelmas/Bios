@@ -132,7 +132,6 @@ fun TraditionalMedicineContextScreen(onBack: () -> Unit) {
                         practitionerConsultedFrequency = draft.practitionerConsultedFrequency,
                         notes = draft.notes,
                         regionOfPractice = draft.regionOfPractice,
-                        vocabularyOverlayConsent = draft.vocabularyOverlayConsent,
                     )
                     refresh()
                 }

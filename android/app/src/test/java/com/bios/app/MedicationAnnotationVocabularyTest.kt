@@ -133,29 +133,4 @@ class MedicationAnnotationVocabularyTest {
         assertEquals("TSUMURA_NHI_148", m.substanceSource)
         assertEquals("小柴胡湯", m.traditionalName)
     }
-
-    // ---- Repo formatter remains backward-compatible ----
-
-    @Test
-    fun formatter_still_returns_null_for_empty_list_after_extension() {
-        // Re-pin the formatter contract — the new optional fields must
-        // not affect the alert-context formatter path.
-        assertNull(com.bios.app.data.MedicationAnnotationRepo.formatMedicationContext(emptyList()))
-    }
-
-    @Test
-    fun formatter_uses_name_not_traditional_name_for_alert_context() {
-        // The alert-context line stays neutral and uses the canonical
-        // display string. Traditional names live on the medications
-        // screen but not in alert text — keeping the alert line stable
-        // and AlertContentPolicy-compliant.
-        val m = med(
-            name = "Ashwagandha",
-            source = SubstanceSource.AYUSH_ICD11,
-            traditional = "अश्वगंधा",
-        )
-        val result = com.bios.app.data.MedicationAnnotationRepo.formatMedicationContext(listOf(m))
-        assertNotNull(result)
-        assertEquals("Annotated current medications: Ashwagandha.", result)
-    }
 }

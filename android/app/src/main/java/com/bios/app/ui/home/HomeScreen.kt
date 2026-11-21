@@ -271,7 +271,7 @@ private fun SubSurfaceCards(
     HomeEntryCard(
         icon = Icons.Default.MonitorHeart,
         title = "Vessel Watch",
-        subtitle = "The long dials — vascular, metabolic, recovery, aging, reserve",
+        subtitle = "Blood pressure, heart, lab values, sleep: the latest value of each",
         onClick = onNavigateToVesselWatch,
     )
 }

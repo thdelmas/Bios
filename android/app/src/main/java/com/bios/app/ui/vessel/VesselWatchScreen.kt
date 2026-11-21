@@ -25,14 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.bios.app.ui.AppViewModel
 
 /**
- * The Vessel Watch — a read-only, owner-subject surface over the dials that
- * read the body/agency substrate. Spec: docs/subjects/owner/VESSEL_WATCH.md.
- *
- * Manifesto guarantees enforced structurally here:
- *  - **No composite score.** The screen only ever lays out per-dial cards from
- *    [vesselWatchGroups]; nothing sums them. See [VesselDial].
- *  - **Pull, not push.** It reads on open and stays silent — no alerts, no
- *    nudges, no notifications.
+ * The Vessel Watch: a read-only page of dials, one measurement each, laid
+ * out from [vesselWatchGroups]. Nothing sums them. It reads on open and
+ * raises no alert or notification.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,8 +58,8 @@ fun VesselWatchScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "The long dial — the body as the one carrier of agency that can't be " +
-                    "backed up. Each reading stands alone; you do the reading.",
+                "The latest value of each measurement, with its own trend. " +
+                    "Each reading stands alone; you do the reading.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -76,7 +71,7 @@ fun VesselWatchScreen(
     }
 }
 
-/** One spec group (A–F): heading + honest blurb + its dials. */
+/** One group: heading and its dials. */
 @Composable
 private fun GroupSection(
     group: VesselGroup,
@@ -88,11 +83,6 @@ private fun GroupSection(
             group.title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-        )
-        Text(
-            group.blurb,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         for (dial in group.dials) {
             VesselWatchDialCard(dial = dial, viewModel = viewModel, refreshKey = refreshKey)

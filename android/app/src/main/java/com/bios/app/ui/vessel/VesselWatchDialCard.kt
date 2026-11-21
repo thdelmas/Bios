@@ -35,10 +35,9 @@ private const val SPARKLINE_MAX_POINTS = 60
 /**
  * One dial. Self-fetches its own latest value + short history in a
  * [LaunchedEffect] (the same decentralized pattern as the home MetricCard),
- * then renders one of three honest states: a value with its own trend, an
- * explicit "no reading yet" gap with the fill hint, or — for not-yet-
- * instrumented dials — a named PLANNED gap. Nothing here reads or shows any
- * other dial; there is no cross-dial aggregation.
+ * then renders a value with its own trend, or a "no reading yet" state with
+ * the line saying how to fill it. Nothing here reads or shows any other
+ * dial; there is no cross-dial aggregation.
  */
 @Composable
 fun VesselWatchDialCard(
@@ -51,7 +50,7 @@ fun VesselWatchDialCard(
     var history by remember(dial) { mutableStateOf<List<MetricReading>>(emptyList()) }
 
     LaunchedEffect(dial, refreshKey) {
-        val key = dial.primaryKey ?: return@LaunchedEffect
+        val key = dial.primaryKey
         primary = viewModel.getLatestReading(key)?.value
         secondary = dial.secondaryKey?.let { viewModel.getLatestReading(it)?.value }
         val now = System.currentTimeMillis()
@@ -122,8 +121,6 @@ private fun StateChip(dial: VesselDial, hasValue: Boolean) {
         DialAvailability.NEEDS_ENTRY ->
             if (hasValue) "Entered" to MaterialTheme.colorScheme.primary
             else "Add" to MaterialTheme.colorScheme.onSurfaceVariant
-        DialAvailability.PLANNED ->
-            "Planned" to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Text(
         label,

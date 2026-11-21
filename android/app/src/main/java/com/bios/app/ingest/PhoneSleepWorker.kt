@@ -280,7 +280,6 @@ class PhoneSleepWorker(
             SleepDerivations.deriveTimeInBed(readings, sourceId)?.let { derived += it }
             SleepDerivations.deriveSleepFragmentation(readings, sourceId)?.let { derived += it }
             SleepDerivations.deriveWakeAfterSleepOnset(readings, sourceId)?.let { derived += it }
-            SleepDerivations.deriveSleepScore(readings, sourceId)?.let { derived += it }
             return derived
         }
 

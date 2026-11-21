@@ -52,11 +52,8 @@ import java.util.Locale
 /**
  * Pull-side sleep dashboard (issue #135 — v1).
  *
- * Visualizes Bios's canonical sleep data without ever pushing a score,
- * nudge, or coaching loop at the owner — the manifesto's "instrument,
- * not coach" stance applied to the sleep surface. The owner picks a
- * window, the dashboard renders the trend; evaluation belongs to the
- * owner.
+ * Shows Bios's sleep data as measured. The owner picks a window, the
+ * dashboard renders the trend; evaluation belongs to the owner.
  *
  * v1 surfaces: window selector, regularity panel (composite + bedtime/
  * wake/midpoint variance), per-night duration list with source +
@@ -285,7 +282,7 @@ private fun RegularityCard(result: SleepRegularityCalculator.Result?) {
             if (result == null) {
                 Text(
                     "Need at least ${SleepRegularityCalculator.MIN_NIGHTS} nights in the window " +
-                        "to compute a regularity score.",
+                        "to compute regularity.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -300,16 +297,14 @@ private fun RegularityCard(result: SleepRegularityCalculator.Result?) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatCell("Score", String.format(Locale.US, "%.0f", result.reading.value))
                 StatCell("Bedtime σ", "${bedtime}m")
                 StatCell("Midpoint σ", "${midpoint}m")
                 StatCell("Wake σ", "${wake}m")
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Score keys off midpoint variance. " +
-                    "Lower variance across the window means more regular timing — the " +
-                    "single sleep signal most consistently linked to long-term outcomes.",
+                "Spread of your bedtime, sleep midpoint and wake time across the window, " +
+                    "in minutes. A lower number means more regular timing.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

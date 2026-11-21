@@ -1,6 +1,5 @@
 package com.bios.app.ingest
 
-import com.bios.app.model.EcgClassification
 import com.bios.app.model.EcgStrip
 import com.bios.app.model.LeadPlacement
 import java.io.InputStream
@@ -13,7 +12,7 @@ import org.xml.sax.Attributes
 import org.xml.sax.helpers.DefaultHandler
 
 /**
- * Parses Apple Health export XML for ECG records (#188, audit gap §2.8).
+ * Parses Apple Health export XML for ECG records.
  *
  * Apple Health exports ECG data as `<ElectrocardiogramRecord>` elements
  * within an `<HealthData>` document. Each record carries metadata
@@ -35,10 +34,6 @@ import org.xml.sax.helpers.DefaultHandler
  *  - PDF parsing (KardiaMobile export). PDF text extraction is heavy
  *    and the owner-side workaround — re-exporting as Apple Health XML
  *    or manual entry — is the cleaner path. TODO follow-up.
- *  - Apple's own classification post-iOS-16 split (the "atrial
- *    fibrillation with high heart rate" sub-classification). Falls
- *    through to ATRIAL_FIBRILLATION here; the original string is
- *    preserved verbatim in [EcgStrip.note] if the caller wires it.
  */
 object AppleHealthEcgImporter {
 
@@ -62,26 +57,8 @@ object AppleHealthEcgImporter {
         return handler.strips
     }
 
-    /**
-     * Maps Apple's `HKElectrocardiogramClassification` string to Bios's
-     * coarse enum. Apple has added classifications across iOS versions
-     * (high-HR AFib, low-HR AFib, sinus rhythm, inconclusive low/high
-     * HR, inconclusive poor recording, unrecognized). We collapse the
-     * AFib variants and inconclusive variants to two buckets; "other"
-     * catches everything else so we never silently drop data.
-     */
-    internal fun mapClassification(raw: String?): EcgClassification? {
-        val v = raw?.trim()?.lowercase() ?: return null
-        return when {
-            v.isEmpty() -> null
-            v.contains("sinusrhythm") || v == "sinus rhythm" -> EcgClassification.SINUS_RHYTHM
-            v.contains("atrialfibrillation") || v.contains("atrial fibrillation") || v.contains("afib") ->
-                EcgClassification.ATRIAL_FIBRILLATION
-            v.contains("inconclusive") || v.contains("unclassified") || v.contains("unrecognized") ->
-                EcgClassification.INCONCLUSIVE
-            else -> EcgClassification.OTHER
-        }
-    }
+    /** The source's classification text as written; null when absent or blank. */
+    internal fun verbatimClassification(raw: String?): String? = raw?.trim()?.takeIf { it.isNotEmpty() }
 
     /**
      * Parses "512.07 Hz" → 512. Apple writes the unit suffix; some
@@ -171,7 +148,7 @@ object AppleHealthEcgImporter {
         private val voltageBuffer = StringBuilder()
         private var startTime: Long? = null
         private var samplingRateHz: Int = 512
-        private var classification: EcgClassification? = null
+        private var classification: String? = null
         private var sourceName: String = "Apple Watch"
         private var durationSeconds: Int = 30
 
@@ -191,7 +168,7 @@ object AppleHealthEcgImporter {
                             .coerceAtLeast(1)
                     }
                     samplingRateHz = parseSamplingRate(attrs?.getValue("samplingFrequency"))
-                    classification = mapClassification(attrs?.getValue("classification"))
+                    classification = verbatimClassification(attrs?.getValue("classification"))
                     sourceName = attrs?.getValue("sourceName")?.takeIf { it.isNotBlank() }
                         ?: "Apple Watch"
                 }

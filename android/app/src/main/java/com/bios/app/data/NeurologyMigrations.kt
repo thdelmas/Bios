@@ -8,18 +8,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * tables (issue #207). Extracted from [BiosDatabase] to keep the
  * single-file size under the 500-line cap.
  *
- * Three structured tables, all owner-administered:
- *  - **migraine_attacks** — closes audit gap §2.6. Migraine-specific
- *    shape (aura, triggers, peak intensity, acute treatment).
- *  - **headache_logs** — closes audit gap §2.5. Generic shape for
- *    tension / cluster / unclassified headache entries.
- *  - **fast_stroke_events** — closes audit gap §2.15. Owner-input only
- *    AHA/ASA FAST screen records.
- *
- * The medication-overuse-headache evaluator reads migraine_attacks and
- * headache_logs over a rolling 90-day window; the FHIR exporter ships
- * positive fast_stroke_events as Flag observations. No automated
- * inference path writes to any of these tables.
+ * Three tables of owner entries: migraine_attacks, headache_logs and
+ * fast_stroke_events. No entity maps the last one any more; it stays in
+ * the file with its rows.
  */
 internal object NeurologyMigrations {
 

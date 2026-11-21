@@ -108,10 +108,6 @@ object MetricCoverageRegistry {
             MetricType.WAKE_AFTER_SLEEP_ONSET, 36 * H,
             listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
         ),
-        MetricCoverageSpec(
-            MetricType.SLEEP_SCORE, 36 * H,
-            listOf(CoverageRouteKind.HEALTH_CONNECT, CoverageRouteKind.API_ADAPTER)
-        ),
 
         // -- Activity --
         MetricCoverageSpec(

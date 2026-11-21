@@ -40,7 +40,6 @@ class SleepDerivationsBackfill(
                 SleepDerivations.deriveTimeInBed(session, sourceId)?.let { derived += it }
                 SleepDerivations.deriveSleepFragmentation(session, sourceId)?.let { derived += it }
                 SleepDerivations.deriveWakeAfterSleepOnset(session, sourceId)?.let { derived += it }
-                SleepDerivations.deriveSleepScore(session, sourceId)?.let { derived += it }
             }
         }
         if (derived.isEmpty()) return 0

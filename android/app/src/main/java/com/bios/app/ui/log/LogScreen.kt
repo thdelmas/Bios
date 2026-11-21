@@ -134,7 +134,7 @@ private fun TakeAReadingSection(
         )
         HomeEntryCard(
             icon = Icons.Default.MedicalServices,
-            title = "Clinical reading",
+            title = "Reading taken elsewhere",
             subtitle = "Weight, height, BMI, BP, SpO2, body composition, HRV — bundle entry",
             onClick = onNavigateToClinicalEntry,
         )

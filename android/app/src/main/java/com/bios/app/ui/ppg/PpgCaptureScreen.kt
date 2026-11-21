@@ -189,7 +189,7 @@ private fun IdleView(onStart: () -> Unit) {
             }
         }
         Text(
-            "Not for emergencies or diagnosis. Best used as a baseline snapshot between wearable readings.",
+            "Bios shows this reading and does not interpret it.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

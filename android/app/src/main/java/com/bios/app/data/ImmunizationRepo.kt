@@ -49,6 +49,4 @@ class ImmunizationRepo(private val db: BiosDatabase) {
     }
 
     suspend fun fetchAll(): List<ImmunizationRecord> = dao.fetchAll()
-    suspend fun fetchLatestByCvxCode(cvxCode: String): ImmunizationRecord? =
-        dao.fetchLatestByCvxCode(cvxCode)
 }
