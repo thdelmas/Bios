@@ -61,10 +61,7 @@ import java.util.Locale
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HeadacheDiaryScreen(
-    onBack: () -> Unit,
-    onNavigateToClusterPeriodicity: () -> Unit = {},
-) {
+fun HeadacheDiaryScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val db = remember(context) { BiosDatabase.getInstance(context) }
     val migraineRepo = remember(db) { MigraineAttackRepo(db) }
@@ -125,10 +122,6 @@ fun HeadacheDiaryScreen(
                                 modifier = Modifier.weight(1f),
                             ) { Text("Log headache") }
                         }
-                        OutlinedButton(
-                            onClick = onNavigateToClusterPeriodicity,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text("View cluster periodicity") }
                     }
                 }
             }

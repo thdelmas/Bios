@@ -25,9 +25,8 @@ import android.content.Context
  * samples have accumulated, [currentThreshold] returns the
  * conservative pre-Cut-2 constant
  * [PhoneSleepInference.ACTIVITY_THRESHOLD]. Same shape as
- * [SeizureDetectionPrefs] and [PpgCalibrationLogger] — owner-facing
- * features fall back to a documented default when the learned signal
- * isn't ready.
+ * [PpgCalibrationLogger]: a feature falls back to a documented default
+ * when the learned signal isn't ready.
  *
  * **Storage.** Rolling sample buffer as a comma-separated `Float`
  * string in [PREFS_NAME]; pruning happens lazily on the next

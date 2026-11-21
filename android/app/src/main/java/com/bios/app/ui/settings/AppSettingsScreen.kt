@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AppSettingsScreen(
     onBack: () -> Unit = {},
-    onViewSeizureDetections: () -> Unit = {},
     onLongPressVersion: () -> Unit = {},
 ) {
     Scaffold(
@@ -59,7 +58,6 @@ fun AppSettingsScreen(
             SettingsLanguageCard()
             SettingsFeedbackCard()
             SettingsPhoneSleepCard()
-            SettingsSeizureDetectionCard(onViewDetections = onViewSeizureDetections)
             SettingsDiagnosticsCard()
             // About — long-press the Version row opens the metric_readings debug screen (#253).
             SettingsAboutCard(onLongPressVersion = onLongPressVersion)

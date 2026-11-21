@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.HourglassBottom
@@ -48,7 +47,6 @@ import com.bios.app.ui.components.AlertCard
 fun NoticeScreen(
     viewModel: AppViewModel,
     onNavigateToCompanions: () -> Unit,
-    onNavigateToReference: () -> Unit,
     onNavigateToAlert: (String) -> Unit = {},
 ) {
     val unacknowledged by viewModel.unacknowledgedAlerts.collectAsState()
@@ -74,23 +72,7 @@ fun NoticeScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Notice",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onNavigateToReference) {
-                Icon(
-                    Icons.AutoMirrored.Filled.LibraryBooks,
-                    contentDescription = "Longevity reference",
-                )
-            }
-        }
+        Text("Notice", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
 
         if (pendingCompanions > 0) {
             PendingCompanionCard(

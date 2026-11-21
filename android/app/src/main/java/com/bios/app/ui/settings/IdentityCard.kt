@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -19,7 +17,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,10 +39,7 @@ import androidx.compose.ui.unit.dp
  * are collapsed by default; the owner expands the area they're looking for.
  */
 @Composable
-internal fun IdentityCard(
-    onNavigate: (route: String) -> Unit = {},
-    dueByRoute: Map<String, Int> = emptyMap(),
-) {
+internal fun IdentityCard(onNavigate: (route: String) -> Unit = {}) {
     val sections = listOf(
         "Body & baseline" to listOf(
             "Anthropometry" to "anthropometry",
@@ -60,17 +54,8 @@ internal fun IdentityCard(
             "Surgical recovery" to "surgical_recovery",
             "ECG strips" to "ecg_strips",
         ),
-        "Prevention & risk" to listOf(
-            "Preventive care" to "preventive_care",
-            "Risk profile" to "risk_profile",
-            "FRAIL assessment" to "frail_assessment",
-            "Geriatric trajectory" to "geriatric_trajectory",
-        ),
-        "Symptoms & assessments" to listOf(
-            "Headache & migraine diary" to "headache_diary",
-            "Tremor / movement trends" to "tremor_trend",
-            "FAST stroke check" to "fast_stroke",
-            "Symptom report (ESAS-r)" to "esas_capture",
+        "Diaries" to listOf(
+            "Headache diary" to "headache_diary",
         ),
         "Reproductive" to listOf(
             "Contraception" to "contraception",
@@ -78,9 +63,7 @@ internal fun IdentityCard(
             "Gender-affirming care" to "gender_affirming_care",
             "PCOS / Endometriosis context" to "pcos_endometriosis",
         ),
-        "Care & contacts" to listOf(
-            "Goals of care" to "goals_of_care",
-            "Emergency contacts" to "emergency_contacts",
+        "Practices" to listOf(
             "Traditional medicine" to "traditional_medicine_context",
         ),
     )
@@ -90,12 +73,7 @@ internal fun IdentityCard(
             Text("Identity", style = MaterialTheme.typography.titleSmall)
             sections.forEach { (title, entries) ->
                 Spacer(Modifier.height(8.dp))
-                IdentitySection(
-                    title = title,
-                    entries = entries,
-                    onNavigate = onNavigate,
-                    dueByRoute = dueByRoute,
-                )
+                IdentitySection(title = title, entries = entries, onNavigate = onNavigate)
             }
         }
     }
@@ -110,12 +88,8 @@ private fun IdentitySection(
     title: String,
     entries: List<Pair<String, String>>,
     onNavigate: (route: String) -> Unit,
-    dueByRoute: Map<String, Int> = emptyMap(),
 ) {
     var expanded by remember { mutableStateOf(false) }
-    // Sum the section's row counts so the collapsed header still signals
-    // that something inside is due — the owner sees it without expanding.
-    val sectionDue = entries.sumOf { dueByRoute[it.second] ?: 0 }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -125,16 +99,10 @@ private fun IdentitySection(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (!expanded && sectionDue > 0) {
-                DueBadge(sectionDue)
-                Spacer(Modifier.width(8.dp))
-            }
-            Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (expanded) "Collapse $title" else "Expand $title",
-            )
-        }
+        Icon(
+            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+        )
     }
     AnimatedVisibility(visible = expanded) {
         Column {
@@ -142,33 +110,8 @@ private fun IdentitySection(
                 if (idx > 0) Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = { onNavigate(route) }, modifier = Modifier.fillMaxWidth()) {
                     Text(label)
-                    val due = dueByRoute[route] ?: 0
-                    if (due > 0) {
-                        Spacer(Modifier.weight(1f))
-                        DueBadge(due)
-                    }
                 }
             }
         }
-    }
-}
-
-/**
- * Neutral status pill — a passive count, never an alarm. Uses the
- * secondary container colour (not error); a checkup being due is
- * information, not a failure. Manifesto: instrument, not coach.
- */
-@Composable
-private fun DueBadge(count: Int) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = RoundedCornerShape(percent = 50),
-    ) {
-        Text(
-            text = "$count due",
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-        )
     }
 }

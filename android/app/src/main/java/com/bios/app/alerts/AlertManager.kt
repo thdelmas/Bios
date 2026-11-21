@@ -34,7 +34,7 @@ class AlertManager(
         const val CHANNEL_DIGEST = "bios_digest"
 
         /** Channels of earlier versions, deleted from existing installs on start. */
-        internal val REMOVED_CHANNELS = listOf("bios_urgent", "bios_followup")
+        internal val REMOVED_CHANNELS = listOf("bios_urgent", "bios_followup", "bios_seizure_detection")
 
         /** The same sentence in every region, under every alert. */
         const val DISCLAIMER = "Bios is not a medical device. It shows measurements and does not interpret them."

@@ -11,7 +11,6 @@
     <ID>CyclomaticComplexMethod:FhirImporter.kt$FhirImporter$private fun readFastingComponent(obs: JSONObject): Boolean?</ID>
     <ID>CyclomaticComplexMethod:FhirMetricCodings.kt$internal fun loincCode(metricType: MetricType): Pair&lt;String, String&gt;?</ID>
     <ID>CyclomaticComplexMethod:FhirMetricCodings.kt$internal fun ucumCode(metricType: MetricType): String</ID>
-    <ID>CyclomaticComplexMethod:LongevityReferenceScreen.kt$@Composable private fun BiomarkerCard( biomarker: BiomarkerReference, trackedMetrics: Set&lt;MetricType&gt;, latestDirectValue: Double? = null, biomarkerBands: com.bios.app.config.BiomarkerBands? = null )</ID>
     <ID>CyclomaticComplexMethod:PdfReportExporter.kt$private fun renderPage( canvas: Canvas, focalMetric: MetricType, focalReadings: List&lt;MetricReading&gt;, focalBaseline: PersonalBaseline?, biomarkerLatest: List&lt;Pair&lt;MetricType, MetricReading&gt;&gt;, bands: Map&lt;MetricType, BiomarkerBands&gt;, startMillis: Long, endMillis: Long, ownerNote: String?, versionName: String, generatedAtMillis: Long, )</ID>
     <ID>CyclomaticComplexMethod:PpgSignalProcessor.kt$PpgSignalProcessor$internal fun computeWaveformFeatures( smoothed: DoubleArray, peakIndices: List&lt;Int&gt;, samplingRateHz: Double, peakAmpCov: Double ): PulseWaveformFeatures?</ID>
     <ID>CyclomaticComplexMethod:PrivacyDashboardScreen.kt$@Composable fun PrivacyDashboardScreen(viewModel: AppViewModel)</ID>
@@ -24,7 +23,6 @@
     <ID>EmptyFunctionBlock:P2PDiscovery.kt$P2PDiscovery.&lt;no name provided&gt;${}</ID>
     <ID>EmptyFunctionBlock:PhoneSensorAdapter.kt$PhoneSensorAdapter.&lt;no name provided&gt;${}</ID>
     <ID>EmptyFunctionBlock:PhoneSleepAdapter.kt$PhoneSleepAdapter.&lt;no name provided&gt;${}</ID>
-    <ID>EmptyFunctionBlock:SeizureDetectionService.kt$SeizureDetectionService.&lt;no name provided&gt;${}</ID>
     <ID>EmptyFunctionBlock:WakeUpMotionTracker.kt$WakeUpMotionTracker.&lt;no name provided&gt;${}</ID>
     <ID>FunctionOnlyReturningConstant:FhirInterventionMapping.kt$@Suppress("unused") internal fun TreatmentCourse.toFhirCarePlanTodo(): Nothing?</ID>
     <ID>FunctionOnlyReturningConstant:HealthConnectEcgAdapter.kt$HealthConnectEcgAdapter$@Suppress("UNUSED_PARAMETER", "RedundantSuspendModifier") suspend fun fetchStrips(start: Instant, end: Instant, sourceVendor: String): Int</ID>
@@ -61,30 +59,20 @@
     <ID>LongMethod:ContraceptionScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ContraceptionScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:ContraceptionScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddContraceptionDialog( onDismiss: () -&gt; Unit, onSave: (method: ContraceptionMethod, startDate: Long, endDate: Long?, notes: String?) -&gt; Unit, )</ID>
     <ID>LongMethod:EcgStripsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EcgStripsScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:EmergencyContactsScreen.kt$@Composable private fun ContactDialog( initial: EmergencyContact?, title: String, onDismiss: () -&gt; Unit, onSave: (ContactDraft) -&gt; Unit, )</ID>
-    <ID>LongMethod:EmergencyContactsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EmergencyContactsScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:EnvironmentalContextScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EnvironmentalContextScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:EsasCaptureScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EsasCaptureScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:FastStrokeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun FastStrokeScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:FeedbackPrompt.kt$@Composable fun FeedbackPrompt( surface: String, itemId: String? = null, question: String = "Was this useful?", onSubmit: (UserFeedback) -&gt; Unit )</ID>
     <ID>LongMethod:FhirMetricCodings.kt$internal fun loincCode(metricType: MetricType): Pair&lt;String, String&gt;?</ID>
     <ID>LongMethod:FrailAssessmentScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun FrailAssessmentScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:GenderAffirmingCareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun GenderAffirmingCareScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:GenderAffirmingCareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddDialog( onDismiss: () -&gt; Unit, onSave: (type: GenderAffirmingHormoneType, startDate: Long, endDate: Long?, dose: String?, notes: String?) -&gt; Unit, )</ID>
-    <ID>LongMethod:GeriatricTrajectoryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun GeriatricTrajectoryScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:GoalsOfCareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun GoalsOfCareScreen(onBack: () -&gt; Unit)</ID>
-    <ID>LongMethod:HeadacheDiaryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HeadacheDiaryScreen( onBack: () -&gt; Unit, onNavigateToClusterPeriodicity: () -&gt; Unit = {}, )</ID>
+    <ID>LongMethod:HeadacheDiaryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HeadacheDiaryScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:HealthEventCard.kt$@Composable fun HealthEventCard( event: HealthEvent, actionItems: List&lt;ActionItem&gt;, childEvents: List&lt;HealthEvent&gt;, onStatusChange: (HealthEventStatus) -&gt; Unit, onAddFollowUp: () -&gt; Unit, onToggleAction: (String, Boolean) -&gt; Unit, onDeleteAction: (String) -&gt; Unit, onAddAction: (String) -&gt; Unit )</ID>
     <ID>LongMethod:HealthEventSheet.kt$@OptIn(ExperimentalLayoutApi::class) @Composable private fun HealthEventForm( onSave: (HealthEventInput) -&gt; Unit, parentEventId: String?, defaultType: HealthEventType? )</ID>
-    <ID>LongMethod:IdentityRoutes.kt$internal fun NavGraphBuilder.identityRoutes(navController: NavController)</ID>
     <ID>LongMethod:ImmunisationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ImmunisationsScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:ImmunisationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddImmunisationDialog( onDismiss: () -&gt; Unit, onSave: ( name: String, cvxCode: String?, date: Long, doseNumber: Int?, lotNumber: String?, note: String? ) -&gt; Unit, )</ID>
     <ID>LongMethod:InterventionEventsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun InterventionEventsScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:InterventionEventsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddInterventionDialog( availableCourses: List&lt;TreatmentCourse&gt;, onDismiss: () -&gt; Unit, onSave: ( category: InterventionCategory, timestamp: Long, subType: String?, tradition: MedicalTradition?, bodyRegion: String?, notes: String?, courseId: String?, ) -&gt; Unit, )</ID>
     <ID>LongMethod:LabScanReviewScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun LabScanReviewScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onAddManually: () -&gt; Unit, )</ID>
-    <ID>LongMethod:LongevityReferenceScreen.kt$@Composable private fun BiomarkerCard( biomarker: BiomarkerReference, trackedMetrics: Set&lt;MetricType&gt;, latestDirectValue: Double? = null, biomarkerBands: com.bios.app.config.BiomarkerBands? = null )</ID>
-    <ID>LongMethod:LongevityReferenceScreen.kt$@Composable private fun CoverageSummaryCard(trackedMetrics: Set&lt;MetricType&gt;)</ID>
-    <ID>LongMethod:LongevityReferenceScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun LongevityReferenceScreen( trackedMetrics: Set&lt;MetricType&gt;, latestDirectBiomarkerValues: Map&lt;MetricType, Double&gt; = emptyMap(), onBack: () -&gt; Unit )</ID>
     <ID>LongMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun BiosApp(viewModel: AppViewModel)</ID>
     <ID>LongMethod:MedicationsScreen.kt$@Composable private fun MedicationRow( medication: MedicationAnnotation, onDiscontinue: () -&gt; Unit, onDelete: () -&gt; Unit, )</ID>
     <ID>LongMethod:MedicationsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MedicationsScreen(onBack: () -&gt; Unit)</ID>
@@ -98,12 +86,10 @@
     <ID>LongMethod:PhoneSleepWorker.kt$PhoneSleepWorker$override suspend fun doWork(): Result</ID>
     <ID>LongMethod:PhysiologyStateScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PhysiologyStateScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:PpgSignalProcessor.kt$PpgSignalProcessor$fun extract( luminanceSamples: List&lt;Double&gt;, samplingRateHz: Double, profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT, ): PpgResult</ID>
-    <ID>LongMethod:PreventiveCareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PreventiveCareScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:PrivacyDashboardScreen.kt$@Composable fun PrivacyDashboardScreen(viewModel: AppViewModel)</ID>
-    <ID>LongMethod:SeizureManualLogDialog.kt$@Composable internal fun SeizureManualLogDialog( onDismiss: () -&gt; Unit, onSubmit: (timestampMs: Long, durationSec: Int, notes: String?) -&gt; Unit, nowMs: Long = System.currentTimeMillis(), )</ID>
     <ID>LongMethod:SettingsPhoneSleepCard.kt$@Composable internal fun SettingsPhoneSleepCard()</ID>
     <ID>LongMethod:SettingsScreen.kt$@Composable fun SettingsScreen( viewModel: AppViewModel, onNavigate: (route: String) -&gt; Unit = {}, )</ID>
-    <ID>LongMethod:SleepDashboardScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SleepDashboardScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onSeeWearableRecommendations: () -&gt; Unit = {}, onOpenSleepGuide: () -&gt; Unit = {}, )</ID>
+    <ID>LongMethod:SleepDashboardScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SleepDashboardScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onSeeWearableRecommendations: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:SleepEntryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SleepEntryScreen( viewModel: AppViewModel, onBack: () -&gt; Unit, onOpenDashboard: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:SurgicalRecoveryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SurgicalRecoveryScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:SyncWorker.kt$SyncWorker$override suspend fun doWork(): Result</ID>
@@ -113,11 +99,9 @@
     <ID>LongMethod:TreatmentCoursesScreen.kt$@Composable private fun CourseRow( course: TreatmentCourse, onClose: () -&gt; Unit, onReopen: () -&gt; Unit, onDelete: () -&gt; Unit, )</ID>
     <ID>LongMethod:TreatmentCoursesScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TreatmentCoursesScreen(onBack: () -&gt; Unit)</ID>
     <ID>LongMethod:TreatmentCoursesScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AddCourseDialog( onDismiss: () -&gt; Unit, onSave: ( label: String, startedAt: Long, expectedEndAt: Long?, tradition: MedicalTradition?, goal: String?, notes: String?, ) -&gt; Unit, )</ID>
-    <ID>LongMethod:TremorTrendScreen.kt$@Composable private fun TremorPlotCard( title: String, readings: List&lt;MetricReading&gt;, yLabel: String, yUnitSuffix: String, color: Color, )</ID>
     <ID>LongMethod:TrendsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TrendsScreen( viewModel: AppViewModel, initialMetric: MetricType? = null, )</ID>
     <ID>LongParameterList:AppViewModel.kt$AppViewModel$( type: HealthEventType, title: String, description: String?, anomalyId: String? = null, parentEventId: String? = null, initialActionItems: List&lt;String&gt; = emptyList(), codeSystem: String? = null, code: String? = null, codeDisplay: String? = null, // #357 — optional clinical coding (ICD-10 / SNOMED CT / other) )</ID>
     <ID>LongParameterList:EcgStripRepo.kt$EcgStripRepo$( timestamp: Long, durationSeconds: Int, samplingRateHz: Int, samples: ByteArray, sourceVendor: String, leadPlacement: LeadPlacement = LeadPlacement.UNKNOWN, classification: EcgClassification? = null, voltageScale: Double = 1.0, voltageOffset: Double = 0.0, sampleEncoding: String = "int16_le", note: String? = null, )</ID>
-    <ID>LongParameterList:EsasReportRepo.kt$EsasReportRepo$( timestamp: Long = System.currentTimeMillis(), painScore: Int, tirednessScore: Int, drowsinessScore: Int, nauseaScore: Int, appetiteScore: Int, shortnessOfBreathScore: Int, depressionScore: Int, anxietyScore: Int, wellbeingScore: Int, otherSymptomLabel: String? = null, otherSymptomScore: Int? = null, note: String? = null, )</ID>
     <ID>LongParameterList:GrowthMeasurementRepo.kt$GrowthMeasurementRepo$( timestamp: Long = System.currentTimeMillis(), ageInDays: Int = 0, heightCm: Float? = null, weightKg: Float? = null, headCircumferenceCm: Float? = null, leanBodyMassKg: Float? = null, fatMassKg: Float? = null, growthChartReference: GrowthChartReference? = null, note: String? = null, )</ID>
     <ID>LongParameterList:PdfReportExporter.kt$( canvas: Canvas, focalMetric: MetricType, focalReadings: List&lt;MetricReading&gt;, focalBaseline: PersonalBaseline?, biomarkerLatest: List&lt;Pair&lt;MetricType, MetricReading&gt;&gt;, bands: Map&lt;MetricType, BiomarkerBands&gt;, startMillis: Long, endMillis: Long, ownerNote: String?, versionName: String, generatedAtMillis: Long, )</ID>
     <ID>LongParameterList:RecentEntriesSection.kt$( metric: MetricType, entries: List&lt;RecentEntry&gt;, loaded: Boolean, selectedIds: Set&lt;String&gt;, onLongPress: (String) -&gt; Unit, onToggle: (String) -&gt; Unit, onDeleteOne: (RecentEntry) -&gt; Unit, onCancelSelection: () -&gt; Unit, onRequestBatchDelete: () -&gt; Unit, )</ID>
@@ -132,8 +116,6 @@
     <ID>LoopWithTooManyJumpStatements:OuraApiAdapter.kt$OuraApiAdapter$for</ID>
     <ID>LoopWithTooManyJumpStatements:PolarApiAdapter.kt$PolarApiAdapter$for</ID>
     <ID>LoopWithTooManyJumpStatements:PpgSignalProcessor.kt$PpgSignalProcessor$for</ID>
-    <ID>LoopWithTooManyJumpStatements:SeizureDetectionService.kt$SeizureDetectionService$while</ID>
-    <ID>LoopWithTooManyJumpStatements:SeizureDetector.kt$SeizureDetector$for</ID>
     <ID>LoopWithTooManyJumpStatements:SyncManager.kt$SyncManager$for</ID>
     <ID>LoopWithTooManyJumpStatements:WhoopApiAdapter.kt$WhoopApiAdapter$for</ID>
     <ID>MatchingDeclarationName:AddMeasurementDialog.kt$GrowthMeasurementInput</ID>
@@ -194,39 +176,22 @@
     <ID>MaxLineLength:BiomarkerReference.kt$BiomarkerReferences$whyItMatters = "Visceral fat is metabolically active and produces inflammatory cytokines. Excess visceral fat independently predicts type 2 diabetes, cardiovascular disease, and certain cancers, even at a normal BMI."</ID>
     <ID>MaxLineLength:BiosDatabase.kt$BiosDatabase.Companion$.</ID>
     <ID>MaxLineLength:CameraPpgAdapter.kt$CameraPpgAdapter$"capture done device=${Build.MODEL} samples=${snapshot.size} fps=%.2f dur=%.2fs meanR=%.2f var=%.2f sat=%.3f reason=${ppg.rejectionReason} sqi=${ppg.sqiScore} peaks=${ppg.peakCount} peakAmpCov=%.3f hrv=$hrvOutcome cleanIbi=$hrvCleanIbis artifacts=$hrvArtifacts"</ID>
-    <ID>MaxLineLength:CardiologyCatalog.kt$CardiologyCatalog$citation = "AHA Scientific Statement on Lipoprotein(a) (2022) + EAS Consensus Statement (2022) — once-in-lifetime Lp(a) measurement in every adult; &gt;90% genetic, stable across adulthood, no follow-up needed if normal."</ID>
     <ID>MaxLineLength:CircadianEngineTest.kt$FakeMetricReadingDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:ClinicalEncounterTest.kt$ClinicalEncounterTest$dischargeSummaryText = "Dada ausencia de signos de alarma se da alta a domicilio aconsejando seguimiento por médico de AP y Neurología de zona."</ID>
     <ID>MaxLineLength:EnvironmentalContextScreen.kt$"Degrees north (negative = southern hemisphere). Used to compute daylight hours for the photoperiod-related patterns. Country centroid is fine; precision below 1° doesn't matter for daylength math."</ID>
     <ID>MaxLineLength:EnvironmentalContextScreen.kt$"Metres above sea level. La Paz ≈ 3640. Lhasa ≈ 3650. Denver ≈ 1610. Most coastal cities ≈ 0. Leave blank to use the regional default."</ID>
     <ID>MaxLineLength:EnvironmentalContextScreen.kt$"Temporary override for trips. Clears when you set it back to blank. The altitude-sickness screen reads this value."</ID>
     <ID>MaxLineLength:FastStrokeFhirFlag.kt$return "Owner-recorded FAST stroke screen — positive items: $itemsText. Recorded via the Bios FAST screen; owner-input only, not an automated detection."</ID>
-    <ID>MaxLineLength:FastStrokeScreen.kt$"FAST is the AHA / ASA / WHO stroke-recognition mnemonic for lay bystanders: Face drooping, Arm weakness, Speech difficulty, Time to call emergency services. If any one of the three observable items is positive, the recommended action is immediate emergency-services contact — even a single deficit warrants the call. Stroke care is time-critical: every minute of large-vessel-occlusion ischaemia destroys roughly 1.9 million neurons (Saver 2006, Stroke)."</ID>
-    <ID>MaxLineLength:FastStrokeScreen.kt$"One or more FAST items is positive. AHA / ASA guidance: even a single positive FAST item warrants an immediate emergency-services call. Note the time you noticed the deficit — the assessing clinician needs the deficit-onset window to determine treatment options."</ID>
-    <ID>MaxLineLength:FastStrokeScreen.kt$"Recorded. The check is now in the diary; the entry is timestamped so a clinician can read the deficit-onset window."</ID>
-    <ID>MaxLineLength:FastStrokeScreen.kt$"This screen is owner-input only. Bios does not infer stroke from voice, face, or handwriting — that capability is deliberately out of scope per the neurology audit and the Bios manifesto."</ID>
-    <ID>MaxLineLength:GeriatricTrajectoryScreen.kt$"Pull-side trajectories the owner reviews. Bios never auto-classifies fall risk, delirium, or cognitive change — those are clinical assessments. This page shows data trends with their published-framework references; clinical evaluation is what attaches meaning."</ID>
-    <ID>MaxLineLength:GeriatricTrajectoryScreen.kt$"These flags gate the trajectory advisories — Bios never infers them. Frailty / age-≥75 is set in Settings → Physiology state."</ID>
-    <ID>MaxLineLength:GeriatricTrajectoryScreen.kt$blurb = "Stride-time coefficient of variation, derived from phone-sensor step intervals. Hausdorff (2007) and Verghese (2009) anchor the trajectory framing."</ID>
     <ID>MaxLineLength:HeadacheDiaryScreen.kt$"The neurology and headache-medicine literature converges on the same conclusion: a dated record of headaches, intensity, and acute treatment is the substrate a clinician needs to identify the underlying primary-headache disorder, recognise medication-overuse-headache risk (IHS ICHD-3 §8.2), and discuss preventive options. Bios records what is logged — never inferred from biomarkers, never shared without explicit action."</ID>
-    <ID>MaxLineLength:HereditarySyndromeCatalog.kt$HereditarySyndromeCatalog$citation = "NCCN Gastric Cancer — Hereditary Diffuse Gastric Cancer (CDH1+) surveillance, annual EGD when prophylactic gastrectomy declined"</ID>
-    <ID>MaxLineLength:HereditarySyndromeCatalog.kt$HereditarySyndromeCatalog$citation = "NCCN Genetic/Familial High-Risk Assessment: Colorectal — Lynch syndrome surveillance, colonoscopy every 1–2 years from age 20–25"</ID>
-    <ID>MaxLineLength:HereditarySyndromeCatalog.kt$HereditarySyndromeCatalog$citation = "NCCN Genetic/Familial High-Risk: Colorectal — Familial Adenomatous Polyposis surveillance, annual colonoscopy from age 10–15"</ID>
-    <ID>MaxLineLength:HereditarySyndromeCatalog.kt$HereditarySyndromeCatalog$citation = "NCCN Genetic/Familial High-Risk: Colorectal — Peutz-Jeghers syndrome, small-bowel imaging every 2–3 years from age 8–10"</ID>
-    <ID>MaxLineLength:HereditarySyndromeCatalog.kt$HereditarySyndromeCatalog$citation = "NCCN Uterine Neoplasms / Genetic-Familial High-Risk: Colorectal — annual endometrial sampling from age 30–35 in Lynch syndrome"</ID>
     <ID>MaxLineLength:HomeScreen.kt$"Bios needs $remaining more day${if (remaining == 1) "" else "s"} of data to establish your personal baseline and start detecting patterns."</ID>
     <ID>MaxLineLength:HrRecoveryPersisterTest.kt$FakeReadingDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
     <ID>MaxLineLength:HrbsEngineTest.kt$FakeHrbsDao$override suspend fun fetchBucketedMeans(metricType: String, startMillis: Long, endMillis: Long, bucketMillis: Long, readingKind: String?): List&lt;Double&gt;</ID>
-    <ID>MaxLineLength:IhsPahoCatalog.kt$IhsPahoCatalog$citation = "IHS Division of Diabetes Treatment &amp; Prevention — Standards of Care: HbA1c every 6 months in diabetic American Indian / Alaska Native patients (T2DM prevalence ~2–3× baseline)."</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchGadgetbridgeReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchGarminReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchOuraReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchPolarReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchWhoopReadings(s: Instant, e: Instant)</ID>
     <ID>MaxLineLength:IngestManager.kt$IngestManager$private suspend fun fetchWithingsReadings(s: Instant, e: Instant)</ID>
-    <ID>MaxLineLength:LongevityReferenceScreen.kt$"Longevity research tracks dozens of clinical biomarkers through blood tests and imaging. Many have wearable-derived proxies that Bios can monitor continuously. This reference explains the connections — it does not prescribe any protocol."</ID>
-    <ID>MaxLineLength:LongevityReferenceScreen.kt$text = "Belsky DW et al. (2020) — Quantification of the pace of biological aging in humans (DunedinPACE precursor). eLife 9:e54870."</ID>
-    <ID>MaxLineLength:LongevityReferenceScreen.kt$text = "Levine ME et al. (2018) — An epigenetic biomarker of aging for lifespan and healthspan (PhenoAge). Aging 10(4):573–591."</ID>
     <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "A multi-day elevation against your baseline can precede respiratory illness by 24–48 hours in some studies — Bios surfaces the trend, you interpret it."</ID>
     <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Bios learns your personal nightly range. The number is most informative read alongside the modifiers above — the reading is the instrument, the interpretation is yours."</ID>
     <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$howBiosUsesIt = "Bios learns your personal range from your own data. A reading is interesting when it deviates from that range — not when it crosses a textbook threshold."</ID>
@@ -244,24 +209,12 @@
     <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Lower HRV typically follows physical or emotional stress, illness, alcohol, or poor sleep. Higher HRV tends to follow rest. Night-to-night swings are normal even in healthy people."</ID>
     <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Rises with fever, infection, exercise, and emotional state; falls with sleep depth. Healthy adult rest range is roughly 12–20 breaths/min."</ID>
     <ID>MaxLineLength:MetricExplanation.kt$MetricExplanations$whyItVaries = "Schedule, stress, caffeine, alcohol, light exposure, and screen use shift it. Adult guidance is 7–9 hours but personal need varies."</ID>
-    <ID>MaxLineLength:ObGynSocietyCatalog.kt$ObGynSocietyCatalog$citation = "ACOG Practice Bulletin No. 222 — Osteoporosis Prevention, Screening, and Diagnosis. Biennial DEXA in postmenopausal women with risk factors before the USPSTF age-65 floor."</ID>
-    <ID>MaxLineLength:ObGynSocietyCatalog.kt$ObGynSocietyCatalog$citation = "ACS Breast Cancer Screening Guideline (2015, reaffirmed 2023) — annual mammography 45–54. USPSTF 2024 recommends biennial from 40; both are reasonable evidence-based schedules and the owner picks with their provider."</ID>
     <ID>MaxLineLength:OnboardingScreen.kt$description = "Bios builds a personal model of your normal vitals over 14 days, then watches for deviations that may signal illness."</ID>
-    <ID>MaxLineLength:PaediatricVaccineSchedule.kt$PaediatricVaccineSchedule$DoseRecommendation(doseNumber = 2, minAgeMonths = 11 * MONTHS_PER_YEAR + 5, maxAgeMonths = 13 * MONTHS_PER_YEAR + 12, minIntervalFromPriorMonths = 5)</ID>
-    <ID>MaxLineLength:PaediatricVaccineSchedule.kt$PaediatricVaccineSchedule$DoseRecommendation(doseNumber = 2, minAgeMonths = 16 * MONTHS_PER_YEAR, maxAgeMonths = 18 * MONTHS_PER_YEAR, minIntervalFromPriorMonths = 36)</ID>
-    <ID>MaxLineLength:PaediatricVaccineSchedule.kt$PaediatricVaccineSchedule$DoseRecommendation(doseNumber = 2, minAgeMonths = 4 * MONTHS_PER_YEAR, maxAgeMonths = 6 * MONTHS_PER_YEAR, minIntervalFromPriorMonths = 1)</ID>
-    <ID>MaxLineLength:PaediatricVaccineSchedule.kt$PaediatricVaccineSchedule$DoseRecommendation(doseNumber = 2, minAgeMonths = 4 * MONTHS_PER_YEAR, maxAgeMonths = 6 * MONTHS_PER_YEAR, minIntervalFromPriorMonths = 3)</ID>
-    <ID>MaxLineLength:PaediatricVaccineSchedule.kt$PaediatricVaccineSchedule$DoseRecommendation(doseNumber = 4, minAgeMonths = 4 * MONTHS_PER_YEAR, maxAgeMonths = 6 * MONTHS_PER_YEAR, minIntervalFromPriorMonths = 6)</ID>
-    <ID>MaxLineLength:PaediatricVaccineSchedule.kt$PaediatricVaccineSchedule$DoseRecommendation(doseNumber = 5, minAgeMonths = 4 * MONTHS_PER_YEAR, maxAgeMonths = 6 * MONTHS_PER_YEAR, minIntervalFromPriorMonths = 6)</ID>
     <ID>MaxLineLength:PpgCaptureScreen.kt$"Bios uses your rear camera and flash to measure heart-rate variability from your fingertip. Frames never leave the device — only the extracted HR and HRV numbers are kept."</ID>
     <ID>MaxLineLength:PrivacyDashboardScreen.kt$text = { Text("This will permanently destroy all cycle tracking data. The encryption key will be destroyed — data is irrecoverable.") }</ID>
     <ID>MaxLineLength:PrivacyDashboardScreen.kt$text = { Text("This will permanently destroy all health data, baselines, alerts, journal entries, and settings. Encryption keys will be destroyed — nothing is recoverable.") }</ID>
     <ID>MaxLineLength:RhythmClassifierTest.kt$RhythmClassifierTest$"Smooth RSA modulation must not trip the irregularly-irregular gate (sd1/sd2=${result.sd1OverSd2}, sampEn=${result.sampleEntropy}, tpr=${result.turningPointRatio})"</ID>
     <ID>MaxLineLength:RhythmClassifierTest.kt$RhythmClassifierTest$"Uniform-random RR cloud must cross the SD1/SD2 + sample entropy + TPR gates simultaneously (sd1/sd2=${result.sd1OverSd2}, sampEn=${result.sampleEntropy}, tpr=${result.turningPointRatio})"</ID>
-    <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2016 (B recommendation) — statin primary prevention assessment with periodic lipid measurement; 5-yr cadence reflects the standard primary-care interval for stable values"</ID>
-    <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2018 (A recommendation) — 5-yr HPV co-testing 30–65; 3-yr cytology 21–29 (cadence pinned to the lighter-burden HPV-era schedule)"</ID>
-    <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2018 (B recommendation) — postmenopausal women ≥65; biennial cadence reflects clinical convention for stable T-scores"</ID>
-    <ID>MaxLineLength:ScreeningCatalog.kt$ScreeningCatalog$citation = "USPSTF 2021 (B recommendation) — prediabetes/T2DM screening 35–70 in overweight/obese adults, 3-yr cadence in normoglycemic owners"</ID>
     <ID>MaxLineLength:SettingsHelperText.kt$SettingsHelperText$const val GARMIN = "Paste a Garmin Wellness API access token (or a pre-signed session token from a Garmin proxy). Bios does not perform the OAuth 1.0a dance itself yet — see the connection notes for what works today."</ID>
     <ID>MaxLineLength:SettingsHelperText.kt$SettingsHelperText$const val OURA = "Paste an Oura personal-access token from cloud.ouraring.com. Bios uses it as a bearer token; refresh-aware OAuth lands when a Bios Oura app is registered."</ID>
     <ID>MaxLineLength:SettingsHelperText.kt$SettingsHelperText$const val POLAR = "Paste a Polar AccessLink API access token from admin.polaraccesslink.com. Bios uses it as a bearer; refresh-aware OAuth lands when a Bios Polar app is registered."</ID>
@@ -274,7 +227,6 @@
     <ID>ReturnCount:FhirImporter.kt$FhirImporter$private fun parseObservation( obs: JSONObject, bundleSpecimens: Map&lt;String, JSONObject&gt;, ): ParseOutcome</ID>
     <ID>ReturnCount:FhirImporter.kt$FhirImporter$private fun readFastingComponent(obs: JSONObject): Boolean?</ID>
     <ID>ReturnCount:PpgSignalProcessor.kt$PpgSignalProcessor$fun extract( luminanceSamples: List&lt;Double&gt;, samplingRateHz: Double, profile: PpgDeviceProfile = PpgDeviceProfiles.DEFAULT, ): PpgResult</ID>
-    <ID>ReturnCount:ScreeningCadenceEngine.kt$ScreeningCadenceEngine$fun evaluate( entry: ScreeningCatalogEntry, demographics: OwnerDemographics, latest: ScreeningEntry?, riskProfile: RiskProfile? = null, now: Long = System.currentTimeMillis(), ): ScreeningStatus</ID>
     <ID>SpreadOperator:CameraPpgAdapter.kt$CameraPpgAdapter$(lifecycleOwner, selector, *useCases)</ID>
     <ID>SwallowedException:CameraPpgAdapter.kt$CameraPpgAdapter$e: Exception</ID>
     <ID>SwallowedException:ContributionWorker.kt$ContributionWorker$e: Exception</ID>
@@ -306,7 +258,6 @@
     <ID>TooGenericExceptionCaught:PopulationHealthSignals.kt$PopulationHealthSignals$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PushMessageHandler.kt$PushMessageHandler$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ReproductiveDatabase.kt$ReproductiveDatabase.Companion$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:SeizureDetectionService.kt$SeizureDetectionService$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:SleepRegularityWorker.kt$SleepRegularityWorker$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:SleepTileService.kt$SleepTileService$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:SyncManager.kt$SyncManager$e: Exception</ID>
@@ -326,7 +277,6 @@
     <ID>UnusedParameter:PolarApiAdapter.kt$PolarApiAdapter$start: Instant</ID>
     <ID>UnusedParameter:PolarApiAdapter.kt$PolarApiAdapter$startTime: Instant</ID>
     <ID>UnusedParameter:PpgCaptureScreen.kt$lifecycleOwner: LifecycleOwner</ID>
-    <ID>UnusedParameter:TremorTrendScreen.kt$onBack: () -&gt; Unit = {}</ID>
     <ID>UnusedPrivateMember:DailyDigestWorkerTest.kt$DailyDigestWorkerTest$private fun createWorkerForFormat(): DailyDigestWorker</ID>
     <ID>UnusedPrivateProperty:BiosApplication.kt$BiosApplication$val platform = PlatformDetector.detect(this)</ID>
     <ID>UnusedPrivateProperty:CameraPpgAdapter.kt$CameraPpgAdapter.Companion$/** Minimum fraction of raw IBIs the Malik artifact filter must keep * before HR is sourced from its cleaned mean rather than the raw * peak rate. Empirically: ≥ 0.5 → Malik mean tracks a wrist wearable * within 1–2 bpm; below that the sequential filter's anchoring bias * pulls the mean IBI long and we get cleaner numbers from peak rate. * See toResult() for the full rationale. */ private const val MALIK_RELIABLE_FRACTION = 0.5</ID>
@@ -391,10 +341,6 @@
     <ID>WildcardImport:HealthEventSheet.kt$import androidx.compose.runtime.*</ID>
     <ID>WildcardImport:HomeScreenTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:HrvAnalyzerTest.kt$import org.junit.Assert.*</ID>
-    <ID>WildcardImport:LongevityReferenceScreen.kt$import androidx.compose.foundation.layout.*</ID>
-    <ID>WildcardImport:LongevityReferenceScreen.kt$import androidx.compose.material.icons.filled.*</ID>
-    <ID>WildcardImport:LongevityReferenceScreen.kt$import androidx.compose.material3.*</ID>
-    <ID>WildcardImport:LongevityReferenceScreen.kt$import androidx.compose.runtime.*</ID>
     <ID>WildcardImport:MainActivity.kt$import androidx.compose.material.icons.filled.*</ID>
     <ID>WildcardImport:MainActivity.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:MainActivity.kt$import androidx.compose.runtime.*</ID>
@@ -420,8 +366,6 @@
     <ID>WildcardImport:PrivacyDashboardScreen.kt$import androidx.compose.material.icons.filled.*</ID>
     <ID>WildcardImport:PrivacyDashboardScreen.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:PrivacyDashboardScreen.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:ProfessionalReviewTest.kt$import com.bios.app.model.*</ID>
-    <ID>WildcardImport:ProfessionalReviewTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:PushMessageHandlerTest.kt$import org.junit.Assert.*</ID>
     <ID>WildcardImport:SettingsScreen.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:SettingsScreen.kt$import androidx.compose.material.icons.filled.*</ID>

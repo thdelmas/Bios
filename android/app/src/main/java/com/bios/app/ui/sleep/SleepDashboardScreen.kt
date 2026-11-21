@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,7 +69,6 @@ fun SleepDashboardScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
     onSeeWearableRecommendations: () -> Unit = {},
-    onOpenSleepGuide: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -176,12 +174,6 @@ fun SleepDashboardScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onOpenSleepGuide) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.MenuBook,
-                            contentDescription = "Sleep guide",
-                        )
-                    }
                     IconButton(onClick = onInferNow, enabled = !inferring) {
                         if (inferring) {
                             CircularProgressIndicator(

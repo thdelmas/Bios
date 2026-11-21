@@ -18,9 +18,6 @@ import com.bios.app.ui.reproductive.reproductiveCompletenessRoutes
  * arguments, or other coupling stay in [MainActivity] for now.
  */
 internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
-    composable("risk_profile") {
-        com.bios.app.ui.risk.RiskProfileScreen(onBack = { navController.popBackStack() })
-    }
     composable("physiology_state") {
         com.bios.app.ui.physiology.PhysiologyStateScreen(onBack = { navController.popBackStack() })
     }
@@ -30,40 +27,17 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     composable("frail_assessment") {
         com.bios.app.ui.physiology.FrailAssessmentScreen(onBack = { navController.popBackStack() })
     }
-    composable("goals_of_care") {
-        com.bios.app.ui.goals.GoalsOfCareScreen(onBack = { navController.popBackStack() })
-    }
     composable("headache_diary") {
-        com.bios.app.ui.headache.HeadacheDiaryScreen(
-            onBack = { navController.popBackStack() },
-            onNavigateToClusterPeriodicity = { navController.navigate("cluster_periodicity") },
-        )
-    }
-    composable("cluster_periodicity") {
-        com.bios.app.ui.headache.ClusterPeriodicityScreen(
-            onBack = { navController.popBackStack() },
-        )
-    }
-    composable("fast_stroke") {
-        com.bios.app.ui.stroke.FastStrokeScreen(onBack = { navController.popBackStack() })
-    }
-    composable("esas_capture") {
-        com.bios.app.ui.esas.EsasCaptureScreen(onBack = { navController.popBackStack() })
+        com.bios.app.ui.headache.HeadacheDiaryScreen(onBack = { navController.popBackStack() })
     }
     composable("traditional_medicine_context") {
         com.bios.app.ui.traditional.TraditionalMedicineContextScreen(onBack = { navController.popBackStack() })
-    }
-    composable("emergency_contacts") {
-        com.bios.app.ui.emergency.EmergencyContactsScreen(onBack = { navController.popBackStack() })
     }
     composable("medications") {
         com.bios.app.ui.medications.MedicationsScreen(onBack = { navController.popBackStack() })
     }
     composable("immunisations") {
         com.bios.app.ui.immunisations.ImmunisationsScreen(onBack = { navController.popBackStack() })
-    }
-    composable("preventive_care") {
-        com.bios.app.ui.screening.PreventiveCareScreen(onBack = { navController.popBackStack() })
     }
     composable("ecg_strips") {
         com.bios.app.ui.ecg.EcgStripsScreen(onBack = { navController.popBackStack() })
@@ -79,12 +53,6 @@ internal fun NavGraphBuilder.identityRoutes(navController: NavController) {
     }
     composable("anthropometry") {
         com.bios.app.ui.anthropometry.AnthropometryScreen(onBack = { navController.popBackStack() })
-    }
-    composable("geriatric_trajectory") {
-        com.bios.app.ui.geriatric.GeriatricTrajectoryScreen(onBack = { navController.popBackStack() })
-    }
-    composable("tremor_trend") {
-        com.bios.app.ui.tremor.TremorTrendScreen(onBack = { navController.popBackStack() })
     }
     reproductiveCompletenessRoutes(navController)
 }
